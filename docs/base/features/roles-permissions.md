@@ -134,6 +134,5 @@ audit.export             (export audit records)
 
 ## ADR References
 
-- ADR-002: Role/permission infrastructure (Spatie)
 - ADR-004: Role-derived permissions
 - ADR-008: System-role protection and superadmin bypass semantics
