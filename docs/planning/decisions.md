@@ -97,3 +97,34 @@
 **Decision**: Cascade only when parent-child lifecycle semantically requires it (e.g., Role deletion cleans up role_user pivot). For critical entities, use restricted deletes with explicit error handling.
 **Consequences**: Careful foreign key design. Documented cascade rules per relationship.
 **Related**: DB-001, RBAC-001
+
+## ADR-013: Application Logging Strategy
+
+**Status**: Accepted
+**Context**: Audit Trail, Application Logs, Server Logs, and Telescope serve
+distinct audiences. Without a clear contract, teams conflate them, log
+sensitive data, fail to correlate failures across layers, and create false
+audit records on transaction rollback. Laravel also does not log
+`HttpException` (4xx) by default, making security-relevant rejections
+invisible in monitoring.
+**Decision**: Four-tier logging model:
+1. **Audit Trail** — WHO did WHAT (business/security accountability).
+   Source of truth = mutation caller. Created **after** transaction commit.
+2. **Application Logs** — WHAT happened technically (errors, warnings, info).
+   Structured, event-named, always include correlation ID.
+3. **Server Logs** — infrastructure level (Nginx/PHP-FPM). Managed by infra.
+4. **Telescope** — HOW Laravel runtime behaved (technical debugging only).
+Failures are classified: expected (validation, authn, authz, rate limit,
+business rule → warning/info) vs unexpected (DB exception, uncaught error,
+queue failure → error). Transactions log rollback explicitly and never
+produce a false-success audit record. Sensitive data is never logged; stack
+traces are environment-aware. Correlation ID is generated at middleware
+level and propagated to jobs. A global 4xx-logging middleware makes
+HttpException observable.
+**Consequences**: Centralized exception handler logs once (not in every
+controller). Stable event/action names. Structured context envelope
+(action, status, request_id, user_id, resource_id, route, method, exception,
+message, duration_ms, environment, timestamp). See
+`docs/base/infrastructure/logging.md`.
+**Related**: FOUND-008 (correlation ID middleware), AUDIT-001/AUDIT-003
+(audit in Actions), MONITOR-001 (Telescope), RETAIN-001

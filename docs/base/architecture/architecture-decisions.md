@@ -1,9 +1,10 @@
 # Architecture Decision Records
 
 > Key ADRs that shape the architecture. Full list with details in `[decisions.md](../planning/decisions.md)`.
+> 13 ADRs total (ADR-001 through ADR-013).
 
 ## ADR-001: API-first architecture
-- All core capabilities have a clean API boundary.
+|- All core capabilities have a clean API boundary.
 - API contracts consumable by frontend/mobile independently from Laravel internals.
 
 ## ADR-002: UI-independent core
@@ -56,3 +57,12 @@
 ## ADR-012: Cascade relationship strategy
 - Cascade only when parent-child lifecycle semantically requires it.
 - Do not blindly add cascade to every relationship.
+
+## ADR-013: Application Logging Strategy
+- Four-tier logging: Audit Trail (who/what → accountability) vs Application Logs (what → technical) vs Server Logs (infra) vs Telescope (how Laravel behaved).
+- Failures classified: expected (validation, authn, authz, rate-limit, business rule → warning/info) vs unexpected (DB exception, uncaught error, queue failure → error).
+- Structured logs use stable event/action names; always include correlation ID.
+- Centralized exception handler logs once; never in every controller/service.
+- Transactions: audit record created only AFTER commit; failure log includes rollback indicator; no false-success audit on failure.
+- Sensitive data never logged; stack traces are environment-aware; production-safe messages.
+- See `docs/base/infrastructure/logging.md`.
