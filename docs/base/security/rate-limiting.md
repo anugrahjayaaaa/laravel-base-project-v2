@@ -86,4 +86,4 @@ attempt processing.
 
 ## ADR References
 
-- ADR-006: Database queue with Redis compatibility
+- ADR-003: Database queue with Redis compatibility

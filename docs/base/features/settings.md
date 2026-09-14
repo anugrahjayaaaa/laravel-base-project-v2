@@ -22,20 +22,20 @@ registration.default_role
 
 ## Groups
 
-| Group | Examples |
-|-------|----------|
-| `security` | Inactivity, failed login, password history/expiration |
-| `registration` | Enabled, default role |
-| `mail` | SMTP config, from address |
-| `localization` | Default locale, available locales |
-| `system` | App name, timezone, pagination limits |
+|| Group | Examples |
+||-------|----------|
+|| `security` | Inactivity, failed login, password history/expiration |
+|| `registration` | Enabled, default role |
+|| `mail` | SMTP config, from address |
+|| `localization` | Default locale, available locales |
+|| `system` | App name, timezone, pagination limits |
 
 ## Two-Layer Configuration
 
-| Layer | Content | Manageable via UI? |
-|-------|---------|-------------------|
-| Technical (config files) | Infrastructure settings (Redis, DB, cache, queue drivers) | No |
-| Operational (Settings DB) | Application settings (security, registration, mail templates) | Yes |
+|| Layer | Content | Manageable via UI? |
+||-------|---------|-------------------|
+|| Technical (config files) | Infrastructure settings (Redis, DB, cache, queue drivers) | No |
+|| Operational (Settings DB) | Application settings (security, registration, mail templates) | Yes |
 
 - Technical infrastructure settings remain in configuration files.
 - Operational application settings may be managed from the dashboard.
@@ -50,14 +50,15 @@ Settings changes must have:
 
 ## Validation
 
-| Setting | Validation |
-|---------|-----------|
-| `security.inactivity.days` | integer, min:0, max:365 |
-| `security.inactivity.grace_days` | integer, min:0, max:365 | Grace period applied to `last_activity_at` for the inactivity query, ensuring never-logged-in users (`last_activity_at = NULL`) are handled. |
-| `security.password_history.count` | integer, min:1, max:24 |
-| `security.password_expiration.days` | integer, min:1, max:365 |
-| `registration.default_role` | string, exists:roles,name |
-| `registration.enabled` | boolean |
+|| Setting | Validation |
+||---------|-----------|
+|| `security.inactivity.enabled` | boolean | Enable/disable inactivity enforcement |
+|| `security.inactivity.days` | integer, min:0, max:365 | Inactivity threshold before lock |
+|| `security.inactivity.grace_days` | integer, min:0, max:365 | Grace period applied to `last_activity_at` for the inactivity query, ensuring never-logged-in users (`last_activity_at = NULL`) are handled. |
+|| `security.password_history.count` | integer, min:1, max:24 |
+|| `security.password_expiration.days` | integer, min:1, max:365 |
+|| `registration.default_role` | string, exists:roles,name |
+|| `registration.enabled` | boolean |
 
 ## Security
 

@@ -33,7 +33,7 @@ storage (daily + optional external sink).
 | `slack` | Critical alerts (ops page) |
 | `syslog` | System-level forwarding (optional) |
 
-Retention is defined in [retention.md](./retention.md) and is
+Retention is defined in [retention.md](../operations/retention.md) and is
 **configurable at the infrastructure/deployment level**. Application log
 retention is **separate** from Audit Trail retention.
 
@@ -152,8 +152,10 @@ Return appropriate response
 - The log entry MUST indicate that the transaction failed / rolled back where
   that information is meaningful.
 - **Do not create an audit record claiming a successful mutation before the
-  transaction commits.** Audit records are created **after** a committed
-  transaction.
+  transaction commits.** Audit records are written **within the same
+  transaction as the mutation, before the COMMIT**, and only persist if the
+  transaction commits successfully. A rolled-back transaction must not
+  leave a false-success audit record.
 - A failed transaction produces a **failure** log (e.g. `user.update.failed`)
   and **no** audit record.
 
@@ -236,7 +238,7 @@ Logs are potentially sensitive operational data.
 - **Production-safe exception messages:** return generic messages to clients;
   full detail only in server-side logs.
 - **Restricted access:** log storage must be access-controlled.
-- **Retention:** see [retention.md](./retention.md).
+- **Retention:** see [retention.md](../operations/retention.md).
 
 ### Never Log
 
@@ -263,7 +265,7 @@ for debugging (IDs, status, reason codes), never credentials or secrets.
 || Telescope data | 7 days | `retention.telescope.days` |
 
 Application logs and Audit Trail retention are **separate policies**. See
-[retention.md](./retention.md) for the full schedule and enforcement.
+[retention.md](../operations/retention.md) for the full schedule and enforcement.
 
 ## 12. Testing
 
@@ -273,12 +275,12 @@ Testing MUST verify:
 - Unexpected exceptions are logged
 - Sensitive data is not logged
 - Request/correlation ID is present in log entries
-- Successful audit events are not created before transaction commit
+- Audit records are written within the same transaction as the mutation (before COMMIT), persisting only on successful commit
 - Failed transactions do not create false successful audit events
 - Queue failures are observable
 - Authorization / security failures are appropriately observable
 
-See [QA Tracker](../planning/qa-tracker.md) — Logging QA section.
+See [QA Tracker](../../planning/qa-tracker.md) — Logging QA section.
 
 ## ADR References
 

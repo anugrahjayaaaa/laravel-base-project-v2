@@ -71,7 +71,9 @@ transaction rollback.
 
 **Decision**: Five-tier classification:
 1. **Audit Trail** — WHO did WHAT (business/security accountability).
-   Source of truth = mutation caller. Created **after** transaction commit.
+   Source of truth = mutation caller. Written **within the same transaction
+   as the mutation, before the COMMIT**, and only persists if the transaction
+   commits successfully. A rolled-back transaction produces no audit record.
 2. **Application Logs** — WHAT happened technically (errors, warnings, info).
    Structured, event-named, always include correlation ID.
 3. **Security Logs** — Security-relevant events (failed login, account lock,
@@ -136,7 +138,9 @@ audit records on transaction rollback. Laravel also does not log
 invisible in monitoring.
 **Decision**: Five-tier logging/observability model (see also ADR-008):
 1. **Audit Trail** — WHO did WHAT (business/security accountability).
-   Source of truth = mutation caller. Created **after** transaction commit.
+   Source of truth = mutation caller. Written **within the same transaction
+   as the mutation, before the COMMIT**, and only persists if the transaction
+   commits successfully. A rolled-back transaction produces no audit record.
 2. **Application Logs** — WHAT happened technically (errors, warnings, info).
    Structured, event-named, always include correlation ID.
 3. **Server Logs** — infrastructure level (Nginx/PHP-FPM). Managed by infra.
@@ -224,14 +228,20 @@ are audited.
 **Context**: `last_activity_at` tracks meaningful account activity. Users who
 have never logged in have `last_activity_at = NULL` and must not be excluded
 from inactivity policy. Updating on every request is noisy and unnecessary.
-**Decision**: Baseline update point for `last_activity_at` is successful login.
-Do NOT update on every HTTP request. Inactivity is configurable. Grace/threshold
-behavior is defined by configuration (`security.inactivity.days`,
-`security.inactivity.grace_days`). Never-logged-in users (`last_activity_at =
-NULL`) are included in the inactivity query via the grace configuration.
-Inactivity is implemented as a scheduled background process. Inactivity lock
-revokes active sessions/tokens.
+Unlocking an account is an administrative action, not user activity — it
+must NOT populate or change `last_activity_at`.
+**Decision**: The baseline update point for `last_activity_at` is successful
+login. Do NOT update on every HTTP request. Inactivity is configurable via
+`security.inactivity.days` and `security.inactivity.grace_days`.
+Never-logged-in users (`last_activity_at = NULL`) are included in the
+inactivity query via the grace_days config. **Unlocking does not set
+`last_activity_at`** — NULL is preserved until the user performs an actual
+application action (successful login or meaningful mutation). Inactivity is
+implemented as a scheduled background process. Inactivity lock revokes
+active sessions/tokens.
 **Consequences**: Inactivity query must handle NULL explicitly. The grace
 threshold is a setting, not a hard-coded assumption. Session/token revocation
-on inactivity lock is enforced in the background process.
+on inactivity lock is enforced in the background process. Unlock operations
+must NOT update `last_activity_at` — unlocking is an admin action, not user
+activity. Audit records for unlock events are separate from activity tracking.
 **Related**: AUTH-006, INACT-001, SES-001, SET-001

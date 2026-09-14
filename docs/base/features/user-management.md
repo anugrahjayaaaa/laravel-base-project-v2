@@ -88,12 +88,16 @@ Soft Delete/Restore   →  deleted_at set/cleared (if permitted)
 - Do NOT update on every request — only on meaningful activity
   (successful authentication, meaningful mutations).
 - A user who has **never logged in** has `last_activity_at = NULL` and is
-  subject to the same inactivity policy. Implementations must handle NULL
-  explicitly (e.g., treat NULL as "ineligible for inactivity lock" OR treat
-  NULL as "immediately eligible" — the policy must be chosen by configuration,
-  not silently assumed). See [Authentication](../security/authentication.md) §
-  Last Activity / Never-Logged-In Policy.
-- Controlled by configuration: `security.inactivity.days`.
+  included in the inactivity query via the `security.inactivity.grace_days`
+  configuration (see [Settings](../features/settings.md) §Inactivity Policy
+  and [Authentication](../security/authentication.md) §Last Activity /
+  Never-Logged-In Policy).
+- **Unlocking does NOT set `last_activity_at`** — unlocking is an
+  administrative action, not user activity. `last_activity_at` is preserved
+  as-is (NULL if never active, or the prior value) until the user performs
+  an actual application action.
+- Controlled by configuration: `security.inactivity.enabled`,
+  `security.inactivity.days`, `security.inactivity.grace_days`.
 - The inactivity process is implemented as a scheduled/background job.
 
 ## User Operations
