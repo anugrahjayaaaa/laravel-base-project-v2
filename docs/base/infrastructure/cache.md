@@ -9,7 +9,7 @@
 ## Configuration
 
 ```env
-CACHE_DRIVER=file    # default
+CACHE_STORE=file    # default
 SESSION_DRIVER=database  # default
 ```
 

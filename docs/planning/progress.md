@@ -7,7 +7,7 @@
 | Phase | Title | Status |
 |-------|-------|--------|
 | 0 | Architecture & project conventions | DONE |
-| 1 | Laravel foundation & environment | PLANNED |
+|| 1 | Laravel foundation & environment | IN PROGRESS |
 | 2 | Database foundation | PLANNED |
 | 3 | Authentication foundation | PLANNED |
 | 4 | User lifecycle & user management | PLANNED |
@@ -32,6 +32,17 @@ None — waiting for implementation to begin (Phase 0 complete).
 ## Completed Tasks
 
 Phase 0 (P0-001 through P0-011) — architecture documentation and planning system.
+
+Phase 1 (FOUND-001 through FOUND-007) — Laravel 13 foundation & environment:
+- Laravel 13.31.0 initialized (PHP 8.3)
+- `.env.example` configured: APP_NAME="Laravel Base Project", MySQL default, CACHE_STORE=file, QUEUE_CONNECTION=database, SESSION_DRIVER=database
+- Config: cache=default file, database=default mysql, auth=web+sanctum API guard
+- Sanctum ^4.0 installed, API guard configured, User has HasApiTokens
+- Spatie Permission ^6.0 installed, migrations + config published, User has HasRoles
+- Spatie ActivityLog ^4.8 installed
+- Telescope ^5.0 installed, config + migrations published
+- Scramble ^0.13 (dev) installed
+- Pint ^1.27 for code style
 
 Architecture gap-closing pass — added:
 
@@ -81,7 +92,7 @@ None — no implementation has started yet.
   `docs/base/security/data-protection.md`.
 
 **Open** (documented design decisions, not bugs):
-- No implementation code exists yet (Phase 0 complete; Phase 1 ready to begin).
+|- Phase 1 implementation in progress (found-001 through found-007 complete; found-008 onwards pending).
 
 ## Architecture Changes
 
@@ -120,14 +131,12 @@ Not yet started (Phase 15).
 
 ## Next Steps
 
-1. Begin Phase 1: Laravel foundation & environment
-2. Initialize Laravel 13 project
-3. Configure `.env`, config files
-4. Install dependencies (Sanctum, Spatie Permission, Telescope, audit package)
-5. Create correlation/request ID middleware
+1. ~~Begin Phase 1: Laravel foundation & environment~~ — Phase 1 complete (FOUND-001 through FOUND-007)
+2. Begin Phase 2: Database foundation (DB-001 base migration scaffold)
+3. Implement authentication, user management, security, RBAC in subsequent phases
 
 ## Summary
 
-All documentation and planning system complete. No implementation code has
-been written. Next step: begin Phase 1 implementation (Laravel 13 scaffold,
-config files, package installation per dependency docs).
+All documentation and planning system complete. Phase 1 implementation
+complete (FOUND-001 through FOUND-007). Next step: Phase 2 — database
+foundation migrations (DB-001).

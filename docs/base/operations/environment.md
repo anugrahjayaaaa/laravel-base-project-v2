@@ -31,7 +31,7 @@ DB_USERNAME=root
 DB_PASSWORD=
 
 BROADCAST_DRIVER=log
-CACHE_DRIVER=file
+CACHE_STORE=file
 QUEUE_CONNECTION=database
 SESSION_DRIVER=database
 SESSION_LIFETIME=120
@@ -70,7 +70,7 @@ DB_DATABASE=...
 DB_USERNAME=...
 DB_PASSWORD=...
 
-CACHE_DRIVER=redis     # when available
+CACHE_STORE=redis     # when available
 QUEUE_CONNECTION=redis # when available
 SESSION_DRIVER=redis   # when available
 ```

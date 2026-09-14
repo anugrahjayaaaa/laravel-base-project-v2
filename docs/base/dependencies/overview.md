@@ -1,25 +1,23 @@
 # Dependency Overview
 
 > **Single source of truth** for Base Project dependencies.
-> This repository is a **documentation project** (Phase 0 deliverable). No
-> `composer.json` or `composer.lock` exists yet — implementation begins at
-> Phase 1 (`FOUND-001`). All packages below are therefore **Required** or
-> **Planned**, not yet Installed. Their selection is driven by architectural
-> decisions already recorded in this documentation.
+> Phase 1 (Laravel Foundation + Environment) is complete — all Required and
+> Planned dependencies are installed in `vendor/`. See the task tracker for
+> remaining phases.
 
 ## Repository State
 
 || Artifact | Present? |
-||-----------|----------|
-|| `composer.json` | No |
-|| `composer.lock` | No |
-|| `app/` directory | No |
-|| `config/` directory | No |
+|-----------|----------|
+|| `composer.json` | Yes |
+|| `composer.lock` | Yes |
+|| `app/` directory | Yes (base + Models/User) |
+|| `config/` directory | Yes |
 
 All dependency decisions in this document are derived from the architectural
 documentation in `docs/base/` and `docs/planning/` (particularly the
-Implementation Roadmap, Dependency Map, and ADRs). No Composer package has been
-installed or verified against a `composer.lock` at this time.
+Implementation Roadmap, Dependency Map, and ADRs). Phase 1 dependencies are
+installed and verified against `composer.lock`.
 
 ## Dependency Inventory
 
@@ -104,9 +102,8 @@ them is standard Laravel practice and acceptable.
 || Composer package | `laravel/sanctum` |
 || Status | Required |
 || Priority | P0 |
-|| Architecture area | Authentication foundation |
-|| Installed version | Not installed (planned, Phase 1 `FOUND-004`) |
-|| Required constraint | `^4.x` (Laravel 13 compatible) |
+||| Architecture area | Authentication foundation |
+||| Package constraint | `^4.0` (Laravel 13 compatible) |
 
 ### Purpose
 
@@ -214,10 +211,9 @@ If Sanctum is removed in the future:
 || Composer package | `spatie/laravel-permission` |
 || Status | Required |
 || Priority | P0 |
-|| Architecture area | RBAC & Authorization (Phase 6 `RBAC-001`) |
-|| Installed version | Not installed (planned, Phase 1 `FOUND-005`) |
-|| Required constraint | `^6.x` (Laravel 13 compatible) |
-|| PHP version constraint | PHP 8.3+ compatible |
+||| Architecture area | RBAC & Authorization (Phase 6 `RBAC-001`) |
+||| Package constraint | `^6.0` (Laravel 13 compatible) |
+||| PHP version constraint | PHP 8.3+ compatible |
 
 ### Purpose
 
@@ -348,9 +344,8 @@ these belong in role/permission management Actions.
 || Composer package | `spatie/laravel-activitylog` |
 || Status | Required |
 || Priority | P0 |
-|| Architecture area | Audit Trail (Phase 10 `AUDIT-001`) |
-|| Installed version | Not installed (planned, Phase 1 `FOUND-006`) |
-|| Required constraint | `^4.8` (PHP 8.3/Laravel 13 compatible, NOT v5 — v5 requires PHP 8.4+) |
+||| Architecture area | Audit Trail (Phase 10 `AUDIT-001`) |
+||| Package constraint | `^4.8` (PHP 8.3/Laravel 13 compatible, NOT v5 — v5 requires PHP 8.4+) |
 
 ### Purpose
 
@@ -490,9 +485,8 @@ Actions call the abstraction, never Activitylog directly.
 || Composer package | `laravel/telescope` |
 || Status | Required |
 || Priority | P1 |
-|| Architecture area | Monitoring / Observability (Phase 11 `MONITOR-001`) |
-|| Installed version | Not installed (planned, Phase 1 `FOUND-007`) |
-|| Required constraint | `^5.x` (Laravel 13 compatible) |
+||| Architecture area | Monitoring / Observability (Phase 11 `MONITOR-001`) |
+||| Package constraint | `^5.0` (Laravel 13 compatible) |
 
 ### Purpose
 
@@ -575,9 +569,8 @@ the application does not call Telescope.
 || Composer package | `dedoc/scramble` |
 || Status | Planned |
 || Priority | P1 |
-|| Architecture area | API V1 (Phase 12 `API-003`) |
-|| Installed version | Not installed |
-|| Required constraint | `^2.x` (Laravel 13 compatible) |
+||| Architecture area | API V1 (Phase 12 `API-003`) |
+||| Package constraint | `^0.13` (Laravel 13 compatible; ^2.x not yet released) |
 
 ### Purpose
 
@@ -679,7 +672,7 @@ and `docs/base/infrastructure/redis-compatibility.md`.
 || Default | `database` | `file` (or `array` for tests) |
 || Redis (production) | `redis` | `redis` |
 
-Redis is enabled by setting `CACHE_DRIVER=redis` and `QUEUE_CONNECTION=redis`
+Redis is enabled by setting `CACHE_STORE=redis` and `QUEUE_CONNECTION=redis`
 in the deployment `.env` — no application code changes required.
 
 ### Why Not Mandatory
@@ -697,7 +690,7 @@ config.
 
 ### Replacement Strategy
 
-If Redis is abandoned, switch `CACHE_DRIVER` and `QUEUE_CONNECTION` back to
+If Redis is abandoned, switch `CACHE_STORE` and `QUEUE_CONNECTION` back to
 `database`/`file` — the application code is unchanged because it uses
 Laravel facades exclusively.
 

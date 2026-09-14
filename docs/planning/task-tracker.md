@@ -52,13 +52,13 @@
 
 | ID | Task | Phase | Priority | Depends On | Status |
 |----|------|-------|----------|-----------|--------|
-| FOUND-001 | Initialize Laravel 13 project | 1 | P0 | P0-002 | PLANNED |
-| FOUND-002 | Configure .env / .env.example | 1 | P0 | FOUND-001 | PLANNED |
-| FOUND-003 | Set up config files (auth, cache, queue, session, mail, logging) | 1 | P0 | FOUND-001 | PLANNED |
-| FOUND-004 | Install Sanctum for API auth | 1 | P0 | FOUND-001 | PLANNED |
-| FOUND-005 | Install Spatie Permission (RBAC) | 1 | P0 | FOUND-001 | PLANNED |
-| FOUND-006 | Install audit package (e.g. spatie/laravel-activitylog) | 1 | P0 | FOUND-001 | PLANNED |
-| FOUND-007 | Install Telescope | 1 | P0 | FOUND-001 | PLANNED |
+| FOUND-001 | Initialize Laravel 13 project | 1 | P0 | P0-002 | DONE |
+|| FOUND-002 | Configure .env / .env.example | 1 | P0 | FOUND-001 | DONE |
+|| FOUND-003 | Set up config files (auth, cache, queue, session, mail, logging) | 1 | P0 | FOUND-001 | DONE |
+|| FOUND-004 | Install Sanctum for API auth | 1 | P0 | FOUND-001 | DONE |
+|| FOUND-005 | Install Spatie Permission (RBAC) | 1 | P0 | FOUND-001 | DONE |
+|| FOUND-006 | Install audit package (e.g. spatie/laravel-activitylog) | 1 | P0 | FOUND-001 | DONE |
+|| FOUND-007 | Install Telescope | 1 | P0 | FOUND-001 | DONE |
 | FOUND-008 | Create correlation/request ID middleware | 1 | P0 | FOUND-001 | PLANNED |
 | FOUND-009 | Set up PSR-12 linting (PHP CS Fixer) | 1 | P1 | FOUND-001 | PLANNED |
 | FOUND-010 | Configure health check endpoint | 1 | P1 | FOUND-001 | PLANNED |

@@ -2,7 +2,7 @@
 
 > Single-glance reference for every dependency in the Base Project.
 > See [overview.md](./overview.md) for full details per dependency.
-> **Repository is docs-only (Phase 0 complete). No packages are installed yet.**
+|> **Phase 1 (Laravel Foundation + Environment) complete. Packages installed per dependency matrix.**
 
 ## Dependency Inventory
 
@@ -40,7 +40,7 @@
 | `spatie/laravel-permission` | `^6.0` | Laravel 13 + PHP 8.3 compatible |
 | `spatie/laravel-activitylog` | `^4.8` | Laravel 13 + PHP 8.3 compatible (**not v5**, requires PHP 8.4+) |
 | `laravel/telescope` | `^5.0` | Laravel 13 compatible |
-|| `dedoc/scramble` | `^2.0` | Laravel 13 compatible |
+|| `dedoc/scramble` | `^0.13` | Laravel 13 compatible (latest stable; ^2.0 not yet released) |
 | `spatie/laravel-backup` | `^10.0` | Laravel 13 compatible |
 | `predis/predis` | `^2.0` | Redis client (if Redis chosen) |
 
