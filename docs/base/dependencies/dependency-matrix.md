@@ -13,7 +13,7 @@
 | RBAC | Spatie Permission | `spatie/laravel-permission` | Required | P0 | Through Gate/Policy layer |
 | Audit Trail | Spatie Activitylog | `spatie/laravel-activitylog` | Required | P0 | Through Audit abstraction |
 | Technical Observability | Telescope | `laravel/telescope` | Required | P1 | Restricted (technical users only) |
-| API Documentation | Scribe | `knuckleswtf/scribe` | Planned | P1 | Dev-only, documentation generation |
+| API Documentation | Scramble | `dedoc/scramble` | Planned | P1 | Dev-only, documentation generation |
 | Queue (default) | Laravel Queue | Native | Core | P0 | Through Queue facade |
 | Cache (default) | Laravel Cache | Native | Core | P0 | Through Cache facade |
 | Redis (option) | Redis backend | `predis/predis` / `ext-redis` | Optional / Deployment | P2 | Never directly (facades only) |
@@ -40,7 +40,7 @@
 | `spatie/laravel-permission` | `^6.0` | Laravel 13 + PHP 8.3 compatible |
 | `spatie/laravel-activitylog` | `^4.8` | Laravel 13 + PHP 8.3 compatible (**not v5**, requires PHP 8.4+) |
 | `laravel/telescope` | `^5.0` | Laravel 13 compatible |
-| `knuckleswtf/scribe` | `^9.0` | Laravel 13 compatible |
+|| `dedoc/scramble` | `^2.0` | Laravel 13 compatible |
 | `spatie/laravel-backup` | `^10.0` | Laravel 13 compatible |
 | `predis/predis` | `^2.0` | Redis client (if Redis chosen) |
 
@@ -52,7 +52,7 @@
 | RBAC | Spatie Permission (package) + native Gate/Policy |
 | Audit Trail | Spatie Activitylog (package) + Audit abstraction |
 | Monitoring | Telescope (package) + native logging |
-| API Docs | Scribe (package) |
+| API Docs | Scramble (package) |
 | Queue | Native Laravel Queue (database default, Redis optional) |
 | Cache | Native Laravel Cache (file default, Redis optional) |
 | Rate Limiting | Native Laravel RateLimiter |

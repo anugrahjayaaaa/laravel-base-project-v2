@@ -86,7 +86,9 @@ HTTP semantics:
 
 ## API Documentation
 
-Use an OpenAPI-compatible API documentation approach.
+Use Scramble for API documentation generation. Scramble auto-generates
+documentation from Laravel routes, Form Requests, and API Resources —
+annotation-free.
 
 Documentation must include:
 - Authentication
@@ -105,4 +107,4 @@ Documentation must include:
 - Sorting
 - Examples
 
-Do not build a custom documentation system unnecessarily. Use established tools (Scribe, Swagger, etc.).
+Do not build a custom documentation system unnecessarily. Use established tools (Scramble).

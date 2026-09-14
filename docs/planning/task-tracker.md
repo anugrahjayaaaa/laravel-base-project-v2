@@ -130,7 +130,7 @@
   {"id": "DB-002", "task": "Create seed data (roles, permissions)", "phase": 2, "priority": "P0", "depends_on": ["DB-001", "RBAC-001"], "status": "PLANNED"},
   {"id": "API-001", "task": "Define API v1 routes", "phase": 12, "priority": "P0", "depends_on": ["SET-003", "AUDIT-004"], "status": "PLANNED"},
   {"id": "API-002", "task": "Implement API resources (v1)", "phase": 12, "priority": "P0", "depends_on": ["API-001"], "status": "PLANNED"},
-  {"id": "API-003", "task": "Generate OpenAPI documentation", "phase": 12, "priority": "P1", "depends_on": ["API-002"], "status": "PLANNED"},
+  {"id": "API-003", "task": "Generate API documentation (Scramble)", "phase": 12, "priority": "P1", "depends_on": ["API-002"], "status": "PLANNED"},
   {"id": "SEC-001", "task": "Implement security headers", "phase": 13, "priority": "P0", "depends_on": ["FOUND-003"], "status": "PLANNED"},
   {"id": "SEC-002", "task": "Implement CSRF/CORS (web)", "phase": 13, "priority": "P0", "depends_on": ["SEC-001"], "status": "PLANNED"},
   {"id": "SEC-003", "task": "Implement error handling (consistent JSON)", "phase": 13, "priority": "P0", "depends_on": ["SEC-001"], "status": "PLANNED"},
