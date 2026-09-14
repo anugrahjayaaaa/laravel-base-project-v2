@@ -93,3 +93,15 @@ Each entry contains:
 || **Reason** | Establish single source of truth for Phase 1 implementation; prevent ad-hoc logging that conflates audit/application logs, logs sensitive data, or creates false audit records on rollback. |
 || **Impact** | All subsequent phases that emit logs or audit records; Phase 1 (correlation ID middleware), Phase 10 (audit trail), Phase 11 (Telescope). |
 || **Related** | ADR-013, FOUND-008, AUDIT-001/AUDIT-003, MONITOR-001, RETAIN-001, QA-LOG-* |
+
+---
+
+## 2025-09-14 — Dependency Documentation
+
+|| Field | Value |
+||-------|-------|
+|| **Date** | 2025-09-14 |
+|| **Change** | Created `docs/base/dependencies/` directory with `overview.md`, `dependency-matrix.md`, `docs/base/governance/dependency-governance.md`, and 7 ADRs in `docs/base/architecture/decision-records/` (ADR-001 Sanctum, ADR-002 Spatie Permission, ADR-003 Activitylog, ADR-004 Telescope, ADR-005 Native Laravel First, ADR-006 Database Queue + Redis, ADR-007 API Documentation/Scribe). Updated `docs/base/README.md` to add Dependencies as section 2. |
+|| **Reason** | Establish single source of truth for all dependency decisions; distinguish installed vs planned packages; govern package selection before any `composer require` is permitted. |
+|| **Impact** | All phases that introduce Composer packages (Phase 1 FOUND-004/005/006/007, Phase 12 API-003, Phase 14 BACKUP-001); the dependency governance rules. |
+|| **Related** | FOUND-004, FOUND-005, FOUND-006, FOUND-007, API-003, BACKUP-001, QUEUE-001, CACHE-001, MONITOR-001 |

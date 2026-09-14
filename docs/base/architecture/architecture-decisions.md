@@ -66,3 +66,28 @@
 - Transactions: audit record created only AFTER commit; failure log includes rollback indicator; no false-success audit on failure.
 - Sensitive data never logged; stack traces are environment-aware; production-safe messages.
 - See `docs/base/infrastructure/logging.md`.
+
+## ADR-001 (Dependency): Sanctum for API Auth
+See [`ADR-001-sanctum-api-authentication.md`](./decision-records/ADR-001-sanctum-api-authentication.md)
+
+## ADR-002 (Dependency): Spatie Permission for RBAC
+See [`ADR-002-spatie-permission-rbac.md`](./decision-records/ADR-002-spatie-permission-rbac.md)
+
+## ADR-003 (Dependency): Spatie Activitylog for Audit Trail
+See [`ADR-003-spatie-activitylog-audit-trail.md`](./decision-records/ADR-003-spatie-activitylog-audit-trail.md)
+
+## ADR-004 (Dependency): Telescope for Technical Observability
+See [`ADR-004-telescope-technical-observability.md`](./decision-records/ADR-004-telescope-technical-observability.md)
+
+## ADR-005 (Dependency): Native Laravel First
+See [`ADR-005-native-laravel-first.md`](./decision-records/ADR-005-native-laravel-first.md)
+
+## ADR-006 (Dependency): Database Queue with Redis Compatibility
+See [`ADR-006-database-queue-redis-compatible.md`](./decision-records/ADR-006-database-queue-redis-compatible.md)
+
+## ADR-007 (Dependency): API Documentation Strategy (Scribe)
+See [`ADR-007-api-documentation-strategy.md`](./decision-records/ADR-007-api-documentation-strategy.md)
+
+> Full details for dependency decisions are in
+> [`docs/base/architecture/decision-records/`](./decision-records/) and
+> [`docs/base/dependencies/`](../dependencies/overview.md).

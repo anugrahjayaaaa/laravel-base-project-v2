@@ -65,8 +65,10 @@ Testing / Hardening (Phases 13-17)
 - Laravel 13 install
 - `.env` / `.env.example`
 - Config files (`config/`)
-- Queue (database), cache (file)
+- Queue (database), cache (file) — Redis optional
 - Correlation/request ID middleware
+- Packages installed: Sanctum, Spatie Permission, Activitylog, Telescope
+  (see [dependency overview](../base/dependencies/overview.md))
 - Status: PLANNED → READY
 
 ### Phase 2: Database Foundation

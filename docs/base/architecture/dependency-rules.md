@@ -18,11 +18,20 @@ Replaceable UI
 Prefer Laravel-native functionality when appropriate.
 
 Use established packages for capabilities better provided by mature ecosystem solutions:
-- RBAC → Spatie Permission
-- Audit → established audit package
-- Telescope → Laravel Telescope
+- RBAC → Spatie Permission (`spatie/laravel-permission`)
+- Audit → Spatie Activitylog (`spatie/laravel-activitylog`)
+- Telescope → Laravel Telescope (`laravel/telescope`)
+- API Authentication → Laravel Sanctum (`laravel/sanctum`)
+- API Documentation → Scribe (`knuckleswtf/scribe`)
 
 Do NOT add packages simply because they exist.
+
+## Package Selection & Governance
+
+All package decisions are governed by [Dependency Governance](../governance/dependency-governance.md)
+and documented as individual ADRs in [decision-records](../architecture/decision-records/).
+See [Dependency Overview](../dependencies/overview.md) and the
+[Dependency Matrix](../dependencies/dependency-matrix.md) for the full inventory.
 
 ## Package Governance
 
