@@ -58,13 +58,40 @@
 **Consequences**: Password change validates against history. History stored as hashes only (never plaintext).
 **Related**: PWD-003, PWD-004, REQ-AUTH-009, REQ-AUTH-010
 
-## ADR-008: Audit Trail vs Telescope separation
+## ADR-008: Audit Trail vs Technical Observability separation
 
 **Status**: Accepted
-**Context**: Audit Trail (business/security accountability) is frequently conflated with Telescope (technical debugging). They serve different audiences and purposes.
-**Decision**: Audit Trail is the primary audit mechanism (non-technical users). Telescope is for technical debugging only. Do not merge concerns. Audit source of truth = mutation caller, not observers.
-**Consequences**: Two separate systems. Audit records stored in audit table with full metadata. Telescoped logs are technical only.
-**Related**: AUDIT-001, AUDIT-003, MONITOR-001, REQ-AUDIT-001
+
+**Context**: Audit Trail (business/security accountability), Application Logs
+(technical behavior), Security Logs (security-relevant events), Server Logs
+(infrastructure), and Telescope (technical debugging) serve different audiences
+and purposes. Without a clear contract, teams conflate them, log sensitive data,
+fail to correlate failures across layers, and create false audit records on
+transaction rollback.
+
+**Decision**: Five-tier classification:
+1. **Audit Trail** — WHO did WHAT (business/security accountability).
+   Source of truth = mutation caller. Created **after** transaction commit.
+2. **Application Logs** — WHAT happened technically (errors, warnings, info).
+   Structured, event-named, always include correlation ID.
+3. **Security Logs** — Security-relevant events (failed login, account lock,
+   password reset activity, security policy violations). May overlap with Audit
+   Trail events but retained separately for security monitoring.
+4. **Server Logs** — infrastructure level (Nginx/PHP-FPM). Managed by infra.
+5. **Telescope** — HOW Laravel runtime behaved (technical debugging only).
+
+Audit Trail is the primary audit mechanism (non-technical users). Telescope is
+for technical debugging only. Do not merge concerns. Audit source of truth =
+mutation caller, not observers.
+
+**Consequences**: Two separate systems for audit and technical observability.
+Security logs retain separately from application logs. Audit records stored in
+audit table with full metadata. Telescoped logs are technical only. Audit source
+of truth = mutation caller. Security Logs have shorter retention than audit
+(see retention.md).
+
+**Related**: AUDIT-001, AUDIT-003, MONITOR-001, SEC-001, SEC-002, RETAIN-001,
+  REQ-AUDIT-001
 
 ## ADR-009: API versioning
 
@@ -107,7 +134,7 @@ sensitive data, fail to correlate failures across layers, and create false
 audit records on transaction rollback. Laravel also does not log
 `HttpException` (4xx) by default, making security-relevant rejections
 invisible in monitoring.
-**Decision**: Four-tier logging model:
+**Decision**: Five-tier logging/observability model (see also ADR-008):
 1. **Audit Trail** — WHO did WHAT (business/security accountability).
    Source of truth = mutation caller. Created **after** transaction commit.
 2. **Application Logs** — WHAT happened technically (errors, warnings, info).
@@ -128,3 +155,83 @@ message, duration_ms, environment, timestamp). See
 `docs/base/infrastructure/logging.md`.
 **Related**: FOUND-008 (correlation ID middleware), AUDIT-001/AUDIT-003
 (audit in Actions), MONITOR-001 (Telescope), RETAIN-001
+
+## ADR-014: System role protection
+
+**Status**: Accepted
+**Context**: System roles (`superadmin`, `admin`, `user`) must be protected from
+deletion, renaming, and destructive permission manipulation. Accidents or
+malicious actors could lock out all administrators or break baseline operation.
+**Decision**: System roles cannot be deleted, renamed, or have their
+system-assigned permissions stripped in a way that breaks baseline operation.
+The last valid superadmin cannot be removed. Superadmin bypasses where
+explicitly allowed but NOT everywhere (last-superadmin guard, system-role
+protection, sensitive-data redaction, session revocation all remain enforced).
+**Consequences**: Role/role assignment mutations are guarded by checks within
+the mutation transaction. API is the enforcement point; UI hiding is for UX only.
+**Related**: RBAC-005, AUTH-001, RBAC-001
+
+## ADR-015: UI as replaceable API client
+
+**Status**: Accepted
+**Context**: The Base Project is API-first. The UI must be replaceable without
+rewriting business logic, and must not leak brand-specific design tokens.
+**Decision**: The UI is a client of the application/API. Business logic must not
+live in Blade/views. UI permission checks are for visibility/UX only; the
+backend is the security boundary. The design system uses semantic tokens
+(`primary`, `secondary`, `success`, `warning`, `danger`, `info`, `surface`,
+`text`, `muted`, `border`) and is implementation-independent.
+**Consequences**: Admin UI may use Blade/AdminLTE; later replaceable by
+Vue/React/mobile. No business logic in views. Design system tokens are semantic.
+**Related**: ADR-001, ADR-002, AUTH-005, UI-001
+
+## ADR-016: Cascade delete when justified (updates ADR-012)
+
+**Status**: Accepted
+**Context**: ADR-012 originally stated cascade delete is forbidden by default.
+The approved decision is updated: cascade rules ARE allowed when appropriate.
+**Decision**: Cascade delete may be used when child records have no independent
+lifecycle and deletion semantics are unambiguous. Restrict/no-action should be
+used when deleting the parent would create unacceptable data loss. Soft-deleted
+parents require careful handling of child records. Cascade behavior must be
+intentional and documented per relationship. Never blindly add cascade to every
+foreign key.
+**Consequences**: Foreign key design is per-relationship, intentional, and
+documented. No blanket cascade or blanket restrict. This updates ADR-012.
+**Related**: ADR-012, DB-001, RBAC-001
+
+## ADR-017: Configuration vs runtime settings
+
+**Status**: Accepted
+**Context**: Some project settings are deployment-static (infrastructure), while
+others are operational (changeable at runtime by administrators). They must be
+managed differently: validation, authorization, audit, cache invalidation.
+**Decision**: Two-layer configuration:
+- **Configuration**: `.env` / `config/*.php` — infrastructure (DB, Redis, mail,
+  queue/cache drivers, secrets). Not manageable via UI.
+- **Runtime Settings**: database settings (registration.enabled, failed-login
+  policy, inactivity threshold, rate-limit values, password policy). Managed via
+  UI with validation, authorization, audit, and cache invalidation.
+Secrets must never be moved into database settings merely for convenience.
+**Consequences**: Settings management UI operates only on runtime settings.
+Technical infrastructure settings remain in config files. All settings changes
+are audited.
+**Related**: SET-001, SET-002, FOUND-008, USER-006
+
+## ADR-018: last_activity_at and never-logged-in policy
+
+**Status**: Accepted
+**Context**: `last_activity_at` tracks meaningful account activity. Users who
+have never logged in have `last_activity_at = NULL` and must not be excluded
+from inactivity policy. Updating on every request is noisy and unnecessary.
+**Decision**: Baseline update point for `last_activity_at` is successful login.
+Do NOT update on every HTTP request. Inactivity is configurable. Grace/threshold
+behavior is defined by configuration (`security.inactivity.days`,
+`security.inactivity.grace_days`). Never-logged-in users (`last_activity_at =
+NULL`) are included in the inactivity query via the grace configuration.
+Inactivity is implemented as a scheduled background process. Inactivity lock
+revokes active sessions/tokens.
+**Consequences**: Inactivity query must handle NULL explicitly. The grace
+threshold is a setting, not a hard-coded assumption. Session/token revocation
+on inactivity lock is enforced in the background process.
+**Related**: AUTH-006, INACT-001, SES-001, SET-001

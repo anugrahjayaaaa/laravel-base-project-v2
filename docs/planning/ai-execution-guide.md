@@ -44,6 +44,52 @@
 
 20. **Before completing a task, verify** ALL of: implementation, tests, security, documentation, regression impact.
 
+## Dependency-Aware Execution Rules
+
+21. **Read dependency governance** (`docs/base/governance/dependency-governance.md`)
+    before introducing any Composer package. No `composer require` without
+    selecting a package documented in `docs/base/dependencies/overview.md`
+    and approved via ADR.
+22. **Use established packages** for capabilities better provided by mature
+    ecosystem solutions (RBAC, audit, monitoring). Do NOT build custom
+    implementations of these concerns.
+23. **Prefer Laravel-native** for capabilities the framework provides
+    (validation, rate limiting, notifications, etc.). Do NOT introduce a
+    package for native functionality.
+24. **Route package calls through abstractions** where architectural decision
+    requires it (Sanctum through Auth abstraction, Activitylog through Audit
+    abstraction, Spatie Permission through Gate/Policy).
+25. **Telescope and Scribe are not application dependencies** — Telescope is
+    a technical tool (disabled in production), Scribe is dev-only. Application
+    code must never import/depend on them.
+26. **Redis is an infrastructure option, not an application dependency.** Use
+    Laravel facades (`Cache`, `Queue`, `RateLimiter`, `Lock`) exclusively —
+    never Redis-specific APIs.
+27. **Backup is infrastructure, not business logic.** `spatie/laravel-backup`
+    is scheduled via the Kernel; application code does not call it directly.
+
+## Transaction and After-Commit Rules
+
+28. **Use database transactions** for multi-step mutations.
+29. **Dispatch jobs/events after commit** using `dispatchAfterCommit()` or
+    `DB::afterCommit()`. Do NOT dispatch before commit for jobs that depend
+    on committed database state.
+30. **Audit records are written within the transaction** and only persist
+    if the transaction commits. A rolled-back transaction must NOT leave a
+    false-success audit record.
+
+## Implementation Discipline Rules
+
+31. **Business mutation source of truth = mutation caller.** The Action/Service
+    layer calls the audit abstraction — not model observers.
+32. **Authorization source of truth = Policy/Gate layer.** Enforce via
+    `authorize()` in Form Requests and `can:` middleware on routes.
+33. **Serialization source of truth = Resource layer.** Resources must not
+    perform mutations or contain business logic.
+34. **Asynchronous work source of truth = Job.**
+35. **Do not version API application logic unless behavior diverges.**
+    If V1 and V2 share behavior, both call the same shared Action/Service.
+
 ## Task Workflow
 
 ```
@@ -66,6 +112,9 @@
 | What | Where |
 |------|-------|
 | Architecture docs | `docs/base/architecture/` |
+| Architecture components | `docs/base/architecture/application-components.md` |
+| Dependency docs | `docs/base/dependencies/` |
+| Dependency governance | `docs/base/governance/dependency-governance.md` |
 | Security docs | `docs/base/security/` |
 | API docs | `docs/base/api/` |
 | Data docs | `docs/base/data/` |

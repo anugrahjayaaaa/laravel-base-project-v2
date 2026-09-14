@@ -27,6 +27,36 @@ Protection rules:
 - Cannot accidentally remove all critical superadmin capabilities
 - Critical system role operations must be protected
 
+### What Superadmin Bypasses vs. Does NOT Bypass
+
+| Boundary | Superadmin Can Bypass? | Notes |
+|----------|------------------------|-------|
+| Permission checks (general) | Yes, where explicitly allowed via `Gate::before` | E.g. view any user record, manage roles |
+| Account state changes (lock/deactivate last superadmin) | No | Protected regardless of role |
+| Password change | No | Must provide current password |
+| Audit Trail view/export | No (requires `audit.view`/`audit.export`) | Audit is for accountability |
+| Feature availability | No | Feature flags apply to everyone |
+| System role protection | No | Cannot delete/rename system roles |
+| Settings management | Requires `settings.manage` | Not auto-bypassed |
+
+Superadmin is a **controlled privileged role**, not an uncontrolled "everything
+bypass" concept.
+
+## System Role Protection
+
+System roles (`superadmin`, `admin`, `user`) are protected:
+
+- **Deletion**: system roles cannot be deleted — they are required for
+  application function.
+- **Renaming**: system roles cannot be renamed — permission references and
+  seed data depend on stable names.
+- **Permission manipulation**: system role permissions are managed through
+  controlled admin operations, not arbitrary bulk assignment.
+- **API enforcement**: system role protection is enforced at the application
+  boundary (Action/Service layer), not just in the UI.
+- **UI restrictions**: system role management UI is restricted to users with
+  `roles.manage` permission; system role rows are not deletable in the UI.
+
 ## User State Permissions
 
 ```

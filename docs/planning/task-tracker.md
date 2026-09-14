@@ -105,7 +105,7 @@
   {"id": "RBAC-002", "task": "Implement role management", "phase": 6, "priority": "P0", "depends_on": ["RBAC-001"], "status": "PLANNED"},
   {"id": "RBAC-003", "task": "Implement permission management", "phase": 6, "priority": "P0", "depends_on": ["RBAC-001"], "status": "PLANNED"},
   {"id": "RBAC-004", "task": "Define permission set", "phase": 6, "priority": "P0", "depends_on": ["P0-004"], "status": "PLANNED"},
-  {"id": "RBAC-005", "task": "Implement superadmin protection", "phase": 6, "priority": "P0", "depends_on": ["RBAC-001"], "status": "PLANNED"},
+  {"id": "RBAC-005", "task": "Implement superadmin protection + system role protection (deletion/rename/permission manipulation guards, last-superadmin enforcement)", "phase": 6, "priority": "P0", "depends_on": ["RBAC-001"], "status": "PLANNED"},
   {"id": "FEAT-001", "task": "Implement feature flags backend", "phase": 7, "priority": "P1", "depends_on": ["RBAC-005"], "status": "PLANNED"},
   {"id": "FEAT-002", "task": "Implement feature availability enforcement", "phase": 7, "priority": "P1", "depends_on": ["FEAT-001"], "status": "PLANNED"},
   {"id": "SET-001", "task": "Design settings schema", "phase": 8, "priority": "P1", "depends_on": ["DB-002"], "status": "PLANNED"},

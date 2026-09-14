@@ -1,7 +1,8 @@
 # Architecture Decision Records
 
 > Key ADRs that shape the architecture. Full list with details in `[decisions.md](../planning/decisions.md)`.
-> 13 ADRs total (ADR-001 through ADR-013).
+> 18 ADRs total (ADR-001 through ADR-018), plus dependency-specific ADRs in
+> [`docs/base/architecture/decision-records/`](./decision-records/).
 
 ## ADR-001: API-first architecture
 |- All core capabilities have a clean API boundary.
@@ -36,36 +37,62 @@
 - New password cannot match configured number of previous hashes.
 - History: enabled/disabled + configurable count via Settings.
 
-## ADR-008: Audit Trail vs Telescope separation
-- Audit Trail: business/security accountability (non-technical users).
-- Telescope: Laravel technical debugging (technical users).
-- Do not merge these concerns.
-- Audit source of truth is the mutation caller, not observers.
+## ADR-008: Audit Trail vs Technical Observability separation
+|- Five-tier classification: Audit Trail (who/what) / Application Logs (what) / Security Logs (security events) / Server Logs (infra) / Telescope (how Laravel behaved).
+|- Audit Trail source of truth = mutation caller, not observers.
+|- Telescope is for technical debugging only; NOT a replacement for Audit Trail.
 
 ## ADR-009: API versioning
-- Versioned APIs: `/api/v1/...`, future `/api/v2/...`
-- V1 remains stable when V2 is introduced.
+|- Versioned APIs: `/api/v1/...`, future `/api/v2/...`
+|- V1 remains stable when V2 is introduced.
+|- Application logic shared when behavior identical; separate when behavior diverges.
 
 ## ADR-010: Database ID strategy
-- Default: integer/bigint.
-- UUID only when concrete requirement exists.
+|- Default: integer/bigint.
+|- UUID only when concrete requirement exists.
 
 ## ADR-011: Soft delete strategy
-- Soft delete on User. Not on Audit, Permission, Settings.
-- Session uses lifecycle cleanup.
+|- Soft delete on selected entities only (not every model).
+|- Not on Audit, Permission, Settings. Session uses lifecycle cleanup.
+|- Per-entity deletion policy required.
 
 ## ADR-012: Cascade relationship strategy
-- Cascade only when parent-child lifecycle semantically requires it.
-- Do not blindly add cascade to every relationship.
+|- Cascade allowed when child records have no independent lifecycle and semantics are unambiguous.
+|- Restrict/no-action when deletion would cause unacceptable data loss.
+|- Cascade behavior documented per relationship. Never blanket cascade.
 
 ## ADR-013: Application Logging Strategy
-- Four-tier logging: Audit Trail (who/what → accountability) vs Application Logs (what → technical) vs Server Logs (infra) vs Telescope (how Laravel behaved).
-- Failures classified: expected (validation, authn, authz, rate-limit, business rule → warning/info) vs unexpected (DB exception, uncaught error, queue failure → error).
-- Structured logs use stable event/action names; always include correlation ID.
-- Centralized exception handler logs once; never in every controller/service.
-- Transactions: audit record created only AFTER commit; failure log includes rollback indicator; no false-success audit on failure.
-- Sensitive data never logged; stack traces are environment-aware; production-safe messages.
-- See `docs/base/infrastructure/logging.md`.
+|- Five-tier: Audit Trail (accountability) / Application Logs (technical) / Security Logs / Server Logs (infra) / Telescope (runtime debugging).
+|- Failures classified: expected (validation, authn, authz, rate-limit, business rule → warning/info) vs unexpected (DB exception, uncaught error, queue failure → error).
+|- Structured logs use stable event/action names; always include correlation ID.
+|- Centralized exception handler logs once; never in every controller/service.
+|- Transactions: audit record created only AFTER commit; failure log includes rollback indicator; no false-success audit on failure.
+|- Sensitive data never logged; stack traces are environment-aware; production-safe messages.
+|- See `docs/base/infrastructure/logging.md`.
+
+## ADR-014: System role protection
+|- System roles (superadmin/admin/user) cannot be deleted, renamed, or destructively altered.
+|- Cannot remove the last valid superadmin.
+|- Superadmin bypasses where explicitly allowed only; NOT everywhere.
+
+## ADR-015: UI as replaceable API client
+|- UI is a client of the application/API. No business logic in views.
+|- UI authorization is for visibility/UX only; backend is the security boundary.
+|- Design system uses semantic tokens; implementation-independent.
+
+## ADR-016: Cascade delete when justified (updates ADR-012)
+|- Cascade IS allowed when justified; not forbidden by default.
+|- Intentional, documented per relationship.
+
+## ADR-017: Configuration vs runtime settings
+|- Two-layer: config files (infrastructure) vs database settings (operational).
+|- Runtime settings managed via UI with validation, authorization, audit, cache invalidation.
+|- Secrets never moved into database settings.
+
+## ADR-018: last_activity_at and never-logged-in policy
+|- last_activity_at = successful login (not every request).
+|- last_activity_at = NULL (never logged in) handled by inactivity grace config.
+|- Inactivity lock revokes sessions/tokens.
 
 ## ADR-001 (Dependency): Sanctum for API Auth
 See [`ADR-001-sanctum-api-authentication.md`](./decision-records/ADR-001-sanctum-api-authentication.md)

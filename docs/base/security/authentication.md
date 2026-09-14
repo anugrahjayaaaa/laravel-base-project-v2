@@ -84,4 +84,33 @@ invalidateOnAccountDeactivation()
 
 - Do not use invasive hardware fingerprinting for device identification.
 - Use application-generated installation/device identifiers where appropriate.
-- Central authentication/session management abstraction; no scattered invalidation logic in controllers.
+- Central authentication/session management abstraction; no scattered
+  invalidation logic in controllers.
+
+## Session Revocation Triggers
+
+The following events MUST revoke active sessions/tokens:
+
+| Event | Revokes |
+|-------|---------|
+| Password change/reset | Existing sessions/tokens |
+| Account lock | Existing sessions/tokens |
+| Account deactivation | Existing sessions/tokens |
+| Logout current device | Current session only |
+| Logout all devices | All sessions |
+| Inactivity lock | All sessions |
+
+## Last Activity / Never-Logged-In Policy
+
+- `last_activity_at` represents meaningful account activity (successful
+  authentication, meaningful mutations).
+- Do NOT update it on every HTTP request.
+- A user who has **never logged in** has `last_activity_at = NULL`. This must
+  be handled explicitly — the inactivity policy must define whether NULL means
+  "ineligible" or "immediately eligible" by configuration, not silently
+  assumed. The default recommendation is: **never-logged-in users are NOT
+  subject to inactivity lock** (they have not had a chance to establish
+  activity), but this must be a configurable policy.
+- The inactivity process is a scheduled/background job (see
+  [User Management](../features/user-management.md) §Inactivity Policy).
+- The inactivity threshold is configurable: `security.inactivity.days`.

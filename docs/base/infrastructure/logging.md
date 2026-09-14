@@ -2,13 +2,14 @@
 
 ## 1. Overview
 
-Logging is split into **four distinct concerns**. They serve different
+Logging is split into **five distinct concerns**. They serve different
 audiences and must not be conflated:
 
 | Concern | Purpose | Audience | Source of Truth |
 |---------|---------|----------|-----------------|
 | Audit Trail | WHO did WHAT (business/security accountability) | Admins, security, ops | Mutation caller (Action/Service layer) |
 | Application Logs | WHAT happened technically (app errors, warnings, info) | Developers, ops | Application code via `Log::` |
+| Security Logs | Security-relevant events (failed login, lock, rate-limit) | Security team | Application code via `Log::` |
 | Server Logs | WHAT happened at infrastructure level | SRE, infra team | Nginx/PHP-FPM/system |
 | Telescope | HOW the Laravel runtime behaved | Developers | Laravel Telescope |
 
@@ -188,9 +189,20 @@ HTTP Request → Controller → Service → DB → Event → Queue → Notificat
 ```
 
 - The correlation ID is **generated at middleware level** (see FOUND-008).
+- **Generation:** a UUID (or ULID) generated in middleware on the first
+  request. If the client provides an `X-Request-ID` header, that value is
+  respected and propagated (echoed back in the response header).
 - It is available globally via a helper or context accessor.
-- For asynchronous jobs, the correlation ID is **preserved** in the job's
-  context where technically appropriate.
+- **Propagation:** automatically attached to all structured log calls via
+  Laravel's `Log::withContext(['request_id' => $id])` at middleware level.
+- **Response:** included in the `X-Request-ID` response header on every
+  HTTP response, and in the `meta.request_id` field of API responses.
+- **Asynchronous jobs:** the correlation ID is passed into the job's
+  constructor and re-established via `Log::withContext` at job execution.
+- **Security/privacy:** the correlation ID must NOT contain sensitive data
+  — use an opaque UUID/ULID, not user PII.
+- **Logs must NOT log raw request bodies indiscriminately.** Correlation ID
+  is metadata for tracing, not a substitute for request data.
 
 ## 9. Exception Handling
 
@@ -243,11 +255,12 @@ for debugging (IDs, status, reason codes), never credentials or secrets.
 
 ## 11. Retention
 
-| Data Type | Default | Config Key |
-|-----------|---------|------------|
-| Application logs | 30 days | `retention.application_logs.days` |
-| Audit logs | Indefinite | `retention.audit_logs.days` |
-| Telescope data | 7 days | `retention.telescope.days` |
+|| Data Type | Default | Config Key |
+||-----------|---------|------------|
+|| Application logs | 30 days | `retention.application_logs.days` |
+|| Security logs | 90 days | `retention.security_logs.days` |
+|| Audit logs | Indefinite | `retention.audit_logs.days` |
+|| Telescope data | 7 days | `retention.telescope.days` |
 
 Application logs and Audit Trail retention are **separate policies**. See
 [retention.md](./retention.md) for the full schedule and enforcement.

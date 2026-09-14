@@ -54,7 +54,24 @@ Audit source of truth: **mutation caller**.
 
 Do NOT make observers the primary audit mechanism.
 
-Audit logging should be done explicitly in the Action/Service layer where the mutation occurs, not passively via model observers.
+Audit logging should be done explicitly in the Action/Service layer where the
+mutation occurs, not passively via model observers.
+
+See [Application Components](../architecture/application-components.md) for
+the component responsibility model and [Application Boundaries](../architecture/application-boundaries.md)
+for transaction/after-commit rules.
+
+## Transaction Boundaries
+
+- Audit records must be written **within the same database transaction** as
+  the mutation, and **before the COMMIT**.
+- A successful mutation produces one audit record.
+- A failed transaction (rollback) produces **no** audit record and no
+  "successful mutation" claim. The failure must be observable via
+  application/security logging instead (e.g. `user.update.failed` with
+  exception, request_id).
+- Audits that capture before/after state must reflect the **committed** state
+  only.
 
 ## Asynchronous Export
 

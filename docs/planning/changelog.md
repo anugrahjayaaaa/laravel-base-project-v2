@@ -89,7 +89,7 @@ Each entry contains:
 || Field | Value |
 ||-------|-------|
 || **Date** | 2025-09-14 |
-|| **Change** | Rewrote `infrastructure/logging.md` with the full Application Logging Requirements spec: four-tier logging model (Audit Trail / Application Logs / Server Logs / Telescope separation), failure classification (expected vs unexpected), structured event/action names, context envelope, transaction-failure semantics, request/correlation ID propagation, centralized exception handling, logging privacy/redaction, and retention. Added ADR-013 and logging QA scenarios (QA-LOG-001 through QA-LOG-008) to the QA tracker. |
+||| **Change** | Rewrote `infrastructure/logging.md` with the full Application Logging Requirements spec: five-tier logging model (Audit Trail / Application Logs / Security Logs / Server Logs / Telescope separation), failure classification (expected vs unexpected), structured event/action names, context envelope, transaction-failure semantics, request/correlation ID propagation, centralized exception handling, logging privacy/redaction, and retention. Added ADR-013 and logging QA scenarios (QA-LOG-001 through QA-LOG-008) to the QA tracker. |
 || **Reason** | Establish single source of truth for Phase 1 implementation; prevent ad-hoc logging that conflates audit/application logs, logs sensitive data, or creates false audit records on rollback. |
 || **Impact** | All subsequent phases that emit logs or audit records; Phase 1 (correlation ID middleware), Phase 10 (audit trail), Phase 11 (Telescope). |
 || **Related** | ADR-013, FOUND-008, AUDIT-001/AUDIT-003, MONITOR-001, RETAIN-001, QA-LOG-* |
@@ -104,4 +104,16 @@ Each entry contains:
 || **Change** | Created `docs/base/dependencies/` directory with `overview.md`, `dependency-matrix.md`, `docs/base/governance/dependency-governance.md`, and 7 ADRs in `docs/base/architecture/decision-records/` (ADR-001 Sanctum, ADR-002 Spatie Permission, ADR-003 Activitylog, ADR-004 Telescope, ADR-005 Native Laravel First, ADR-006 Database Queue + Redis, ADR-007 API Documentation/Scribe). Updated `docs/base/README.md` to add Dependencies as section 2. |
 || **Reason** | Establish single source of truth for all dependency decisions; distinguish installed vs planned packages; govern package selection before any `composer require` is permitted. |
 || **Impact** | All phases that introduce Composer packages (Phase 1 FOUND-004/005/006/007, Phase 12 API-003, Phase 14 BACKUP-001); the dependency governance rules. |
-|| **Related** | FOUND-004, FOUND-005, FOUND-006, FOUND-007, API-003, BACKUP-001, QUEUE-001, CACHE-001, MONITOR-001 |
+||| **Related** | FOUND-004, FOUND-005, FOUND-006, FOUND-007, API-003, BACKUP-001, QUEUE-001, CACHE-001, MONITOR-001 |
+
+---
+
+## 2025-09-14 — Architecture Gap-Closing Pass
+
+||| Field | Value |
+||-------|-------|
+||| **Date** | 2025-09-14 |
+||| **Change** | Closed architecture documentation gaps: created `docs/base/architecture/application-components.md` (component responsibility model + canonical request flow + source-of-truth rules), created `docs/base/ui/` (`ui-architecture.md`, `ui-authorization.md`, `design-system.md`), created `docs/base/governance/dependency-governance.md`, created ADRs-001..007 in `decision-records/`. Enhanced: `application-boundaries.md` (transaction/after-commit model + rollback behavior), `audit-trail.md` (transaction boundaries), `queue.md` (after-commit dispatch + idempotency + rollback), `logging.md` (5-way observability classification + correlation ID generation/propagation/propagation to jobs), `observability.md` (5-way classification + security logs), `retention.md` (security logs 90d), `user-management.md` (lifecycle transitions + state distinctions), `authentication.md` (session revocation triggers + last_activity NULL policy), `rate-limiting.md` (precedence + endpoint categories + race conditions), `authorization.md` (system role protection + superadmin bypass table), `soft-delete.md` (deletion policy + cascade-when-justified update to ADR-012), `roles-permissions.md` (system role protection), `monitoring.md` (5-way classification + Security Logs + ADR-008 reference), `settings.md` (`last_activity_at` inactivity grace config), `security-baseline.md` (`last_activity_at` policy), `ai-execution-guide.md` (dependency-aware + transaction + source-of-truth rules), `progress.md`, `base/README.md` (sections index). Updated `planning/decisions.md` (ADR-008  5-way, ADR-013 5-tier, added ADR-014..018). Updated `architecture-decisions.md` (count + all ADR entries 008-018). Updated `task-tracker.md` (RBAC-005 description). |
+||| **Reason** | Resolve contradictions between documented and approved architecture decisions; ensure all components, transaction semantics, account state, rate-limit precedence, cascade rules, system-role protection, UI architecture, and observability classification are consistently documented before implementation begins. |
+||| **Impact** | All Phase 1-17 implementation tasks; architecture compliance tests; Definition of Done verification. |
+||| **Related** | ADR-001 through ADR-018, FOUND-008, CORR-001, AUDIT-001/AUDIT-003, MONITOR-001, RETAIN-001, RBAC-001/RBAC-005, SEC-001/002/003, DB-001/DB-002, CACHE-001/002, SET-001, UI-001, FEATURE, QA-LOG-*, QA-AUDIT-*, QA-SEC-*, QA-API-* |

@@ -8,6 +8,7 @@ Use structured names:
 ```
 security.inactivity.enabled
 security.inactivity.days
+security.inactivity.grace_days
 security.login.failed_attempts.enabled
 security.login.failed_attempts.max_attempts
 security.login.failed_attempts.lock_duration_minutes
@@ -52,6 +53,7 @@ Settings changes must have:
 | Setting | Validation |
 |---------|-----------|
 | `security.inactivity.days` | integer, min:0, max:365 |
+| `security.inactivity.grace_days` | integer, min:0, max:365 | Grace period applied to `last_activity_at` for the inactivity query, ensuring never-logged-in users (`last_activity_at = NULL`) are handled. |
 | `security.password_history.count` | integer, min:1, max:24 |
 | `security.password_expiration.days` | integer, min:1, max:365 |
 | `registration.default_role` | string, exists:roles,name |
@@ -63,6 +65,19 @@ Settings changes must have:
 - Technical infrastructure settings must NOT be exposed through normal Settings.
 - Operational values administrators need to change are exposed through Settings.
 - Settings changes invalidate cache immediately.
+
+### Inactivity Policy
+
+The inactivity policy is configurable via settings:
+
+- `security.inactivity.enabled` — enable/disable inactivity enforcement
+- `security.inactivity.days` — the inactivity threshold
+- `security.inactivity.grace_days` — grace period applied to `last_activity_at` for
+  the inactivity query, ensuring never-logged-in users (`last_activity_at = NULL`)
+  are included in the lockout query.
+
+The inactivity process runs as a scheduled background task. When an account is
+locked due to inactivity, all of the user's active sessions and tokens are revoked.
 
 ## Dependencies
 

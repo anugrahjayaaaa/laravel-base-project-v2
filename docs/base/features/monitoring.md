@@ -2,54 +2,40 @@
 
 ## Overview
 
-The Monitoring area is conceptually structured as:
+The Monitoring/Observability area is conceptually structured as five distinct
+concerns:
 
 ```
-Monitoring
-├── Audit Trail
-├── Application Logs
-├── Server Logs
-├── Telescope
-└── System Health
+Observability
+├── Audit Trail          (Business/security accountability)
+├── Application Logs     (Technical application behavior/warnings/errors)
+├── Security Logs        (Security-relevant events: failed login, lock, etc.)
+├── Server Logs          (Infrastructure/server problems)
+├── Telescope            (Laravel technical debugging)
+└── System Health        (Operational status)
 ```
 
-## Components
+## Component Definitions
 
-### Audit Trail
-- Purpose: Business/security accountability
-- Audience: Administrators, security/operational users, non-technical users
-- Features: View, detail, search, filter, pagination, asynchronous export
-- See: [audit-trail.md](./audit-trail.md)
-
-### Application Logs
-- Purpose: Application/runtime problems
-- Structured with request IDs and context
-- Retention: configurable
-
-### Server Logs
-- Purpose: Infrastructure/server problems
-- Managed by deployment infrastructure
-- Includes: web server, PHP-FPM, system logs
-
-### Telescope
-- Purpose: Laravel technical debugging
-- Audience: Technical users only
-- NOT a replacement for Audit Trail
-- Do not merge Telescope with Audit Trail concerns
-
-### System Health
-- Purpose: Operational status
-- Checks: DB connectivity, queue workers, disk space, memory, external services
-- Health check endpoint for monitoring tools
+| Concept | Purpose | Audience | Retention |
+|--------|---------|----------|-----------|
+| Audit Trail | Who did what to which resource | Administrators, security/operational users, non-technical users | See [retention.md](../operations/retention.md) |
+| Application Logs | Application/runtime problems, warnings, failures | Developers, SREs | Configurable |
+| Security Logs | Security-relevant events (failed login, account lock, reset activity, violations) | Security team, developers | Typically shorter than audit (see retention.md) |
+| Server Logs | Infrastructure problems (web server, PHP-FPM, OS, reverse proxy) | SREs, platform | Managed by deployment infrastructure |
+| Telescope | Laravel technical debugging and runtime behavior | Technical users (read-only / debug access) | Short-term |
+| System Health | Operational readiness checks | Monitoring tools, SREs | Live/operational |
 
 ## Separation of Concerns
 
-| Aspect | Audit Trail | Telescope |
-|--------|-------------|-----------|
-| Audience | Non-technical users | Technical users |
-| Purpose | Accountability | Debugging |
-| Content | Business events | Technical details |
-| Access | Admin/Security UI | Technical UI |
+| Aspect | Audit Trail | Application Logs | Security Logs | Telescope |
+|--------|-------------|------------------|---------------|-----------|
+| Audience | Non-technical users | Developers | Security team | Technical users |
+| Purpose | Accountability | Debugging | Security monitoring | Debugging |
+| Content | Business mutations | Technical warnings/errors | Auth events, violations | Runtime details |
+
+See [observability.md](../infrastructure/observability.md) for the full
+classification.
 
 ## Health Check Endpoint
 
@@ -70,4 +56,5 @@ Monitoring
 
 ## ADR References
 
-- ADR-008: Audit Trail vs Telescope separation
+- ADR-013: Application Logging Strategy
+- ADR-008: Audit Trail vs Technical Observability separation

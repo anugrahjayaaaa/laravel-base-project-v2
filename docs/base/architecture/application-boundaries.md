@@ -29,6 +29,45 @@ Queue/event/notification
 - Do not dispatch side effects prematurely when transactional consistency matters.
 - Side effects (queue jobs, events, notifications) are dispatched after commit.
 
+### Transaction Model
+
+```
+BEGIN TRANSACTION
+  → perform mutation
+  → related mutation(s) where applicable
+  → write audit record where appropriate
+COMMIT
+  → dispatch after-commit events / jobs / notifications
+```
+
+### After-Commit Dispatch
+
+Jobs, events, and notifications that depend on committed database state MUST
+be dispatched after the transaction commits. Use:
+
+- `dispatchAfterCommit()` on Jobs
+- `DB::afterCommit(fn() => Event::dispatch(...))` for events
+- Notifications via `dispatchAfterCommit` when routed through jobs
+
+### Do NOT
+
+- Dispatch an email job before the transaction commits. If the transaction
+  rolls back, the email would reference a user/record that does not exist.
+- Write an audit record before the transaction commits. A failed transaction
+  must not produce a false-success audit entry.
+- Assume an external side effect succeeded before the database transaction
+  commits.
+
+### Rollback Behavior
+
+If a mutation fails:
+
+1. The transaction rolls back.
+2. No successful state is falsely represented.
+3. No audit record claims the mutation succeeded.
+4. The failure is observable through appropriate application/security logging
+   (event/action name + failure status + request/correlation ID).
+
 ## Security Boundary
 
 - Security must be enforced at the backend/application boundary.

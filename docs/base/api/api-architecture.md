@@ -22,6 +22,30 @@ Resources/Api/V2/
 - When behavior changes substantially, create a separate Action/Service implementation.
 - Do not blindly duplicate the entire application for every API version.
 
+## Rule: Version the API Contract First; Version Application Logic Only When Behavior Diverges
+
+```
+Version the API contract first; version application logic only when behavior
+actually diverges.
+```
+
+If V1 and V2 share the same business behavior:
+
+```
+V1 Controller → shared application service/action
+V2 Controller → same shared application service/action
+```
+
+If business behavior genuinely differs:
+
+```
+V1 Controller → V1-specific application behavior
+V2 Controller → new application service/action (where justified)
+```
+
+V1 behavior must remain stable when V2 is introduced. Existing V1 clients
+must not break.
+
 ## API Resources
 
 Laravel API Resources are the serialization contract.
