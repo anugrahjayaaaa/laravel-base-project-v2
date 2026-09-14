@@ -1,4 +1,4 @@
-# ADR-006: Database Queue with Redis Compatibility
+# DEP-006: Database Queue with Redis Compatibility
 
 - **Status**: Accepted
 - **Category**: Dependency Selection

@@ -1,4 +1,4 @@
-# ADR-005: Native Laravel First
+# DEP-005: Native Laravel First
 
 - **Status**: Accepted
 - **Category**: Dependency Governance
@@ -40,10 +40,10 @@ a Composer package for any concern that Laravel's core provides well.
 
 ## Consequences
 
-- The [Intentional Non-Dependencies](./../dependencies/overview.md#intentional-non-dependencies)
+- [Intentional Non-Dependencies](../../dependencies/overview.md#intentional-non-dependencies)
   list explicitly documents every concern handled natively.
 - Package authors must justify any new dependency against this principle
-  (see [Dependency Governance](./../governance/dependency-governance.md)).
+  (see [Dependency Governance](../../governance/dependency-governance.md)).
 - Application code uses Laravel facades, traits, and core classes directly
   (e.g. `Illuminate\Support\Facades\Cache`, `Illuminate\Support\Facades\Queue`,
   `Illuminate\Database\Eloquent\SoftDeletes`, `Illuminate\Support\Facades\RateLimiter`).

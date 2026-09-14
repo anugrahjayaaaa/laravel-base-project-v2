@@ -1,4 +1,4 @@
-# ADR-001: Sanctum for API Authentication
+# DEP-001: Sanctum for API Authentication
 
 - **Status**: Accepted
 - **Category**: Dependency Selection

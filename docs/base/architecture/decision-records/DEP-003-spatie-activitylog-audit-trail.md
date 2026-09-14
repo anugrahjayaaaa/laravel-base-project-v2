@@ -1,4 +1,4 @@
-# ADR-003: Spatie Activitylog for Audit Trail
+# DEP-003: Spatie Activitylog for Audit Trail
 
 - **Status**: Accepted
 - **Category**: Dependency Selection
@@ -13,8 +13,8 @@ trail must be:
 - Read-only in the UI
 - Permission-gated for view/export
 - Tied to the request/correlation ID
-- Written only after a successful transaction commit (no false-success
-  records on rollback)
+- Written within the same database transaction as the mutation, before the
+  COMMIT (no false-success records on rollback)
 
 ## Decision
 
@@ -51,9 +51,10 @@ established audit package rather than building from scratch."
 
 - Application code does NOT call Activitylog directly. All audit writes go
   through a dedicated `Audit` service class (abstraction layer).
-- Audit records are written **after** transaction commit — the `Audit`
-  abstraction enforces this by accepting a causer, subject, action, and
-  metadata, and being called from within the Action/Service layer post-commit.
+- Audit records are written **within the same database transaction** as the
+  mutation, **before the COMMIT**, and only persist if the transaction commits
+  successfully. The `Audit` abstraction enforces this by being called from
+  within the Action/Service layer inside the transaction scope.
 - Sensitive data (passwords, tokens) must be scrubbed before storing in
   `properties` — the abstraction handles this.
 - Version constraint: `^4.8` (NOT v5, which requires PHP 8.4+).

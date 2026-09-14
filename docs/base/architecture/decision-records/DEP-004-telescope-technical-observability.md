@@ -1,4 +1,4 @@
-# ADR-004: Telescope for Technical Observability
+# DEP-004: Telescope for Technical Observability
 
 - **Status**: Accepted
 - **Category**: Dependency Selection
