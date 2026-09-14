@@ -24,7 +24,7 @@
 
 ## CORS Policy
 
-- Configured via `fruitcake/laravel-cors` or native Laravel CORS.
+- CORS is handled natively by Laravel's `HandleCors` middleware (Laravel 11+).
 - Restrict to known frontend origins.
 - Do not use wildcard `*` for credentials-enabled endpoints.
 
