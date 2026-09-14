@@ -59,6 +59,14 @@ Admin → Send reset password request → User receives secure reset link → Us
 Admin creates user → System generates temporary password → User receives credentials + email verification link → User MUST change password before normal access
 ```
 
+## Password Change Revocation
+
+- Password change must **revoke existing sessions and bearer tokens**
+  for the affected user.
+- See `session-security.md` for session/token revocation rules and
+  the `client_type` distinction (web vs mobile).
+- After password change, the user must re-authenticate.
+
 ## ADR References
 
 - ADR-007: Password history strategy

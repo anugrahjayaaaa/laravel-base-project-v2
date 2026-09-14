@@ -1,41 +1,39 @@
 # Dependency Overview
 
 > **Single source of truth** for Base Project dependencies.
-> This repository is a **documentation project** (Phase 0 deliverable). No
-> `composer.json` or `composer.lock` exists yet — implementation begins at
-> Phase 1 (`FOUND-001`). All packages below are therefore **Required** or
-> **Planned**, not yet Installed. Their selection is driven by architectural
-> decisions already recorded in this documentation.
+> Phase 1 (Laravel Foundation + Environment) is complete — all Required and
+> Planned dependencies are installed in `vendor/`. See the task tracker for
+> remaining phases.
 
 ## Repository State
 
-| Artifact | Present? |
+|| Artifact | Present? |
 |-----------|----------|
-| `composer.json` | No |
-| `composer.lock` | No |
-| `app/` directory | No |
-| `config/` directory | No |
+|| `composer.json` | Yes |
+|| `composer.lock` | Yes |
+|| `app/` directory | Yes (base + Models/User) |
+|| `config/` directory | Yes |
 
 All dependency decisions in this document are derived from the architectural
 documentation in `docs/base/` and `docs/planning/` (particularly the
-Implementation Roadmap, Dependency Map, and ADRs). No Composer package has been
-installed or verified against a `composer.lock` at this time.
+Implementation Roadmap, Dependency Map, and ADRs). Phase 1 dependencies are
+installed and verified against `composer.lock`.
 
 ## Dependency Inventory
 
-| Area | Implementation | Composer Package | Status | Priority | Direct App Usage |
-|------|----------------|------------------|--------|----------|------------------|
-| Framework | Laravel | `laravel/laravel` (app) + `laravel/framework` (core) | Required (core) | P0 | Yes |
-| API Auth | Sanctum | `laravel/sanctum` | Required | P0 | Through Auth layer |
-| RBAC | Spatie Permission | `spatie/laravel-permission` | Required | P0 | Through Authorization layer |
-| Audit Trail | Spatie Activitylog | `spatie/laravel-activitylog` | Required | P0 | Prefer Audit abstraction |
-| Technical Observability | Telescope | `laravel/telescope` | Required | P1 | Restricted (technical users) |
-| API Documentation | Scribe | `knuckleswtf/scribe` | Planned | P1 | Documentation only |
-| Queue (default backend) | Laravel Queue | Native | Core | P0 | Through Queue facade |
-| Cache (default backend) | Laravel Cache | Native | Core | P0 | Through Cache facade |
-| Redis (production option) | Redis backend | `predis/predis` or `phpredis` | Optional / Deployment | P2 | Never directly |
-| Backup | Spatie Backup | `spatie/laravel-backup` | Planned | P2 | Infrastructure |
-| External Monitoring | (deployment choice) | `sentry/sentry-laravel`, etc. | Deployment-specific | P3 | Through logging/observability |
+|| Area | Implementation | Composer Package | Status | Priority | Direct App Usage |
+||------|----------------|------------------|--------|----------|------------------|
+|| Framework | Laravel | `laravel/laravel` (app) + `laravel/framework` (core) | Required (core) | P0 | Yes |
+|| API Auth | Sanctum | `laravel/sanctum` | Required | P0 | Through Auth layer |
+|| RBAC | Spatie Permission | `spatie/laravel-permission` | Required | P0 | Through Authorization layer |
+|| Audit Trail | Spatie Activitylog | `spatie/laravel-activitylog` | Required | P0 | Prefer Audit abstraction |
+|| Technical Observability | Telescope | `laravel/telescope` | Required | P1 | Restricted (technical users) |
+|| API Documentation | Scramble | `dedoc/scramble` | Planned | P1 | Documentation only |
+|| Queue (default backend) | Laravel Queue | Native | Core | P0 | Through Queue facade |
+|| Cache (default backend) | Laravel Cache | Native | Core | P0 | Through Cache facade |
+|| Redis (production option) | Redis backend | `predis/predis` or `phpredis` | Optional / Deployment | P2 | Never directly |
+|| Backup | Spatie Backup | `spatie/laravel-backup` | Planned | P2 | Infrastructure |
+|| External Monitoring | (deployment choice) | `sentry/sentry-laravel`, etc. | Deployment-specific | P3 | Through logging/observability |
 
 ## Sections
 
@@ -59,31 +57,31 @@ Laravel itself provides sufficient functionality for the following concerns.
 explicitly so future authors do not reintroduce packages that duplicate
 framework-provided capabilities.
 
-| Capability | Laravel Component | Used For |
-|------------|------------------|----------|
-| Authentication foundation | Sanctum (package) + native Auth | API bearer tokens, web session auth |
-| Form Requests | `Illuminate\Http\Request` validation | Request validation + request-level authorization |
-| Validation | `Illuminate\Validation` | All input validation at trust boundaries |
-| Policies | `Illuminate\Auth\Access\Policy` | Resource-level authorization decisions |
-| Gates | `Illuminate\Auth\Access\Gate` | Action-level permission checks |
-| Middleware | `Illuminate\Foundation\Http\Middleware` | Cross-cutting concerns (auth, rate limit, correlation ID) |
-| Events | `Illuminate\Events` | Domain/application event dispatch |
-| Listeners | `Illuminate\Events\Listener` | Reaction to events |
-| Notifications | `Illuminate\Notifications` | User notification abstraction |
-| Mail | `Illuminate\Mail` | Email delivery |
-| Queue | `Illuminate\Queue` | Asynchronous/background processing |
-| Scheduler | `Illuminate\Console\Scheduling` | Cron/scheduled jobs |
-| Cache | `Illuminate\Cache` | Caching abstraction |
-| Rate Limiter | `Illuminate\Cache\RateLimiter` | Rate limiting |
-| API Resources | `Illuminate\Http\Resources\Json\JsonResource` | API serialization |
-| Soft Deletes | `Illuminate\Database\Eloquent\SoftDeletes` | Soft deletes (User only) |
-| Database Transactions | `Illuminate\Database\Connection` | Transaction management |
-| Encryption | `Illuminate\Encryption` | Field encryption |
-| Hashing | `Illuminate\Hashing` | Password hashing (bcrypt/argon2) |
-| Logging | `Illuminate\Log` + Monolog | Structured application logs |
-| Filesystem | `Illuminate\Filesystem` | Storage abstraction |
-| HTTP Client | `Illuminate\Http\Client` | Outbound HTTP calls |
-| Exception Handling | `Illuminate\Foundation\Exceptions\Handler` | Centralized error responses |
+|| Capability | Laravel Component | Used For |
+||------------|------------------|----------|
+|| Authentication foundation | Sanctum (package) + native Auth | API bearer tokens, web session auth |
+|| Form Requests | `Illuminate\Http\Request` validation | Request validation + request-level authorization |
+|| Validation | `Illuminate\Validation` | All input validation at trust boundaries |
+|| Policies | `Illuminate\Auth\Access\Policy` | Resource-level authorization decisions |
+|| Gates | `Illuminate\Auth\Access\Gate` | Action-level permission checks |
+|| Middleware | `Illuminate\Foundation\Http\Middleware` | Cross-cutting concerns (auth, rate limit, correlation ID) |
+|| Events | `Illuminate\Events` | Domain/application event dispatch |
+|| Listeners | `Illuminate\Events\Listener` | Reaction to events |
+|| Notifications | `Illuminate\Notifications` | User notification abstraction |
+|| Mail | `Illuminate\Mail` | Email delivery |
+|| Queue | `Illuminate\Queue` | Asynchronous/background processing |
+|| Scheduler | `Illuminate\Console\Scheduling` | Cron/scheduled jobs |
+|| Cache | `Illuminate\Cache` | Caching abstraction |
+|| Rate Limiter | `Illuminate\Cache\RateLimiter` | Rate limiting |
+|| API Resources | `Illuminate\Http\Resources\Json\JsonResource` | API serialization |
+|| Soft Deletes | `Illuminate\Database\Eloquent\SoftDeletes` | Soft deletes (User only) |
+|| Database Transactions | `Illuminate\Database\Connection` | Transaction management |
+|| Encryption | `Illuminate\Encryption` | Field encryption |
+|| Hashing | `Illuminate\Hashing` | Password hashing (bcrypt/argon2) |
+|| Logging | `Illuminate\Log` + Monolog | Structured application logs |
+|| Filesystem | `Illuminate\Filesystem` | Storage abstraction |
+|| HTTP Client | `Illuminate\Http\Client` | Outbound HTTP calls |
+|| Exception Handling | `Illuminate\Foundation\Exceptions\Handler` | Centralized error responses |
 
 **Why not packages?** Laravel's native implementations are mature, tested,
 framework-version-aligned, and already maintained by the Laravel team.
@@ -99,14 +97,13 @@ them is standard Laravel practice and acceptable.
 
 ## Laravel Sanctum
 
-| Field | Value |
-|-------|-------|
-| Composer package | `laravel/sanctum` |
-| Status | Required |
-| Priority | P0 |
-| Architecture area | Authentication foundation |
-| Installed version | Not installed (planned, Phase 1 `FOUND-004`) |
-| Required constraint | `^4.x` (Laravel 13 compatible) |
+|| Field | Value |
+||-------|-------|
+|| Composer package | `laravel/sanctum` |
+|| Status | Required |
+|| Priority | P0 |
+||| Architecture area | Authentication foundation |
+||| Package constraint | `^4.0` (Laravel 13 compatible) |
 
 ### Purpose
 
@@ -209,15 +206,14 @@ If Sanctum is removed in the future:
 
 ## Spatie Laravel Permission
 
-| Field | Value |
-|-------|-------|
-| Composer package | `spatie/laravel-permission` |
-| Status | Required |
-| Priority | P0 |
-| Architecture area | RBAC & Authorization (Phase 6 `RBAC-001`) |
-| Installed version | Not installed (planned, Phase 1 `FOUND-005`) |
-| Required constraint | `^6.x` (Laravel 13 compatible) |
-| PHP version constraint | PHP 8.3+ compatible |
+|| Field | Value |
+||-------|-------|
+|| Composer package | `spatie/laravel-permission` |
+|| Status | Required |
+|| Priority | P0 |
+||| Architecture area | RBAC & Authorization (Phase 6 `RBAC-001`) |
+||| Package constraint | `^6.0` (Laravel 13 compatible) |
+||| PHP version constraint | PHP 8.3+ compatible |
 
 ### Purpose
 
@@ -264,20 +260,20 @@ User → Role → Permissions
 
 Permission names follow the pattern `resource.action`:
 
-| Permission | Meaning |
-|------------|---------|
-| `users.view` | View users |
-| `users.create` | Create users |
-| `users.edit` | Edit users |
-| `users.delete` | Delete users |
-| `users.activate` | Activate users |
-| `users.deactivate` | Deactivate users |
-| `users.lock` | Lock users |
-| `users.unlock` | Unlock users |
-| `roles.manage` | Manage roles |
-| `permissions.manage` | Manage permissions |
-| `audit.view` | View audit trail |
-| `audit.export` | Export audit records |
+|| Permission | Meaning |
+||------------|---------|
+|| `users.view` | View users |
+|| `users.create` | Create users |
+|| `users.edit` | Edit users |
+|| `users.delete` | Delete users |
+|| `users.activate` | Activate users |
+|| `users.deactivate` | Deactivate users |
+|| `users.lock` | Lock users |
+|| `users.unlock` | Unlock users |
+|| `roles.manage` | Manage roles |
+|| `permissions.manage` | Manage permissions |
+|| `audit.view` | View audit trail |
+|| `audit.export` | Export audit records |
 
 ### Superadmin Protection
 
@@ -343,14 +339,13 @@ these belong in role/permission management Actions.
 
 ## Spatie Laravel Activitylog
 
-| Field | Value |
-|-------|-------|
-| Composer package | `spatie/laravel-activitylog` |
-| Status | Required |
-| Priority | P0 |
-| Architecture area | Audit Trail (Phase 10 `AUDIT-001`) |
-| Installed version | Not installed (planned, Phase 1 `FOUND-006`) |
-| Required constraint | `^4.8` (PHP 8.3/Laravel 13 compatible, NOT v5 — v5 requires PHP 8.4+) |
+|| Field | Value |
+||-------|-------|
+|| Composer package | `spatie/laravel-activitylog` |
+|| Status | Required |
+|| Priority | P0 |
+||| Architecture area | Audit Trail (Phase 10 `AUDIT-001`) |
+||| Package constraint | `^4.8` (PHP 8.3/Laravel 13 compatible, NOT v5 — v5 requires PHP 8.4+) |
 
 ### Purpose
 
@@ -369,8 +364,7 @@ the established audit package referenced by `docs/base/features/audit-trail.md`
 Audit Trail answers: **WHO did WHAT to WHICH resource?**
 
 Audit Trail is NOT the same as:
-
-- Application Logs (WHAT happened technically) — see [logging.md](./infrastructure/logging.md)
+- Application Logs (WHAT happened technically) — see [logging.md](../infrastructure/logging.md)
 - Server Logs (infrastructure-level)
 - Telescope (HOW Laravel runtime behaved)
 - Technical monitoring (debugging)
@@ -385,24 +379,25 @@ This separation is codified in ADR-008 and
   layer where the mutation occurs.
 - An **application-level Audit abstraction** must sit above Activitylog so the
   application is not tightly coupled to the package API.
-- **Transaction boundaries** — audit records must NOT be created before the
-  transaction commits. If a transaction rolls back, no audit record is written
-  and a failure log is emitted instead.
+- **Transaction boundaries** — audit records must be written **within the same
+  transaction** as the mutation, **before the COMMIT**. If a transaction
+  rolls back, no audit record is written and a failure log is emitted
+  instead.
 - Audit records are **read-only** through the UI.
 
 ### Audit Metadata
 
 Each audit record must capture:
 
-| Field | Source |
-|-------|--------|
-| Actor (causer) | `activity()->causedBy($user)` |
-| Action (event) | Stable name (e.g. `user.created`, `user.deactivated`) |
-| Subject (subject) | `activity()->performedOn($model)` |
-| Before | Original model state (where meaningful) |
-| After | New model state (where meaningful) |
-| Metadata | request_id, IP, user agent, environment |
-| Timestamp | Auto-recorded |
+|| Field | Source |
+||-------|--------|
+|| Actor (causer) | `activity()->causedBy($user)` |
+|| Action (event) | Stable name (e.g. `user.created`, `user.deactivated`) |
+|| Subject (subject) | `activity()->performedOn($model)` |
+|| Before | Original model state (where meaningful) |
+|| After | New model state (where meaningful) |
+|| Metadata | request_id, IP, user agent, environment |
+|| Timestamp | Auto-recorded |
 
 ### Sensitive-Data Handling
 
@@ -410,12 +405,15 @@ Each audit record must capture:
   bearer tokens, session secrets, reset tokens, API secrets, or private keys.
 - The `withProperties(['*'])` should be used carefully — scrub sensitive
   fields (password, remember_token) before storing `properties`.
-- See [logging.md](./infrastructure/logging.md) §10 (Logging Privacy) and
+- See [logging.md](../infrastructure/logging.md) §10 (Logging Privacy) and
   `docs/base/security/data-protection.md`.
 
 ### Transaction Boundaries
 
-- Audit records are written **after** the database transaction commits.
+- Audit records are written **within the same database transaction** as the
+  mutation, **before the COMMIT**, and only persist if the transaction
+  commits successfully. A rolled-back transaction must not leave a
+  false-success audit record.
 - If the transaction fails/rolls back, the audit record is discarded and a
   failure application log is written (e.g. `user.update.failed` with
   exception and request_id).
@@ -468,7 +466,7 @@ Each audit record must capture:
 
 A dedicated `Audit` service/abstraction must wrap Activitylog calls. All
 audit writes route through this abstraction (e.g.
-`Audit::record('user.deactivated', $user, $target)`). Controllers and
+`Audit::record('user.deactivated', $user, $target')`). Controllers and
 Actions call the abstraction, never Activitylog directly.
 
 ### Replacement Strategy
@@ -482,14 +480,13 @@ Actions call the abstraction, never Activitylog directly.
 
 ## Laravel Telescope
 
-| Field | Value |
-|-------|-------|
-| Composer package | `laravel/telescope` |
-| Status | Required |
-| Priority | P1 |
-| Architecture area | Monitoring / Observability (Phase 11 `MONITOR-001`) |
-| Installed version | Not installed (planned, Phase 1 `FOUND-007`) |
-| Required constraint | `^5.x` (Laravel 13 compatible) |
+|| Field | Value |
+||-------|-------|
+|| Composer package | `laravel/telescope` |
+|| Status | Required |
+|| Priority | P1 |
+||| Architecture area | Monitoring / Observability (Phase 11 `MONITOR-001`) |
+||| Package constraint | `^5.0` (Laravel 13 compatible) |
 
 ### Purpose
 
@@ -534,7 +531,7 @@ project.
 - Telescope route access is gated via a `Gate::allowIf` check in
   `TelescopeServiceProvider` — only `web` env or users with a designated
   permission may access it.
-- Telescope data retention: 7 days (`retention.telescope.days`) — auto-purge.
+- Telescope data retention: 7 days (`retention.telescope.days`), auto-purge.
 - Telescope must NOT replace the Audit Trail. Telescope records technical
   traces; Audit Trail records business/security accountability.
 
@@ -567,86 +564,90 @@ the application does not call Telescope.
 
 ## API Documentation
 
-| Field | Value |
-|-------|-------|
-| Composer package | `knuckleswtf/scribe` |
-| Status | Planned |
-| Priority | P1 |
-| Architecture area | API V1 (Phase 12 `API-003`) |
-| Installed version | Not installed |
-| Required constraint | `^9.x` (Laravel 13 compatible) |
+|| Field | Value |
+||-------|-------|
+|| Composer package | `dedoc/scramble` |
+|| Status | Planned |
+|| Priority | P1 |
+||| Architecture area | API V1 (Phase 12 `API-003`) |
+||| Package constraint | `^0.13` (Laravel 13 compatible; ^2.x not yet released) |
 
 ### Purpose
 
-- Auto-generates OpenAPI documentation from Laravel annotations
-- API contract generation from Form Requests, API Resources, and routes
+- Auto-generates API documentation from Laravel routes, Form Requests, and
+  API Resources (annotation-free)
+- API contract generation from code structure
+- Provides an interactive API documentation UI for frontend/mobile developers
+- Produces an OpenAPI specification (output, not the driving concern)
 - Frontend/mobile developer usability for consuming the API independently
 
-### Why Scribe
+### Why Scramble
 
-Per `docs/base/api/documentation.md`, the documented recommendation is:
+Per `docs/base/api/documentation.md`, Scramble is the documented
+recommended tool:
 
 > **Recommended documentation generators:**
-> - **Scribe** — auto-generates OpenAPI docs from Laravel annotations
-> - Swagger/OpenAPI — standard specification
-> - Redoc — OpenAPI-powered API docs UI
+> - **Scramble** — annotation-free, generates API documentation from Laravel
+>   routes, Form Requests, and API Resources
+> - OpenApiJson — alternative JSON output
+> - Redoc — API docs UI renderer
 
-Scribe is the selected tool because it extracts documentation directly from
+Scramble is the selected tool because it extracts documentation directly from
 Laravel routes, Form Requests, and API Resources — reducing drift between
 code and docs. It natively supports Sanctum bearer-token authentication
-documentation and produces an interactive Swagger UI.
+documentation and produces an interactive documentation UI.
 
 ### Alternatives Considered
 
-- **`dedoc/scramble`** — a Scramble-based approach (annotation-free,
-  generates OpenAPI from routes/Form Requests) was considered as an
-  alternative. The repository's current architectural recommendation
-  explicitly selects Scribe (see `docs/base/api/documentation.md` §Tools).
-  Scramble remains a valid future alternative if the project adopts an
-  annotation-free approach.
+- **Swagger/Passport-docs self-hosted**: Requires manual API spec
+  maintenance — drifts from code. Rejected.
+- **Redoc (static)**: A UI renderer only — no generation capability. Not
+  sufficient alone; Scramble generates the spec Redoc can render.
+- **Custom documentation system**: Rejected per documentation.md: "Do not
+  build a custom documentation system unnecessarily."
 
 ### How It Integrates
 
 - Installed at Phase 12 (`API-003`).
-- Configured via `config/scribe.php`.
+- Configured via `config/scramble.php`.
 - Documentation available at `/api/docs/v1` (versioned alongside the API).
-- Scribe extracts auth requirements from route middleware (`auth:sanctum`).
-- Scribe extracts validation rules from Form Requests — documentation is
+- Scramble extracts auth requirements from route middleware (`auth:sanctum`).
+- Scramble extracts validation rules from Form Requests — documentation is
   generated from the Form Request definition, ensuring DRY.
 
 ### Security Considerations
 
-- Scribe docs may expose API structure — gate behind `auth:sanctum` or
+- Scramble docs may expose API structure — gate behind `auth:sanctum` or
   restrict to non-production environments.
 - Never expose internal implementation details in example responses.
 - API documentation must not include secrets or real tokens in examples.
 
 ### Maintenance / Upgrade Considerations
 
-- Scribe version must track Laravel version compatibility.
-- Re-run `scribe:generate` after route/resource changes before release.
+- Scramble version must track Laravel/PHP compatibility.
+- Re-run `scramble:docs` after route/resource changes before release.
 
 ### Testing Implications
 
 - Documented endpoints must be tested against actual route behavior.
-- Scribe annotations/form requests must not drift from implementation.
+- Scramble output must not drift from implementation.
 
 ### Application-Level Abstraction
 
-Documentation-only package. Application code does not depend on Scribe at
-runtime in production. Scribe is a dev dependency used for documentation
+Documentation-only package. Application code does not depend on Scramble at
+runtime in production. Scramble is a dev dependency used for documentation
 generation.
 
 ---
 
 ## Redis Compatibility
 
-| Field | Value |
-|-------|-------|
-| Composer package | `predis/predis` (pure PHP) or `ext-redis` (PHP extension) |
-| Status | Optional / Deployment-specific |
-| Priority | P2 |
-| Architecture area | Queue & Cache backends (Phase 1 `CACHE-001`, `QUEUE-001`) |
+|| Field | Value |
+||-------|-------|
+|| Composer package | `predis/predis` (pure PHP) or `ext-redis` (PHP extension) |
+|| Status | Optional / Deployment-specific |
+|| Priority | P2 |
+|| Architecture area | Queue & Cache backends (Phase 1 `CACHE-001`, `QUEUE-001`) |
 
 ### Purpose
 
@@ -661,17 +662,17 @@ Lock facades.
 - All infrastructure access is via Laravel abstractions: `Queue` facade,
   `Cache` facade, `RateLimiter`, `Lock`.
 
-This decision is documented in ADR-003, `docs/base/architecture/dependency-rules.md`,
+This decision is documented in DEP-006, `docs/base/architecture/dependency-rules.md`,
 and `docs/base/infrastructure/redis-compatibility.md`.
 
 ### Configuration
 
-| Backend | Queue Driver | Cache Driver |
-|---------|-------------|--------------|
-| Default | `database` | `file` (or `array` for tests) |
-| Redis (production) | `redis` | `redis` |
+|| Backend | Queue Driver | Cache Driver |
+||---------|-------------|--------------|
+|| Default | `database` | `file` (or `array` for tests) |
+|| Redis (production) | `redis` | `redis` |
 
-Redis is enabled by setting `CACHE_DRIVER=redis` and `QUEUE_CONNECTION=redis`
+Redis is enabled by setting `CACHE_STORE=redis` and `QUEUE_CONNECTION=redis`
 in the deployment `.env` — no application code changes required.
 
 ### Why Not Mandatory
@@ -689,7 +690,7 @@ config.
 
 ### Replacement Strategy
 
-If Redis is abandoned, switch `CACHE_DRIVER` and `QUEUE_CONNECTION` back to
+If Redis is abandoned, switch `CACHE_STORE` and `QUEUE_CONNECTION` back to
 `database`/`file` — the application code is unchanged because it uses
 Laravel facades exclusively.
 
@@ -697,14 +698,14 @@ Laravel facades exclusively.
 
 ## Optional Backup Package
 
-| Field | Value |
-|-------|-------|
-| Composer package | `spatie/laravel-backup` |
-| Status | Planned / Optional |
-| Priority | P2 |
-| Architecture area | Backup & DR (Phase 14 `BACKUP-001`) |
-| Installed version | Not installed |
-| Required constraint | `^10.x` (Laravel 13 compatible) |
+|| Field | Value |
+||-------|-------|
+|| Composer package | `spatie/laravel-backup` |
+|| Status | Planned / Optional |
+|| Priority | P2 |
+|| Architecture area | Backup & DR (Phase 14 `BACKUP-001`) |
+|| Installed version | Not installed |
+|| Required constraint | `^10.x` (Laravel 13 compatible) |
 
 ### Purpose
 
@@ -763,12 +764,12 @@ verification, and offsite storage is inappropriate for a foundation project.
 
 ## Production Observability Integrations
 
-| Field | Value |
-|-------|-------|
-| Packages | `sentry/sentry-laravel`, `open-telemetry/sdk`, `datadog/dd-trace`, etc. |
-| Status | Deployment-specific |
-| Priority | P3 |
-| Architecture area | Observability (Phase 11 `MONITOR-001`) |
+|| Field | Value |
+||-------|-------|
+|| Packages | `sentry/sentry-laravel`, `open-telemetry/sdk`, `datadog/dd-trace`, etc. |
+|| Status | Deployment-specific |
+|| Priority | P3 |
+|| Architecture area | Observability (Phase 11 `MONITOR-001`) |
 
 ### Purpose
 
@@ -793,14 +794,14 @@ service provider registration and config.
 
 ### Examples
 
-| Platform | Integration Point |
-|----------|-------------------|
-| Sentry | Register `\Sentry\LaTeX\HttpFoundation\...` + `SENTRY_DSN` env var |
-| OpenTelemetry | `open-telemetry/sdk` via Laravel OTel bridge |
-| Datadog | `datadog/dd-trace` PHP extension |
-| New Relic | New Relic PHP agent |
-| ELK | Laravel log driver → filebeat/File input |
-| Grafana/Loki | Promtail + Loki log shipping from daily log files |
+|| Platform | Integration Point |
+||----------|-------------------|
+|| Sentry | Register `\Sentry\LaTeX\HttpFoundation\...` + `SENTRY_DSN` env var |
+|| OpenTelemetry | `open-telemetry/sdk` via Laravel OTel bridge |
+|| Datadog | `datadog/dd-trace` PHP extension |
+|| New Relic | New Relic PHP agent |
+|| ELK | Laravel log driver → filebeat/File input |
+|| Grafana/Loki | Promtail + Loki log shipping from daily log files |
 
 ### Security Considerations
 
@@ -824,32 +825,32 @@ functionality and/or Base Project application architecture (Actions,
 Services, Form Requests, Models, Policies, Middleware, Events, Jobs,
 Notifications).
 
-| Concern | Native Implementation | Why no package |
-|---------|----------------------|-----------------|
-| Settings | `config/` + DB settings table + Settings model | Simple key/value store; framework config + a small table suffices |
-| Password policy | `Illuminate\Validation\Rules\Password` | Native Laravel rule provides IM8 policy (min, mixed, numbers, symbols) |
-| Password history | Custom `password_history` table + validation rule | Domain rule; trivial to implement, package adds overhead |
-| Password expiration | Custom `password_expires_at` + middleware | Account lifecycle state, not framework functionality |
-| Failed-login tracking | Custom `failed_login_attempts` table + LoginAction logic | Account-security concern; package-independent |
-| Account locking | `is_locked` column + `LOCKED_UNTIL` + LoginAction logic | Account state, handled at auth boundary |
-| Account activation | `is_active` + `email_verified_at` columns | User state; no package needed |
-| Email verification | Laravel native `MustVerifyEmail` | Framework provides this |
-| Session invalidation | Sanctum token revocation + custom session cleanup | Auth infrastructure concern |
-| Device strategy | Custom device/session tracking in auth layer | Business rule, not framework functionality |
-| Rate limiting | `Illuminate\Cache\RateLimiter` + middleware | Native Laravel rate limiter is sufficient |
-| API Resources | `Illuminate\Http\Resources\Json\JsonResource` | Native serialization |
-| Form Requests | `Illuminate\Http\Request` validation | Native validation + authorization |
-| Service layer | `app/Actions/`, `app/Services/` | Application architecture pattern, not a package |
-| Actions | `app/Actions/` | Use-case pattern, not a package |
-| Domain/application events | `Illuminate\Events` | Native event system |
-| Notification abstraction | `Illuminate\Notifications` | Native notification channels |
-| Error handling | `app/Exceptions/Handler.php` | Native exception handler |
-| Soft deletes | `Illuminate\Database\Eloquent\SoftDeletes` | Native trait |
-| UUID/ULID by default | Native Eloquent keys (bigint) | ADR-010: UUID only when concrete requirement exists |
-| Database transactions | `DB::transaction()` / `DB::beginTransaction()` | Native |
-| Request/correlation IDs | Custom middleware (`CORR-001`) | Simple request-ID generation; package is overkill |
-| Custom authorization policies | `Illuminate\Auth\Access\Policy` | Native policies + Gates |
-| Feature availability rules | Laravel Pennant (`config/pennant.php`) | Lightweight feature flag layer, not a heavy package |
+|| Concern | Native Implementation | Why no package |
+||---------|----------------------|-----------------|
+|| Settings | `config/` + DB settings table + Settings model | Simple key/value store; framework config + a small table suffices |
+|| Password policy | `Illuminate\Validation\Rules\Password` | Native Laravel rule provides IM8 policy (min, mixed, numbers, symbols) |
+|| Password history | Custom `password_history` table + validation rule | Domain rule; trivial to implement, package adds overhead |
+|| Password expiration | Custom `password_expires_at` + middleware | Account lifecycle state, not framework functionality |
+|| Failed-login tracking | Custom `failed_login_attempts` table + LoginAction logic | Account-security concern; package-independent |
+|| Account locking | `is_locked` column + `LOCKED_UNTIL` + LoginAction logic | Account state, handled at auth boundary |
+|| Account activation | `is_active` + `email_verified_at` columns | User state; no package needed |
+|| Email verification | Laravel native `MustVerifyEmail` | Framework provides this |
+|| Session invalidation | Sanctum token revocation + custom session cleanup | Auth infrastructure concern |
+|| Device strategy | Custom device/session tracking in auth layer | Business rule, not framework functionality |
+|| Rate limiting | `Illuminate\Cache\RateLimiter` + middleware | Native Laravel rate limiter is sufficient |
+|| API Resources | `Illuminate\Http\Resources\Json\JsonResource` | Native serialization |
+|| Form Requests | `Illuminate\Http\Request` validation | Native validation + authorization |
+|| Service layer | `app/Actions/`, `app/Services/` | Application architecture pattern, not a package |
+|| Actions | `app/Actions/` | Use-case pattern, not a package |
+|| Domain/application events | `Illuminate\Events` | Native event system |
+|| Notification abstraction | `Illuminate\Notifications` | Native notification channels |
+|| Error handling | `app/Exceptions/Handler.php` | Native exception handler |
+|| Soft deletes | `Illuminate\Database\Eloquent\SoftDeletes` | Native trait |
+|| UUID/ULID by default | Native Eloquent keys (bigint) | ADR-010: UUID only when concrete requirement exists |
+|| Database transactions | `DB::transaction()` / `DB::beginTransaction()` | Native |
+|| Request/correlation IDs | Custom middleware (`CORR-001`) | Simple request-ID generation; package is overkill |
+|| Custom authorization policies | `Illuminate\Auth\Access\Policy` | Native policies + Gates |
+|| Feature availability rules | Laravel Pennant (`config/pennant.php`) | Lightweight feature flag layer, not a heavy package |
 
 ### Guiding Principle
 

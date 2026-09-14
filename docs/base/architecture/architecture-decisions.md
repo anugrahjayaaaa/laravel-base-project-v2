@@ -1,8 +1,12 @@
 # Architecture Decision Records
 
-> Key ADRs that shape the architecture. Full list with details in `[decisions.md](../planning/decisions.md)`.
-> 18 ADRs total (ADR-001 through ADR-018), plus dependency-specific ADRs in
-> [`docs/base/architecture/decision-records/`](./decision-records/).
+> Key ADRs that shape the architecture. Full list with details in `[decisions.md](../../planning/decisions.md)`.
+> **Numbering convention:** Architecture ADRs use `ADR-001` through `ADR-018` (inline in `decisions.md`).
+> Dependency-selection ADRs use `DEP-001` through `DEP-007` (files in `decision-records/`).
+> This separation prevents numbering collisions. To determine the next ADR number: count existing architecture ADRs in `decisions.md` + 1 for the next architecture ADR; count files in `decision-records/` + 1 for the next dependency ADR.
+>
+> 18 architecture ADRs total (ADR-001 through ADR-018), plus 7 dependency-specific
+> ADRs in `docs/base/architecture/decision-records/` (DEP-001 through DEP-007).
 
 ## ADR-001: API-first architecture
 |- All core capabilities have a clean API boundary.
@@ -66,7 +70,7 @@
 |- Failures classified: expected (validation, authn, authz, rate-limit, business rule → warning/info) vs unexpected (DB exception, uncaught error, queue failure → error).
 |- Structured logs use stable event/action names; always include correlation ID.
 |- Centralized exception handler logs once; never in every controller/service.
-|- Transactions: audit record created only AFTER commit; failure log includes rollback indicator; no false-success audit on failure.
+|- Transactions: audit record written within the transaction, before COMMIT; failure log includes rollback indicator; no false-success audit on failure.
 |- Sensitive data never logged; stack traces are environment-aware; production-safe messages.
 |- See `docs/base/infrastructure/logging.md`.
 
@@ -90,31 +94,23 @@
 |- Secrets never moved into database settings.
 
 ## ADR-018: last_activity_at and never-logged-in policy
-|- last_activity_at = successful login (not every request).
-|- last_activity_at = NULL (never logged in) handled by inactivity grace config.
+|- baseline update point for `last_activity_at` is successful login.
+|- `last_activity_at = NULL` (never logged in) handled by inactivity grace config (NULL users are included in the inactivity query via grace config).
+|- Unlocking an account does NOT populate `last_activity_at` — NULL is preserved until the user performs an actual application action. Unlock is not user activity.
 |- Inactivity lock revokes sessions/tokens.
 
-## ADR-001 (Dependency): Sanctum for API Auth
-See [`ADR-001-sanctum-api-authentication.md`](./decision-records/ADR-001-sanctum-api-authentication.md)
+## Dependency-decision ADRs (DEP-001–DEP-007)
 
-## ADR-002 (Dependency): Spatie Permission for RBAC
-See [`ADR-002-spatie-permission-rbac.md`](./decision-records/ADR-002-spatie-permission-rbac.md)
+See the files in [`docs/base/architecture/decision-records/`](./decision-records/):
 
-## ADR-003 (Dependency): Spatie Activitylog for Audit Trail
-See [`ADR-003-spatie-activitylog-audit-trail.md`](./decision-records/ADR-003-spatie-activitylog-audit-trail.md)
+- DEP-001: Sanctum for API Auth
+- DEP-002: Spatie Permission for RBAC
+- DEP-003: Spatie Activitylog for Audit Trail
+- DEP-004: Telescope for Technical Observability
+- DEP-005: Native Laravel First
+- DEP-006: Database Queue with Redis Compatibility
+- DEP-007: API Documentation Strategy (Scramble)
 
-## ADR-004 (Dependency): Telescope for Technical Observability
-See [`ADR-004-telescope-technical-observability.md`](./decision-records/ADR-004-telescope-technical-observability.md)
-
-## ADR-005 (Dependency): Native Laravel First
-See [`ADR-005-native-laravel-first.md`](./decision-records/ADR-005-native-laravel-first.md)
-
-## ADR-006 (Dependency): Database Queue with Redis Compatibility
-See [`ADR-006-database-queue-redis-compatible.md`](./decision-records/ADR-006-database-queue-redis-compatible.md)
-
-## ADR-007 (Dependency): API Documentation Strategy (Scribe)
-See [`ADR-007-api-documentation-strategy.md`](./decision-records/ADR-007-api-documentation-strategy.md)
-
-> Full details for dependency decisions are in
-> [`docs/base/architecture/decision-records/`](./decision-records/) and
-> [`docs/base/dependencies/`](../dependencies/overview.md).
+Full details:
+[`docs/base/architecture/decision-records/`](./decision-records/) and
+[`docs/base/dependencies/`](../dependencies/overview.md).

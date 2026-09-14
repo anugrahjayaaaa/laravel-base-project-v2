@@ -52,13 +52,13 @@
 
 | ID | Task | Phase | Priority | Depends On | Status |
 |----|------|-------|----------|-----------|--------|
-| FOUND-001 | Initialize Laravel 13 project | 1 | P0 | P0-002 | PLANNED |
-| FOUND-002 | Configure .env / .env.example | 1 | P0 | FOUND-001 | PLANNED |
-| FOUND-003 | Set up config files (auth, cache, queue, session, mail, logging) | 1 | P0 | FOUND-001 | PLANNED |
-| FOUND-004 | Install Sanctum for API auth | 1 | P0 | FOUND-001 | PLANNED |
-| FOUND-005 | Install Spatie Permission (RBAC) | 1 | P0 | FOUND-001 | PLANNED |
-| FOUND-006 | Install audit package (e.g. spatie/laravel-activitylog) | 1 | P0 | FOUND-001 | PLANNED |
-| FOUND-007 | Install Telescope | 1 | P0 | FOUND-001 | PLANNED |
+| FOUND-001 | Initialize Laravel 13 project | 1 | P0 | P0-002 | DONE |
+|| FOUND-002 | Configure .env / .env.example | 1 | P0 | FOUND-001 | DONE |
+|| FOUND-003 | Set up config files (auth, cache, queue, session, mail, logging) | 1 | P0 | FOUND-001 | DONE |
+|| FOUND-004 | Install Sanctum for API auth | 1 | P0 | FOUND-001 | DONE |
+|| FOUND-005 | Install Spatie Permission (RBAC) | 1 | P0 | FOUND-001 | DONE |
+|| FOUND-006 | Install audit package (e.g. spatie/laravel-activitylog) | 1 | P0 | FOUND-001 | DONE |
+|| FOUND-007 | Install Telescope | 1 | P0 | FOUND-001 | DONE |
 | FOUND-008 | Create correlation/request ID middleware | 1 | P0 | FOUND-001 | PLANNED |
 | FOUND-009 | Set up PSR-12 linting (PHP CS Fixer) | 1 | P1 | FOUND-001 | PLANNED |
 | FOUND-010 | Configure health check endpoint | 1 | P1 | FOUND-001 | PLANNED |
@@ -130,7 +130,7 @@
   {"id": "DB-002", "task": "Create seed data (roles, permissions)", "phase": 2, "priority": "P0", "depends_on": ["DB-001", "RBAC-001"], "status": "PLANNED"},
   {"id": "API-001", "task": "Define API v1 routes", "phase": 12, "priority": "P0", "depends_on": ["SET-003", "AUDIT-004"], "status": "PLANNED"},
   {"id": "API-002", "task": "Implement API resources (v1)", "phase": 12, "priority": "P0", "depends_on": ["API-001"], "status": "PLANNED"},
-  {"id": "API-003", "task": "Generate OpenAPI documentation", "phase": 12, "priority": "P1", "depends_on": ["API-002"], "status": "PLANNED"},
+  {"id": "API-003", "task": "Generate API documentation (Scramble)", "phase": 12, "priority": "P1", "depends_on": ["API-002"], "status": "PLANNED"},
   {"id": "SEC-001", "task": "Implement security headers", "phase": 13, "priority": "P0", "depends_on": ["FOUND-003"], "status": "PLANNED"},
   {"id": "SEC-002", "task": "Implement CSRF/CORS (web)", "phase": 13, "priority": "P0", "depends_on": ["SEC-001"], "status": "PLANNED"},
   {"id": "SEC-003", "task": "Implement error handling (consistent JSON)", "phase": 13, "priority": "P0", "depends_on": ["SEC-001"], "status": "PLANNED"},

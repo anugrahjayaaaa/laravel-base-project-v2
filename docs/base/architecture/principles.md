@@ -39,7 +39,7 @@ Do not duplicate state unnecessarily. Example: Role permissions are effective pe
 
 ## ADR References
 
-- [ADR-001: API-first architecture](../planning/decisions.md#adr-001)
-- [ADR-002: UI-independent core](../planning/decisions.md#adr-002)
-- [ADR-004: Role-derived permissions](../planning/decisions.md#adr-004)
-- [ADR-005: Separate active/inactive and locked/unlocked](../planning/decisions.md#adr-005)
+- [ADR-001: API-first architecture](../../planning/decisions.md#adr-001)
+- [ADR-002: UI-independent core](../../planning/decisions.md#adr-002)
+- [ADR-004: Role-derived permissions](../../planning/decisions.md#adr-004)
+- [ADR-005: Separate active/inactive and locked/unlocked](../../planning/decisions.md#adr-005)

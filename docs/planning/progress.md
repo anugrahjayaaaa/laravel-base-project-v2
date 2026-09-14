@@ -7,7 +7,7 @@
 | Phase | Title | Status |
 |-------|-------|--------|
 | 0 | Architecture & project conventions | DONE |
-| 1 | Laravel foundation & environment | PLANNED |
+|| 1 | Laravel foundation & environment | IN PROGRESS |
 | 2 | Database foundation | PLANNED |
 | 3 | Authentication foundation | PLANNED |
 | 4 | User lifecycle & user management | PLANNED |
@@ -33,12 +33,23 @@ None — waiting for implementation to begin (Phase 0 complete).
 
 Phase 0 (P0-001 through P0-011) — architecture documentation and planning system.
 
+Phase 1 (FOUND-001 through FOUND-007) — Laravel 13 foundation & environment:
+- Laravel 13.31.0 initialized (PHP 8.3)
+- `.env.example` configured: APP_NAME="Laravel Base Project", MySQL default, CACHE_STORE=file, QUEUE_CONNECTION=database, SESSION_DRIVER=database
+- Config: cache=default file, database=default mysql, auth=web+sanctum API guard
+- Sanctum ^4.0 installed, API guard configured, User has HasApiTokens
+- Spatie Permission ^6.0 installed, migrations + config published, User has HasRoles
+- Spatie ActivityLog ^4.8 installed
+- Telescope ^5.0 installed, config + migrations published
+- Scramble ^0.13 (dev) installed
+- Pint ^1.27 for code style
+
 Architecture gap-closing pass — added:
 
 - `docs/base/architecture/application-components.md` (component responsibility model + canonical flow + source-of-truth rules)
 - `docs/base/dependencies/` (`overview.md`, `dependency-matrix.md`)
 - `docs/base/governance/dependency-governance.md`
-- `docs/base/architecture/decision-records/ADR-001` through `ADR-007`
+- `docs/base/architecture/decision-records/DEP-001` through `DEP-007`
 - `docs/base/ui/` (`ui-architecture.md`, `ui-authorization.md`, `design-system.md`)
 - Enhanced: `application-boundaries.md` (transaction/after-commit rules),
   `audit-trail.md` (transaction boundaries), `queue.md` (after-commit dispatch),
@@ -58,12 +69,35 @@ None — no implementation has started yet.
 
 ## Known Issues
 
-None — project is in planning/documentation phase.
+**Resolved conflicts** (closed in the gap-closure pass):
+- Scramble API documentation package — resolved: Scramble is the
+  selected tool (see DEP-007). All documentation updated.
+- `last_activity_at = NULL` policy — resolved: unlocking does NOT populate
+  `last_activity_at`; NULL preserved until actual user activity (see ADR-018).
+- ADR numbering collision — resolved: dependency ADRs renamed from ADR-001–007
+  to DEP-001–DEP-007 to avoid collision with architecture ADRs (ADR-001–018).
+- Audit transaction-timing ambiguity — resolved: audit records are written
+  within the transaction (before COMMIT); after-commit is for jobs/events only.
+- Stale `fruitcake/laravel-cors` reference — resolved: CORS is handled natively
+  by Laravel's `HandleCors` middleware (Laravel 11+). Updated in
+  `docs/base/security/web-security.md`.
+- Stale `security_login_failures` table name — resolved: updated to
+  `failed_login_attempts` in `docs/base/operations/troubleshooting.md` and
+  `docs/base/dependencies/overview.md` (both now use consistent table name).
+- Stale `SESSION_DRIVER=sanctum`/`passport` reference — resolved: updated in
+  `docs/base/operations/troubleshooting.md`.
+- Stale feature-matrix section IDs (`#22`, `#27`, `#47`, `#254`, `#48`) —
+  resolved: section column removed; phase/priority columns preserved.
+- Missing Security Logs in retention table — resolved: added
+  `docs/base/security/data-protection.md`.
+
+**Open** (documented design decisions, not bugs):
+|- Phase 1 implementation in progress (found-001 through found-007 complete; found-008 onwards pending).
 
 ## Architecture Changes
 
 - ADR-013: Application Logging Strategy (added)
-- ADR-001 through ADR-007: Dependency decision records (added)
+- DEP-001 through DEP-007: Dependency decision records (added)
 - Cascade rules now permitted per-relationship when justified (updates
   ADR-012; see `docs/base/data/soft-delete.md`)
 - Application component responsibility model documented
@@ -97,14 +131,12 @@ Not yet started (Phase 15).
 
 ## Next Steps
 
-1. Begin Phase 1: Laravel foundation & environment
-2. Initialize Laravel 13 project
-3. Configure `.env`, config files
-4. Install dependencies (Sanctum, Spatie Permission, Telescope, audit package)
-5. Create correlation/request ID middleware
+1. ~~Begin Phase 1: Laravel foundation & environment~~ — Phase 1 complete (FOUND-001 through FOUND-007)
+2. Begin Phase 2: Database foundation (DB-001 base migration scaffold)
+3. Implement authentication, user management, security, RBAC in subsequent phases
 
 ## Summary
 
-All documentation and planning system complete. No implementation code has
-been written. Next step: begin Phase 1 implementation (Laravel 13 scaffold,
-config files, package installation per dependency docs).
+All documentation and planning system complete. Phase 1 implementation
+complete (FOUND-001 through FOUND-007). Next step: Phase 2 — database
+foundation migrations (DB-001).

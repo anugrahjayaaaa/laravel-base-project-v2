@@ -1,116 +1,128 @@
 # Authentication
 
-## Requirements
+## Overview
 
-The base project must support:
-- Login using username OR email
-- Email verification
-- Forgot password
-- Password reset
-- User-initiated password change
-- Admin-triggered password reset
-- Initial password generation during administrative user creation
-- Forced password change after initial account creation
-- Password expiration
-- Password history
-- Password policy (IM8)
-- Session/token expiration
-- Logout current device
-- Logout all devices
-- Session invalidation
-- Account lock
-- Account unlock
-- Account activation
-- Account deactivation
-- Failed login tracking
-- Temporary lock after excessive failed login attempts
-- Rate limiting
+Authentication is the process of verifying user identity. The Base Project
+supports multiple authentication methods while enforcing a unified account
+state model.
 
-## Key Distinctions
+## Account State
 
-- **Email verification** and **account activation** are two completely different concepts. Never combine them.
-- **Authentication** (who are you?) ≠ Authorization (what can you do?) ≠ Feature Availability (is this available?).
+Account state is represented as independent dimensions
+(see ADR-005 in `decisions.md`):
+
+- `is_active` — account exists and is usable
+- `is_locked` — security lock (login attempts, admin, inactivity)
+- `email_verified_at` — email verification state
+- `must_change_password` — force password change on next login
+- `password_expires_at` — password expiration state
+- `last_activity_at` — timestamp of the last meaningful application activity
+- `trashed` (soft-delete) — account is removed
+
+`last_activity_at` represents meaningful account activity.
+Do NOT update it on every HTTP request.
 
 ## Login Flow
 
 ```
-authenticate
-    ↓
-password expired?
-    ↓ yes
-must change password
-    ↓
-restricted application access
-
-    ↓ no (not expired)
-normal application access
+Authenticate credentials
+  ↓
+Check account state (is_active, is_locked, email_verified_at, password_expires_at)
+  ↓
+Rate limit check
+  ↓
+Success
+  ↓
+Update last_activity_at
+  ↓
+Check must_change_password / password_expires_at → redirect to password change
+  ↓
+Redirect to intended destination
 ```
 
-Password expiration enforced via middleware/application-boundary enforcement.
+### Failed Login
 
-## Failed Login Protection
+- Each failed attempt increments a counter.
+- Baseline: 5 consecutive failed attempts → temporary lock for 15 minutes.
+- Configurable via Settings:
+  - `security.login.failed_attempts.max_attempts`
+  - `security.login.failed_attempts.lockout_minutes`
+- Successful login resets the failed counter.
+- Administrator/security unlock supported (see ADR-005 / user-management.md).
 
-Recommended baseline (configurable):
-- 5 failed attempts
-- 15-minute temporary lock
-- Reset counter on success
+### Security: Race Conditions
 
-### Configuration
+Concurrent login attempts must be guarded against race conditions
+(see concurrency.md). Use distributed locking (Redis-based) on the
+failed-attempt counter.
 
-```
-security.login.failed_attempts.enabled
-security.login.failed_attempts.max_attempts
-security.login.failed_attempts.lock_duration_minutes
-security.login.failed_attempts.reset_on_success
-```
+## Last Activity / Inactivity Policy
 
-Rate limiting protects the endpoint. Failed-login tracking protects the account. These are separate mechanisms.
+- `last_activity_at` is set to the timestamp on first successful login.
+- Do NOT update on every HTTP request — only on successful authentication
+  or meaningful mutations.
 
-## Session/Device Strategy
+### Never-Logged-In Users
 
-Conceptual operations:
-```
-login()
-logout()
-logoutCurrentDevice()
-logoutAllDevices()
-revokeClientSessions()
-revokeAllSessions()
-invalidateOnPasswordChange()
-invalidateOnPasswordReset()
-invalidateOnAccountLock()
-invalidateOnAccountDeactivation()
-```
+A user who has never performed an activity has `last_activity_at = NULL`.
 
-- Do not use invasive hardware fingerprinting for device identification.
-- Use application-generated installation/device identifiers where appropriate.
-- Central authentication/session management abstraction; no scattered
-  invalidation logic in controllers.
+- NULL is a valid, first-class state — handle it explicitly (do NOT
+  substitute a default timestamp).
+- NULL users ARE included in the inactivity query via the grace_days config
+  (see ADR-018 in `decisions.md`).
+  - The inactivity check is: `last_activity_at < now() - (days + grace_days)`
+  - When `last_activity_at IS NULL`, the comparison evaluates to `true`
+    (user is past the grace window), so NULL users ARE subject to
+    inactivity lock.
+  - The `grace_days` config gives recently-created-but-never-logged-in
+    accounts a window before they are locked.
 
-## Session Revocation Triggers
+### Unlocking Does NOT Set last_activity_at
 
-The following events MUST revoke active sessions/tokens:
+Unlocking an account is an **administrative action**, not user activity.
 
-| Event | Revokes |
-|-------|---------|
-| Password change/reset | Existing sessions/tokens |
-| Account lock | Existing sessions/tokens |
-| Account deactivation | Existing sessions/tokens |
-| Logout current device | Current session only |
-| Logout all devices | All sessions |
-| Inactivity lock | All sessions |
+- Unlocking must NOT populate or change `last_activity_at`.
+- If `last_activity_at` was `NULL` (never logged in), it remains `NULL`
+  after unlock.
+- After unlocking, the user must perform an actual application action
+  (successful login or meaningful mutation) before `last_activity_at`
+  gets a timestamp.
 
-## Last Activity / Never-Logged-In Policy
+See `user-management.md` (`## Account Unlock`) and ADR-018 in
+`decisions.md` for the full policy.
 
-- `last_activity_at` represents meaningful account activity (successful
-  authentication, meaningful mutations).
-- Do NOT update it on every HTTP request.
-- A user who has **never logged in** has `last_activity_at = NULL`. This must
-  be handled explicitly — the inactivity policy must define whether NULL means
-  "ineligible" or "immediately eligible" by configuration, not silently
-  assumed. The default recommendation is: **never-logged-in users are NOT
-  subject to inactivity lock** (they have not had a chance to establish
-  activity), but this must be a configurable policy.
-- The inactivity process is a scheduled/background job (see
-  [User Management](../features/user-management.md) §Inactivity Policy).
-- The inactivity threshold is configurable: `security.inactivity.days`.
+## Session & Token Management
+
+- Web and Mobile can be logged in concurrently.
+- Within the same client type, a new login revokes the previous session:
+  - New web login revokes previous web session.
+  - New mobile login revokes previous mobile session.
+- Web and mobile sessions may remain concurrent.
+
+### Client Types
+
+- `web` — cookie-based session
+- `mobile` — bearer token (Sanctum)
+
+### Revocation Triggers
+
+Account lock, deactivation, password change, and global logout all revoke
+relevant sessions/tokens. See `session-security.md`.
+
+## Authentication Methods
+
+- **Web**: Laravel session guard + CSRF + Sanctum SPA cookies
+- **Mobile**: Sanctum bearer tokens (`api` guard)
+
+## Authorization
+
+Authorization decisions are delegated to Policies (see `ui-authorization.md`
+and `roles-permissions.md`). Authentication is the source of truth for
+identity; authorization is the source of truth for capability.
+
+## ADR References
+
+- ADR-005: Separate active/inactive and locked/unlocked
+- ADR-006: Session/device strategy
+- ADR-007: Password history strategy
+- ADR-018: last_activity_at and never-logged-in policy

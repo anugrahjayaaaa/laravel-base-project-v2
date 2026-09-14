@@ -1,4 +1,4 @@
-# ADR-006: Database Queue with Redis Compatibility
+# DEP-006: Database Queue with Redis Compatibility
 
 - **Status**: Accepted
 - **Category**: Dependency Selection
@@ -33,7 +33,7 @@ only).
 
 - The `database` queue driver uses a `jobs` table — zero extra infrastructure.
 - Redis can be enabled by setting `QUEUE_CONNECTION=redis` and
-  `CACHE_DRIVER=redis` in `.env` — no application code changes.
+  `CACHE_STORE=redis` in `.env` — no application code changes.
 - Application code uses Laravel's `Queue` and `Cache` facades exclusively,
   which abstract the underlying driver.
 
@@ -63,5 +63,5 @@ only).
 
 ## Reversal / Replacement
 
-- Swap `QUEUE_CONNECTION` and `CACHE_DRIVER` in `.env` — immediate switch.
+- Swap `QUEUE_CONNECTION` and `CACHE_STORE` in `.env` — immediate switch.
 - No application code changes required because all access is via facades.

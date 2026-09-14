@@ -10,7 +10,7 @@
 1. Check `APP_KEY` is set (`php artisan key:generate`).
 2. Check `SESSION_DRIVER` and `SESSION_LIFETIME` in config.
 3. Verify user `is_active` and not `is_locked`.
-4. Check failed login attempts table (`security_login_failures`).
+4. Check failed login attempts table (`failed_login_attempts`).
 5. Verify password hash — check bcrypt argon2 config.
 
 **Resolution**:
@@ -23,7 +23,7 @@
 **Symptoms**: Authenticated user gets 401 on protected routes.
 
 **Diagnosis**:
-1. Verify Sanctum/Token driver is configured (`SESSION_DRIVER=sanctum` or `passport`).
+1. Verify token driver is configured (Sanctum SPA or database tokens).
 2. Check token was sent in `Authorization: Bearer` header.
 3. Verify token not expired.
 4. Check Sanctum middleware is on the route.
@@ -63,14 +63,14 @@
 **Symptoms**: Mutations happen but no audit records created.
 
 **Diagnosis**:
-1. Verify audit is triggered in Action/Service layer (not just observers).
-2. Check audit queue is processing.
+1. Verify audit is triggered in the Action/Service layer (not just observers).
+2. Check transaction is committing successfully (audit rolls back on failure).
 3. Check audit config — is auditing enabled?
 4. Verify `audit.enabled` setting.
 
 **Resolution**:
 - Add explicit audit calls in Action/Service.
-- Process audit queue.
+- Verify transaction commits successfully (audit rolls back on failure).
 - Enable audit setting.
 
 ### Issue: Emails not sending
@@ -91,14 +91,13 @@
 
 ## Debugging Tools
 
-| Tool | Purpose |
-|------|---------|
-| `php artisan tinker` | Interactive debugging |
-| `php artisan log:clear` | Clear log files |
-| `php artisan config:clear` | Clear config cache |
-| `php artisan route:list` | List all routes + middleware |
-| `php artisan telescope` | (if installed) Laravel Telescope |
-| Laravel Debugbar | Request/response inspection (dev only) |
+|| Tool | Purpose |
+||------|---------|
+|| `php artisan telescope` | (if installed) Laravel runtime inspection (technical debug) |
+|| `php artisan tinker` | Interactive debugging |
+|| `php artisan log:clear` | Clear log files |
+|| `php artisan config:clear` | Clear config cache |
+|| `php artisan route:list` | List all routes + middleware |
 
 ## Log Locations
 

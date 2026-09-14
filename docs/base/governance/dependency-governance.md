@@ -9,7 +9,7 @@ Before adding a new package, evaluate all of the following:
 
 1. **Does Laravel already provide the capability?** If yes, do not add a
    package. Use the native Laravel implementation. Document the decision in
-   this file's [Intentional Non-Dependencies](./overview.md#intentional-non-dependencies)
+   this file's [Intentional Non-Dependencies](../dependencies/overview.md#intentional-non-dependencies)
    list.
 2. **Is the functionality complex enough to justify a dependency?** A feature
    that can be implemented in ~50 lines of well-tested code should not pull in
@@ -52,20 +52,20 @@ AI agents and developers must **NOT**:
   calls must route through the appropriate application abstraction or Laravel
   facade.
 - Introduce packages for concerns already covered by the [Intentional
-  Non-Dependencies](./overview.md#intentional-non-dependencies) list without
+  Non-Dependencies](../dependencies/overview.md#intentional-non-dependencies) list without
   an explicit architecture-approved exception.
 - Modify `composer.json` or run `composer require` without approval.
 
 ## Package Introduction Workflow
 
 1. Add the package to the [dependency
-   overview](./overview.md) with full documentation (purpose, why, security,
+   overview](../dependencies/overview.md) with full documentation (purpose, why, security,
    maintenance, testing, abstraction, replacement).
-2. Add an ADR in [decision-records](./../architecture/decision-records/) if
+2. Add an ADR in [decision-records](../architecture/decision-records/) if
    the selection is a significant architectural decision.
-3. Update the [dependency matrix](./dependency-matrix.md).
+3. Update the [dependency matrix](../dependencies/dependency-matrix.md).
 4. Update the changelog (`docs/planning/changelog.md`).
-5. Update the [Implementation Roadmap](./../planning/implementation-roadmap.md)
+5. Update the [Implementation Roadmap](../../planning/implementation-roadmap.md)
    if the package introduces a new phase dependency.
 6. Only then may the package be installed (Phase 1 scaffolding).
 
@@ -80,7 +80,7 @@ an application-level abstraction:
 | `spatie/laravel-permission` | Native Gate/Policy + User model traits | Authorization resolved through Laravel's native Gate |
 | `spatie/laravel-activitylog` | `Audit` service class | Audit policy, transaction boundaries, metadata enrichment |
 | `laravel/telescope` | None (technical tool only) | Application code never calls Telescope directly |
-| `knuckleswtf/scribe` | None (dev-only) | Documentation generation, not runtime |
+| `dedoc/scramble` | None (dev-only) | Documentation generation, not runtime |
 | `spatie/laravel-backup` | None (scheduled jobs) | Infrastructure concern, scheduled via Kernel |
 
 ## Upgrade Policy
@@ -92,4 +92,4 @@ an application-level abstraction:
 - Review each package's upgrade guide before bumping — major versions may
   require migration steps.
 - Document version constraints in the [dependency
-  matrix](./dependency-matrix.md).
+  matrix](../dependencies/dependency-matrix.md).

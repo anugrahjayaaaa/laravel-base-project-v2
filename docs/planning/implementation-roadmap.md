@@ -139,7 +139,7 @@ Testing / Hardening (Phases 13-17)
 ### Phase 12: API V1
 - Versioned API routes
 - API resources
-- Documentation (OpenAPI/Scribe)
+- Documentation (Scramble/API docs)
 - Status: PLANNED
 
 ### Phase 13: Security Hardening

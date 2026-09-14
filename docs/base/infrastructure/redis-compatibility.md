@@ -20,12 +20,12 @@
 
 ```env
 # Default (no Redis required)
-CACHE_DRIVER=file
+CACHE_STORE=file
 QUEUE_CONNECTION=database
 SESSION_DRIVER=database
 
 # With Redis (optional)
-CACHE_DRIVER=redis
+CACHE_STORE=redis
 QUEUE_CONNECTION=redis
 SESSION_DRIVER=redis
 ```

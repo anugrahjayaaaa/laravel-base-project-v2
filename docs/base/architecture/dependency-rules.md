@@ -22,7 +22,7 @@ Use established packages for capabilities better provided by mature ecosystem so
 - Audit → Spatie Activitylog (`spatie/laravel-activitylog`)
 - Telescope → Laravel Telescope (`laravel/telescope`)
 - API Authentication → Laravel Sanctum (`laravel/sanctum`)
-- API Documentation → Scribe (`knuckleswtf/scribe`)
+- API Documentation → Scramble (`dedoc/scramble`)
 
 Do NOT add packages simply because they exist.
 

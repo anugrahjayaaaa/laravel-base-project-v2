@@ -2,7 +2,9 @@
 
 ## Approach
 
-Use an OpenAPI-compatible API documentation approach.
+Use Scramble for API documentation generation. Scramble auto-generates
+documentation from Laravel routes, Form Requests, and API Resources —
+annotation-free.
 
 Do not build a custom documentation system unnecessarily.
 
@@ -27,15 +29,14 @@ Every documented endpoint must include:
 
 ## Tools
 
-Recommended documentation generators:
-- **Scribe** — auto-generates OpenAPI docs from Laravel annotations
-- **Swagger/OpenAPI** — standard specification
-- **Redoc** — OpenAPI-powered API docs UI
+Recommended documentation tool:
+- **Scramble** (`dedoc/scramble`) — annotation-free, auto-generates API
+  documentation from Laravel routes, Form Requests, and API Resources
 
 ## Authentication Documentation
 
 Document how to authenticate:
-- Bearer token (Sanctum): `Authorization: Bearer <token>`
+- Bearer token (Sanctum): `Authorization: Bearer ***
 - Session cookie (Web): CSRF token + cookie-based auth
 - Token expiration and refresh flow
 

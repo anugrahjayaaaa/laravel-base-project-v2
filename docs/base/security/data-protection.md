@@ -67,6 +67,7 @@ Define retention separately for:
 - Audit logs
 - Application logs
 - Server logs
+- Security logs
 - Telescope
 - Sessions
 - Revoked tokens

@@ -1,4 +1,4 @@
-# ADR-002: Spatie Permission for RBAC
+# DEP-002: Spatie Permission for RBAC
 
 - **Status**: Accepted
 - **Category**: Dependency Selection

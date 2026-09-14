@@ -49,6 +49,22 @@ Technical mail config remains in environment (`.env`): `MAIL_MAILER`, `MAIL_HOST
 All notifications and mail sending should be queued (not synchronous):
 - Use `ShouldQueue` on notification classes.
 - Mail Mailable should be queued via `Mail::queue()`.
+- Queue connection is `database` by default (Redis-compatible, see queue.md).
+
+### Scaling
+
+- Notification queue uses the `notifications` queue/connection.
+- Horizon is used for monitoring queue workers, retry tracking, and failure
+  inspection (see `queue.md`).
+- Scale workers horizontally based on notification volume.
+
+### Failure Handling
+
+- Failed notifications go to the `failed_jobs` table (dead-letter pattern,
+  see `queue.md`).
+- Retry policy: default exponential backoff with max attempts configurable.
+- Critical notifications (security alerts, password resets) should bypass
+  queue fallback to synchronous delivery on queue failure.
 
 ## Template
 

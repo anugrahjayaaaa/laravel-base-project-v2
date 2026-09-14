@@ -50,7 +50,7 @@
 | REQ-SET-003 | Settings audit | #24 | P1 |
 | REQ-NOTIF-001 | Email notifications | #48 | P1 |
 | REQ-API-001 | Versioned API v1 | #25 | P0 |
-| REQ-API-002 | API documentation (OpenAPI) | #27 | P1 |
+| REQ-API-002 | API documentation (Scramble) | #27 | P1 |
 | REQ-API-003 | Consistent error handling | #28 | P0 |
 
 ## Non-Functional Requirements

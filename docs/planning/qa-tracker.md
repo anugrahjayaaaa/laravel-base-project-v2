@@ -39,6 +39,13 @@
 || QA-AUTH-018 | Verify admin cannot see user's new password | Security | Admin reset | PLANNED |
 || QA-AUTH-019 | Verify password change requires current password | Authorization | Password change | PLANNED |
 || QA-AUTH-020 | Verify password change respects history | Security | Password history | PLANNED |
+||| QA-AUTH-021 | Verify last_activity_at set on first successful login | Functional | last_activity_at | TODO |
+||| QA-AUTH-022 | Verify last_activity_at is NULL for never-logged-in users | Functional | last_activity_at | TODO |
+||| QA-AUTH-023 | Verify unlock does NOT update last_activity_at (NULL preserved) | Security | Unlock | TODO |
+||| QA-AUTH-024 | Verify unlock does NOT update last_activity_at (existing timestamp preserved) | Security | Unlock | TODO |
+||| QA-AUTH-025 | Verify last_activity_at updates only on meaningful activity, not every request | Functional | last_activity_at | TODO |
+||| QA-AUTH-026 | Verify NULL last_activity_at users included in inactivity query via grace_days | Functional | Inactivity | TODO |
+||| QA-AUTH-027 | Verify password change revokes existing sessions/tokens | Security | Password change | TODO |
 
 ### User Management QA
 
@@ -96,10 +103,12 @@
 || ID | Scenario | Category | Feature | Status |
 ||----|----------|----------|---------|--------|
 || QA-AUDIT-001 | Verify audit records created on mutations | Functional | Audit Trail | PLANNED |
-|| QA-AUDIT-002 | Verify audit metadata includes IP, UA, request_id | Security | Audit Trail | PLANNED |
-|| QA-AUDIT-003 | Verify audit records are read-only in UI | Authorization | Audit Trail | PLANNED |
-|| QA-AUDIT-004 | Verify async export works end-to-end | Functional | Audit Export | PLANNED |
-|| QA-AUDIT-005 | Verify export file expires after lifecycle | Security | Audit Export | PLANNED |
+||| QA-AUDIT-002 | Verify audit metadata includes IP, UA, request_id | Security | Audit Trail | PLANNED |
+||| QA-AUDIT-003 | Verify audit records are read-only in UI | Authorization | Audit Trail | PLANNED |
+||| QA-AUDIT-004 | Verify async export works end-to-end | Functional | Audit Export | PLANNED |
+||| QA-AUDIT-005 | Verify export file expires after lifecycle | Security | Audit Export | PLANNED |
+||| QA-AUDIT-006 | Verify audit records written within transaction before commit | Security | Audit Trail | TODO |
+||| QA-AUDIT-007 | Verify rollback produces no audit record | Functional | Audit Trail | TODO |
 
 ### Logging QA
 
@@ -109,7 +118,7 @@
 || QA-LOG-002 | Verify unexpected exceptions are logged | Security | Logging | PLANNED |
 || QA-LOG-003 | Verify sensitive data (passwords/tokens/secrets) is not logged | Security | Logging | PLANNED |
 || QA-LOG-004 | Verify request/correlation ID present in log entries | Security | Logging | PLANNED |
-|| QA-LOG-005 | Verify successful audit events not created before transaction commit | Security | Logging | PLANNED |
+|| QA-LOG-005 | Verify audit records created within transaction before commit | Security | Logging | TODO |
 || QA-LOG-006 | Verify failed transactions do not create false successful audit events | Functional | Logging | PLANNED |
 || QA-LOG-007 | Verify queue failures are observable in logs | Security | Logging | PLANNED |
 || QA-LOG-008 | Verify authorization/security failures are appropriately logged | Security | Logging | PLANNED |
@@ -121,4 +130,18 @@
 || QA-SET-001 | Verify settings validation on save | Validation | Settings | PLANNED |
 || QA-SET-002 | Verify settings change is audited | Security | Settings | PLANNED |
 || QA-SET-003 | Verify cache invalidation on settings change | Functional | Settings | PLANNED |
-|| QA-SET-004 | Verify only authorized users can change settings | Authorization | Settings | PLANNED |
+||| QA-SET-004 | Verify only authorized users can change settings | Authorization | Settings | PLANNED |
+
+## ADR Numbering Convention
+
+- Architecture ADRs: `ADR-001` through `ADR-NNN` (in `docs/planning/decisions.md`)
+- Dependency ADRs: `DEP-001` through `DEP-NNN` (in
+  `docs/base/architecture/decision-records/`)
+- Both sequences are independent and **do not collide**.
+- The next ADR number is determined by listing existing files in the
+  relevant directory and taking the highest number + 1.
+- New dependency decisions use `DEP-NNN` format.
+- New architecture decisions use `ADR-NNN` format.
+- Cross-references between ADR files must specify the prefix
+  (`ADR-NNN` for architecture, `DEP-NNN` for dependency) when ambiguity
+  could arise.

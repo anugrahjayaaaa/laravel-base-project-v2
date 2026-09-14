@@ -53,8 +53,10 @@ be dispatched after the transaction commits. Use:
 
 - Dispatch an email job before the transaction commits. If the transaction
   rolls back, the email would reference a user/record that does not exist.
-- Write an audit record before the transaction commits. A failed transaction
-  must not produce a false-success audit entry.
+- Treat audit logging as an after-commit side effect (dispatch audit as a
+  post-commit job/event). Audit records must be written WITHIN the same
+  transaction as the mutation (before COMMIT), persisting only on successful
+  commit. A failed transaction must not produce a false-success audit entry.
 - Assume an external side effect succeeded before the database transaction
   commits.
 

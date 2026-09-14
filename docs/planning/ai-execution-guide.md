@@ -59,8 +59,8 @@
 24. **Route package calls through abstractions** where architectural decision
     requires it (Sanctum through Auth abstraction, Activitylog through Audit
     abstraction, Spatie Permission through Gate/Policy).
-25. **Telescope and Scribe are not application dependencies** — Telescope is
-    a technical tool (disabled in production), Scribe is dev-only. Application
+25. **Telescope and Scramble are not application dependencies** — Telescope is
+    a technical tool (disabled in production), Scramble is dev-only. Application
     code must never import/depend on them.
 26. **Redis is an infrastructure option, not an application dependency.** Use
     Laravel facades (`Cache`, `Queue`, `RateLimiter`, `Lock`) exclusively —

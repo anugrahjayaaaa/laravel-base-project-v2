@@ -17,7 +17,7 @@ Reusable foundation documentation for the Laravel Base Project.
 ||| 7 | [Features](../base/features/user-management.md) | User mgmt, auth, RBAC, feature flags, settings, audit |
 ||| 8 | [Testing](../base/testing/testing-strategy.md) | Test matrix, scenarios, definition of done |
 ||| 9 | [Operations](../base/operations/deployment.md) | Deployment, environment, retention, troubleshooting |
-||| 10 | [UI](../base/ui/ui-architecture.md) | UI architecture, [design-system.md](design-system.md), [ui-authorization.md](ui-authorization.md) |
+||| 10 | [UI](../base/ui/ui-architecture.md) | UI architecture, [design-system.md](ui/design-system.md), [ui-authorization.md](ui/ui-authorization.md) |
 
 ## Key Architectural Principles
 
