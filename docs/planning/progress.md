@@ -38,7 +38,7 @@ Architecture gap-closing pass — added:
 - `docs/base/architecture/application-components.md` (component responsibility model + canonical flow + source-of-truth rules)
 - `docs/base/dependencies/` (`overview.md`, `dependency-matrix.md`)
 - `docs/base/governance/dependency-governance.md`
-- `docs/base/architecture/decision-records/ADR-001` through `ADR-007`
+- `docs/base/architecture/decision-records/DEP-001` through `DEP-007`
 - `docs/base/ui/` (`ui-architecture.md`, `ui-authorization.md`, `design-system.md`)
 - Enhanced: `application-boundaries.md` (transaction/after-commit rules),
   `audit-trail.md` (transaction boundaries), `queue.md` (after-commit dispatch),
@@ -58,12 +58,35 @@ None — no implementation has started yet.
 
 ## Known Issues
 
-None — project is in planning/documentation phase.
+**Resolved conflicts** (closed in the gap-closure pass):
+- Scramble API documentation package — resolved: Scramble is the
+  selected tool (see DEP-007). All documentation updated.
+- `last_activity_at = NULL` policy — resolved: unlocking does NOT populate
+  `last_activity_at`; NULL preserved until actual user activity (see ADR-018).
+- ADR numbering collision — resolved: dependency ADRs renamed from ADR-001–007
+  to DEP-001–DEP-007 to avoid collision with architecture ADRs (ADR-001–018).
+- Audit transaction-timing ambiguity — resolved: audit records are written
+  within the transaction (before COMMIT); after-commit is for jobs/events only.
+- Stale `fruitcake/laravel-cors` reference — resolved: CORS is handled natively
+  by Laravel's `HandleCors` middleware (Laravel 11+). Updated in
+  `docs/base/security/web-security.md`.
+- Stale `security_login_failures` table name — resolved: updated to
+  `failed_login_attempts` in `docs/base/operations/troubleshooting.md` and
+  `docs/base/dependencies/overview.md` (both now use consistent table name).
+- Stale `SESSION_DRIVER=sanctum`/`passport` reference — resolved: updated in
+  `docs/base/operations/troubleshooting.md`.
+- Stale feature-matrix section IDs (`#22`, `#27`, `#47`, `#254`, `#48`) —
+  resolved: section column removed; phase/priority columns preserved.
+- Missing Security Logs in retention table — resolved: added
+  `docs/base/security/data-protection.md`.
+
+**Open** (documented design decisions, not bugs):
+- No implementation code exists yet (Phase 0 complete; Phase 1 ready to begin).
 
 ## Architecture Changes
 
 - ADR-013: Application Logging Strategy (added)
-- ADR-001 through ADR-007: Dependency decision records (added)
+- DEP-001 through DEP-007: Dependency decision records (added)
 - Cascade rules now permitted per-relationship when justified (updates
   ADR-012; see `docs/base/data/soft-delete.md`)
 - Application component responsibility model documented
