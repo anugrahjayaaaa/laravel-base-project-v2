@@ -48,14 +48,16 @@ class DashboardTest extends TestCase
         $response->assertSee('data-lte-toggle');
     }
 
-    public function test_dashboard_header_has_only_chrome_controls(): void
+    public function test_dashboard_header_has_chrome_controls_and_search(): void
     {
         $response = $this->get('/dashboard');
         $content = $response->getContent();
         $headerEnd = strpos($content, '</header>');
         $header = substr($content, strpos($content, '<header'), $headerEnd - strpos($content, '<header') + 9);
-        $this->assertStringNotContainsString('feature-search', $header);
-        $this->assertStringNotContainsString('Search features', $header);
+        $this->assertStringContainsString('data-lte-toggle', $header);
+        $this->assertStringContainsString('feature-search', $header);
+        $this->assertStringContainsString('Search features', $header);
+        $this->assertStringContainsString('fa-search', $header);
     }
 
     public function test_dashboard_includes_notification_in_header(): void
@@ -71,11 +73,12 @@ class DashboardTest extends TestCase
         $response->assertSee('Logout');
     }
 
-    public function test_dashboard_includes_search_in_content_header(): void
+    public function test_dashboard_includes_content_header_with_title(): void
     {
         $response = $this->get('/dashboard');
         $response->assertSee('content-header');
-        $response->assertSee('feature-search');
+        $response->assertSee('Dashboard');
+        $response->assertSee('page-title');
     }
 
     public function test_dashboard_includes_sidebar_brand(): void

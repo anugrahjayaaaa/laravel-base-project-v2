@@ -68,13 +68,17 @@ body {
 
 /* Header icon spacing — consistent gap between controls */
 .app-header .nav-link.text-secondary,
-.app-header .dropdown > a.nav-link.text-secondary {
+.app-header .dropdown > a.nav-link.text-secondary,
+.app-header button.nav-link.text-secondary {
   color: var(--lbp-muted) !important;
   padding: .5rem .6rem;
-  margin-left: .25rem;
+  border-radius: 9999px;
 }
 
-.app-header .nav-link.text-secondary:first-of-type {
+/* No extra margin-left — container-fluid gap handles spacing */
+.app-header .nav-link.text-secondary,
+.app-header .dropdown > a.nav-link.text-secondary,
+.app-header button.nav-link.text-secondary {
   margin-left: 0;
 }
 
@@ -89,6 +93,12 @@ body {
 #theme-toggle:hover {
   background: var(--lbp-surface-2);
   color: var(--lbp-text);
+}
+
+/* Sidebar toggle icon — flip 180deg when collapsed (chevron-left → chevron-right) */
+body.sidebar-collapse #sidebar-toggle-icon {
+  transform: rotate(180deg);
+  transition: transform .2s ease;
 }
 
 /* App sidebar — smooth transition for collapse/expand prevents abrupt
@@ -218,12 +228,11 @@ body.sidebar-collapse .app-sidebar:not(:hover) .sidebar-brand i {
   font-size: .8rem;
 }
 
-/* Content header (page title + search) */
+/* Content header (page title + description) */
 .content-header {
   display: flex;
-  align-items: center;
-  min-height: var(--lbp-app-chrome-height);
-  gap: 1rem;
+  flex-direction: column;
+  gap: .25rem;
 }
 
 .content-header .page-title {
@@ -237,8 +246,42 @@ body.sidebar-collapse .app-sidebar:not(:hover) .sidebar-brand i {
   font-size: .85rem;
 }
 
-.content-header .feature-search {
-  margin-left: auto;
+/* Header search — modern compact pill, consistent with icon control height.
+   Per §10: placed in app-header .feature-search, grouped with sidebar toggle. */
+.app-header .feature-search {
+  width: 16rem;
+  max-width: 100%;
+}
+
+.app-header .feature-search .input-group {
+  border-radius: 9999px;
+  overflow: hidden;
+  border: 1px solid var(--lbp-border);
+  background: var(--lbp-surface-2);
+  transition: border-color .15s ease, background-color .15s ease;
+  height: 36px;
+}
+
+.app-header .feature-search .input-group-text {
+  background: var(--lbp-surface-2);
+  border: none;
+  color: var(--lbp-muted);
+  padding: .35rem .65rem;
+}
+
+.app-header .feature-search .form-control {
+  border: none;
+  outline: 0;
+  box-shadow: none;
+  background: transparent;
+  padding: .35rem .5rem;
+  font-size: .85rem;
+}
+
+.app-header .feature-search:focus-within .input-group {
+  background: var(--lbp-surface);
+  border-color: var(--lbp-primary);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--lbp-primary) 25%, transparent);
 }
 
 /* Cards */

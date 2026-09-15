@@ -1,28 +1,39 @@
 <header class="app-header navbar navbar-expand bg-body border-bottom">
   <div class="container-fluid">
-    <!-- LEFT: Sidebar toggle -->
-    <a href="#" class="nav-link text-secondary d-none d-md-inline-flex"
-       data-lte-toggle="sidebar" title="Toggle sidebar">
-      <i class="fas fa-chevron-left"></i>
-    </a>
+    <!-- LEFT: Sidebar toggle + Search -->
+    <div class="d-none d-md-flex align-items-center">
+      <button type="button" class="nav-link text-secondary"
+              data-lte-toggle="sidebar" title="Toggle sidebar">
+        <i class="fas fa-chevron-left" id="sidebar-toggle-icon"></i>
+      </button>
+      <form class="feature-search" role="search">
+        <div class="input-group">
+          <input type="search" name="q" class="form-control border-0" placeholder="Search features" aria-label="Search features">
+          <span class="input-group-text bg-transparent border-0">
+            <i class="fas fa-search text-muted"></i>
+          </span>
+        </div>
+      </form>
+    </div>
 
     <!-- RIGHT: Notification + Theme + User -->
     <div class="navbar-nav ms-auto d-flex flex-row align-items-center">
       <!-- Notification -->
-      <a href="#" class="nav-link text-secondary" title="Notifications">
+      <button type="button" class="nav-link text-secondary" title="Notifications">
         <i class="far fa-bell"></i>
-      </a>
+      </button>
 
       <!-- Theme toggle (icon-only: sun when dark, moon when light) -->
-      <a href="#" class="nav-link text-secondary"
-         id="theme-toggle" title="Toggle theme">
+      <button type="button" class="nav-link text-secondary"
+              id="theme-toggle" title="Toggle theme">
         <i id="theme-icon" class="fas fa-moon"></i>
-      </a>
+      </button>
 
       <!-- User menu (dropdown) -->
       <div class="dropdown">
         <a href="#" class="nav-link text-secondary d-flex align-items-center"
-           role="button" data-bs-toggle="dropdown" aria-expanded="false">
+           role="button" data-bs-toggle="dropdown" aria-expanded="false"
+           title="Admin user menu">
           <i class="fas fa-user-circle"></i>
           <span class="d-none d-md-inline text-muted ms-2">Admin</span>
         </a>
