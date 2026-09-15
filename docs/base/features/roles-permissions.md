@@ -132,6 +132,21 @@ audit.view               (view audit records)
 audit.export             (export audit records)
 ```
 
+## Seeding Strategy
+
+System roles (`superadmin`, `admin`, `user`) are seeded in Phase 2 via
+`Database\Seeders\RoleSeeder`. Permissions are assigned in Phase 6 (RBAC-004)
+once the permission set is defined.
+
+**Note on Spatie Permission `guard_name`:** The architecture supports both
+`web` (session/Sanctum SPA) and `api` (Sanctum bearer token) authentication
+guards, both backed by the same `User` model. The specific `guard_name` value
+assigned to seeded roles is an implementation decision to be resolved during
+the RBAC implementation phase (Phase 6), based on whether roles must be
+shared across both guards or scoped per guard. See
+`docs/base/security/authentication.md` §Authentication Methods for the guard
+model.
+
 ## ADR References
 
 - ADR-004: Role-derived permissions

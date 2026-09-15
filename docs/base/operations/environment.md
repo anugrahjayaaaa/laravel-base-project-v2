@@ -96,9 +96,12 @@ All configuration in `config/`:
 | `registration.enabled` | Settings DB | Yes |
 | `DB_HOST` | `.env` / config | No |
 | `QUEUE_CONNECTION` | `.env` / config | No |
+| AdminLTE version | See [UI AdminLTE Setup](../ui/ui-adminlte-setup.md) | N/A — vendored (ZIP, not npm) |
 
 - Technical infrastructure settings remain in configuration files.
 - Operational application settings may be managed from the dashboard.
+- AdminLTE is vendored from the official release ZIP (not npm) — see
+  [UI AdminLTE Setup](../ui/ui-adminlte-setup.md) and ADR-019.
 
 ## Secrets
 
