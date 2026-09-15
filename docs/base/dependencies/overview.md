@@ -821,12 +821,12 @@ The application code is platform-agnostic.
 
 ||| Field | Value |
 |||-------|-------|
-|| Asset source | Official AdminLTE release ZIP (not npm) |
-| Asset location | `public/vendor/adminlte/` |
-| Package constraint | AdminLTE v4.x (exact release recorded at install time) |
-| Added to `package.json` | No |
-| ADR | ADR-019: AdminLTE as replaceable UI template |
-| Task | UI-001 |
+||| Asset source | Official AdminLTE release ZIP (not npm) |
+||| Asset location | `public/vendor/adminlte/` |
+||| Package constraint | AdminLTE v4.x (exact release recorded at install time) |
+||| Added to `package.json` | No |
+||| ADR | ADR-019: AdminLTE as replaceable UI template |
+||| Task | UI-001 |
 
 AdminLTE is the initial/default admin UI template. It is vendored from the
 official GitHub release ZIP into `public/vendor/adminlte/` — NOT installed via
