@@ -7,8 +7,8 @@
 | Phase | Title | Status |
 |-------|-------|--------|
 | 0 | Architecture & project conventions | DONE |
-|| 1 | Laravel foundation & environment | IN PROGRESS |
-| 2 | Database foundation | PLANNED |
+||| 1 | Laravel foundation & environment | DONE |
+|| 2 | Database foundation | IN PROGRESS |
 | 3 | Authentication foundation | PLANNED |
 | 4 | User lifecycle & user management | PLANNED |
 | 5 | Password/security lifecycle | PLANNED |
@@ -27,7 +27,7 @@
 
 ## Current Task
 
-None — waiting for implementation to begin (Phase 0 complete).
+DB-001 — Create base migration scaffold (Phase 2, IN_PROGRESS)
 
 ## Completed Tasks
 
@@ -132,7 +132,7 @@ Not yet started (Phase 15).
 ## Next Steps
 
 1. ~~Begin Phase 1: Laravel foundation & environment~~ — Phase 1 complete (FOUND-001 through FOUND-007)
-2. Begin Phase 2: Database foundation (DB-001 base migration scaffold)
+2. Begin Phase 2: Database foundation (DB-001 base migration scaffold) — IN PROGRESS
 3. Implement authentication, user management, security, RBAC in subsequent phases
 
 ## Summary
