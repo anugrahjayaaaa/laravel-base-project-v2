@@ -245,3 +245,23 @@ on inactivity lock is enforced in the background process. Unlock operations
 must NOT update `last_activity_at` — unlocking is an admin action, not user
 activity. Audit records for unlock events are separate from activity tracking.
 **Related**: AUTH-006, INACT-001, SES-001, SET-001
+
+## ADR-019: AdminLTE as replaceable UI template
+
+**Status**: Accepted
+**Context**: The Base Project needs an initial admin UI for the developer
+experience. A ready-made admin template avoids reinventing common UI
+components (dashboard, forms, tables, navigation). However, ADR-002
+(UI-independent core) requires the UI layer to be replaceable without
+affecting application architecture.
+**Decision**: AdminLTE 4 is used as the **initial/default UI template**,
+vendored from the official GitHub release ZIP into `public/vendor/adminlte/`.
+It is NOT installed via npm. AdminLTE is a presentation-layer concern only —
+not a dependency of business logic, services, models, policies, or
+authorization. The UI layer (Blade + AdminLTE) is isolated behind layout
+templates; swapping to Vue/React/mobile only changes the UI layer.
+**Consequences**: AdminLTE assets live in `public/vendor/adminlte/` and are
+isolated from application-specific assets in `public/assets/`. No npm/Vite
+dependency for AdminLTE is introduced. The exact version is recorded in
+`docs/base/ui/ui-adminlte-setup.md`. AdminLTE is not added to `package.json`.
+**Related**: ADR-002, UI-001

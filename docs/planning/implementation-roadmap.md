@@ -69,6 +69,7 @@ Testing / Hardening (Phases 13-17)
 - Correlation/request ID middleware
 - Packages installed: Sanctum, Spatie Permission, Activitylog, Telescope
   (see [dependency overview](../base/dependencies/overview.md))
+- AdminLTE initial UI setup (UI-001: vendor from release ZIP, wire Blade layout, UI-independent)
 - Status: PLANNED → READY
 
 ### Phase 2: Database Foundation

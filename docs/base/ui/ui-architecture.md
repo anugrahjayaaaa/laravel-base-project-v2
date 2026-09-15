@@ -48,9 +48,20 @@ The default admin UI uses:
 - AdminLTE 4 + Bootstrap 5.3
 - PHP-based rendering (server-side)
 
+AdminLTE is the **initial/default presentation template** — it is
+**replaceable**. The Base Project architecture must remain UI-independent
+(ADR-002, ADR-019). AdminLTE is not a dependency of business logic, services,
+models, policies, or authorization.
+
 This is the default because it requires no JavaScript build pipeline and
 works for administrative dashboards. It does NOT preclude a Vue/React
 frontend later.
+
+### AdminLTE Installation Strategy
+
+AdminLTE must be obtained from the official release ZIP and vendored into
+`public/vendor/adminlte/` — **not** installed via npm. See
+[AdminLTE Setup](./ui-adminlte-setup.md) for the full strategy (UI-001).
 
 ## Design System
 
@@ -64,6 +75,7 @@ the UI can be re-skinned without changing component structure.
 
 - ADR-001: API-first architecture
 - ADR-002: UI-independent core
+- ADR-019: AdminLTE as replaceable UI template
 
 ## Related
 
