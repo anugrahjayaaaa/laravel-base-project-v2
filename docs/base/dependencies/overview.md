@@ -817,6 +817,27 @@ The application code is platform-agnostic.
 
 ---
 
+## AdminLTE UI Template
+
+||| Field | Value |
+|||-------|-------|
+|| Asset source | Official AdminLTE release ZIP (not npm) |
+| Asset location | `public/vendor/adminlte/` |
+| Package constraint | AdminLTE v4.x (exact release recorded at install time) |
+| Added to `package.json` | No |
+| ADR | ADR-019: AdminLTE as replaceable UI template |
+| Task | UI-001 |
+
+AdminLTE is the initial/default admin UI template. It is vendored from the
+official GitHub release ZIP into `public/vendor/adminlte/` — NOT installed via
+npm. This avoids coupling the application's frontend build pipeline to
+AdminLTE's release cycle. AdminLTE is a presentation-layer concern only; the
+Base Project architecture remains UI-independent (ADR-002).
+
+See `docs/base/ui/ui-adminlte-setup.md` for the full installation strategy.
+
+---
+
 ## Intentional Non-Dependencies
 
 The Base Project intentionally does **not** introduce separate packages for
@@ -850,7 +871,8 @@ Notifications).
 || Database transactions | `DB::transaction()` / `DB::beginTransaction()` | Native |
 || Request/correlation IDs | Custom middleware (`CORR-001`) | Simple request-ID generation; package is overkill |
 || Custom authorization policies | `Illuminate\Auth\Access\Policy` | Native policies + Gates |
-|| Feature availability rules | Laravel Pennant (`config/pennant.php`) | Lightweight feature flag layer, not a heavy package |
+||| Feature availability rules | Laravel Pennant (`config/pennant.php`) | Lightweight feature flag layer, not a heavy package |
+||| AdminLTE UI template | Vendored release ZIP → `public/vendor/adminlte/` | NOT via npm — see ADR-019 and `docs/base/ui/ui-adminlte-setup.md` |
 
 ### Guiding Principle
 
