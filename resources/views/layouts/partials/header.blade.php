@@ -21,9 +21,9 @@
 
       <!-- User menu (dropdown) -->
       <div class="dropdown">
-        <a href="#" class="d-flex align-items-center text-decoration-none"
+        <a href="#" class="nav-link text-secondary d-flex align-items-center"
            role="button" data-bs-toggle="dropdown" aria-expanded="false">
-          <i class="fas fa-user-circle fa-2x text-secondary"></i>
+          <i class="fas fa-user-circle"></i>
           <span class="d-none d-md-inline text-muted ms-2">Admin</span>
         </a>
         <ul class="dropdown-menu dropdown-menu-end">

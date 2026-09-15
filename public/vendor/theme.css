@@ -66,17 +66,29 @@ body {
   padding: .5rem .75rem;
 }
 
-.app-header .nav-link.text-secondary {
+/* Header icon spacing — consistent gap between controls */
+.app-header .nav-link.text-secondary,
+.app-header .dropdown > a.nav-link.text-secondary {
   color: var(--lbp-muted) !important;
+  padding: .5rem .6rem;
+  margin-left: .25rem;
 }
 
-/* Theme toggle button — compact icon-only control */
+.app-header .nav-link.text-secondary:first-of-type {
+  margin-left: 0;
+}
+
+/* Theme toggle button — circular icon, same padding as other header icons */
 #theme-toggle {
-  border-radius: var(--lbp-radius-sm);
-  padding: .35rem .6rem;
+  border-radius: 9999px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+}
+
+#theme-toggle:hover {
+  background: var(--lbp-surface-2);
+  color: var(--lbp-text);
 }
 
 /* App sidebar — smooth transition for collapse/expand prevents abrupt
