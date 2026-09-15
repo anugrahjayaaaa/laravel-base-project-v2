@@ -60,3 +60,24 @@ Resources/Api/V2/
 ```
 
 Application/domain logic may be shared when behavior is identical.
+
+## Blade / UI Structure
+
+The AdminLTE UI layer uses shared layouts and partials — NOT duplicated per
+feature:
+
+```
+resources/views/
+├── layouts/                    # Shared layouts (e.g. adminlte.blade.php)
+│   └── partials/
+│       ├── adminlte/           # Header, sidebar, footer, theme toggle
+│       └── modals/             # Reusable confirmation modal
+├── components/                 # Reusable UI components (buttons, tables, etc.)
+│   └── ui/
+└── pages/                     # Feature-specific page views
+```
+
+- Layouts and partials must NOT be duplicated per feature.
+- Shared scripts must live in `resources/js/` or `resources/js/shared/` — do
+  not create duplicate script copies per feature.
+- Feature-specific views inherit from the shared layout.

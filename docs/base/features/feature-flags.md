@@ -15,6 +15,17 @@ Authentication → Authorization → Feature Availability
 - Feature availability must be enforced at the backend/application boundary.
 - UI hiding is NOT security.
 
+## Feature Flag Package Foundation (Phase 1)
+
+Phase 1 includes the **foundation** for a feature-flag system:
+
+- Install and configure an appropriate feature-flag package.
+- Define reusable UI conventions for feature flags in the AdminLTE shell.
+- Document the feature availability enforcement pattern.
+
+Actual feature-specific flags are NOT implemented in Phase 1 — they are added
+by future feature phases when a feature requires one.
+
 ## Use Cases
 
 Feature availability controls:
