@@ -59,9 +59,12 @@
 || FOUND-005 | Install Spatie Permission (RBAC) | 1 | P0 | FOUND-001 | DONE |
 || FOUND-006 | Install audit package (e.g. spatie/laravel-activitylog) | 1 | P0 | FOUND-001 | DONE |
 || FOUND-007 | Install Telescope | 1 | P0 | FOUND-001 | DONE |
-| FOUND-008 | Create correlation/request ID middleware | 1 | P0 | FOUND-001 | PLANNED |
-| FOUND-009 | Set up PSR-12 linting (PHP CS Fixer) | 1 | P1 | FOUND-001 | PLANNED |
-| FOUND-010 | Configure health check endpoint | 1 | P1 | FOUND-001 | PLANNED |
+| FOUND-008 | Create correlation/request ID middleware | 1 | P0 | FOUND-001 | DONE |
+| FOUND-009 | Set up PSR-12 linting (PHP CS Fixer) | 1 | P1 | FOUND-001 | DONE |
+| FOUND-010 | Configure health check endpoint | 1 | P1 | FOUND-001 | DONE |
+| CACHE-001 | Define cache config | 1 | P1 | FOUND-003 | DONE |
+| QUEUE-001 | Configure queue (database + Redis compat) | 1 | P0 | FOUND-003 | DONE |
+| CACHE-002 | Implement cache tagging & invalidation | 1 | P1 | CACHE-001 | PLANNED |
 
 *(Task list truncated for phases 2-17. See full list in the JSON version below.)*
 
@@ -123,9 +126,9 @@
   {"id": "AUDIT-005", "task": "Implement async audit export", "phase": 10, "priority": "P2", "depends_on": ["AUDIT-002", "QUEUE-001"], "status": "PLANNED"},
   {"id": "RATE-001", "task": "Define rate limit config", "phase": 5, "priority": "P0", "depends_on": ["SET-001"], "status": "PLANNED"},
   {"id": "RATE-002", "task": "Implement rate limiting middleware", "phase": 5, "priority": "P0", "depends_on": ["RATE-001", "FOUND-003"], "status": "PLANNED"},
-  {"id": "CACHE-001", "task": "Define cache config", "phase": 1, "priority": "P1", "depends_on": ["FOUND-003"], "status": "PLANNED"},
-  {"id": "CACHE-002", "task": "Implement cache tagging & invalidation", "phase": 1, "priority": "P1", "depends_on": ["CACHE-001"], "status": "PLANNED"},
-  {"id": "QUEUE-001", "task": "Configure queue (database + Redis compat)", "phase": 1, "priority": "P0", "depends_on": ["FOUND-003", "DB-001"], "status": "PLANNED"},
+  {"id": "CACHE-001", "task": "Define cache config", "phase": 1, "priority": "P1", "depends_on": ["FOUND-003"], "status": "DONE", "docs": ["cache.md"], "verifies": "FOUND-003 config + DEP-006"},
+  {"id": "CACHE-002", "task": "Implement cache tagging & invalidation", "phase": 1, "priority": "P1", "depends_on": ["CACHE-001"], "status": "PLANNED", "note": "Deferred: base project has no application-level cached data requiring grouped invalidation. Pattern documented in cache.md; implement when a feature introduces cacheable data needing cache::tags() invalidation."},
+  {"id": "QUEUE-001", "task": "Configure queue (database + Redis compat)", "phase": 1, "priority": "P0", "depends_on": ["FOUND-003", "DB-001"], "status": "DONE", "verifies": "FOUND-003 config + DEP-006"},
   {"id": "DB-001", "task": "Create base migration scaffold", "phase": 2, "priority": "P0", "depends_on": ["FOUND-002"], "status": "DONE"},
   {"id": "DB-002", "task": "Create seed data (roles, permissions)", "phase": 2, "priority": "P0", "depends_on": ["DB-001", "RBAC-001"], "status": "DONE"},
   {"id": "API-001", "task": "Define API v1 routes", "phase": 12, "priority": "P0", "depends_on": ["SET-003", "AUDIT-004"], "status": "PLANNED"},
@@ -140,8 +143,8 @@
   {"id": "RETAIN-001", "task": "Implement retention policy jobs", "phase": 14, "priority": "P1", "depends_on": ["DB-001"], "status": "PLANNED"},
   {"id": "MONITOR-001", "task": "Integrate Telescope", "phase": 11, "priority": "P1", "depends_on": ["FOUND-007"], "status": "PLANNED"},
   {"id": "MONITOR-002", "task": "Implement health check endpoint", "phase": 11, "priority": "P1", "depends_on": ["FOUND-010"], "status": "PLANNED"},
-  {"id": "CORR-001", "task": "Implement correlation ID middleware", "phase": 1, "priority": "P0", "depends_on": ["FOUND-008"], "status": "PLANNED", "tests": ["TEST-API-003"], "docs": ["logging.md"]},
-  {"id": "UI-001", "task": "Vendor AdminLTE from official release ZIP (not npm) + wire initial Blade layout (UI-independent)", "phase": 1, "priority": "P1", "depends_on": ["FOUND-001"], "status": "PLANNED", "docs": ["ui-adminlte-setup.md", "ui-architecture.md"]},
+  {"id": "CORR-001", "task": "Implement correlation ID middleware", "phase": 1, "priority": "P0", "depends_on": ["FOUND-008"], "status": "DONE", "tests": ["TEST-API-003", "CorrelationIdMiddlewareTest"], "docs": ["logging.md"]},
+  {"id": "UI-001", "task": "Vendor AdminLTE from official release ZIP (not npm) + wire initial Blade layout (UI-independent)", "phase": 1, "priority": "P1", "depends_on": ["FOUND-001"], "status": "DONE", "docs": ["ui-adminlte-setup.md", "ui-architecture.md"]},
   {"id": "INACT-001", "task": "Implement inactivity tracking", "phase": 5, "priority": "P1", "depends_on": ["USER-001"], "status": "PLANNED"}
 ]
 ```

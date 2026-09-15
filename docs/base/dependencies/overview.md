@@ -823,7 +823,7 @@ The application code is platform-agnostic.
 |||-------|-------|
 ||| Asset source | Official AdminLTE release ZIP (not npm) |
 ||| Asset location | `public/vendor/adminlte/` |
-||| Package constraint | AdminLTE v4.x (exact release recorded at install time) |
+|||| Package constraint | AdminLTE v4.9.1 |
 ||| Added to `package.json` | No |
 ||| ADR | ADR-019: AdminLTE as replaceable UI template |
 ||| Task | UI-001 |

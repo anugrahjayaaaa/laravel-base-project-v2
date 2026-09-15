@@ -18,7 +18,7 @@
 | Cache (default) | Laravel Cache | Native | Core | P0 | Through Cache facade |
 | Redis (option) | Redis backend | `predis/predis` / `ext-redis` | Optional / Deployment | P2 | Never directly (facades only) |
 | Backup | Spatie Backup | `spatie/laravel-backup` | Planned | P2 | Infrastructure / scheduled jobs |
-| AdminLTE (UI) | Vendored ZIP (not npm) | AdminLTE release ZIP → `public/vendor/adminlte/` | Pending (UI-001) | P1 | Layout templates only |
+|| AdminLTE (UI) | Vendored ZIP (not npm) | AdminLTE release ZIP → `public/vendor/adminlte/` | Complete (v4.9.1) | P1 | Layout templates only |
 | External Monitoring | (deployment choice) | `sentry/sentry-laravel` etc. | Deployment-specific | P3 | Through logging/observability layer |
 
 ## Status Legend

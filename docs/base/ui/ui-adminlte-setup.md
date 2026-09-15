@@ -48,7 +48,7 @@ AdminLTE must **NOT** be installed through npm.
 
 | Field | Value |
 |-------|-------|
-| Version | AdminLTE v4.x (exact release tag recorded at install time) |
+| Version | v4.9.1 |
 | Asset location | `public/vendor/adminlte/` |
 | Package.json | NOT added |
 | npm | NOT used |
@@ -62,6 +62,14 @@ templates. Business logic lives in Actions/Services. Swapping AdminLTE for
 Vue, React, or a mobile app only changes the UI layer.
 
 See ADR-002 for the full architectural decision.
+
+## Git Tracking
+
+Runtime assets under `public/vendor/adminlte/` **are tracked in Git**. AdminLTE
+is a runtime static dependency — not an npm package and not restored by
+`composer install` or `npm install`. Committing the vendored CSS/JS ensures a
+fresh clone works immediately after dependency installation without a manual,
+undocumented download step.
 
 ## ADR References
 
