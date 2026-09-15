@@ -59,9 +59,12 @@
 || FOUND-005 | Install Spatie Permission (RBAC) | 1 | P0 | FOUND-001 | DONE |
 || FOUND-006 | Install audit package (e.g. spatie/laravel-activitylog) | 1 | P0 | FOUND-001 | DONE |
 || FOUND-007 | Install Telescope | 1 | P0 | FOUND-001 | DONE |
-| FOUND-008 | Create correlation/request ID middleware | 1 | P0 | FOUND-001 | PLANNED |
-| FOUND-009 | Set up PSR-12 linting (PHP CS Fixer) | 1 | P1 | FOUND-001 | PLANNED |
-| FOUND-010 | Configure health check endpoint | 1 | P1 | FOUND-001 | PLANNED |
+| FOUND-008 | Create correlation/request ID middleware | 1 | P0 | FOUND-001 | DONE |
+| FOUND-009 | Set up PSR-12 linting (PHP CS Fixer) | 1 | P1 | FOUND-001 | DONE |
+| FOUND-010 | Configure health check endpoint | 1 | P1 | FOUND-001 | DONE |
+| CACHE-001 | Define cache config | 1 | P1 | FOUND-003 | DONE |
+| QUEUE-001 | Configure queue (database + Redis compat) | 1 | P0 | FOUND-003 | DONE |
+| CACHE-002 | Implement cache tagging & invalidation | 1 | P1 | CACHE-001 | PLANNED |
 
 *(Task list truncated for phases 2-17. See full list in the JSON version below.)*
 
