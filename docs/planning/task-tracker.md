@@ -141,7 +141,7 @@
   {"id": "MONITOR-001", "task": "Integrate Telescope", "phase": 11, "priority": "P1", "depends_on": ["FOUND-007"], "status": "PLANNED"},
   {"id": "MONITOR-002", "task": "Implement health check endpoint", "phase": 11, "priority": "P1", "depends_on": ["FOUND-010"], "status": "PLANNED"},
   {"id": "CORR-001", "task": "Implement correlation ID middleware", "phase": 1, "priority": "P0", "depends_on": ["FOUND-008"], "status": "DONE", "tests": ["TEST-API-003", "CorrelationIdMiddlewareTest"], "docs": ["logging.md"]},
-  {"id": "UI-001", "task": "Vendor AdminLTE from official release ZIP (not npm) + wire initial Blade layout (UI-independent)", "phase": 1, "priority": "P1", "depends_on": ["FOUND-001"], "status": "PLANNED", "docs": ["ui-adminlte-setup.md", "ui-architecture.md"]},
+  {"id": "UI-001", "task": "Vendor AdminLTE from official release ZIP (not npm) + wire initial Blade layout (UI-independent)", "phase": 1, "priority": "P1", "depends_on": ["FOUND-001"], "status": "DONE", "docs": ["ui-adminlte-setup.md", "ui-architecture.md"]},
   {"id": "INACT-001", "task": "Implement inactivity tracking", "phase": 5, "priority": "P1", "depends_on": ["USER-001"], "status": "PLANNED"}
 ]
 ```

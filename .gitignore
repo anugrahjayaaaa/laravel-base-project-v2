@@ -3,3 +3,5 @@
 /.env
 /node_modules
 .phpunit.result.cache
+/public/build
+/package-lock.json
