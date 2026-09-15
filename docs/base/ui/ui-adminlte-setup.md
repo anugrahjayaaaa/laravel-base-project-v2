@@ -4,7 +4,7 @@
 
 AdminLTE is the initial/default web UI template for the Base Project. It is
 **replaceable** — the Base Project architecture remains UI-independent
-(ADR-002).
+(ADR-002, ADR-019).
 
 ## Installation Strategy
 
@@ -14,6 +14,11 @@ AdminLTE must **NOT** be installed through npm.
 
 1. Download the selected AdminLTE release ZIP from the
    [official releases page](https://github.com/ColorlibHQ/AdminLTE/releases).
+   - Release tag: `vX.Y.Z` (e.g. `v4.9.1`)
+   - Download URL: `https://api.github.com/repos/ColorlibHQ/AdminLTE/releases/tags/vX.Y.Z`
+   - **Pitfall:** the release zip filename is `admin-lte-vX.Y.Z.zip` (hyphen
+     + `lte-`), NOT `adminlte-X.Y.Z.zip`. Verify the exact filename from the
+     GitHub API response before downloading.
 2. Extract the required frontend assets (CSS, JS, images, fonts) into:
 
    ```
@@ -34,6 +39,8 @@ AdminLTE must **NOT** be installed through npm.
   to AdminLTE's release cycle and bloat the dependency tree.
 - AdminLTE's official release ZIP is a self-contained artifact that can be
   vendored into `public/vendor/adminlte/` with no build step.
+- Pulling AdminLTE via npm would introduce an unnecessary build dependency and
+  couple the deployment pipeline to AdminLTE's release cycle.
 - Switching or removing the UI template later requires only deleting the
   vendored directory and the Blade layout — no application code changes.
 
