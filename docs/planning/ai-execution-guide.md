@@ -6,88 +6,102 @@
 
 1. **Read relevant architecture documentation** before changing code. Every doc in `docs/base/` defines the design the code MUST follow.
 
-2. **Read the task tracker** (`docs/planning/task-tracker.md`) before starting work. Find the task by ID. Follow its dependencies and acceptance criteria.
+2. **Do NOT implement i18n/translation during normal feature development.** i18n is intentionally deferred until a final project-wide phase after all functional features are complete. Feature copy may remain direct/static for now. Do not add translation abstractions, translation helper calls (`__('...')`, `trans()`, `Lang::get()`), locale switching, or message namespaces speculatively. When the i18n phase is reached, it will be handled project-wide with the dual-source strategy: `lang/{en,id}/{messages,ui,validation}.php` as the file source of truth plus a Spatie `language_lines` database table for runtime overrides.
 
-3. **Work on one small task at a time.** Pick a task in `READY` or `PLANNED` status. Change it to `IN_PROGRESS`.
+3. **Read the task tracker** (`docs/planning/task-tracker.md`) before starting work. Find the task by ID. Follow its dependencies and acceptance criteria.
 
-4. **Do not implement future tasks** unless required as a dependency. Stay in scope.
+4. **Work on one small task at a time.** Pick a task in `READY` or `PLANNED` status. Change it to `IN_PROGRESS`.
 
-5. **Do not silently change architecture decisions.** If you find a conflict, STOP and document it (see #6).
+5. **Do not implement future tasks** unless required as a dependency. Stay in scope.
 
-6. **If an architecture conflict is discovered**, stop and document it in `docs/planning/decisions.md` as a new ADR or note the conflict. Do not override existing docs.
+6. **Do not silently change architecture decisions.** If you find a conflict, STOP and document it (see #7).
 
-7. **Do not modify unrelated features.** Scope creep is the #1 AI mistake.
+7. **If an architecture conflict is discovered**, stop and document it in `docs/planning/decisions.md` as a new ADR or note the conflict. Do not override existing docs.
 
-8. **Run relevant tests** after changes. Tests must be green before commit.
+8. **Do not modify unrelated features.** Scope creep is the #1 AI mistake.
 
-9. **Update task status only after verification.** Move `IN_PROGRESS` → `REVIEW` → `DONE`. Never skip REVIEW.
+9. **Run relevant tests** after changes. Tests must be green before commit.
 
-10. **Update documentation** when behavior changes. If the code does X but docs say Y, the docs are wrong — fix the docs.
+10. **Update task status only after verification.** Move `IN_PROGRESS` → `REVIEW` → `DONE`. Never skip REVIEW.
 
-11. **Update changelog** (`docs/planning/changelog.md`) when architecture/planning changes. Only meaningful changes.
+11. **Update documentation** when behavior changes. If the code does X but docs say Y, the docs are wrong — fix the docs.
 
-12. **Add regression tests** for discovered bugs. Always.
+12. **Update changelog** (`docs/planning/changelog.md`) when architecture/planning changes. Only meaningful changes.
 
-13. **Never remove a test** simply to make the suite pass. Ever.
+13. **Add regression tests** for discovered bugs. Always.
 
-14. **Never weaken security** to make a test pass. If auth breaks, fix the auth, not the test.
+14. **Never remove a test** simply to make the suite pass. Ever.
 
-15. **Never introduce a package** without documenting its purpose. Add it to `docs/planning/changelog.md` with: name, purpose, why not build custom, security considerations.
+15. **Never weaken security** to make a test pass. If auth breaks, fix the auth, not the test.
 
-16. **Avoid duplicate business logic.** Search for existing implementations first.
+16. **Never introduce a package** without documenting its purpose. Add it to `docs/planning/changelog.md` with: name, purpose, why not build custom, security considerations.
 
-17. **Follow Laravel conventions** unless there is a documented reason not to.
+17. **Avoid duplicate business logic.** Search for existing implementations first.
 
-18. **Prefer simple maintainable solutions** over unnecessary abstraction. No factory for one product. No interface with one implementation. No config for a value that never changes.
+18. **Follow Laravel conventions** unless there is a documented reason not to.
 
-19. **Do not over-engineer.** The smallest change that works, once you understand the problem.
+19. **Prefer simple maintainable solutions** over unnecessary abstraction. No factory for one product. No interface with one implementation. No config for a value that never changes.
 
-20. **Before completing a task, verify** ALL of: implementation, tests, security, documentation, regression impact.
+20. **Do not over-engineer.** The smallest change that works, once you understand the problem.
+
+21. **Before completing a task, verify** ALL of: implementation, tests, security, documentation, regression impact.
 
 ## Dependency-Aware Execution Rules
 
-21. **Read dependency governance** (`docs/base/governance/dependency-governance.md`)
+22. **Read dependency governance** (`docs/base/governance/dependency-governance.md`)
     before introducing any Composer package. No `composer require` without
     selecting a package documented in `docs/base/dependencies/overview.md`
     and approved via ADR.
-22. **Use established packages** for capabilities better provided by mature
+
+23. **Use established packages** for capabilities better provided by mature
     ecosystem solutions (RBAC, audit, monitoring). Do NOT build custom
     implementations of these concerns.
-23. **Prefer Laravel-native** for capabilities the framework provides
+
+24. **Prefer Laravel-native** for capabilities the framework provides
     (validation, rate limiting, notifications, etc.). Do NOT introduce a
     package for native functionality.
-24. **Route package calls through abstractions** where architectural decision
+
+25. **Route package calls through abstractions** where architectural decision
     requires it (Sanctum through Auth abstraction, Activitylog through Audit
     abstraction, Spatie Permission through Gate/Policy).
-25. **Telescope and Scramble are not application dependencies** — Telescope is
+
+26. **Telescope and Scramble are not application dependencies** — Telescope is
     a technical tool (disabled in production), Scramble is dev-only. Application
     code must never import/depend on them.
-26. **Redis is an infrastructure option, not an application dependency.** Use
+
+27. **Redis is an infrastructure option, not an application dependency.** Use
     Laravel facades (`Cache`, `Queue`, `RateLimiter`, `Lock`) exclusively —
     never Redis-specific APIs.
-27. **Backup is infrastructure, not business logic.** `spatie/laravel-backup`
+
+28. **Backup is infrastructure, not business logic.** `spatie/laravel-backup`
     is scheduled via the Kernel; application code does not call it directly.
 
 ## Transaction and After-Commit Rules
 
-28. **Use database transactions** for multi-step mutations.
-29. **Dispatch jobs/events after commit** using `dispatchAfterCommit()` or
+29. **Use database transactions** for multi-step mutations.
+
+30. **Dispatch jobs/events after commit** using `dispatchAfterCommit()` or
     `DB::afterCommit()`. Do NOT dispatch before commit for jobs that depend
     on committed database state.
-30. **Audit records are written within the transaction** and only persist
+
+31. **Audit records are written within the transaction** and only persist
     if the transaction commits. A rolled-back transaction must NOT leave a
     false-success audit record.
 
 ## Implementation Discipline Rules
 
-31. **Business mutation source of truth = mutation caller.** The Action/Service
+32. **Business mutation source of truth = mutation caller.** The Action/Service
     layer calls the audit abstraction — not model observers.
-32. **Authorization source of truth = Policy/Gate layer.** Enforce via
+
+33. **Authorization source of truth = Policy/Gate layer.** Enforce via
     `authorize()` in Form Requests and `can:` middleware on routes.
-33. **Serialization source of truth = Resource layer.** Resources must not
+
+34. **Serialization source of truth = Resource layer.** Resources must not
     perform mutations or contain business logic.
-34. **Asynchronous work source of truth = Job.**
-35. **Do not version API application logic unless behavior diverges.**
+
+35. **Asynchronous work source of truth = Job.**
+
+36. **Do not version API application logic unless behavior diverges.**
     If V1 and V2 share behavior, both call the same shared Action/Service.
 
 ## Task Workflow

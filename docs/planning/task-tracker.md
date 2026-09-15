@@ -66,12 +66,13 @@
 | QUEUE-001 | Configure queue (database + Redis compat) | 1 | P0 | FOUND-003 | DONE |
 | CACHE-002 | Implement cache tagging & invalidation | 1 | P1 | CACHE-001 | PLANNED |
 | UI-001 | Vendor AdminLTE 4.9.1 + wire Blade layout | 1 | P1 | FOUND-001 | DONE |
-| UI-002 | Application shell (header, sidebar, footer) | 1 | P1 | UI-001 | PLANNED |
-| UI-003 | Shared UI component conventions | 1 | P1 | UI-001 | PLANNED |
-| UI-004 | Reusable confirmation modal component | 1 | P1 | UI-002 | PLANNED |
-| UI-005 | Theme toggle (system default + manual) | 1 | P1 | UI-001 | PLANNED |
-| SOFT-001 | Soft delete / trash / permanent delete | 1 | P1 | FOUND-002 | PLANNED |
-| TABLE-001 | Shared table conventions (sort, filter, bulk) | 1 | P2 | UI-003 | PLANNED |
+| UI-002 | Application shell (header, sidebar, footer, theme toggle) | 1 | P1 | UI-001 | DONE |
+| UI-003 | Shared UI component conventions (buttons, forms, tables, modals) | 1 | P1 | UI-001 | DONE |
+| UI-004 | Reusable confirmation modal component | 1 | P1 | UI-002 | DONE |
+| UI-005 | Theme toggle (system default + manual dark/light) | 1 | P1 | UI-001 | DONE |
+| UI-006 | UI foundation cleanup & style refinement (partials rename, theme fix, i18n removal, style guide) | 1 | P1 | UI-001,UI-002,UI-003,UI-004,UI-005 | IN_PROGRESS |
+| SOFT-001 | Soft delete / trash / permanent delete convention | 1 | P1 | FOUND-002 | DONE |
+| TABLE-001 | Shared table conventions (sortable, filterable, bulk actions, pagination) | 1 | P2 | UI-003 | DONE |
 | FLAG-001 | Feature flag package foundation | 1 | P1 | FOUND-003 | PLANNED |
 
 *(Task list truncated for phases 2-17. See full list in the JSON version below.)*
@@ -153,13 +154,14 @@
   {"id": "MONITOR-002", "task": "Implement health check endpoint", "phase": 11, "priority": "P1", "depends_on": ["FOUND-010"], "status": "PLANNED"},
   {"id": "CORR-001", "task": "Implement correlation ID middleware", "phase": 1, "priority": "P0", "depends_on": ["FOUND-008"], "status": "DONE", "tests": ["TEST-API-003", "CorrelationIdMiddlewareTest"], "docs": ["logging.md"]},
   {"id": "UI-001", "task": "Vendor AdminLTE from official release ZIP (not npm) + wire initial Blade layout (UI-independent)", "phase": 1, "priority": "P1", "depends_on": ["FOUND-001"], "status": "DONE", "docs": ["ui-adminlte-setup.md", "ui-architecture.md"]},
-  {"id": "UI-002", "task": "Application shell (header, sidebar, footer, theme toggle)", "phase": 1, "priority": "P1", "depends_on": ["UI-001"], "status": "PLANNED", "docs": ["ui-architecture.md"]},
-  {"id": "UI-003", "task": "Shared UI component conventions (buttons, forms, tables, modals)", "phase": 1, "priority": "P1", "depends_on": ["UI-001"], "status": "PLANNED", "docs": ["design-system.md", "ui-architecture.md"]},
-  {"id": "UI-004", "task": "Reusable confirmation modal component", "phase": 1, "priority": "P1", "depends_on": ["UI-002"], "status": "PLANNED", "docs": ["ui-architecture.md"]},
-  {"id": "UI-005", "task": "Theme toggle (system default + manual dark/light)", "phase": 1, "priority": "P1", "depends_on": ["UI-001"], "status": "PLANNED", "docs": ["ui-architecture.md"]},
-  {"id": "SOFT-001", "task": "Soft delete / trash / permanent delete convention", "phase": 1, "priority": "P1", "depends_on": ["FOUND-002"], "status": "PLANNED", "docs": ["soft-delete.md"]},
-  {"id": "TABLE-001", "task": "Shared table conventions (sortable, filterable, bulk actions, pagination)", "phase": 1, "priority": "P2", "depends_on": ["UI-003"], "status": "PLANNED", "docs": ["ui-architecture.md"]},
-  {"id": "FLAG-001", "task": "Feature flag package foundation (install + configure + UI conventions)", "phase": 1, "priority": "P1", "depends_on": ["FOUND-003"], "status": "PLANNED", "docs": ["feature-flags.md"]},
+  {"id": "UI-002", "task": "Application shell (header, sidebar, footer, theme toggle)", "phase": 1, "priority": "P1", "depends_on": ["UI-001"], "status": "DONE", "docs": ["ui-architecture.md"]},
+  {"id": "UI-003", "task": "Shared UI component conventions (buttons, forms, tables, modals)", "phase": 1, "priority": "P1", "depends_on": ["UI-001"], "status": "DONE", "docs": ["design-system.md", "ui-architecture.md"]},
+  {"id": "UI-004", "task": "Reusable confirmation modal component", "phase": 1, "priority": "P1", "depends_on": ["UI-002"], "status": "DONE", "docs": ["ui-architecture.md"]},
+  {"id": "UI-005", "task": "Theme toggle (system default + manual dark/light)", "phase": 1, "priority": "P1", "depends_on": ["UI-001"], "status": "DONE", "docs": ["ui-architecture.md"]},
+  {"id": "SOFT-001", "task": "Soft delete / trash / permanent delete convention", "phase": 1, "priority": "P1", "depends_on": ["FOUND-002"], "status": "DONE", "docs": ["soft-delete.md"]},
+  {"id": "TABLE-001", "task": "Shared table conventions (sortable, filterable, bulk actions, pagination)", "phase": 1, "priority": "P2", "depends_on": ["UI-003"], "status": "DONE", "docs": ["ui-architecture.md"]},
+  {"id": "FLAG-001", "task": "Feature flag package foundation (install + configure + UI conventions)", "phase": 1, "priority": "P1", "depends_on": ["FOUND-003"], "status": "PLANNED", "docs": ["feature-flags.md"], "note": "Package selection pending — no feature-flag package pre-selected in project docs. Cannot implement installation/config without product decision."},
+  {"id": "UI-006", "task": "UI foundation cleanup: rename partials (no app-* prefix), remove obsolete adminlte layout, fix theme (system default + manual override, no flash), remove i18n from UI foundation, add style guide", "phase": 1, "priority": "P1", "depends_on": ["UI-001", "UI-002", "UI-003", "UI-004", "UI-005"], "status": "IN_PROGRESS", "docs": ["style-guide.md", "ui-architecture.md", "ai-execution-guide.md"]},
   {"id": "INACT-001", "task": "Implement inactivity tracking", "phase": 5, "priority": "P1", "depends_on": ["USER-001"], "status": "PLANNED"}
 ]
 ```
