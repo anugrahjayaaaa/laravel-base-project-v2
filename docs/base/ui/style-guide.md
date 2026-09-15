@@ -31,7 +31,7 @@
 
 - AdminLTE `.app-header.navbar` with `.bg-body` background.
 - **Height**: 3.5rem (`--lbp-app-chrome-height`) — shared CSS variable with `.sidebar-brand` so header and sidebar brand area align exactly.
-- Contains only: sidebar toggle, notification icon, theme toggle, user dropdown. No page title or search.
+- Contains: sidebar toggle, notification icon, theme toggle, user dropdown, **search features**. Search is grouped with sidebar toggle on the left side of the header.
 - Sidebar toggle button: chevron icon, `data-lte-toggle="sidebar"`, visible on desktop only (`d-none d-md-inline-flex`).
 - Icons: `fas` (solid) for all interactive elements, `far` for notification bell. Consistent 1x sizing.
 - Right elements use `ms-auto` for user dropdown to push to far right.
@@ -53,14 +53,13 @@
 
 ```
 .app-main > .app-content > .container-fluid
-  .content-header (page title + description + search)
+  .content-header (page title + description)
   .row (content cards / tables)
 ```
 
-- **Content header** (`.content-header`): flexbox row with page title, description, and search on the right (`ms-auto`).
+- **Content header** (`.content-header`): flexbox row with page title and description. Search is placed in the app header (see §4), not here.
 - Page title: `.page-title` (600 weight, 1.35rem).
 - Page description: `.page-description` (muted, 0.85rem).
-- Search: `.feature-search` form with `.input-group` — placed in content header, NOT in the app header.
 - Content wrapped in `.card.border-0.shadow-sm` for elevated sections.
 
 ## 7. Footer (`.app-footer`)
@@ -89,8 +88,9 @@
 ## 10. Search / Filter
 
 - Search uses a `<form>` with `.input-group`.
-- Placement: `.content-header .feature-search` — always in the page content header area, not in the app header.
+- Placement: `.app-header .feature-search` — always in the application header, grouped with the sidebar toggle on the left side.
 - Icon prefix inside `.input-group-text`.
+- Visual treatment: compact pill (`border-radius: 9999px`, `overflow: hidden`), token-controlled border/background, primary focus ring.
 
 ## 11. Tables
 
