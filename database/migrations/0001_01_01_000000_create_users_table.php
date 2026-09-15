@@ -17,8 +17,14 @@ return new class extends Migration
             $table->string('email')->unique();
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
+            $table->boolean('is_active')->default(true);
+            $table->boolean('is_locked')->default(false);
+            $table->boolean('must_change_password')->default(false);
+            $table->timestamp('password_expires_at')->nullable();
+            $table->timestamp('last_activity_at')->nullable();
             $table->rememberToken();
             $table->timestamps();
+            $table->softDeletes();
         });
 
         Schema::create('password_reset_tokens', function (Blueprint $table) {
