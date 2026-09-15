@@ -24,6 +24,28 @@ Use only where semantically appropriate.
 - `forceDelete()` for permanent deletion (admin action only).
 - `restore()` to undo soft delete (where applicable).
 
+## UI Convention: Soft Delete / Trash / Permanent Delete
+
+Expected lifecycle:
+
+```
+Active record → Soft Delete → Deleted/Trash → Restore OR Permanent Delete
+```
+
+Rules:
+
+- Normal delete performs soft delete.
+- Deleted records must be distinguishable from active records.
+- Restore is only available for records already in deleted state.
+- Permanent delete is ONLY available for records already in deleted state.
+- Permanent delete must NEVER be a direct action from the active state.
+- Destructive actions require confirmation (see
+  [UI Architecture](./ui-architecture.md) § Confirmation Modal).
+- Applicable actions should support bulk operations (bulk soft delete, bulk
+  restore, bulk permanent delete).
+- Not every model/feature must support every action; applicability depends on
+  the feature/domain.
+
 ## Query Behavior
 
 - Default: `Model::all()` excludes soft-deleted records.

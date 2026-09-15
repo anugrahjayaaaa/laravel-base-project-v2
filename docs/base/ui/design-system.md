@@ -91,7 +91,16 @@ component.
 | Header background | `surface-alt` |
 | Row border | `border` |
 | Row hover | `surface-alt` |
-| Status badge | `success`/`warning`/`danger`/`info` |
+|| Status badge | `success`/`warning`/`danger`/`info` |
+
+### Table Conventions
+
+Shared table conventions:
+- Columns sortable where meaningful (consistent UI pattern)
+- Bulk selection supported where applicable
+- Bulk actions exposed consistently
+- Pagination follows shared convention
+- Search/filter controls follow shared UI convention
 
 ### Badges
 
@@ -124,9 +133,20 @@ component.
 
 | Element | Token |
 |---------|-------|
-| Overlay | `overlay` |
-| Dialog background | `surface` |
-| Border | `border` |
+|| Overlay | `overlay` |
+|| Dialog background | `surface` |
+|| Border | `border` |
+|| Dialog header | `surface-alt` |
+
+### Confirmation Modal Convention
+
+One reusable confirmation-modal component with configurable variants
+(danger/warning/info). Actions requiring confirmation: soft delete, permanent
+delete, restore, lock, unlock, activate/deactivate, feature flag changes,
+resend password, resend verification email, and other sensitive/destructive
+actions. Do not create separate modal implementations per feature.
+
+See [UI Architecture](./ui-architecture.md) § Confirmation Modal.
 
 ### Navigation
 
