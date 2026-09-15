@@ -1,4 +1,4 @@
-<aside class="app-sidebar bg-body border-end" data-lte-toggle="sidebar">
+<aside class="app-sidebar bg-body border-end">
   <div class="sidebar-brand">
     <a href="{{ route('dashboard') }}" class="d-flex align-items-center text-decoration-none">
       <i class="fas fa-cube text-primary me-2"></i>
