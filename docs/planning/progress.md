@@ -27,7 +27,7 @@
 
 ## Current Task
 
-DB-001 — Create base migration scaffold (Phase 2, IN_PROGRESS)
+DB-002 — Wire RoleSeeder into DatabaseSeeder (Phase 2, IN_PROGRESS)
 
 ## Completed Tasks
 
@@ -73,6 +73,11 @@ API foundation, AdminLTE UI foundation, and feature flags:
   @feature/@featureany Blade directives available
 |- Laravel Periscope (MONITOR-001): companion UI for Telescope at /periscope,
   inherits Telescope authorization via Telescope::check(), 4 tests
+
+Phase 2 (DB-001, DB-002) — database foundation:
+
+- Base migration scaffold: Laravel defaults + Spatie permission tables (DB-001)
+- RoleSeeder created + wired into DatabaseSeeder (DB-002)
 
 Architecture gap-closing pass — added:
 
@@ -164,10 +169,10 @@ Not yet started (Phase 15).
 
 ## Next Steps
 
-1. ~~Begin Phase 1: Laravel foundation & environment~~ — Phase 1 complete
-  (FOUND-001 through FOUND-010, CACHE-001, QUEUE-001, CORR-001, UI-001
-  through UI-006, SOFT-001, TABLE-001, FLAG-001 with Laravel Pennant)
-2. Begin Phase 2: Database foundation (DB-001 base migration scaffold) — IN PROGRESS
+1. ~~Begin Phase 1: Laravel foundation & environment~~ — Phase 1 complete & merged to main (commit f54d0c9)
+  (FOUND-001 through FOUND-010, CACHE-001, QUEUE-001, CORR-001,
+  UI-001 through UI-006, SOFT-001, TABLE-001, FLAG-001 with Laravel Pennant)
+2. Begin Phase 2: Database foundation — DB-001 DONE, DB-002 (seed data) in progress
 3. Implement authentication, user management, security, RBAC in subsequent phases
 
 ## Summary
@@ -175,4 +180,5 @@ Not yet started (Phase 15).
 All documentation and planning system complete. Phase 1 implementation
 complete (FOUND-001 through FOUND-010, CACHE-001, QUEUE-001, CORR-001,
 UI-001 through UI-006, SOFT-001, TABLE-001, FLAG-001 with Laravel Pennant).
-Next step: Phase 2 — database foundation migrations (DB-001).
+Phase 1 merged to main (commit f54d0c9).
+Next step: Phase 2 — database foundation (DB-001 DONE, DB-002 in progress).
