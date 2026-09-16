@@ -33,16 +33,46 @@ DB-001 — Create base migration scaffold (Phase 2, IN_PROGRESS)
 
 Phase 0 (P0-001 through P0-011) — architecture documentation and planning system.
 
-Phase 1 (FOUND-001 through FOUND-007) — Laravel 13 foundation & environment:
+Phase 1 (FOUND-001 through FOUND-010, + CACHE-001, QUEUE-001, CORR-001, UI-001
+through UI-006, SOFT-001, TABLE-001, FLAG-001) — Laravel 13 foundation,
+API foundation, AdminLTE UI foundation, and feature flags:
+
 - Laravel 13.31.0 initialized (PHP 8.3)
-- `.env.example` configured: APP_NAME="Laravel Base Project", MySQL default, CACHE_STORE=file, QUEUE_CONNECTION=database, SESSION_DRIVER=database
-- Config: cache=default file, database=default mysql, auth=web+sanctum API guard
+- `.env.example` configured: APP_NAME="Laravel Base Project", MySQL default,
+  CACHE_STORE=file, QUEUE_CONNECTION=database, SESSION_DRIVER=database,
+  PENNANT_STORE=database (Laravel Pennant), PERISCOPE_ENABLED=true (Periscope)
+- Config: cache=file default / Redis available; auth=web+sanctum API guard;
+  queue=database default / Redis compatible
 - Sanctum ^4.0 installed, API guard configured, User has HasApiTokens
 - Spatie Permission ^6.0 installed, migrations + config published, User has HasRoles
-- Spatie ActivityLog ^4.8 installed
-- Telescope ^5.0 installed, config + migrations published
+- Spatie ActivityLog ^4.8 installed (Phase 10 integration pending)
+- Telescope ^5.0 installed, config + migrations published. Periscope v0.3
+  (seanbarton/laravel-periscope) added as companion UI at /periscope, reading
+  the same Telescope data, inheriting Telescope authorization. No separate
+  migration or auth mechanism.
 - Scramble ^0.13 (dev) installed
-- Pint ^1.27 for code style
+- Pint ^1.27 for PSR-12 code style, pint.json preset=psr12
+- Correlation ID middleware (FOUND-008 / CORR-001): GenerateRequestCorrelationId
+  registered in bootstrap/app.php, X-Request-ID response header, 3 tests
+- Health check endpoint (FOUND-010): GET /api/v1/health via HealthCheckController +
+  HealthCheckService + HealthCheckResource, 4 tests
+- Cache config (CACHE-001): file default, Redis available
+- Queue config (QUEUE-001): database default, Redis compatible
+- AdminLTE 4.9.1 vendored into public/vendor/adminlte/ (UI-001, not via npm)
+- Application shell (UI-002): header + sidebar + footer shared partials
+- Shared UI components (UI-003): button, input, badge, alert, empty-state,
+  loading-state, error-state, sortable-th, action-menu, confirm-action
+- Confirmation modal (UI-004): reusable modal with danger/warning/info variants
+- Theme toggle (UI-005): system default + manual override, localStorage persisted,
+  no theme flash (head inline script), icon-only toggle
+- UI foundation cleanup (UI-006): partials renamed (no app-* prefix), theme
+  fixed, i18n removed from UI foundation, style guide updated
+- Soft delete convention (SOFT-001): documented + SoftDeletes on User model
+- Table conventions (TABLE-001): sortable-th component, Bootstrap pagination
+- Laravel Pennant (FLAG-001): installed, features table migration published + migrated,
+  @feature/@featureany Blade directives available
+|- Laravel Periscope (MONITOR-001): companion UI for Telescope at /periscope,
+  inherits Telescope authorization via Telescope::check(), 4 tests
 
 Architecture gap-closing pass — added:
 
@@ -92,7 +122,10 @@ None — no implementation has started yet.
   `docs/base/security/data-protection.md`.
 
 **Open** (documented design decisions, not bugs):
-|- Phase 1 implementation in progress (found-001 through found-007 complete; found-008 onwards pending).
+|- CACHE-002 remains intentionally deferred — no application-level cached data
+  requiring cache::tags() grouped invalidation. Pattern documented in cache.md.
+|- i18n remains intentionally deferred to the final project-wide phase. No
+  lang/ directory; all Phase 1 views use static text (style-guide.md §160).
 
 ## Architecture Changes
 
@@ -131,12 +164,15 @@ Not yet started (Phase 15).
 
 ## Next Steps
 
-1. ~~Begin Phase 1: Laravel foundation & environment~~ — Phase 1 complete (FOUND-001 through FOUND-007)
+1. ~~Begin Phase 1: Laravel foundation & environment~~ — Phase 1 complete
+  (FOUND-001 through FOUND-010, CACHE-001, QUEUE-001, CORR-001, UI-001
+  through UI-006, SOFT-001, TABLE-001, FLAG-001 with Laravel Pennant)
 2. Begin Phase 2: Database foundation (DB-001 base migration scaffold) — IN PROGRESS
 3. Implement authentication, user management, security, RBAC in subsequent phases
 
 ## Summary
 
 All documentation and planning system complete. Phase 1 implementation
-complete (FOUND-001 through FOUND-007). Next step: Phase 2 — database
-foundation migrations (DB-001).
+complete (FOUND-001 through FOUND-010, CACHE-001, QUEUE-001, CORR-001,
+UI-001 through UI-006, SOFT-001, TABLE-001, FLAG-001 with Laravel Pennant).
+Next step: Phase 2 — database foundation migrations (DB-001).

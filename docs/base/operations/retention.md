@@ -14,6 +14,7 @@ Define retention separately for each data type. Do NOT apply one global retentio
 || Security logs | 90 days | Incident response, security investigation |
 || Server logs | Configured by infra team | Infrastructure monitoring |
 || Telescope data | 7 days | Technical debugging, auto-purge |
+|| Periscope data | 7 days (follows Telescope) | Companion UI reads Telescope data, no separate retention |
 || Sessions | Until expiration (`SESSION_LIFETIME`) | Automatic cleanup |
 || Revoked tokens | 30 days after revocation | Allow investigation window |
 || Password history | Configurable (`security.password_history.count`) | Prevent reuse (IM8 policy) |

@@ -11,6 +11,7 @@ Monitoring
 ├── Security Logs
 ├── Server Logs
 ├── Telescope
+├── Periscope (Telescope companion UI)
 └── System Health
 ```
 
@@ -47,12 +48,22 @@ Monitoring
 - Answers: **What happened at the infrastructure level?**
 - Retention: configured by infra team (separate policy)
 
-### Telescope (Purpose: Laravel technical debugging)
-- Laravel Telescope — technical debugging.
-- Intended for technical users only (developers, DevOps, technical admins).
-- NOT a replacement for Audit Trail or Application Logs.
-- Do not merge Telescope with Audit Trail concerns.
-- Retention: 7 days (auto-purge)
+## Telescope (Purpose: Laravel technical debugging)
+ - Laravel Telescope — technical debugging.
+ - Intended for technical users only (developers, DevOps, SRE, technical admins).
+ - NOT a replacement for Audit Trail or Application Logs.
+ - Do not merge Telescope with Audit Trail concerns.
+ - Retention: 7 days (auto-purge)
+
+## Periscope (Purpose: Telescope companion UI)
+ - Browsing, filtering, and searching Telescope's existing data (requests,
+   exceptions, queries, jobs, mail, notifications, cache, events, logs).
+ - Does NOT replace Telescope — reads the same `telescope_entries` data.
+ - Accessible at `/periscope`.
+ - Inherits Telescope's authorization via `Telescope::check($request)`.
+ - No separate auth, gate, role, or migration — reads Telescope's tables.
+ - Excludes its own requests from Telescope watchers to avoid noise.
+ - Retention: follows Telescope's 7-day auto-purge.
 
 ### System Health (Purpose: Operational status)
 - Application health check endpoints.
@@ -63,14 +74,14 @@ Monitoring
 
 ## Important Separation
 
-- Audit Trail ≠ Telescope
+- Telescope is the data collector and primary debugging dashboard.
+- Periscope is a companion UI that reads Telescope's existing data.
 - Audit Trail is for non-technical operational/security users.
-- Telescope/technical monitoring is for technical users.
 - Security Logs are distinct from Application Logs — security events must
   be queryable independently for incident response.
 - Application Logs are distinct from Server Logs — application-level events
   must be separable from infrastructure-level events.
-- Do not merge these concerns.
+- Telescope and Periscope must not be merged with Audit Trail concerns.
 
 ## Correlation ID
 
@@ -89,3 +100,4 @@ propagation strategy.
 
 - ADR-008: Audit Trail vs Telescope separation
 - ADR-013: Application Logging Strategy
+- DEP-004: Telescope for Technical Observability (Telescope + Periscope)

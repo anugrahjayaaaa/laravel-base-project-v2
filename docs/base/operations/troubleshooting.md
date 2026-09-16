@@ -94,6 +94,9 @@
 || Tool | Purpose |
 ||------|---------|
 || `php artisan telescope` | (if installed) Laravel runtime inspection (technical debug) |
+|| `php artisan telescope:install` | Publish Telescope migrations + config |
+|| `php artisan migrate` | Run Telescope + Periscope migrations (Telescope data tables) |
+|| `php artisan route:list --path=periscope` | Verify Periscope companion UI routes |
 || `php artisan tinker` | Interactive debugging |
 || `php artisan log:clear` | Clear log files |
 || `php artisan config:clear` | Clear config cache |

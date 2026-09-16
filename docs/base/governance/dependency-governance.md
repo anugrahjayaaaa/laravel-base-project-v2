@@ -80,6 +80,8 @@ an application-level abstraction:
 | `spatie/laravel-permission` | Native Gate/Policy + User model traits | Authorization resolved through Laravel's native Gate |
 | `spatie/laravel-activitylog` | `Audit` service class | Audit policy, transaction boundaries, metadata enrichment |
 | `laravel/telescope` | None (technical tool only) | Application code never calls Telescope directly |
+| `laravel/pennant` | None (Feature facade is the API) | Lightweight feature flag layer for runtime feature availability |
+| `seanbarton/laravel-periscope` | None (technical tool only) | Companion UI for Telescope; application code never calls Periscope directly |
 | `dedoc/scramble` | None (dev-only) | Documentation generation, not runtime |
 | `spatie/laravel-backup` | None (scheduled jobs) | Infrastructure concern, scheduled via Kernel |
 
