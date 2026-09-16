@@ -27,7 +27,8 @@ installed and verified against `composer.lock`.
 || API Auth | Sanctum | `laravel/sanctum` | Required | P0 | Through Auth layer |
 || RBAC | Spatie Permission | `spatie/laravel-permission` | Required | P0 | Through Authorization layer |
 || Audit Trail | Spatie Activitylog | `spatie/laravel-activitylog` | Required | P0 | Prefer Audit abstraction |
-|| Technical Observability | Telescope | `laravel/telescope` | Required | P1 | Restricted (technical users) |
+|| Technical Observability | Telescope + Periscope | `laravel/telescope` + `seanbarton/laravel-periscope` | Required | P1 | Restricted (technical users) |
+|| Feature Flags | Laravel Pennant | `laravel/pennant` | Required | P1 | Through Feature facade |
 || API Documentation | Scramble | `dedoc/scramble` | Planned | P1 | Documentation only |
 || Queue (default backend) | Laravel Queue | Native | Core | P0 | Through Queue facade |
 || Cache (default backend) | Laravel Cache | Native | Core | P0 | Through Cache facade |
@@ -42,6 +43,8 @@ installed and verified against `composer.lock`.
 - [Spatie Laravel Permission](#spatie-laravel-permission)
 - [Spatie Laravel Activitylog](#spatie-laravel-activitylog)
 - [Laravel Telescope](#laravel-telescope)
+- [Laravel Periscope (Telescope Companion)](#laravel-periscope-telescope-companion)
+- [Laravel Pennant](#laravel-pennant)
 - [API Documentation](#api-documentation)
 - [Redis Compatibility](#redis-compatibility)
 - [Optional Backup Package](#optional-backup-package)
@@ -562,6 +565,88 @@ the application does not call Telescope.
 
 ---
 
+## Laravel Periscope (Telescope Companion)
+
+||| Field | Value |
+|||-------|-------|
+||| Composer package | `seanbarton/laravel-periscope` |
+||| Status | Required (companion to Telescope) |
+||| Priority | P1 |
+||| Architecture area | Monitoring / Observability |
+||| Package constraint | `^0.3` (Laravel 13 compatible) |
+
+### Purpose
+
+Periscope is a **companion UI** for browsing, filtering, and searching
+Telescope's existing data (requests, exceptions, queries, jobs, mail,
+notifications, cache, events, logs). It does NOT replace Telescope — it
+augments it with a streamlined interface for technical debugging.
+
+- Telescope remains the data collector and primary dashboard (`/telescope`).
+- Periscope provides an additional dashboard (`/periscope`) that reads the
+  same `telescope_entries` table.
+- Periscope inherits Telescope's authorization via `Telescope::check($request)`.
+- No separate auth, gate, role, policy, or migration.
+- Periscope excludes its own requests from Telescope watchers and auto-disables
+  debugbar on dashboard routes (default package behavior).
+
+### How It Integrates
+
+- Installed via Composer alongside Telescope.
+- Routes auto-registered at `/periscope` (configurable via `PERISCOPE_PATH`).
+- Authorization middleware calls `Telescope::check($request)` — identical
+  mechanism to Telescope's `/telescope` route.
+- Reads Telescope's `telescope_entries` and `telescope_entries_tags` tables —
+  no new database tables or migrations.
+- `PERISCOPE_ENABLED=false` to disable in production or when Telescope is off.
+
+### Architecture
+
+- Telescope = data collector + primary debugging dashboard.
+- Periscope = companion UI for browsing/filtering/searching that data.
+- Both are technical tools for technical users only.
+- Neither replaces the Audit Trail (business/security accountability).
+- This separation is codified in DEP-004 (Telescope) and `observability.md`.
+
+### Security Considerations
+
+- Periscope access is gated by the same Telescope authorization mechanism.
+- Periscope reads Telescope's data — no additional data exposure beyond what
+  Telescope already provides.
+- Disable Periscope in production if Telescope is disabled (set
+  `PERISCOPE_ENABLED=false`).
+
+---
+
+## Laravel Pennant
+
+||| Field | Value |
+|||-------|-------|
+||| Composer package | `laravel/pennant` |
+||| Status | Required |
+||| Priority | P1 |
+||| Architecture area | Feature Availability (`FLAG-001`) |
+||| Package constraint | `^1.26` (Laravel 13 compatible) |
+
+### Purpose
+
+Lightweight feature flag layer for enabling/disabling features at runtime
+without code deployment. Follows the feature availability architecture
+documented in `docs/base/features/feature-flags.md`.
+
+### How It Integrates
+
+- Installed as a Phase 1 foundation (`FLAG-001`).
+- Storage via `PENNANT_STORE` env var (default: `database`).
+- `features` table migration published and migrated.
+- `@feature` / `@featureany` Blade directives available.
+- No business-specific flags created in Phase 1 — added by future feature
+  phases when a feature requires one.
+- Feature availability is separate from authorization (documented in
+  `feature-flags.md`).
+
+---
+
 ## API Documentation
 
 || Field | Value |
@@ -871,7 +956,8 @@ Notifications).
 || Database transactions | `DB::transaction()` / `DB::beginTransaction()` | Native |
 || Request/correlation IDs | Custom middleware (`CORR-001`) | Simple request-ID generation; package is overkill |
 || Custom authorization policies | `Illuminate\Auth\Access\Policy` | Native policies + Gates |
-||| Feature availability rules | Laravel Pennant (`config/pennant.php`) | Lightweight feature flag layer, not a heavy package |
+||| Feature availability rules | Laravel native Gate + config | Lightweight feature flag layer, not a heavy package |
+||| Feature flag storage | Laravel native cache/database | Use framework primitives over package abstractions |
 ||| AdminLTE UI template | Vendored release ZIP → `public/vendor/adminlte/` | NOT via npm — see ADR-019 and `docs/base/ui/ui-adminlte-setup.md` |
 
 ### Guiding Principle

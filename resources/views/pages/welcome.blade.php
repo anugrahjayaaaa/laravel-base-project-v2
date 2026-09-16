@@ -1,4 +1,4 @@
-@extends('layouts.adminlte')
+@extends('layouts.app', ['title' => 'Welcome'])
 
 @section('content')
 <div class="container-fluid py-4">

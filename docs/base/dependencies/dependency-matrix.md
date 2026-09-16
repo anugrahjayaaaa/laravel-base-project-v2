@@ -12,7 +12,8 @@
 | API Auth | Sanctum | `laravel/sanctum` | Required | P0 | Through Auth abstraction |
 | RBAC | Spatie Permission | `spatie/laravel-permission` | Required | P0 | Through Gate/Policy layer |
 | Audit Trail | Spatie Activitylog | `spatie/laravel-activitylog` | Required | P0 | Through Audit abstraction |
-| Technical Observability | Telescope | `laravel/telescope` | Required | P1 | Restricted (technical users only) |
+| Technical Observability | Telescope + Periscope | `laravel/telescope` + `seanbarton/laravel-periscope` | Required | P1 | Restricted (technical users only) |
+| Feature Flags | Laravel Pennant | `laravel/pennant` | Required | P1 | Through Feature facade |
 | API Documentation | Scramble | `dedoc/scramble` | Planned | P1 | Dev-only, documentation generation |
 | Queue (default) | Laravel Queue | Native | Core | P0 | Through Queue facade |
 | Cache (default) | Laravel Cache | Native | Core | P0 | Through Cache facade |
@@ -40,7 +41,9 @@
 | `laravel/sanctum` | `^4.0` | Laravel 13 compatible |
 | `spatie/laravel-permission` | `^6.0` | Laravel 13 + PHP 8.3 compatible |
 | `spatie/laravel-activitylog` | `^4.8` | Laravel 13 + PHP 8.3 compatible (**not v5**, requires PHP 8.4+) |
-| `laravel/telescope` | `^5.0` | Laravel 13 compatible |
+| `laravel/telescope` | `^5.0` | Laravel 13 compatible | 
+|| `seanbarton/laravel-periscope` | `^0.3` | Telescope companion UI (Laravel 13 compatible) |
+|| `laravel/pennant` | `^1.26` | Laravel 13 compatible (feature flags) |
 || `dedoc/scramble` | `^0.13` | Laravel 13 compatible (latest stable; ^2.0 not yet released) |
 | `spatie/laravel-backup` | `^10.0` | Laravel 13 compatible |
 | AdminLTE | v4.x (release ZIP) | Vendored to `public/vendor/adminlte/`; NOT in `package.json`; NOT via npm |
@@ -53,7 +56,7 @@
 | Auth foundation | Sanctum (package) + native Auth |
 | RBAC | Spatie Permission (package) + native Gate/Policy |
 | Audit Trail | Spatie Activitylog (package) + Audit abstraction |
-| Monitoring | Telescope (package) + native logging |
+| Monitoring | Telescope + Periscope (package) + native logging |
 | API Docs | Scramble (package) |
 | Queue | Native Laravel Queue (database default, Redis optional) |
 | Cache | Native Laravel Cache (file default, Redis optional) |

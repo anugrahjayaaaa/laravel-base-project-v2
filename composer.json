@@ -8,8 +8,10 @@
     "require": {
         "php": "^8.3",
         "laravel/framework": "^13.17",
+        "laravel/pennant": "^1.26",
         "laravel/sanctum": "^4.0",
         "laravel/tinker": "^3.0",
+        "seanbarton/laravel-periscope": "^0.3.1",
         "spatie/laravel-activitylog": "^4.8",
         "spatie/laravel-permission": "^6.0"
     },

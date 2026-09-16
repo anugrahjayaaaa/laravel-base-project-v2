@@ -68,10 +68,11 @@ The AdminLTE UI layer provides a shared application shell that must NOT be
 duplicated per feature. The shell consists of:
 
 **Header:**
-- Application/feature search
-- Notification icon
-- User/profile dropdown (profile details, logout)
-- Dark/light theme toggle (defaults to system preference, manual override)
+|- Sidebar toggle
+|- Application/feature search
+|- Notification icon
+|- Dark/light theme toggle (defaults to system preference, manual override)
+|- User/profile dropdown (profile details, logout)
 
 **Sidebar:**
 - Application logo/icon linking to dashboard
@@ -169,5 +170,17 @@ the UI can be re-skinned without changing component structure.
 ## Related
 
 - [Design System](./design-system.md)
+- [Style Guide](./style-guide.md) — visual direction, spacing, typography, dark/light theme
 - [UI Authorization Rule](./ui-authorization.md)
 - [Application Components](../architecture/application-components.md)
+
+### Partial Naming Convention
+
+Shared layout partials use clean, idiomatic names without the `app-` prefix to
+avoid Blade dot-path collisions (`.sidebar` is interpreted as a directory path).
+Partials live in `resources/views/layouts/partials/`:
+
+- `header` — `.app-header.navbar`
+- `sidebar` — `.app-sidebar`
+- `footer` — `.app-footer`
+- `modals/confirmation` — reusable confirmation modal

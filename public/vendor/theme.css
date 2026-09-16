@@ -1,0 +1,441 @@
+/*! Laravel Base Project v2 — Theme layer over AdminLTE/Bootstrap.
+   Adapted from v1 visual reference. V2 is its own implementation;
+   v1 is a style guide only. */
+
+:root {
+  --lbp-bg: #f5f6f8;
+  --lbp-surface: #ffffff;
+  --lbp-surface-2: #f0f2f5;
+  --lbp-border: #e3e6ea;
+  --lbp-text: #1f2430;
+  --lbp-muted: #6b7280;
+  --lbp-primary: #6366f1;
+  --lbp-primary-ink: #ffffff;
+  --lbp-success: #22c59e;
+  --lbp-info: #3b82f6;
+  --lbp-danger: #ef4444;
+  --lbp-warning: #f59e0b;
+  --lbp-radius: 12px;
+  --lbp-radius-sm: 8px;
+  --lbp-shadow: 0 1px 2px rgba(0,0,0,.04), 0 4px 16px rgba(0,0,0,.05);
+  --lbp-font: "Instrument Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+[data-bs-theme="dark"] {
+  --lbp-bg: #0f1115;
+  --lbp-surface: #171a21;
+  --lbp-surface-2: #1e222b;
+  --lbp-border: #272b36;
+  --lbp-text: #e5e7eb;
+  --lbp-muted: #9ca3af;
+}
+
+body {
+  font-family: var(--lbp-font);
+  background: var(--lbp-bg);
+  color: var(--lbp-text);
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+/* App chrome — shared height variable so header and sidebar-brand align */
+:root {
+  --lbp-app-chrome-height: 3.5rem;
+}
+
+/* App header */
+.app-header.navbar {
+  background: var(--lbp-surface) !important;
+  border-bottom: 1px solid var(--lbp-border);
+  min-height: var(--lbp-app-chrome-height);
+  height: var(--lbp-app-chrome-height);
+}
+
+.app-header .container-fluid {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: .75rem;
+}
+
+/* Neutralize AdminLTE's fixed nav-link height so header content aligns */
+.app-header .nav-link {
+  height: auto;
+  display: flex;
+  align-items: center;
+  padding: .5rem .75rem;
+}
+
+/* Header icon spacing — consistent gap between controls */
+.app-header .nav-link.text-secondary,
+.app-header .dropdown > a.nav-link.text-secondary,
+.app-header button.nav-link.text-secondary {
+  color: var(--lbp-muted) !important;
+  padding: .5rem .6rem;
+  border-radius: 9999px;
+}
+
+/* No extra margin-left — container-fluid gap handles spacing */
+.app-header .nav-link.text-secondary,
+.app-header .dropdown > a.nav-link.text-secondary,
+.app-header button.nav-link.text-secondary {
+  margin-left: 0;
+}
+
+/* Theme toggle button — circular icon, same padding as other header icons */
+#theme-toggle {
+  border-radius: 9999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#theme-toggle:hover {
+  background: var(--lbp-surface-2);
+  color: var(--lbp-text);
+}
+
+/* Sidebar toggle icon — flip 180deg when collapsed (chevron-left → chevron-right) */
+body.sidebar-collapse #sidebar-toggle-icon {
+  transform: rotate(180deg);
+  transition: transform .2s ease;
+}
+
+/* App sidebar — smooth transition for collapse/expand prevents abrupt
+   width jump. AdminLTE JS toggles body.sidebar-collapse class;
+   this transitions min-width/max-width for fluid animation. */
+.app-sidebar {
+  background: var(--lbp-surface) !important;
+  border-right: 1px solid var(--lbp-border);
+  transition: min-width .3s ease, max-width .3s ease;
+}
+
+/* Sidebar brand area — match height to header */
+.app-sidebar .sidebar-brand {
+  border-bottom: 1px solid var(--lbp-border);
+  height: var(--lbp-app-chrome-height);
+  padding: .8125rem .5rem;
+}
+
+.app-sidebar .sidebar-brand .brand-text {
+  color: var(--lbp-text);
+}
+
+/* Sidebar navigation links — use AdminLTE native border-radius (.375rem)
+   and hover/active CSS variables. Add horizontal margin for breathing room
+   so hover bg doesn't touch sidebar edges. */
+.app-sidebar .sidebar-menu .nav-item {
+  margin: 0 8px .125rem;
+}
+
+.app-sidebar .sidebar-menu .nav-link {
+  color: var(--lbp-muted);
+  padding: .45rem .75rem;
+  display: flex;
+  align-items: center;
+  transition: color .15s ease;
+}
+
+/* Hover: subtle — AdminLTE native rgba(255,255,255,.1) via --lte-sidebar-hover-bg */
+.app-sidebar .sidebar-menu .nav-link:hover {
+  color: var(--lbp-text);
+}
+
+/* Active: slightly more prominent than hover via color + font-weight
+   (bg is same subtle 10% opacity as hover — avoids card-like appearance) */
+.app-sidebar .sidebar-menu .nav-link.active,
+.app-sidebar .sidebar-menu .nav-link.show > .nav-link {
+  color: var(--lbp-primary) !important;
+  font-weight: 600;
+}
+
+/* Collapsed sidebar — body.sidebar-collapse (AdminLTE state).
+   Icons centered, text hidden, compact spacing. Brand icon sized
+   to match nav icons for visual balance. */
+body.sidebar-collapse .app-sidebar:not(:hover) .sidebar-brand {
+  justify-content: center;
+  padding: 0;
+  height: auto;
+  min-height: 3.1rem;
+}
+
+body.sidebar-collapse .app-sidebar:not(:hover) .sidebar-brand .brand-link {
+  justify-content: center;
+  width: 100%;
+}
+
+body.sidebar-collapse .app-sidebar:not(:hover) .sidebar-brand .brand-text,
+body.sidebar-collapse .app-sidebar:not(:hover) .sidebar-menu .nav-link p {
+  display: none !important;
+}
+
+/* Brand icon sized to match nav icons in collapsed mode */
+body.sidebar-collapse .app-sidebar:not(:hover) .sidebar-brand i {
+  font-size: .875rem !important;
+  width: 14px !important;
+  height: 14px !important;
+  margin: 0 !important;
+}
+
+/* Collapsed nav-links: full width, centered, no horizontal margin inset
+   (margin: 0 overrides expanded .nav-item margin) */
+body.sidebar-collapse .app-sidebar:not(:hover) .sidebar-menu .nav-item {
+  margin: 0 0 .125rem !important;
+}
+
+body.sidebar-collapse .app-sidebar:not(:hover) .sidebar-menu .nav-link {
+  width: 100% !important;
+  max-width: 100% !important;
+  padding: .35rem 0;
+  justify-content: center;
+}
+
+body.sidebar-collapse .app-sidebar:not(:hover) .sidebar-menu .nav-link i,
+body.sidebar-collapse .app-sidebar:not(:hover) .sidebar-brand i {
+  margin-right: 0 !important;
+  margin-left: 0 !important;
+}
+
+.app-sidebar .nav-header {
+  color: var(--lbp-muted);
+  font-size: .65rem;
+  letter-spacing: .08em;
+  padding: .75rem .5rem .2rem;
+  text-transform: uppercase;
+  opacity: .8;
+}
+
+/* Sidebar body scroll area */
+.app-sidebar .sidebar-wrapper {
+  padding: .75rem 0;
+}
+
+/* Main content */
+.app-main {
+  background: var(--lbp-bg);
+  min-height: calc(100vh - var(--lbp-app-chrome-height));
+}
+
+.app-content {
+  min-height: calc(100vh - calc(var(--lbp-app-chrome-height) * 2));
+}
+
+/* Footer */
+.app-footer {
+  background: var(--lbp-surface);
+  border-top: 1px solid var(--lbp-border);
+  height: var(--lbp-app-chrome-height);
+  font-size: .8rem;
+}
+
+/* Content header (page title + description) */
+.content-header {
+  display: flex;
+  flex-direction: column;
+  gap: .25rem;
+}
+
+.content-header .page-title {
+  font-weight: 600;
+  font-size: 1.35rem;
+  margin: 0;
+}
+
+.content-header .page-description {
+  color: var(--lbp-muted);
+  font-size: .85rem;
+}
+
+/* Header search — modern compact pill, consistent with icon control height.
+   Per §10: placed in app-header .feature-search, grouped with sidebar toggle. */
+.app-header .feature-search {
+  width: 16rem;
+  max-width: 100%;
+}
+
+.app-header .feature-search .input-group {
+  border-radius: 9999px;
+  overflow: hidden;
+  border: 1px solid var(--lbp-border);
+  background: var(--lbp-surface-2);
+  transition: border-color .15s ease, background-color .15s ease;
+  height: 36px;
+}
+
+.app-header .feature-search .input-group-text {
+  background: var(--lbp-surface-2);
+  border: none;
+  color: var(--lbp-muted);
+  padding: .35rem .65rem;
+}
+
+.app-header .feature-search .form-control {
+  border: none;
+  outline: 0;
+  box-shadow: none;
+  background: transparent;
+  padding: .35rem .5rem;
+  font-size: .85rem;
+}
+
+.app-header .feature-search:focus-within .input-group {
+  background: var(--lbp-surface);
+  border-color: var(--lbp-primary);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--lbp-primary) 25%, transparent);
+}
+
+/* Cards */
+.card {
+  background: var(--lbp-surface);
+  border: 1px solid var(--lbp-border);
+  border-radius: var(--lbp-radius);
+  box-shadow: var(--lbp-shadow);
+}
+
+.card.shadow-sm {
+  box-shadow: var(--lbp-shadow);
+}
+
+/* Tables */
+.table {
+  color: var(--lbp-text);
+}
+
+.table > :not(caption) > * > * {
+  border-color: var(--lbp-border);
+  padding: .65rem 1rem;
+}
+
+.table thead th {
+  font-size: .7rem;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  color: var(--lbp-muted);
+  font-weight: 600;
+  border-bottom: 1px solid var(--lbp-border);
+}
+
+.table-hover > tbody > tr:hover > * {
+  background: var(--lbp-surface-2);
+}
+
+/* Buttons */
+.btn {
+  border-radius: var(--lbp-radius-sm);
+  font-weight: 500;
+}
+
+.btn-primary {
+  background: var(--lbp-primary);
+  border-color: var(--lbp-primary);
+  color: var(--lbp-primary-ink);
+}
+
+.btn-primary:hover {
+  background: color-mix(in srgb, var(--lbp-primary) 88%, #000);
+}
+
+.btn-outline-secondary {
+  color: var(--lbp-muted);
+  border-color: var(--lbp-border);
+}
+
+.btn-outline-secondary:hover {
+  background: var(--lbp-surface-2);
+  color: var(--lbp-text);
+}
+
+/* Badges (soft semantic) */
+.bg-primary-subtle {
+  background: color-mix(in srgb, var(--lbp-primary) 18%, transparent) !important;
+  color: var(--lbp-primary) !important;
+}
+
+.bg-success-subtle {
+  background: color-mix(in srgb, var(--lbp-success) 16%, transparent) !important;
+  color: var(--lbp-success) !important;
+}
+
+.bg-danger-subtle {
+  background: color-mix(in srgb, var(--lbp-danger) 16%, transparent) !important;
+  color: var(--lbp-danger) !important;
+}
+
+.bg-secondary-subtle {
+  background: var(--lbp-surface-2) !important;
+  color: var(--lbp-muted) !important;
+}
+
+.bg-warning-subtle {
+  background: color-mix(in srgb, var(--lbp-warning) 16%, transparent) !important;
+  color: var(--lbp-warning) !important;
+}
+
+.bg-info-subtle {
+  background: color-mix(in srgb, var(--lbp-info) 16%, transparent) !important;
+  color: var(--lbp-info) !important;
+}
+
+/* State components — consistent minimum height per style-guide.md §135 */
+.ui-state-wrapper {
+  min-height: 200px;
+}
+
+/* Modals */
+.modal-content {
+  background: var(--lbp-surface);
+  border: 1px solid var(--lbp-border);
+  border-radius: var(--lbp-radius);
+}
+
+.modal-header.bg-danger {
+  background: color-mix(in srgb, var(--lbp-danger) 12%, transparent) !important;
+}
+
+.modal-header.bg-warning {
+  background: color-mix(in srgb, var(--lbp-warning) 12%, transparent) !important;
+}
+
+.modal-header.bg-info {
+  background: color-mix(in srgb, var(--lbp-primary) 12%, transparent) !important;
+}
+
+/* Dropdowns */
+.dropdown-menu {
+  background: var(--lbp-surface);
+  border: 1px solid var(--lbp-border);
+  border-radius: var(--lbp-radius-sm);
+  box-shadow: var(--lbp-shadow);
+  color: var(--lbp-text);
+}
+
+.dropdown-item {
+  color: var(--lbp-text);
+}
+
+.dropdown-item:hover {
+  background: var(--lbp-surface-2);
+  color: var(--lbp-text);
+}
+
+.dropdown-header {
+  color: var(--lbp-muted);
+}
+
+/* Focus ring (a11y) */
+.btn:focus-visible,
+a:focus-visible,
+input:focus-visible,
+.nav-link:focus-visible {
+  outline: 2px solid var(--lbp-primary);
+  outline-offset: 2px;
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+    animation: none !important;
+  }
+}

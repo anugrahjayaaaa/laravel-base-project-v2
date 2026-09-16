@@ -42,7 +42,7 @@
 || Rate limiting | Per-endpoint limits | 5 | P0 | [rate-limiting.md](../base/security/rate-limiting.md) |
 || API v1 | Versioned API | 12 | P0 | [api-architecture.md](../base/api/api-architecture.md) |
 || API documentation | Scramble docs | 12 | P1 | [documentation.md](../base/api/documentation.md) |
-|| Monitoring | Audit/Logs/Telescope/Health | 11 | P1 | [monitoring.md](../base/features/monitoring.md) |
+|| Monitoring | Audit/Logs/Periscope/Telescope/Health | 11 | P1 | [monitoring.md](../base/features/monitoring.md) |
 || Backup/DR | Backup & restore | 14 | P1 | [backup-disaster-recovery.md](../base/infrastructure/backup-disaster-recovery.md) |
 || Storage abstraction | Private/public/tmp storage | 14 | P1 | [storage.md](../base/infrastructure/storage.md) |
 || Data retention | Configurable retention | 14 | P1 | [retention.md](../base/operations/retention.md) |

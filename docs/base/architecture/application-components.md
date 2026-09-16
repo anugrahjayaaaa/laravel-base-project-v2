@@ -132,7 +132,7 @@ operation that does not need decoupled side effects may skip the Event.
 | Authorization decision | Policy / authorization layer |
 | API serialization | Resource / response layer |
 | Asynchronous work | Job |
-| Technical observability | Logging / Telescope / monitoring infrastructure |
+|| Technical observability | Logging / Telescope / Periscope / monitoring infrastructure |
 
 ### Key Implications
 

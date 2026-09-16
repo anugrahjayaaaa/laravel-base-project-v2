@@ -5,7 +5,7 @@
 | Phase | Title | Priority | Status |
 |-------|-------|----------|--------|
 | 0 | Architecture & project conventions | P0 | PLANNED |
-| 1 | Laravel foundation & environment | P0 | PLANNED |
+| 1 | Laravel foundation & environment | P0 | DONE |
 | 2 | Database foundation | P0 | PLANNED |
 | 3 | Authentication foundation | P0 | PLANNED |
 | 4 | User lifecycle & user management | P1 | PLANNED |
@@ -67,10 +67,10 @@ Testing / Hardening (Phases 13-17)
 - Config files (`config/`)
 - Queue (database), cache (file) — Redis optional
 - Correlation/request ID middleware
-- Packages installed: Sanctum, Spatie Permission, Activitylog, Telescope
+- Packages installed: Sanctum, Spatie Permission, Activitylog, Telescope, Laravel Pennant (feature flags)
   (see [dependency overview](../base/dependencies/overview.md))
 - AdminLTE initial UI setup (UI-001: vendor from release ZIP, wire Blade layout, UI-independent)
-- Status: PLANNED → READY
+- Status: DONE
 
 ### Phase 2: Database Foundation
 - Base migrations
