@@ -6,8 +6,8 @@
 |-------|-------|----------|--------|
 | 0 | Architecture & project conventions | P0 | PLANNED |
 | 1 | Laravel foundation & environment | P0 | DONE |
-| 2 | Database foundation | P0 | PLANNED |
-| 3 | Authentication foundation | P0 | PLANNED |
+|| 2 | Database foundation | P0 | DONE |
+|| 3 | Authentication foundation | P0 | IN PROGRESS |
 | 4 | User lifecycle & user management | P1 | PLANNED |
 | 5 | Password/security lifecycle | P0 | PLANNED |
 | 6 | RBAC & authorization | P0 | PLANNED |
@@ -73,20 +73,28 @@ Testing / Hardening (Phases 13-17)
 - Status: DONE
 
 ### Phase 2: Database Foundation
-- Base migrations
-- Seed data (roles: superadmin, admin, user)
-- Database constraints
-- Status: PLANNED
+|- Base migrations (existing Laravel defaults + Spatie + Sanctum + Telescope + Pennant)
+|- Seed data: RoleSeeder (superadmin, admin, user) wired into DatabaseSeeder
+|- Database constraints: users table has is_active, is_locked, must_change_password,
+  password_expires_at, last_activity_at, soft-deletes
+|- Status: DONE
 
 ### Phase 3: Authentication Foundation
-- Sanctum setup
-- Login (username/email)
-- Email verification
-- Forgot/reset password
-- Session management
-- Rate limiting (login endpoint)
-- Failed login tracking
-- Status: PLANNED
+|- Sanctum API token driver (AUTH-002): already configured in config/auth.php
+|- Login (AUTH-004/AUTH-005): FormRequest + AuthController (authenticate, check
+  account state, issue Sanctum token, update last_activity_at)
+|- Email verification (AUTH-011): enable MustVerifyEmail on User, routes + controller
+|- Forgot/reset password (AUTH-012/AUTH-013): Laravel password broker routes + controllers
+|- Session management (AUTH-006/AUTH-009/AUTH-010): token issuance + revocation
+  (current device + all devices)
+|- Failed login tracking (AUTH-007): needs failed_login_attempts table migration
+  + increment/lockout logic
+|- Temporary lock (AUTH-008): 5 failed attempts → 15 min lock (configurable)
+|- Rate limiting (login endpoint): throttle middleware
+|- Status: IN PROGRESS
+|
+**Frontend (AdminLTE):** Login, register, forgot-password, reset-password,
+email-verification-notice, password-change pages using AdminLTE auth layout.
 
 ### Phase 4: User Lifecycle & Management
 - User CRUD
