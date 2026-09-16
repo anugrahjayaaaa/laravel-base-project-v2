@@ -12,6 +12,7 @@
   --lbp-primary: #6366f1;
   --lbp-primary-ink: #ffffff;
   --lbp-success: #22c59e;
+  --lbp-info: #3b82f6;
   --lbp-danger: #ef4444;
   --lbp-warning: #f59e0b;
   --lbp-radius: 12px;
@@ -364,6 +365,21 @@ body.sidebar-collapse .app-sidebar:not(:hover) .sidebar-brand i {
 .bg-secondary-subtle {
   background: var(--lbp-surface-2) !important;
   color: var(--lbp-muted) !important;
+}
+
+.bg-warning-subtle {
+  background: color-mix(in srgb, var(--lbp-warning) 16%, transparent) !important;
+  color: var(--lbp-warning) !important;
+}
+
+.bg-info-subtle {
+  background: color-mix(in srgb, var(--lbp-info) 16%, transparent) !important;
+  color: var(--lbp-info) !important;
+}
+
+/* State components — consistent minimum height per style-guide.md §135 */
+.ui-state-wrapper {
+  min-height: 200px;
 }
 
 /* Modals */

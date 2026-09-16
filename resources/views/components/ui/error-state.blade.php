@@ -3,7 +3,7 @@
     'details' => null,
 ])
 
-<div class="alert alert-danger" role="alert">
+<div class="ui-state-wrapper alert alert-danger" role="alert">
     <i class="fas fa-exclamation-triangle me-2"></i>
     <strong>{{ $message }}</strong>
     @if($details)

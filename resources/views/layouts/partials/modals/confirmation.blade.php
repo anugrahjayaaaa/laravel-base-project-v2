@@ -63,11 +63,11 @@
             title.textContent = titleText;
             message.textContent = msgText;
 
-            // Variant styling
+            // Variant styling — theme.css color-mix rules target bg-danger/bg-warning/bg-info
             header.className = 'modal-header ' +
-                (variant === 'warning' ? 'bg-warning bg-opacity-10 border-warning' :
-                 variant === 'info' ? 'bg-info bg-opacity-10 border-info' :
-                 'bg-danger bg-opacity-10 border-danger');
+                (variant === 'warning' ? 'bg-warning' :
+                 variant === 'info' ? 'bg-info' :
+                 'bg-danger');
 
             var btnClass = variant === 'warning' ? 'btn-warning' :
                           variant === 'info' ? 'btn-info' : 'btn-danger';

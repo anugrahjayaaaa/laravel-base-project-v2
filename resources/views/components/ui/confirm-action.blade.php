@@ -7,6 +7,7 @@
     'message' => 'Are you sure?',
     'cancelLabel' => 'Cancel',
     'confirmLabel' => null,
+    'class' => 'dropdown-item',
 ])
 
 @php($confirmLabel = $confirmLabel ?? $label)
@@ -21,6 +22,6 @@
         data-title="{{ $title }}"
         data-message="{{ $message }}"
         data-label="{{ $confirmLabel }}"
-        class="dropdown-item">
+        class="{{ $class }}">
     {{ $slot }}
 </button>

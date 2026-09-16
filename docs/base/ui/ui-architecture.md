@@ -68,10 +68,11 @@ The AdminLTE UI layer provides a shared application shell that must NOT be
 duplicated per feature. The shell consists of:
 
 **Header:**
-- Application/feature search
-- Notification icon
-- User/profile dropdown (profile details, logout)
-- Dark/light theme toggle (defaults to system preference, manual override)
+|- Sidebar toggle
+|- Application/feature search
+|- Notification icon
+|- Dark/light theme toggle (defaults to system preference, manual override)
+|- User/profile dropdown (profile details, logout)
 
 **Sidebar:**
 - Application logo/icon linking to dashboard
