@@ -8,7 +8,7 @@
 |-------|-------|--------|
 | 0 | Architecture & project conventions | DONE |
 ||| 1 | Laravel foundation & environment | DONE |
-|| 2 | Database foundation | IN PROGRESS |
+|| 2 | Database foundation | DONE |
 | 3 | Authentication foundation | PLANNED |
 | 4 | User lifecycle & user management | PLANNED |
 | 5 | Password/security lifecycle | PLANNED |
@@ -27,7 +27,11 @@
 
 ## Current Task
 
-DB-001 — Create base migration scaffold (Phase 2, IN_PROGRESS)
+DB-001 — Create base migration scaffold (Phase 2, DONE — migrations seeded)
+
+## Next Phase
+
+Phase 3 — Authentication foundation (AUTH-001: Define authentication requirements, PLANNED)
 
 ## Completed Tasks
 
@@ -73,6 +77,11 @@ API foundation, AdminLTE UI foundation, and feature flags:
   @feature/@featureany Blade directives available
 |- Laravel Periscope (MONITOR-001): companion UI for Telescope at /periscope,
   inherits Telescope authorization via Telescope::check(), 4 tests
+
+Phase 2 (DB-001, DB-002) — database foundation:
+
+- Base migration scaffold: Laravel defaults + Spatie permission tables (DB-001)
+- RoleSeeder created + wired into DatabaseSeeder (DB-002)
 
 Architecture gap-closing pass — added:
 
@@ -164,15 +173,16 @@ Not yet started (Phase 15).
 
 ## Next Steps
 
-1. ~~Begin Phase 1: Laravel foundation & environment~~ — Phase 1 complete
-  (FOUND-001 through FOUND-010, CACHE-001, QUEUE-001, CORR-001, UI-001
-  through UI-006, SOFT-001, TABLE-001, FLAG-001 with Laravel Pennant)
-2. Begin Phase 2: Database foundation (DB-001 base migration scaffold) — IN PROGRESS
-3. Implement authentication, user management, security, RBAC in subsequent phases
+1. ~~Begin Phase 1: Laravel foundation & environment~~ — Phase 1 complete & merged to main (commit f54d0c9)
+  (FOUND-001 through FOUND-010, CACHE-001, QUEUE-001, CORR-001,
+  UI-001 through UI-006, SOFT-001, TABLE-001, FLAG-001 with Laravel Pennant)
+2. ~~Begin Phase 2: Database foundation~~ — Phase 2 complete (DB-001 base migrations, DB-002 RoleSeeder wired)
+3. Begin Phase 3: Authentication foundation — IN PROGRESS
 
 ## Summary
 
 All documentation and planning system complete. Phase 1 implementation
 complete (FOUND-001 through FOUND-010, CACHE-001, QUEUE-001, CORR-001,
 UI-001 through UI-006, SOFT-001, TABLE-001, FLAG-001 with Laravel Pennant).
-Next step: Phase 2 — database foundation migrations (DB-001).
+Phase 1 merged to main (commit f54d0c9).
+Phase 2 complete (DB-001 + DB-002). Next step: Phase 3 — authentication foundation (AUTH-001).

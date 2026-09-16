@@ -139,7 +139,7 @@
   {"id": "CACHE-002", "task": "Implement cache tagging & invalidation", "phase": 1, "priority": "P1", "depends_on": ["CACHE-001"], "status": "PLANNED", "note": "Deferred: base project has no application-level cached data requiring grouped invalidation. Pattern documented in cache.md; implement when a feature introduces cacheable data needing cache::tags() invalidation."},
   {"id": "QUEUE-001", "task": "Configure queue (database + Redis compat)", "phase": 1, "priority": "P0", "depends_on": ["FOUND-003", "DB-001"], "status": "DONE", "verifies": "FOUND-003 config + DEP-006"},
   {"id": "DB-001", "task": "Create base migration scaffold", "phase": 2, "priority": "P0", "depends_on": ["FOUND-002"], "status": "DONE"},
-  {"id": "DB-002", "task": "Create seed data (roles, permissions)", "phase": 2, "priority": "P0", "depends_on": ["DB-001", "RBAC-001"], "status": "DONE"},
+  {"id": "DB-002", "task": "Create seed data (roles, permissions)", "phase": 2, "priority": "P0", "depends_on": ["DB-001"], "status": "DONE"},
   {"id": "API-001", "task": "Define API v1 routes", "phase": 12, "priority": "P0", "depends_on": ["SET-003", "AUDIT-004"], "status": "PLANNED"},
   {"id": "API-002", "task": "Implement API resources (v1)", "phase": 12, "priority": "P0", "depends_on": ["API-001"], "status": "PLANNED"},
   {"id": "API-003", "task": "Generate API documentation (Scramble)", "phase": 12, "priority": "P1", "depends_on": ["API-002"], "status": "PLANNED"},
