@@ -57,6 +57,7 @@ Account active (after verification + activation)
 
 - Prevent automated registration abuse via CAPTCHA (optional, in custom layer).
 - Validate email uniqueness at registration.
+- Validate username uniqueness at registration.
 - Log registration attempts (successful + failed).
 - Notify admin (optional, via settings) of new registrations.
 
