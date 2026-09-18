@@ -87,3 +87,34 @@ Standard query parameters:
 Always include:
 - `request_id` — correlation ID for tracing
 - `timestamp` — response time in ISO 8601
+
+## Simple Response Helper
+
+For responses that do not require field transformation, conditional inclusion, or
+relationship serialization, do **not** create a JSON Resource class. Use the base
+controller `respond()` helper instead:
+
+```php
+// app/Http/Controllers/Controller.php
+protected function respond(string $message, int $status = 200, array $data = []): JsonResponse
+{
+    return response()->json([
+        'data' => $data ?: ['message' => $message],
+        'meta' => [
+            'request_id' => app('request_id'),
+            'timestamp' => now()->toIso8601String(),
+        ],
+    ], $status);
+}
+```
+
+This produces the standard envelope without the boilerplate of a Resource class.
+Use a Resource class only when the response requires: field mapping, conditional
+inclusion, relationship loading, or pagination wrapper — i.e. when serialization
+logic is non-trivial and/or shared across multiple endpoints.
+
+AdminLTE UI consumes Blade/HTML via web routes (session-based), not API JSON. The
+consistent API envelope is for potential JS components inside AdminLTE that
+`fetch()` API endpoints directly, and for any external API consumer.
+
+## Pagination

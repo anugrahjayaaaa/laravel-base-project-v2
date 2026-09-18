@@ -29,18 +29,47 @@
 
 ### Action
 
-- One focused application operation.
-- Appropriate for a cohesive use case or mutation.
-- Do NOT create Actions merely to wrap a single trivial model call
-  (e.g., `$user->delete()`). Inline the call in the controller when the
-  operation is genuinely trivial.
+- One focused application operation with a single public method (`run()` or
+  `__invoke()`).
+- Naming: `VerbNoun` (e.g. `ChangePassword`, `SendResetLink`).
+- Extract into an Action when **either**:
+  - The operation is non-trivial (>~10 lines of logic beyond simple delegation),
+  - **OR** the logic is shared across ≥2 controllers.
+- Do NOT create an Action merely to wrap a single trivial model call
+  (e.g. `$user->delete()`). Inline trivial calls in the controller.
+- Actions that perform mutations log audit within the action itself (the action
+  has full context: causer, subject, properties). This keeps audit co-located with
+  the mutation.
 
 ### Service
 
-- Reusable application/domain workflow when multiple consumers or a
-  meaningful orchestration justify it.
-- Avoid "God Services".
-- Do NOT create a Service class solely because a Services folder exists.
+- Reusable application/domain workflow with meaningful orchestration across
+  multiple consumers, or an integration with an external service.
+- Naming: `NounService` (e.g. `HealthCheckService`, `AuditService`,
+  `EmailService`).
+- May hold configuration/state and coordinate multiple subsystems.
+- Do NOT create a Service class solely because a Services folder exists, or
+  because the operation could be a static method. A single-method Service with no
+  state is usually an Action or an inline call.
+- External service integrations (SMS gateway, payment provider, third-party
+  HTTP API) belong in Services, not Actions.
+
+### Action vs Service — Decision Rule
+
+| Question | If yes → | If no → |
+|----------|----------|---------|
+| Is this one focused operation with one entry point? | Action | Service (or inline) |
+| Is the logic non-trivial (>~10 lines) or shared across ≥2 callers? | Action | Inline in controller |
+| Does it integrate with an external service (HTTP API, gateway, provider)? | Service | Action or inline |
+| Does it hold state or coordinate multiple subsystems? | Service | Action |
+
+**Most auth operations in this project are Actions or inline in the controller:**
+- Login, logout, verify email, resend verification: inline in controller
+  (thin, use injected dependencies like `LoginThrottle`).
+- Password change: Action (`ChangePassword`) — non-trivial (history check,
+  revocation, audit) and potentially shared.
+- Health checks: Service (`HealthCheckService`) — multiple related checks,
+  cohesive domain object.
 
 ### Model
 

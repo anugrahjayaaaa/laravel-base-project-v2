@@ -73,7 +73,12 @@
 | UI-006 | UI foundation cleanup & style refinement (partials rename, theme fix, i18n removal, style guide) | 1 | P1 | UI-001,UI-002,UI-003,UI-004,UI-005 | DONE |
 | SOFT-001 | Soft delete / trash / permanent delete convention | 1 | P1 | FOUND-002 | DONE |
 | TABLE-001 | Shared table conventions (sortable, filterable, bulk actions, pagination) | 1 | P2 | UI-003 | DONE |
-| FLAG-001 | Feature flag package foundation | 1 | P1 | FOUND-003 | DONE |
+|| FLAG-001 | Feature flag package foundation | 1 | P1 | FOUND-003 | DONE |
+
+**Audit pattern (cross-phase convention):** All mutations log audit at the mutation
+site — Action self-logs when logic is complex/shared; Controller logs directly
+(using `$this->audit()` helper on base Controller) for thin operations. No model
+observers for audit. See `docs/base/architecture/application-components.md` §Action/Service.
 
 *(Task list truncated for phases 2-17. See full list in the JSON version below.)*
 
@@ -89,14 +94,14 @@
   {"id": "AUTH-004", "task": "Implement login validation (username/email)", "phase": 3, "priority": "P0", "depends_on": ["AUTH-001"], "status": "PLANNED"},
   {"id": "AUTH-005", "task": "Implement login action", "phase": 3, "priority": "P0", "depends_on": ["AUTH-004"], "status": "PLANNED"},
   {"id": "AUTH-006", "task": "Implement session creation", "phase": 3, "priority": "P0", "depends_on": ["AUTH-005"], "status": "PLANNED"},
-  {"id": "AUTH-007", "task": "Implement failed-login tracking", "phase": 5, "priority": "P0", "depends_on": ["AUTH-005"], "status": "PLANNED"},
-  {"id": "AUTH-008", "task": "Implement temporary lock after failed attempts", "phase": 5, "priority": "P0", "depends_on": ["AUTH-007"], "status": "PLANNED"},
+  {"id": "AUTH-007", "task": "Implement failed-login tracking", "phase": 3, "priority": "P0", "depends_on": ["AUTH-005"], "status": "DONE", "note": "Code exists: LoginThrottle + FailedLoginAttempt model + migration. Moved from Phase 5 to Phase 3 per roadmap."},
+  {"id": "AUTH-008", "task": "Implement temporary lock after failed attempts", "phase": 3, "priority": "P0", "depends_on": ["AUTH-007"], "status": "DONE", "note": "Code exists: LoginThrottle::isLocked/recordFailed/clearIfExpired. Moved from Phase 5 to Phase 3 per roadmap."},
   {"id": "AUTH-009", "task": "Implement logout (current device)", "phase": 3, "priority": "P0", "depends_on": ["AUTH-006"], "status": "PLANNED"},
   {"id": "AUTH-010", "task": "Implement logout-all-devices", "phase": 3, "priority": "P1", "depends_on": ["AUTH-009"], "status": "PLANNED"},
   {"id": "AUTH-011", "task": "Implement email verification", "phase": 3, "priority": "P0", "depends_on": ["AUTH-006"], "status": "PLANNED"},
-  {"id": "AUTH-012", "task": "Implement forgot password", "phase": 3, "priority": "P0", "depends_on": ["AUTH-001"], "status": "PLANNED"},
-  {"id": "AUTH-013", "task": "Implement password reset", "phase": 3, "priority": "P0", "depends_on": ["AUTH-012"], "status": "PLANNED"},
-  {"id": "AUTH-014", "task": "Implement password change (user)", "phase": 5, "priority": "P0", "depends_on": ["PWD-002"], "status": "PLANNED"},
+  {"id": "AUTH-012", "task": "Implement forgot password", "phase": 3, "priority": "P0", "depends_on": ["AUTH-001"], "status": "DONE", "note": "Code exists: PasswordForgotController + PasswordForgotRequest. Anti-enumeration: always-same-response."},
+  {"id": "AUTH-013", "task": "Implement password reset", "phase": 3, "priority": "P0", "depends_on": ["AUTH-012"], "status": "DONE", "note": "Code exists: PasswordResetController + PasswordResetRequest. Uses Laravel Password facade."},
+  {"id": "AUTH-014", "task": "Implement password change (user)", "phase": 5, "priority": "P0", "depends_on": ["PWD-002"], "status": "DONE", "note": "API-side DONE: ChangePassword action + ApiPasswordChangeController exist. Phase 5 password policy/history/expiry tasks still pending."},
   {"id": "AUTH-015", "task": "Implement rate limiting for login", "phase": 5, "priority": "P0", "depends_on": ["RATE-001"], "status": "PLANNED"},
   {"id": "USER-001", "task": "Create user management module", "phase": 4, "priority": "P1", "depends_on": ["AUTH-003"], "status": "PLANNED"},
   {"id": "USER-002", "task": "Implement user list/detail API", "phase": 4, "priority": "P1", "depends_on": ["USER-001"], "status": "PLANNED"},

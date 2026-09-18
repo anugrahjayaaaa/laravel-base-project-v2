@@ -4,14 +4,17 @@
 
 ```
 app/
-├── Actions/          # Application/business logic (use cases)
+├── Actions/          # Application/business logic (use cases) — single-operation classes
+│                       # Naming: VerbNoun (e.g. ChangePassword). One public method.
+│                       # Extract when non-trivial (>~10 lines) OR shared across ≥2 controllers.
+│                       # Mutations log audit within the action itself.
 ├── Http/
 │   ├── Controllers/
 │   │   ├── Api/
 │   │   │   └── V1/     # API V1 controllers
 │   │   └── Web/         # Web controllers (optional UI)
 │   ├── Requests/         # Form requests (validation + auth)
-│   ├── Resources/        # API resources (serialization)
+│   ├── Resources/        # API resources (serialization) — use only when non-trivial
 │   └── Middleware/       # Cross-cutting request boundaries
 ├── Models/           # Persistence models
 ├── Policies/         # Authorization decisions
@@ -20,7 +23,10 @@ app/
 ├── Jobs/             # Asynchronous/background processing
 ├── Notifications/    # User notification abstraction
 ├── Observers/        # Model lifecycle (not primary audit)
-├── Services/         # External service integrations
+├── Services/         # External service integrations + cohesive domain objects
+│                       # Naming: NounService (e.g. HealthCheckService).
+│                       # Use for multi-consumer orchestration or external integrations.
+│                       # Do NOT create solely because a Services folder exists.
 └── Support/          # Shared helpers, enums, value objects
 
 bootstrap/
