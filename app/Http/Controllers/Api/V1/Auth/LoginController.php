@@ -2,54 +2,71 @@
 
 namespace App\Http\Controllers\Api\V1\Auth;
 
+use App\Traits\Auth\AuthenticatesUsers;
 use App\Auth\LoginThrottle;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\Hash;
 
 class LoginController extends Controller
 {
+    use AuthenticatesUsers;
+
     public function __invoke(
         LoginRequest $request,
         LoginThrottle $throttle,
     ): JsonResponse {
         $identifier = $request->input('identifier');
-        $password = $request->input('password');
         $ip = $request->ip();
 
-        // Support email OR username lookup.
-        $user = User::where('email', $identifier)
-            ->orWhere('username', $identifier)
-            ->first();
-
-        $error = null;
-        $status = 401;
-
-        if (! $user || ! Hash::check($password, $user->password)) {
-            $throttle->recordFailed($identifier, $ip);
-            $error = 'Invalid credentials.';
-            $status = 401;
-        } elseif (! $user->is_active) {
-            $error = 'Account is inactive.';
-            $status = 403;
-        } elseif ($user->is_locked) {
-            $lockedFor = $throttle->lockedFor($identifier, $ip);
-            $minutes = (int) ceil(max($lockedFor, 0) / 60);
-            $error = "Account is locked. Try again in {$minutes} minute(s).";
-            $status = 403;
+        $throttleError = $this->checkThrottle($identifier, $ip, $throttle);
+        if ($throttleError) {
+            return $this->respond($throttleError['message'], $throttleError['status']);
         }
 
-        if ($error) {
-            return $this->respond($error, $status);
+        $user = $this->findUser($identifier, $request->input('password'));
+
+        if (! $user) {
+            $lockedSeconds = $throttle->recordFailed($identifier, $ip);
+            $this->audit('auth.login_failed', null, null, [
+                'identifier' => $identifier,
+                'ip' => $ip,
+                'user_agent' => $request->userAgent(),
+                'channel' => 'api',
+            ]);
+            if ($lockedSeconds > 0) {
+                $this->audit('auth.account_locked', null, null, [
+                    'identifier' => $identifier,
+                    'ip' => $ip,
+                    'user_agent' => $request->userAgent(),
+                    'channel' => 'api',
+                    'lock_duration_seconds' => $lockedSeconds,
+                ]);
+            }
+
+            return $this->respond('Invalid credentials.', 401);
         }
 
-        // Success: reset throttle, update activity, issue token.
+        $accountError = $this->checkAccountState($user);
+
+        if ($accountError) {
+            if ($user->is_locked) {
+                $minutes = (int) ceil(max($throttle->lockedFor($identifier, $ip), 0) / 60);
+                $accountError['message'] = "Account is locked. Try again in {$minutes} minute(s).";
+            }
+            $this->audit('auth.login_failed', $user, $user, [
+                'identifier' => $identifier,
+                'ip' => $ip,
+                'user_agent' => $request->userAgent(),
+                'channel' => 'api',
+            ]);
+
+            return $this->respond($accountError['message'], $accountError['status']);
+        }
+
         $throttle->reset($identifier, $ip);
-
         $user->updateQuietly(['last_activity_at' => now()]);
-
         $token = $user->createToken('auth-token')->plainTextToken;
 
         $this->audit('auth.login', $user, $user, [
