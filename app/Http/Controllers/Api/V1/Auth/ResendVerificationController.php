@@ -12,7 +12,7 @@ class ResendVerificationController extends Controller
     {
         $request->user()->sendEmailVerificationNotification();
 
-        $this->audit('auth.verification resent', $request->user(), $request->user());
+        $this->audit('auth.verification_resent', $request->user(), $request->user());
 
         return $this->respond('Verification email resent.');
     }

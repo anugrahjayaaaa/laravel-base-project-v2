@@ -38,7 +38,7 @@ return [
         'lockout_increment_minutes' => env('AUTH_LOGIN_LOCKOUT_INCREMENT_MINUTES', 10),
 
         // Transport-level rate limit (RateLimiter), per IP + identifier.
-        'rate_limit_per_minute' => env('AUTH_LOGIN_RATE_LIMIT_PER_MINUTE', 10),
+        'rate_limit_per_minute' => env('AUTH_LOGIN_RATE_LIMIT_PER_MINUTE', 5),
     ],
 
     /*
@@ -48,17 +48,17 @@ return [
     */
 
     'password_forgot' => [
-        'rate_limit_per_hour' => env('AUTH_PASSWORD_FORGOT_RATE_LIMIT', 3),
+        'rate_limit_per_minute' => env('AUTH_PASSWORD_FORGOT_RATE_LIMIT', 3),
     ],
 
     'password_reset' => [
-        'rate_limit_per_hour' => env('AUTH_PASSWORD_RESET_RATE_LIMIT', 5),
+        'rate_limit_per_minute' => env('AUTH_PASSWORD_RESET_RATE_LIMIT', 3),
         'token_expire_minutes' => env('AUTH_PASSWORD_RESET_EXPIRE_MINUTES', 15),
     ],
 
     'email_verification' => [
         'token_expire_minutes' => env('AUTH_EMAIL_VERIFICATION_EXPIRE_MINUTES', 60),
-        'rate_limit_per_hour' => env('AUTH_EMAIL_VERIFICATION_RATE_LIMIT', 3),
+        'rate_limit_per_hour' => env('AUTH_EMAIL_VERIFICATION_RATE_LIMIT', 5),
     ],
 
     /*

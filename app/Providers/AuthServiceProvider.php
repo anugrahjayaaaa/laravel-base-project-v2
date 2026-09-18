@@ -40,10 +40,10 @@ class AuthServiceProvider extends ServiceProvider
         // Login: transport-level throttle per IP + identifier.
         // This complements the DB-based progressive lockout.
         RateLimiter::for('login', function (Request $request) {
-            $identifier = $request->input('email', $request->input('username', ''));
+            $identifier = $request->input('identifier', '');
             $ip = $request->ip();
 
-            $limit = (int) config('rate_limits.login.rate_limit_per_minute', 10);
+            $limit = (int) config('rate_limits.login.rate_limit_per_minute', 5);
 
             return Limit::perMinute($limit)
                 ->by(app(LoginThrottle::class)->key($identifier, $ip))
@@ -55,12 +55,12 @@ class AuthServiceProvider extends ServiceProvider
                 });
         });
 
-        // Forgot password: 3/hour per identifier.
+        // Forgot password: 3/min per identifier.
         RateLimiter::for('forgot-password', function (Request $request) {
             $identifier = $request->input('email', $request->input('username', ''));
-            $limit = (int) config('rate_limits.password_forgot.rate_limit_per_hour', 3);
+            $limit = (int) config('rate_limits.password_forgot.rate_limit_per_minute', 3);
 
-            return Limit::perHour($limit)
+            return Limit::perMinute($limit)
                 ->by(app(LoginThrottle::class)->key($identifier, $request->ip()))
                 ->response(function () {
                     return response()->json([
@@ -70,19 +70,34 @@ class AuthServiceProvider extends ServiceProvider
                 });
         });
 
-        // Resend verification: 3/hour per identifier.
+        // Resend verification: 5/hour per identifier.
         RateLimiter::for('resend-verification', function (Request $request) {
             $identifier = $request->user()
                 ? $request->user()->email
                 : $request->input('email', '');
 
-            $limit = (int) config('rate_limits.email_verification.rate_limit_per_hour', 3);
+            $limit = (int) config('rate_limits.email_verification.rate_limit_per_hour', 5);
 
             return Limit::perHour($limit)
                 ->by(app(LoginThrottle::class)->key($identifier, $request->ip()))
                 ->response(function () {
                     return response()->json([
                         'message' => 'Too many verification email requests. Please try again later.',
+                        'code' => 'RATE_LIMITED',
+                    ], 429);
+                });
+        });
+
+        // Reset password: 3/min per identifier.
+        RateLimiter::for('reset-password', function (Request $request) {
+            $identifier = $request->input('email', '');
+            $limit = (int) config('rate_limits.password_reset.rate_limit_per_minute', 3);
+
+            return Limit::perMinute($limit)
+                ->by(app(LoginThrottle::class)->key($identifier, $request->ip()))
+                ->response(function () {
+                    return response()->json([
+                        'message' => 'Too many password reset attempts. Please try again later.',
                         'code' => 'RATE_LIMITED',
                     ], 429);
                 });

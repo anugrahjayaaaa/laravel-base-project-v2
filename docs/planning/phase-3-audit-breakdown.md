@@ -56,7 +56,7 @@ All API controllers implemented. View rendering handled by WebAuthController (no
 
 | ID | Task | Status |
 |----|------|--------|
-| UI-A-005 | Connect UI views to API logic (JS fetch/AJAX) | **PLANNED** |
+| UI-A-005 | Connect UI views to API logic (AdminLTE form POST → controller redirect) | **DONE** |
 
 ### Middleware wired
 
@@ -72,8 +72,8 @@ All API controllers implemented. View rendering handled by WebAuthController (no
 | `auth.login` | LoginController ✅ | WebAuthController ✅ (channel=web) |
 | `auth.logout` | LogoutController ✅ | WebAuthController ✅ |
 | `auth.logout_all` | LogoutAllController ✅ | — |
-| `auth.password_reset_requested` | PasswordForgotController ✅ | WebAuthController ✅ (causer null) |
-| `auth.password_reset_completed` | PasswordResetController ✅ | WebAuthController ✅ (causer null) |
+| `auth.password_reset_requested` | PasswordForgotController ✅ | WebAuthController ✅ |
+| `auth.password_reset_completed` | PasswordResetController ✅ | WebAuthController ✅ |
 | `auth.verification_resent` | ResendVerificationController ✅ | — |
 
 Both channels log audit at the mutation site per the audit pattern
@@ -293,10 +293,10 @@ Items needing status updates in `docs/planning/task-tracker.md`:
 ## 6. Recommended Implementation Order
 
 ```
---- UI FIRST (views + controllers) ---
+|--- UI FIRST (views + controllers) ---
 1. UI-A-001..004  Auth views (login, forgot, reset, verify) + WebAuthController + web routes
 --- UI COMPLETE; connect to API logic ---
-2. UI-A-005  Wire forms to API endpoints (JS fetch/AJAX)
+2. UI-A-005  Wire forms to API endpoints (AdminLTE form POST → controller redirect)
 --- API AUTH ---
 3. AUTH-004  LoginFormRequest
 4. RATE-001  Rate limiter definitions
