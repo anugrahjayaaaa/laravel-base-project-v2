@@ -22,6 +22,18 @@
                 </div>
             @endif
 
+            @if (session('rate_limit_seconds'))
+                <div class="alert bg-danger-subtle border-0 rounded mb-3" role="alert">
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="fas fa-circle-exclamation text-danger"></i>
+                        <span class="text-danger flex-grow-1">
+                            Too many attempts. Please try again in <span class="rate-limit-seconds" data-seconds="{{ session('rate_limit_seconds') }}">{{ session('rate_limit_seconds') }}</span> seconds.
+                        </span>
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                </div>
+            @endif
+
             <form id="forgotForm" action="{{ route('password.email') }}" method="POST">
                 @csrf
                 <div class="mb-4">
@@ -45,3 +57,28 @@
     </div>
 </div>
 @endsection
+
+@push('scripts')
+<script>
+(function() {
+    document.querySelectorAll('.rate-limit-seconds').forEach(function(el) {
+        var seconds = parseInt(el.dataset.seconds);
+        var interval = setInterval(function() {
+            seconds--;
+            if (seconds <= 0) {
+                clearInterval(interval);
+                var alert = el.closest('.alert');
+                if (alert) {
+                    alert.querySelector('.text-danger.flex-grow-1').textContent = 'You can try again now.';
+                    el.remove();
+                }
+                var btn = alert ? alert.closest('.card')?.querySelector('button[type=submit]') : null;
+                if (btn) btn.disabled = false;
+            } else {
+                el.textContent = seconds;
+            }
+        }, 1000);
+    });
+})();
+</script>
+@endpush
