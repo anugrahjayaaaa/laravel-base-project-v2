@@ -31,15 +31,16 @@
 
 - One focused application operation with a single public method (`run()` or
   `__invoke()`).
-- Naming: `VerbNoun` (e.g. `ChangePassword`, `SendResetLink`).
+- Naming: `VerbNoun` (e.g. `AuthenticateUserAction`, `ResetPasswordAction`).
 - Extract into an Action when **either**:
   - The operation is non-trivial (>~10 lines of logic beyond simple delegation),
   - **OR** the logic is shared across ≥2 controllers.
 - Do NOT create an Action merely to wrap a single trivial model call
   (e.g. `$user->delete()`). Inline trivial calls in the controller.
-- Actions that perform mutations log audit within the action itself (the action
-  has full context: causer, subject, properties). This keeps audit co-located with
-  the mutation.
+- **Audit is written by the controller** (using `$this->audit()`), not inside
+  the Action. The Action returns the result; the controller adds audit with
+  the correct channel (API = 'api', Web = 'web'). This keeps audit co-located
+  with the HTTP response layer where channel is determined.
 
 ### Service
 
@@ -154,13 +155,13 @@ operation that does not need decoupled side effects may skip the Event.
 
 ## Source of Truth Rules
 
-| Concern | Source of Truth |
-|---------|-----------------|
-| Business mutation | Mutation caller (Action/Service layer) |
-| Audit Trail record | Mutation caller (Action/Service layer) |
-| Authorization decision | Policy / authorization layer |
-| API serialization | Resource / response layer |
-| Asynchronous work | Job |
+|| Concern | Source of Truth |
+||---------|-----------------|
+|| Business mutation | Mutation caller (Action/Service layer) |
+|| Audit Trail record | Controller (mutation caller logs audit with channel) |
+|| Authorization decision | Policy / authorization layer |
+|| API serialization | Resource / response layer |
+|| Asynchronous work | Job |
 || Technical observability | Logging / Telescope / Periscope / monitoring infrastructure |
 
 ### Key Implications
@@ -174,6 +175,40 @@ operation that does not need decoupled side effects may skip the Event.
   after commit** (via `dispatchAfterCommit` or `DB::afterCommit()` callback).
 - **Serialization happens at the Resource layer** — no business logic in
   Resources.
+
+## Controller Structural Standards
+
+### API Controllers (`app/Http/Controllers/Api/V1/*`)
+
+- Single-Action Controllers (`__invoke`) separated per feature/function.
+- Flow: Request validation → Action/Service Execution → JSON Response.
+- One controller per endpoint/function (e.g. `LoginController`,
+  `PasswordForgotController`, `PasswordResetController`).
+
+### Web Controllers (`app/Http/Controllers/Web/V1/*`)
+
+- Grouped by module/domain (e.g. `WebAuthController` for all auth views).
+- Ordering Convention: Pair each view display method with its processing
+  logic method sequentially:
+  `showViewA`, `processLogicA`, `showViewB`, `processLogicB`, etc.
+- Method Naming: View methods MUST use `show` prefix
+  (e.g. `showLogin`, `showForgotPassword`, `showResetPassword`).
+- Methods without views (e.g. `logout`, `resendVerification`) MUST be
+  placed at the very bottom of the controller class.
+
+### Canonical Controller Flow
+
+```
+HTTP Request
+  ↓
+Form Request validation
+  ↓
+$action->run(...)   or   $service->method()
+  ↓
+Audit log (with channel)
+  ↓
+HTTP Response (JSON / Redirect / View)
+```
 
 ## When NOT to Introduce an Abstraction
 

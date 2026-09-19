@@ -144,7 +144,7 @@ observers for audit. See `docs/base/architecture/application-components.md` §Ac
       "AUTH-004"
     ],
     "status": "DONE",
-    "note": "LoginController: __invoke, uses AuthenticatesUsers trait (findUser + checkAccountState), throttle, audit, token. Web+API shared logic via trait."
+    "note": "LoginController: __invoke, uses AuthenticateUserAction (throttle + findUser + account state). Controllers thin — API JSON, Web redirect. Audit by controller with channel."
   },
   {
     "id": "AUTH-006",
@@ -210,7 +210,7 @@ observers for audit. See `docs/base/architecture/application-components.md` §Ac
       "AUTH-006"
     ],
     "status": "DONE",
-    "note": "VerifyEmailController + ResendVerificationController stubs. UI-connected pending."
+    "note": "VerifyEmailController → VerifyEmailAction (markEmailAsVerified + audit). ResendVerificationController unchanged."
   },
   {
     "id": "UI-A-001",
@@ -279,7 +279,7 @@ observers for audit. See `docs/base/architecture/application-components.md` §Ac
       "AUTH-001"
     ],
     "status": "DONE",
-    "note": "PasswordForgotController + PasswordForgotRequest. Anti-enumeration: always-same-response. Uses Laravel Password facade."
+    "note": "PasswordForgotController → SendPasswordResetLinkAction (lock check + send link + audit). Anti-enumeration: always-same-response."
   },
   {
     "id": "AUTH-013",
@@ -290,7 +290,7 @@ observers for audit. See `docs/base/architecture/application-components.md` §Ac
       "AUTH-012"
     ],
     "status": "DONE",
-    "note": "PasswordResetController + PasswordResetRequest. Uses Laravel Password facade + Hash::make."
+    "note": "PasswordResetController → ResetPasswordAction (lock check + reset + audit). Uses Laravel Password facade."
   },
   {
     "id": "AUTH-014",

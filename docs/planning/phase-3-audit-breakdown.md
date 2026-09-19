@@ -1,7 +1,32 @@
 # Phase 3 Audit & Breakdown — Authentication Foundation
 
-> Audit date: 2026-09-18 | Branch: feature/phase-3-authentication | Status: IN PROGRESS
+> Audit date: 2026-09-18 | Branch: feature/phase-3-authentication | Status: PHASE 3A DONE
 > Purpose: break Phase 3 into small executable tasks, flag queue-eligible items, resolve Actions/Services question.
+
+---
+
+## Phase 3A — Login Flow (DONE)
+
+| ID | Task | Status |
+|----|------|--------|
+| AUTH-004 | LoginFormRequest (identifier+password, anti-enumeration) | **DONE** |
+| AUTH-005 | LoginController → AuthenticateUserAction | **DONE** |
+| AUTH-006 | Login tests (55 tests, 144 assertions) | **DONE** |
+| AUTH-007 | Failed login tracking (LoginThrottle + FailedLoginAttempt) | **DONE** |
+| AUTH-008 | Temporary lock enforcement | **DONE** |
+| AUTH-009 | Logout (current device) | **DONE** |
+| AUTH-010 | Logout-all-devices | **DONE** |
+
+**Architecture:** Login flow uses `AuthenticateUserAction` (throttle + findUser + account state). Controllers are thin orchestrators — API returns JSON, Web returns redirect. Audit logged by controller with channel.
+
+**Action Classes implemented:**
+- `AuthenticateUserAction` — login flow
+- `SendPasswordResetLinkAction` — forgot password
+- `ResetPasswordAction` — password reset
+- `VerifyEmailAction` — email verification
+- `UnlockUserAction` — admin unlock
+
+**Traits removed:** `AuthenticatesUsers`, `HandlesUserLookup`, `HandlesLockCheck`, `HandlesPasswordResetFlow` — logic moved to Actions.
 
 ---
 
@@ -9,27 +34,31 @@
 
 ### Already implemented (code exists, not yet reflected in task tracker)
 
-|| File | What it does | Phase |
-||------|-------------|-------|
-|| `app/Auth/LoginThrottle.php` | RateLimiter + failed_login_attempts DB escalation; progressive lockout (5→15→25→… min); `isLocked`, `recordFailed`, `reset`, `lockedFor`, `clearIfExpired` | AUTH-007 / AUTH-008 |
-|| `app/Models/FailedLoginAttempt.php` | Model for `failed_login_attempts` table; `nextLockoutMinutes()` progressive calc | AUTH-007 |
-|| `database/migrations/…_create_failed_login_attempts_table.php` | Table migration | AUTH-007 |
-|| `app/Http/Middleware/EnsurePasswordChangeRequired.php` | Blocks access when `must_change_password` or `password_expires_at` past; exempts password.change/verification/email.resend/logout; 403 JSON or 302 redirect | Phase 3 middleware |
-|| `app/Actions/Auth/ChangePassword.php` | Shared password-change logic: validate current, history check, hash, expiration, revoke tokens, activity log | PWD-002/AUTH-014 |
-|| `app/Http/Controllers/Api/V1/Auth/PasswordChangeController.php` | API password change → delegates to `ChangePassword` action | AUTH-014 |
-|| `app/Http/Controllers/Api/V1/Auth/PasswordForgotController.php` | Forgot-password: `Password::sendResetLink`, always-same-response (anti-enumeration), activity log | AUTH-012 |
-|| `app/Http/Controllers/Api/V1/Auth/PasswordResetController.php` | Reset-password: `Password::reset`, maps status, activity log | AUTH-013 |
-|| `app/Http/Controllers/Api/V1/Auth/UnlockController.php` | Admin unlock: sets `is_locked=false`, resets throttle, activity log | (Phase 4/5 overlap) |
-|| `app/Http/Controllers/Api/V1/Auth/LoginController.php` | API login: email/username lookup, throttle, audit, Sanctum token | AUTH-005 |
-|| `app/Http/Controllers/Api/V1/Auth/LogoutController.php` | API logout: delete current token + audit | AUTH-009 |
-|| `app/Http/Controllers/Api/V1/Auth/LogoutAllController.php` | API logout-all: delete all tokens + audit | AUTH-010 |
-|| `app/Http/Controllers/Api/V1/Auth/VerifyEmailController.php` | API verify email: mark verified | AUTH-011a |
-|| `app/Http/Controllers/Api/V1/Auth/ResendVerificationController.php` | API resend verification email | AUTH-011b |
-|| `app/Http/Controllers/Web/Auth/WebAuthController.php` | Web auth: view rendering + login/logout logic + forgot/reset password + audit trail | UI-AUTH-002 |
-|| `app/Http/Requests/Auth/LoginRequest.php` | Login form request: identifier + password validation | AUTH-004 |
-|| `resources/views/layouts/auth.blade.php` | Auth layout: centered card, no sidebar/header | UI-AUTH-001 |
-|| `resources/views/pages/auth/*.blade.php` | Auth views: login, forgot-password, reset-password, verify-email, verified | UI-AUTH-001,003,005,007 |
-|| `routes/web.php` | Web routes: auth views via `Route::controller(WebAuthController::class)` | UI-AUTH-008 |
+||| File | What it does | Phase |
+|||------|-------------|-------|
+||| `app/Auth/LoginThrottle.php` | RateLimiter + failed_login_attempts DB escalation; progressive lockout (5→15→25→… min); `isLocked`, `recordFailed`, `reset`, `lockedFor`, `clearIfExpired` | AUTH-007 / AUTH-008 |
+||| `app/Models/FailedLoginAttempt.php` | Model for `failed_login_attempts` table; `nextLockoutMinutes()` progressive calc | AUTH-007 |
+||| `database/migrations/…_create_failed_login_attempts_table.php` | Table migration | AUTH-007 |
+||| `app/Http/Middleware/EnsurePasswordChangeRequired.php` | Blocks access when `must_change_password` or `password_expires_at` past; exempts password.change/verification/email.resend/logout; 403 JSON or 302 redirect | Phase 3 middleware |
+||| `app/Actions/Auth/AuthenticateUserAction.php` | Login flow: throttle check + user lookup + account state check | AUTH-005 |
+||| `app/Actions/Auth/SendPasswordResetLinkAction.php` | Forgot password: lock check + send link + audit | AUTH-012 |
+||| `app/Actions/Auth/ResetPasswordAction.php` | Reset password: lock check + Password::reset + audit | AUTH-013 |
+||| `app/Actions/Auth/VerifyEmailAction.php` | Email verification: mark verified + check already verified | AUTH-011a |
+||| `app/Actions/Auth/UnlockUserAction.php` | Admin unlock: is_locked=false + throttle reset | (Phase 4/5 overlap) |
+||| `app/Actions/Auth/ChangePassword.php` | Shared password-change logic: validate current, history check, hash, expiration, revoke tokens, activity log | PWD-002/AUTH-014 |
+||| `app/Http/Controllers/Api/V1/Auth/LoginController.php` | API login → AuthenticateUserAction, JSON response | AUTH-005 |
+||| `app/Http/Controllers/Api/V1/Auth/PasswordForgotController.php` | Forgot-password → SendPasswordResetLinkAction | AUTH-012 |
+||| `app/Http/Controllers/Api/V1/Auth/PasswordResetController.php` | Reset-password → ResetPasswordAction | AUTH-013 |
+||| `app/Http/Controllers/Api/V1/Auth/VerifyEmailController.php` | API verify email → VerifyEmailAction | AUTH-011a |
+||| `app/Http/Controllers/Api/V1/Auth/UnlockController.php` | Admin unlock → UnlockUserAction | (Phase 4/5 overlap) |
+||| `app/Http/Controllers/Api/V1/Auth/LogoutController.php` | API logout: delete current token + audit | AUTH-009 |
+||| `app/Http/Controllers/Api/V1/Auth/LogoutAllController.php` | API logout-all: delete all tokens + audit | AUTH-010 |
+||| `app/Http/Controllers/Web/V1/Auth/WebAuthController.php` | Web auth: view rendering + login/logout logic + forgot/reset password + audit trail | UI-AUTH-002 |
+||| `app/Http/Requests/Auth/LoginRequest.php` | Login form request: identifier + password validation | AUTH-004 |
+||| `resources/views/layouts/auth.blade.php` | Auth layout: centered card, no sidebar/header | UI-AUTH-001 |
+||| `resources/views/pages/auth/*.blade.php` | Auth views: login, forgot-password, reset-password, verify-email, verified | UI-AUTH-001,003,005,007 |
+||| `routes/web.php` | Web routes: auth views via Route::controller(WebAuthController::class) | UI-AUTH-008 |
+||| Traits removed: AuthenticatesUsers, HandlesUserLookup, HandlesLockCheck, HandlesPasswordResetFlow | Logic moved to Actions | — |
 
 ### Route registrations — all controllers now exist
 
@@ -42,15 +71,16 @@ All API controllers implemented. View rendering handled by WebAuthController (no
 | `POST /api/v1/auth/logout-all` | `App\Http\Controllers\Api\V1\Auth\LogoutAllController` | **DONE** |
 | `GET /api/v1/auth/email/verify/{id}/{hash}` | `App\Http\Controllers\Api\V1\Auth\VerifyEmailController` | **DONE** |
 | `POST /api/v1/auth/email/resend` | `App\Http\Controllers\Api\V1\Auth\ResendVerificationController` | **DONE** |
-|| `GET /login` | `App\Http\Controllers\Web\Auth\WebAuthController@login` | **DONE** |
-|| `POST /login` | `App\Http\Controllers\Web\Auth\WebAuthController@handleLogin` | **DONE** |
-|| `GET /forgot-password` | `App\Http\Controllers\Web\Auth\WebAuthController@forgotPassword` | **DONE** |
-|| `POST /forgot-password` | `App\Http\Controllers\Web\Auth\WebAuthController@sendResetLink` | **DONE** |
-|| `GET /reset-password` | `App\Http\Controllers\Web\Auth\WebAuthController@resetPassword` | **DONE** |
-|| `POST /reset-password` | `App\Http\Controllers\Web\Auth\WebAuthController@resetPasswordSubmit` | **DONE** |
-|| `GET /verify-email` | `App\Http\Controllers\Web\Auth\WebAuthController@verifyEmail` | **DONE** |
-|| `GET /email/verify/{id}/{hash}` | `App\Http\Controllers\Web\Auth\WebAuthController@verified` | **DONE** |
-|| `POST /logout` | `App\Http\Controllers\Web\Auth\WebAuthController@logout` | **DONE** |
+||| `GET /login` | `App\Http\Controllers\Web\V1\Auth\WebAuthController@showLogin` | **DONE** |
+||| `POST /login` | `App\Http\Controllers\Web\V1\Auth\WebAuthController@login` | **DONE** |
+||| `GET /forgot-password` | `App\Http\Controllers\Web\V1\Auth\WebAuthController@showForgotPassword` | **DONE** |
+||| `POST /forgot-password` | `App\Http\Controllers\Web\V1\Auth\WebAuthController@sendPasswordResetLink` | **DONE** |
+||| `GET /reset-password` | `App\Http\Controllers\Web\V1\Auth\WebAuthController@showResetPassword` | **DONE** |
+||| `POST /reset-password` | `App\Http\Controllers\Web\V1\Auth\WebAuthController@resetUserPassword` | **DONE** |
+||| `GET /verify-email` | `App\Http\Controllers\Web\V1\Auth\WebAuthController@showVerifyEmail` | **DONE** |
+||| `GET /email/verify/{id}/{hash}` | `App\Http\Controllers\Web\V1\Auth\WebAuthController@showVerified` | **DONE** |
+||| `POST /email/resend` | `App\Http\Controllers\Web\V1\Auth\WebAuthController@resendVerification` | **DONE** |
+||| `POST /logout` | `App\Http\Controllers\Web\V1\Auth\WebAuthController@logout` | **DONE** |
 
 ### Remaining (not yet implemented)
 
