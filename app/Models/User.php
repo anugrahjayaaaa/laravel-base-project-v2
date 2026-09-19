@@ -41,4 +41,55 @@ class User extends Authenticatable implements MustVerifyEmail
             'password' => 'hashed',
         ];
     }
+
+    // === Status (uses UserStatusEnum, no magic strings) ===
+
+    public function getStatus(): \App\Enums\UserStatusEnum
+    {
+        return \App\Enums\UserStatusEnum::resolve(
+            $this->is_active,
+            $this->is_locked,
+            $this->email_verified_at?->format('Y-m-d H:i:s'),
+        );
+    }
+
+    public function isActiveUser(): bool
+    {
+        return $this->getStatus()->value === \App\Enums\UserStatusEnum::ACTIVE->value;
+    }
+
+    public function isInactiveUser(): bool
+    {
+        return $this->getStatus()->value === \App\Enums\UserStatusEnum::INACTIVE->value;
+    }
+
+    public function isLockedUser(): bool
+    {
+        return $this->getStatus()->value === \App\Enums\UserStatusEnum::LOCKED->value;
+    }
+
+    public function isPendingVerification(): bool
+    {
+        return $this->getStatus()->value === \App\Enums\UserStatusEnum::PENDING_VERIFICATION->value;
+    }
+
+    public function scopeActive($query)
+    {
+        return $query->where('is_active', true)->where('is_locked', false);
+    }
+
+    public function scopeInactive($query)
+    {
+        return $query->where('is_active', false);
+    }
+
+    public function scopeLocked($query)
+    {
+        return $query->where('is_locked', true);
+    }
+
+    public function scopePendingVerification($query)
+    {
+        return $query->whereNull('email_verified_at');
+    }
 }

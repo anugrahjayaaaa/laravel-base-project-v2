@@ -19,13 +19,15 @@ Do NOT use a single status field for all account states.
 Use separate concepts:
 
 ```
-is_active              ← account lifecycle (admin deactivation)
-is_locked              ← security state (inactivity, failed login, admin lock)
-email_verified_at      ← email verification (separate from activation)
-must_change_password   ← first-login / post-reset enforcement
-password expiration    ← password lifecycle state
-last_activity_at       ← meaningful activity timestamp
-soft-deleted           ← deleted_at (deletion lifecycle)
+| `is_active`              ← account lifecycle (admin deactivation)
+| `is_locked`              ← security state (inactivity, failed login, admin lock)
+| `email_verified_at`      ← email verification (separate from activation)
+| `must_change_password`   ← first-login / post-reset enforcement
+| `password expiration`    ← password lifecycle state
+| `last_activity_at`       ← meaningful activity timestamp
+| `soft-deleted`           ← deleted_at (deletion lifecycle)
+
+Primary status resolution: `App\Enums\UserStatusEnum::resolve()` — precedence: PENDING_VERIFICATION → LOCKED → INACTIVE → ACTIVE.
 ```
 
 ### State Distinctions
