@@ -104,6 +104,7 @@ return [
 
     'verification' => [
         'expire' => env('AUTH_EMAIL_VERIFICATION_EXPIRE_MINUTES', 60),
+        'mode' => env('AUTH_EMAIL_VERIFICATION_MODE', 'public'), // public|admin|disabled
     ],
 
     /*
