@@ -72,6 +72,7 @@ class LoginController extends Controller
         $this->audit('auth.login', $user, $user, [
             'ip' => $ip,
             'user_agent' => $request->userAgent(),
+            'channel' => 'api',
         ]);
 
         return $this->respond('Login successful.', 200, [
