@@ -48,7 +48,7 @@ class WebAuthController extends Controller
                     'channel' => 'web',
                 ]);
 
-                $this->audit('auth.account_locked', $result['user'], $result['user'], [
+                $this->audit('auth.account_locked', $user, $user, [
                     'identifier' => $identifier,
                     'ip' => $ip,
                     'user_agent' => $request->userAgent(),

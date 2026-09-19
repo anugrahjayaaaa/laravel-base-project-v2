@@ -33,7 +33,7 @@ class LoginController extends Controller
                     'channel' => 'api',
                 ]);
 
-                $this->audit('auth.account_locked', $result['user'], $result['user'], [
+                $this->audit('auth.account_locked', $user, $user, [
                     'identifier' => $identifier,
                     'ip' => $ip,
                     'user_agent' => $request->userAgent(),
@@ -55,6 +55,12 @@ class LoginController extends Controller
                     'email' => $identifier,
                     'verified' => false,
                 ], 403);
+            }
+
+            if (isset($result['lockedSeconds']) && $result['lockedSeconds'] > 0) {
+                return $this->respond($result['error']['message'], 429, [
+                    'retry_after_seconds' => $result['lockedSeconds'],
+                ]);
             }
 
             return $this->respond($result['error']['message'], $result['error']['status']);
