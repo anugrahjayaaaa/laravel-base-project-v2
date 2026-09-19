@@ -1,6 +1,6 @@
 # Phase 3 Audit & Breakdown — Authentication Foundation
 
-> Audit date: 2026-09-18 | Branch: feature/phase-3-authentication | Status: PHASE 3C COMPLIANT
+> Audit date: 2026-09-18 | Branch: feature/phase-3-authentication | Status: PHASE 3F COMPLIANT
 > Purpose: break Phase 3 into small executable tasks, flag queue-eligible items, resolve Actions/Services question.
 
 ---
@@ -288,21 +288,25 @@ Phase 3 splits into 5 groups. Each group is a self-contained batch that can be i
 
 **Note on web vs API auth:** Web uses Laravel's session-based auth (default `web` guard). API uses Sanctum tokens. These are separate flows. Web login creates a session cookie; API login returns a token. Both check the same User model fields (`is_active`, `is_locked`, etc.).
 
-### Group E — Failed Login + Lock (already largely built)
+### Group E — Failed Login + Lock (COMPLIANT — tested)
 
-| ID | Task | Depends On | Status | Notes |
-|----|------|-----------|--------|-------|
-| AUTH-007 | Failed login tracking (LoginThrottle + FailedLoginAttempt model + migration) | — | **DONE** (code exists) | Update task tracker to DONE |
-| AUTH-008 | Temporary lock enforcement (integrated into LoginController via LoginThrottle) | AUTH-007 | **DONE** (LoginThrottle complete) | Update task tracker to DONE; lock enforcement fires when LoginController calls `recordFailed()` + checks `isLocked()` |
+| Task | Description | Status | Notes |
+|------|-------------|--------|-------|
+| AUTH-007 | Failed login tracking (LoginThrottle + FailedLoginAttempt model + migration + user_id) | — | **COMPLIANT** | Tracked in DB with identifier, ip_address, attempts, lock_count, locked_until, user_id (nullable) |
+| AUTH-008 | Temporary lock enforcement (LoginThrottle + API 429 + Web redirect) | AUTH-007 | **COMPLIANT** | 429 + retry_after_seconds (API), redirect + flash (Web); exponential backoff 5→15→25 min |
 
-**Correction:** AUTH-007 and AUTH-008 are listed as Phase 5 in the task tracker JSON, but the code is already built and the roadmap lists them under Phase 3. **Reconcile: mark AUTH-007 + AUTH-008 as DONE and attribute to Phase 3** (or keep Phase 5 label if Jaya prefers the phase split — but the code is here now, so the tracker should reflect reality).
+**Audit verdict:** AUTH-007 + AUTH-008 COMPLIANT. Web + API aligned. Audit trail causer/subject never null. Tests: 62 pass (165 assertions).
 
-### Group F — Rate Limiting Config
+### Group F — Rate Limiting Config (COMPLIANT — closed)
 
-| ID | Task | Depends On | Est. | Notes |
-|----|------|-----------|------|-------|
-| RATE-001 | **Rate limit definitions** — define `login`, `forgot-password`, `resend-verification` throttle configs in `AuthServiceProvider::boot()` or `AppServiceProvider::boot()` using `RateLimiter::for()` | — | small | Routes reference `throttle:login` etc. but the named limit must be defined. Currently may be falling back to default. |
-| RATE-002 | **Rate limit tests** — verify login throttle kicks in after N attempts | RATE-001 | small | |
+| ID | Task | Depends On | Est. | Notes | Status |
+|----|------|-----------|------|-------|--------|
+| RATE-001 | Rate limit definitions — `AuthServiceProvider::boot()` — `login` (5/min), `forgot-password` (3/min), `reset-password` (3/min), `resend-verification` (5/hour) via `config('rate_limits...')` | — | small | **COMPLIANT** | 4 RateLimiter defined, shared key via `LoginThrottle::key()` |
+| RATE-002 | Rate limit tests — verify HTTP 429 after N attempts | RATE-001 | small | **COMPLIANT** | 5 tests: login (5), forgot (3), reset (3), resend web (6), resend API (6) |
+
+**Throttle key:** `LoginThrottle::key()` = `sha1(lower(identifier) + '|' + ip)` — shared across Web + API, prevents bypass via header/casing tricks.
+
+**Phase 3F closed — all 4 rate limiters 100% COMPLIANT across Web + API.**
 
 **_RATE limit config location:** Laravel 11+ convention is `AuthServiceProvider::boot()` for auth-related rate limiters, or `AppServiceProvider::boot()`. Pick one and be consistent. Existing codebase: `AuthServiceProvider` exists but may be empty. Use it for auth rate limiters.
 

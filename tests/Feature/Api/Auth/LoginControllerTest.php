@@ -4,6 +4,7 @@ namespace Tests\Feature\Api\Auth;
 
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\RateLimiter;
 use Tests\TestCase;
 
 class LoginControllerTest extends TestCase
@@ -109,17 +110,20 @@ class LoginControllerTest extends TestCase
             ]);
     }
 
-    public function test_login_is_rate_limited_after_too_many_attempts(): void
+    public function test_api_login_rate_limited_after_5_attempts(): void
     {
-        User::factory()->create();
+        $user = User::factory()->create();
 
-        for ($i = 0; $i < 12; $i++) {
-            $response = $this->postJson(route('api.v1.auth.login'), [
-                'identifier' => 'wrong@example.com',
+        for ($i = 0; $i < 6; $i++) {
+            $this->postJson(route('api.v1.auth.login'), [
+                'identifier' => $user->email,
                 'password' => 'wrong',
             ]);
         }
 
-        $response->assertStatus(429);
+        $this->postJson(route('api.v1.auth.login'), [
+            'identifier' => $user->email,
+            'password' => 'wrong',
+        ])->assertStatus(429);
     }
 }
