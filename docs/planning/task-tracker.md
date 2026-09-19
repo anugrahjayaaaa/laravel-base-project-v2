@@ -80,6 +80,22 @@ site — Action self-logs when logic is complex/shared; Controller logs directly
 (using `$this->audit()` helper on base Controller) for thin operations. No model
 observers for audit. See `docs/base/architecture/application-components.md` §Action/Service.
 
+---
+
+### Phase 4 — User Lifecycle & User Management
+
+|| ID | Task | Phase | Priority | Depends On | Status |
+||----|------|-------|----------|-----------|--------|
+|| USER-001 | Create user management module | 4 | P1 | AUTH-003 | PLANNED |
+|| USER-002 | Implement user list/detail API | 4 | P1 | USER-001 | PLANNED |
+|| USER-003 | Implement create user (admin) | 4 | P1 | AUTH-001 | PLANNED |
+|| USER-004 | Implement update user | 4 | P1 | USER-002 | PLANNED |
+|| USER-005 | Implement soft delete user | 4 | P2 | USER-001 | PLANNED |
+|| USER-006 | Implement activate/deactivate | 4 | P1 | USER-003 | PLANNED |
+|| USER-007 | Implement lock/unlock | 4 | P1 | USER-001 | PLANNED |
+|| USER-008 | Implement force password change | 4 | P1 | AUTH-014 | PLANNED |
+|| USER-009 | Implement admin reset password | 4 | P1 | AUTH-013 | PLANNED |
+
 *(Task list truncated for phases 2-17. See full list in the JSON version below.)*
 
 ---

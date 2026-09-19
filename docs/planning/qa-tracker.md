@@ -61,6 +61,10 @@
 || QA-USER-008 | Verify soft delete hides user but preserves data | Functional | Soft delete | PLANNED |
 || QA-USER-009 | Verify non-admin cannot access user management | Authorization | RBAC | PLANNED |
 || QA-USER-010 | Verify password history prevents reuse | Security | Password history | PLANNED |
+|| QA-USER-011 | Verify profile update with valid data succeeds | Functional | Profile | PLANNED |
+|| QA-USER-012 | Verify profile update with invalid email rejected | Validation | Profile | PLANNED |
+|| QA-USER-013 | Verify change password requires current password | Authorization | Profile | PLANNED |
+|| QA-USER-014 | Verify user list respects @can authorization | Authorization | User mgmt | PLANNED |
 
 ### RBAC QA
 
