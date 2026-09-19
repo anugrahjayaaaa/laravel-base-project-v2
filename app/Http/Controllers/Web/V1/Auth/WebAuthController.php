@@ -166,6 +166,18 @@ class WebAuthController extends Controller
         return response()->view('pages.auth.verified', ['title' => 'Email Verified']);
     }
 
+    // === VIEW: Sessions ===
+
+    public function showSessions(Request $request)
+    {
+        $tokens = $request->user()->tokens()->orderByDesc('last_used_at')->get();
+
+        return response()->view('pages.sessions', [
+            'title' => 'Active Sessions',
+            'tokens' => $tokens,
+        ]);
+    }
+
     // === LOGIC (no view) ===
 
     public function resendVerification()
