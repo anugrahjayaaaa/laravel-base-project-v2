@@ -5,6 +5,7 @@ namespace Tests\Feature\Web\V1\Auth;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\URL;
 use Mockery;
 use Tests\TestCase;
@@ -136,5 +137,55 @@ class WebAuthControllerTest extends TestCase
         $response->assertStatus(429);
     }
 
-    // Mail failure test requires notification sender mocking — not feasible with current tooling
-}
+    public function test_web_forgot_password_submission(): void
+    {
+        $user = User::factory()->create();
+
+        $response = $this->post('/forgot-password', [
+            'email' => $user->email,
+        ]);
+
+        $response->assertRedirectBack()
+            ->assertSessionHas('success');
+    }
+
+    public function test_web_reset_password_submission(): void
+    {
+        $user = User::factory()->create();
+        $token = app('auth.password.broker')->createToken($user);
+
+        $response = $this->post('/reset-password', [
+            'email' => $user->email,
+            'token' => $token,
+            'password' => 'NewPassword123!',
+            'password_confirmation' => 'NewPassword123!',
+        ]);
+
+        $response->assertRedirect(route('login'))
+            ->assertSessionHas('success');
+    }
+
+    public function test_web_protected_route_redirects_unauthenticated(): void
+        {
+            $response = $this->get('/dashboard');
+            $response->assertRedirect('/login');
+        }
+
+        public function test_web_forgot_password_handles_mail_failure(): void
+        {
+            \Password::shouldReceive('sendResetLink')
+                ->andThrow(new \Exception('Mail service down'));
+
+            $user = User::factory()->create();
+
+            $response = $this->from('/forgot-password')
+                ->post('/forgot-password', [
+                    'email' => $user->email,
+                ]);
+
+            $response->assertRedirectBack()
+                ->assertSessionHasErrors('email');
+        }
+
+        // Mail failure test for resend requires notification sender mocking — not feasible
+    }

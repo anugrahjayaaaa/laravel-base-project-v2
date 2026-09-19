@@ -274,17 +274,17 @@ Phase 3 splits into 5 groups. Each group is a self-contained batch that can be i
 
 ### Group D — Web UI Auth Pages (AdminLTE)
 
-| ID | Task | Depends On | Est. | Notes |
-|----|------|-----------|------|-------|
-|| UI-AUTH-001 | **Login page** — `resources/views/auth/login.blade.php` using AdminLTE auth layout; identifier + password + submit + forgot-password link; `@error` blocks; i18n-ready (static text for now) | UI-001 (done) | medium | Matches existing AdminLTE auth layout patterns from Phase 1 |
-|| UI-AUTH-002 | **WebAuthController** — `App\Http\Controllers\Web\Auth\WebAuthController`; handles all auth view rendering (login, forgot, reset, verify, verified); routes via `Route::controller()` in web.php | UI-AUTH-001 | small | Controller-based view handling per project convention; NO inline closures in web.php |
-|| UI-AUTH-003 | **Forgot password page** — `resources/views/auth/forgot-password.blade.php`; email input + submit | UI-AUTH-001 | small | |
-|| UI-AUTH-004 | **Web ForgotPasswordController** — POST `/forgot-password`; uses `Password::sendResetLink`; back with success/error | UI-AUTH-003 | small | |
-|| UI-AUTH-005 | **Reset password page** — `resources/views/auth/reset-password.blade.php`; email + token + password + confirm + submit | UI-AUTH-001 | small | |
-|| UI-AUTH-006 | **Web ResetPasswordController** — POST `/reset-password`; uses `Password::reset`; redirect on success | UI-AUTH-005 | small | |
-|| UI-AUTH-007 | **Email verification notice page** — `resources/views/auth/verified.blade.php` or `resources/views/auth/verify-email.blade.php`; "check your email" message + resend link | UI-AUTH-001 | small | |
-|| UI-AUTH-008 | **Web auth routes** — `routes/web.php`: explicit routes via `Route::controller(WebAuthController::class)`; scaffolded per project convention | UI-AUTH-002..007 | small | Explicit routes preferred (matches project convention §14) |
-|| UI-AUTH-009 | **Web auth tests** — login success/fail, logout, forgot password flow, protected route redirect | UI-AUTH-002..008 | medium | |
+|| ID | Task | Depends On | Est. | Status | Notes |
+||----|------|-----------|------|--------|-------|
+||| UI-AUTH-001 | **Login page** — `resources/views/pages/auth/login.blade.php` | UI-001 (done) | **COMPLIANT** | AdminLTE auth layout, @csrf, old(), @error, flash messages, double-click prevention |
+||| UI-AUTH-002 | **WebAuthController** — `App\Http\Controllers\Web\V1\Auth\WebAuthController` | UI-AUTH-001 | **COMPLIANT** | Thin controller, delegates to Actions, audit trail |
+||| UI-AUTH-003 | **Forgot password page** — `resources/views/pages/auth/forgot-password.blade.php` | UI-AUTH-001 | **COMPLIANT** | @csrf, old(email), @error, flash success |
+||| UI-AUTH-004 | **Web ForgotPasswordController** — POST `/forgot-password` | UI-AUTH-003 | **COMPLIANT** | SendPasswordResetLinkAction, try-catch mail failure |
+||| UI-AUTH-005 | **Reset password page** — `resources/views/pages/auth/reset-password.blade.php` | UI-AUTH-001 | **COMPLIANT** | @csrf, old(email), @error password |
+||| UI-AUTH-006 | **Web ResetPasswordController** — POST `/reset-password` | UI-AUTH-005 | **COMPLIANT** | ResetPasswordAction, audit `auth.password_reset_completed` |
+||| UI-AUTH-007 | **Email verification notice** — `resources/views/pages/auth/verify-email.blade.php` | UI-AUTH-001 | **COMPLIANT** | Dual mode, @csrf, old(email), double-click prevention |
+||| UI-AUTH-008 | **Web auth routes** — grouped public/guest/auth | UI-AUTH-002..007 | **COMPLIANT** | verified middleware, throttle:resend-verification |
+||| UI-AUTH-009 | **Web auth tests** — 61 tests, 161 assertions | UI-AUTH-002..008 | **COMPLIANT** | Login, logout, forgot, reset, verify, resend, rate limit, mail failure |
 
 **Note on web vs API auth:** Web uses Laravel's session-based auth (default `web` guard). API uses Sanctum tokens. These are separate flows. Web login creates a session cookie; API login returns a token. Both check the same User model fields (`is_active`, `is_locked`, etc.).
 

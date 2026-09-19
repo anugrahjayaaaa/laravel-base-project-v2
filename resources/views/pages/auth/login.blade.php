@@ -49,7 +49,8 @@
                     @enderror
                 </div>
                 <div class="d-grid mb-3">
-                    <button type="submit" class="btn btn-primary" id="loginBtn">Login</button>
+                    <button type="submit" class="btn btn-primary" id="loginBtn"
+                                 onclick="this.disabled=true;this.form.submit()">Login</button>
                 </div>
                 <div class="text-center">
                     <a href="{{ url('/forgot-password') }}" class="text-decoration-none small">Forgot password?</a>

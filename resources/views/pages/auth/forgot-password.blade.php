@@ -26,11 +26,16 @@
                 @csrf
                 <div class="mb-4">
                     <label for="email" class="form-label">Email</label>
-                    <input type="email" class="form-control" id="email" name="email" required>
+                    <input type="email" class="form-control" id="email" name="email"
+                           value="{{ old('email', request('email')) }}" required>
                     <div class="invalid-feedback" id="emailError"></div>
+                    @error('email')
+                        <div class="invalid-feedback d-block">{{ $message }}</div>
+                    @enderror
                 </div>
                 <div class="d-grid mb-3">
-                    <button type="submit" class="btn btn-primary" id="forgotBtn">Send Reset Link</button>
+                    <button type="submit" class="btn btn-primary" id="forgotBtn"
+                                 onclick="this.disabled=true;this.form.submit()">Send Reset Link</button>
                 </div>
                 <div class="text-center">
                     <a href="{{ url('/login') }}" class="text-decoration-none small">Back to Login</a>

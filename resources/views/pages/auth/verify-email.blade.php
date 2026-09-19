@@ -47,7 +47,8 @@
                         <input type="email" name="email" id="email" class="form form-control"
                                value="{{ old('email') }}" required>
                     </div>
-                    <button type="submit" class="btn btn-primary w-100" id="resendBtn">
+                    <button type="submit" class="btn btn-primary w-100" id="resendBtn"
+                            onclick="this.disabled=true;this.form.submit()">
                         Resend Verification Email
                     </button>
                 </form>
