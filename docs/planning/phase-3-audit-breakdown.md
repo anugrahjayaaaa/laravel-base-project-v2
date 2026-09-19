@@ -30,33 +30,36 @@
 
 ---
 
-## Phase 3B — Logout Flow (DONE)
+## Phase 3B — Logout Flow (IN PROGRESS)
 
 | ID | Task | Status |
 |----|------|--------|
 | AUTH-009 | Logout (current device) | **DONE** |
-| AUTH-010 | Logout-all-devices | **DONE** |
+| AUTH-010 | Logout-all-devices | **API DONE, Web view belum** |
 
 **Implementation:**
 - `LogoutController` → delete current Sanctum token + audit `auth.logout`
 - `LogoutAllController` → delete all tokens + audit `auth.logout_all`
 - Web logout via `WebAuthController@logout` → `Auth::logout()` + session invalidate + audit
+- **Belum:** AdminLTE view untuk logout-all (admin pilih device logout)
 
 ---
 
-## Phase 3C — Email Verification (DONE)
+## Phase 3C — Email Verification (BELUM)
 
 | ID | Task | Status |
 |----|------|--------|
-| AUTH-011a | VerifyEmailController → VerifyEmailAction | **DONE** |
-| AUTH-011b | ResendVerificationController | **DONE** |
+| AUTH-011a | VerifyEmailController → VerifyEmailAction | **CODE ADA, BELUM REVIEW/TEST** |
+| AUTH-011b | ResendVerificationController | **CODE ADA, BELUM REVIEW/TEST** |
 
-**Implementation:**
+**Implementation (belum diverifikasi):**
 - `VerifyEmailAction` — `markEmailAsVerified()` + audit `auth.email_verified`
 - `ResendVerificationController` — send notification + audit `auth.verification_resent`
 - Web: `resendVerification()` in WebAuthController
 
 **[QUEUE]** Resend email queueable — defer ke Phase 9 (Notifications). Phase 3 cukup sync.
+
+**Blocked:** User review + test belum dilakukan.
 
 ---
 
