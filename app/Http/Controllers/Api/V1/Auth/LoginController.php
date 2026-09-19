@@ -29,7 +29,7 @@ class LoginController extends Controller
                     'user_agent' => $request->userAgent(),
                     'channel' => 'api',
                 ]);
-                
+
                 $this->audit('auth.account_locked', null, null, [
                     'identifier' => $identifier,
                     'ip' => $ip,
@@ -44,6 +44,14 @@ class LoginController extends Controller
                     'user_agent' => $request->userAgent(),
                     'channel' => 'api',
                 ]);
+            }
+
+            if (($result['error']['error_code'] ?? null) === 'UNVERIFIED_EMAIL') {
+                return response()->json([
+                    'message' => 'Email not verified',
+                    'email' => $identifier,
+                    'verified' => false,
+                ], 403);
             }
 
             return $this->respond($result['error']['message'], $result['error']['status']);

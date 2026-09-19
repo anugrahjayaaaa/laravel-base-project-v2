@@ -109,16 +109,12 @@ class AuthServiceProvider extends ServiceProvider
      */
     protected function configureEmailVerification(): void
     {
-        // Verification link expiration: 60 minutes.
         VerifyEmail::toMailUsing(function ($notifiable) {
-            // Choose route based on request context so signed URL matches.
-            $route = request()->is('api/*') ? 'verification.verify.api' : 'verification.verify';
-
             return (new \Illuminate\Notifications\Messages\MailMessage)
                 ->subject('Verify Email Address')
                 ->line('Please click the link below to verify your email address.')
                 ->action('Verify Email', URL::signedRoute(
-                    $route,
+                    'verification.verify',
                     [
                         'id' => $notifiable->getKey(),
                         'hash' => sha1($notifiable->getEmailForVerification()),

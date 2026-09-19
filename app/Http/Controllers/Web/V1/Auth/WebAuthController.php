@@ -4,12 +4,16 @@ namespace App\Http\Controllers\Web\V1\Auth;
 
 use App\Actions\Auth\AuthenticateUserAction;
 use App\Actions\Auth\LogoutAllDevicesAction;
+use App\Actions\Auth\ResendVerificationAction;
 use App\Actions\Auth\SendPasswordResetLinkAction;
 use App\Actions\Auth\ResetPasswordAction;
+use App\Actions\Auth\VerifyEmailAction;
+use App\Models\User;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Http\Requests\Auth\PasswordForgotRequest;
 use App\Http\Requests\Auth\PasswordResetRequest;
+use App\Http\Requests\Auth\ResendVerificationRequest;
 use App\Auth\LoginThrottle;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -42,6 +46,7 @@ class WebAuthController extends Controller
                     'user_agent' => $request->userAgent(),
                     'channel' => 'web',
                 ]);
+
                 $this->audit('auth.account_locked', null, null, [
                     'identifier' => $identifier,
                     'ip' => $ip,
@@ -58,16 +63,16 @@ class WebAuthController extends Controller
                 ]);
             }
 
+            if (($result['error']['error_code'] ?? null) === 'UNVERIFIED_EMAIL') {
+                return redirect()->route('verification.notice')
+                    ->with('error', $result['error']['message']);
+            }
+
             return back()->withInput($request->only('identifier'))
                 ->withErrors(['identifier' => $result['error']['message']]);
         }
 
         $user = $result['user'];
-
-        if (! $user->email_verified_at) {
-            return redirect()->route('verification.notice')
-                ->with('error', 'Please verify your email before logging in.');
-        }
 
         Auth::login($user, $request->boolean('remember'));
 
@@ -162,6 +167,57 @@ class WebAuthController extends Controller
         return response()->view('pages.auth.verify-email', ['title' => 'Verify Email']);
     }
 
+    public function verifyEmail(VerifyEmailAction $action)
+    {
+        $mode = config('auth.verification.mode', 'public');
+
+        if ($mode === 'admin' || $mode === 'disabled') {
+            return redirect()->route('verification.notice')
+                ->with('error', 'Feature disabled.');
+        }
+
+        $user = User::findOrFail(request()->route('id'));
+
+        if (! hash_equals((string) request()->route('hash'), sha1($user->getEmailForVerification()))) {
+            return redirect()->route('verification.notice')
+                ->with('error', 'Invalid verification link.');
+        }
+
+        $result = $action->run($user);
+
+        if (isset($result['error'])) {
+            return redirect()->route('verification.notice')
+                ->with('error', $result['error']['message']);
+        }
+
+        $this->audit('auth.email_verified', $result['user'], $result['user']);
+
+        return redirect()->route('verification.notice')
+            ->with('success', 'Email verified successfully.');
+    }
+
+    public function resendVerification(ResendVerificationAction $action, ResendVerificationRequest $request)
+    {
+        $mode = config('auth.verification.mode', 'public');
+
+        if ($mode === 'admin' || $mode === 'disabled') {
+            return back()->withErrors(['error' => 'Feature disabled.']);
+        }
+
+        $data = $request->validated();
+        $email = $data['email'];
+
+        $result = $action->run($email, $request->ip());
+
+        if (isset($result['error'])) {
+            return back()->withErrors(['error' => $result['error']['message']]);
+        }
+
+        $this->audit('auth.verification_resent', null, null);
+
+        return back()->with('success', 'If the email is registered, a verification link has been sent.');
+    }
+
     public function showVerified()
     {
         return response()->view('pages.auth.verified', ['title' => 'Email Verified']);
@@ -194,16 +250,6 @@ class WebAuthController extends Controller
     }
 
     // === LOGIC (no view) ===
-
-    public function resendVerification()
-    {
-        $user = auth()->user();
-        $user->sendEmailVerificationNotification();
-
-        $this->audit('auth.verification_resent', $user, $user);
-
-        return back()->with('success', 'Verification email resent.');
-    }
 
     public function logout(Request $request)
     {

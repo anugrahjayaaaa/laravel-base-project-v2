@@ -12,6 +12,12 @@ class VerifyEmailController extends Controller
 {
     public function __invoke(Request $request, VerifyEmailAction $action): JsonResponse
     {
+        $mode = config('auth.verification.mode', 'public');
+
+        if ($mode === 'admin' || $mode === 'disabled') {
+            return $this->respond('Feature disabled.', 403);
+        }
+
         $user = User::findOrFail($request->route('id'));
 
         $result = $action->run($user);
