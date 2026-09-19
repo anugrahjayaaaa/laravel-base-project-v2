@@ -123,7 +123,7 @@ class WebAuthController extends Controller
         }
 
         return back()->withInput($request->only('email'))
-            ->with('success', 'If the email exists, a reset link has been sent.');
+            ->with('status', 'If the email exists, a reset link has been sent.');
     }
 
     // === VIEW: Reset Password ===
@@ -156,7 +156,7 @@ class WebAuthController extends Controller
 
         if ($result['status'] === Password::PASSWORD_RESET) {
             return redirect()->route('login')
-                ->with('success', 'Password has been reset. You may now log in.');
+                ->with('status', 'Password has been reset. You may now log in.');
         }
 
         return back()->withInput($request->only('email'))
