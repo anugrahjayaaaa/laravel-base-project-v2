@@ -6,6 +6,7 @@ use App\Actions\Auth\AuthenticateUserAction;
 use App\Auth\LoginThrottle;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
+use App\Models\User;
 use Illuminate\Http\JsonResponse;
 
 class LoginController extends Controller
@@ -21,16 +22,18 @@ class LoginController extends Controller
 
         $result = $action->run($identifier, $data['password'], $ip, $throttle);
 
+        $user = User::where('email', $identifier)->orWhere('username', $identifier)->first();
+
         if (isset($result['error'])) {
             if (isset($result['lockedSeconds']) && $result['lockedSeconds'] > 0) {
-                $this->audit('auth.login_failed', null, null, [
+                $this->audit('auth.login_failed', $user, $user, [
                     'identifier' => $identifier,
                     'ip' => $ip,
                     'user_agent' => $request->userAgent(),
                     'channel' => 'api',
                 ]);
 
-                $this->audit('auth.account_locked', null, null, [
+                $this->audit('auth.account_locked', $result['user'], $result['user'], [
                     'identifier' => $identifier,
                     'ip' => $ip,
                     'user_agent' => $request->userAgent(),
@@ -38,7 +41,7 @@ class LoginController extends Controller
                     'lock_duration_seconds' => $result['lockedSeconds'],
                 ]);
             } else {
-                $this->audit('auth.login_failed', null, null, [
+                $this->audit('auth.login_failed', $user, $user, [
                     'identifier' => $identifier,
                     'ip' => $ip,
                     'user_agent' => $request->userAgent(),

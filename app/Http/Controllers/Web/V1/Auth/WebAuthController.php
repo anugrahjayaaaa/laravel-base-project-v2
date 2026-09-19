@@ -35,19 +35,20 @@ class WebAuthController extends Controller
         $data = $request->validated();
         $identifier = $data['identifier'];
         $ip = $request->ip();
+        $user = User::where('email', $identifier)->orWhere('username', $identifier)->first();
 
         $result = $action->run($identifier, $data['password'], $ip, $throttle);
 
         if (isset($result['error'])) {
             if (isset($result['lockedSeconds']) && $result['lockedSeconds'] > 0) {
-                $this->audit('auth.login_failed', null, null, [
+                $this->audit('auth.login_failed', $user, $user, [
                     'identifier' => $identifier,
                     'ip' => $ip,
                     'user_agent' => $request->userAgent(),
                     'channel' => 'web',
                 ]);
 
-                $this->audit('auth.account_locked', null, null, [
+                $this->audit('auth.account_locked', $result['user'], $result['user'], [
                     'identifier' => $identifier,
                     'ip' => $ip,
                     'user_agent' => $request->userAgent(),
@@ -55,7 +56,7 @@ class WebAuthController extends Controller
                     'lock_duration_seconds' => $result['lockedSeconds'],
                 ]);
             } else {
-                $this->audit('auth.login_failed', null, null, [
+                $this->audit('auth.login_failed', $user, $user, [
                     'identifier' => $identifier,
                     'ip' => $ip,
                     'user_agent' => $request->userAgent(),
@@ -101,11 +102,13 @@ class WebAuthController extends Controller
         $data = $request->validated();
         $email = $data['email'];
         $ip = $request->ip();
+        $user = User::where('email', $email)->first();
 
         $result = $action->run($email, $ip, $request, $throttle);
 
         if (isset($result['error'])) {
-            $this->audit('auth.password_reset_requested', $result['user'], $result['user'], [
+            $this->audit('auth.password_reset_requested', $user, $user, [
+                'email' => $email,
                 'ip' => $ip,
             ]);
 
@@ -206,6 +209,7 @@ class WebAuthController extends Controller
 
         $data = $request->validated();
         $email = $data['email'];
+        $user = User::where('email', $email)->first();
 
         $result = $action->run($email, $request->ip());
 
@@ -213,14 +217,11 @@ class WebAuthController extends Controller
             return back()->withErrors(['error' => $result['error']['message']]);
         }
 
-        $this->audit('auth.verification_resent', null, null);
+        $this->audit('auth.verification_resent', $user, $user, [
+            'email' => $email,
+        ]);
 
         return back()->with('success', 'If the email is registered, a verification link has been sent.');
-    }
-
-    public function showVerified()
-    {
-        return response()->view('pages.auth.verified', ['title' => 'Email Verified']);
     }
 
     // === VIEW: Sessions ===
