@@ -22,11 +22,29 @@ use Illuminate\Support\Str;
 class LoginThrottle
 {
     /**
-     * Build the rate-limiter key from identifier + IP.
+     * Build a namespaced, human-readable rate-limiter key.
+     * Format: rate_limit:{feature}:{type}:{slug}:{ip}
+     * Examples:
+     *   rate_limit:login:email:dXNlckBleGFtcGxlLmNvbQ:127.0.0.1
+     *   rate_limit:forgot_password:ip:127.0.0.1
+     *   rate_limit:resend_verification:user_id:42:127.0.0.1
      */
-    public function key(string $identifier, string $ip): string
+    public function key(string $feature, string $identifier, string $ip): string
     {
-        return sha1(Str::lower(trim($identifier)) . '|' . $ip);
+        $id = strtolower(trim($identifier));
+
+        if (str_contains($id, '@')) {
+            $type = 'email';
+            $slug = substr(base64_encode($id), 0, 10);
+        } elseif (ctype_digit($id) && $id > 0) {
+            $type = 'user_id';
+            $slug = (int) $id;
+        } else {
+            $type = 'ip';
+            $slug = $ip;
+        }
+
+        return "rate_limit:{$feature}:{$type}:{$slug}:{$ip}";
     }
 
     /**
@@ -45,7 +63,7 @@ class LoginThrottle
 
         $max = (int) config('rate_limits.login.max_attempts', 5);
 
-        return RateLimiter::tooManyAttempts($this->key($identifier, $ip), $max);
+        return RateLimiter::tooManyAttempts($this->key('login', $identifier, $ip), $max);
     }
 
     /**
@@ -63,7 +81,7 @@ class LoginThrottle
                 ->first();
 
             if ($record && $record->locked_until && $record->locked_until->isPast()) {
-                $this->reset($identifier, $ip);
+                $this->reset('login', $identifier, $ip);
 
                 return true;
             }
@@ -80,7 +98,7 @@ class LoginThrottle
      */
     public function recordFailed(string $identifier, string $ip, ?User $user = null): int
     {
-        $key = $this->key($identifier, $ip);
+        $key = $this->key('login', $identifier, $ip);
         $maxAttempts = (int) config('rate_limits.login.max_attempts', 5);
 
         // Hit the rate limiter (cache-backed transport throttle).
@@ -127,7 +145,7 @@ class LoginThrottle
      */
     public function reset(string $identifier, string $ip): void
     {
-        $key = $this->key($identifier, $ip);
+        $key = $this->key('login', $identifier, $ip);
         RateLimiter::clear($key);
 
         FailedLoginAttempt::where('identifier', $identifier)
@@ -148,6 +166,6 @@ class LoginThrottle
             return (int) now()->diffInSeconds($record->locked_until, false);
         }
 
-        return RateLimiter::availableIn($this->key($identifier, $ip));
+        return RateLimiter::availableIn($this->key('login', $identifier, $ip));
     }
 }
