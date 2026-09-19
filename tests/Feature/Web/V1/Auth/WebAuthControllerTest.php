@@ -134,7 +134,8 @@ class WebAuthControllerTest extends TestCase
             ]);
         }
 
-        $response->assertStatus(429);
+        $response->assertStatus(302)
+            ->assertSessionHasErrors('email');
     }
 
     public function test_web_forgot_password_submission(): void
@@ -146,7 +147,7 @@ class WebAuthControllerTest extends TestCase
         ]);
 
         $response->assertRedirectBack()
-            ->assertSessionHas('success');
+            ->assertSessionHas('status');
     }
 
     public function test_web_reset_password_submission(): void
@@ -162,7 +163,7 @@ class WebAuthControllerTest extends TestCase
         ]);
 
         $response->assertRedirect(route('login'))
-            ->assertSessionHas('success');
+            ->assertSessionHas('status');
     }
 
     public function test_web_protected_route_redirects_unauthenticated(): void
@@ -237,7 +238,8 @@ class WebAuthControllerTest extends TestCase
         $this->post('/login', [
             'identifier' => $user->email,
             'password' => 'wrong',
-        ])->assertStatus(429);
+        ])->assertStatus(302)
+            ->assertSessionHasErrors('identifier');
     }
 
     public function test_web_forgot_password_rate_limited_after_3_attempts(): void
@@ -250,7 +252,8 @@ class WebAuthControllerTest extends TestCase
 
         $this->post('/forgot-password', [
             'email' => 'unknown@example.com',
-        ])->assertStatus(429);
+        ])->assertStatus(302)
+            ->assertSessionHasErrors('email');
     }
 
     public function test_web_reset_password_rate_limited_after_3_attempts(): void
@@ -269,7 +272,8 @@ class WebAuthControllerTest extends TestCase
             'token' => 'fake-token',
             'password' => 'newpass1234',
             'password_confirmation' => 'newpass1234',
-        ])->assertStatus(429);
+        ])->assertStatus(302)
+            ->assertSessionHasErrors('email');
     }
 
     // Mail failure test for resend requires notification sender mocking — not feasible
