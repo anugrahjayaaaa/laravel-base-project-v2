@@ -7,6 +7,7 @@
     'message' => 'Are you sure?',
     'cancelLabel' => 'Cancel',
     'confirmLabel' => null,
+    'callback' => null,
     'class' => 'dropdown-item',
 ])
 
@@ -22,6 +23,7 @@
         data-title="{{ $title }}"
         data-message="{{ $message }}"
         data-label="{{ $confirmLabel }}"
+        @if($callback) data-callback="{{ $callback }}" @endif
         class="{{ $class }}">
     {{ $slot }}
 </button>
