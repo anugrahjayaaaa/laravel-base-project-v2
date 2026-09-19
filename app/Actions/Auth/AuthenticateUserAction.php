@@ -34,6 +34,12 @@ class AuthenticateUserAction
             return ['error' => $accountError];
         }
 
+        $verificationError = $this->checkEmailVerification($user);
+
+        if ($verificationError) {
+            return ['error' => $verificationError];
+        }
+
         return ['user' => $user];
     }
 
@@ -69,6 +75,19 @@ class AuthenticateUserAction
 
         if ($user->is_locked) {
             return ['message' => 'Account is locked.', 'status' => 403];
+        }
+
+        return null;
+    }
+
+    protected function checkEmailVerification(User $user): ?array
+    {
+        if (config('auth.verification.mode', 'public') === 'disabled') {
+            return null;
+        }
+
+        if (! $user->hasVerifiedEmail()) {
+            return ['message' => 'Email not verified', 'status' => 403, 'error_code' => 'UNVERIFIED_EMAIL'];
         }
 
         return null;
