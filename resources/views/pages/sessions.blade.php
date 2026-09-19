@@ -1,6 +1,19 @@
 @extends('layouts.app', ['title' => 'Active Sessions'])
 
 @section('content')
+    <style>
+        .sessions-table tbody tr:first-child td { border-top: none; }
+        .sessions-table thead th {
+            text-transform: uppercase;
+            font-size: 0.7rem;
+            letter-spacing: 0.05em;
+            font-weight: 600;
+            color: var(--lbp-text-muted, #6c757d);
+            border-bottom: 2px solid var(--lbp-border, #dee2e6);
+        }
+        .sessions-table { border-radius: 8px; overflow: hidden; }
+        .sessions-table .badge { border-radius: 6px; }
+    </style>
     <div class="content-header mb-3">
         <h1 class="page-title">Active Sessions</h1>
         <p class="page-description mb-0">Manage your active sessions across devices.</p>
@@ -12,7 +25,7 @@
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center mb-3">
                         <h5 class="card-title mb-0">Sessions</h5>
-                        <button type="button" class="btn btn-danger btn-sm" data-bs-toggle="modal"ßßß
+                        <button type="button" class="btn btn-danger btn-sm" data-bs-toggle="modal"
                             data-bs-target="#confirmModal" data-action="{{ route('sessions.logout-all') }}"
                             data-method="POST" data-title="Logout All Devices?"
                             data-message="Are you sure you want to logout from all other devices? You will need to login again on those devices."
@@ -20,24 +33,14 @@
                             <i class="fas fa-sign-out-alt me-1"></i> Logout All Devices
                         </button>
                     </div>
-                    <table class="table table-hover mb-0" style="border-radius: 8px; overflow: hidden;">
+                    <table class="table table-hover mb-0 sessions-table">
                         <thead>
                             <tr>
-                                <th
-                                    style="text-transform: uppercase; font-size: 0.7rem; letter-spacing: 0.05em; font-weight: 600; color: var(--lbp-text-muted, #6c757d); border-bottom: 2px solid var(--lbp-border, #dee2e6);">
-                                    Device</th>
-                                <th
-                                    style="text-transform: uppercase; font-size: 0.7rem; letter-spacing: 0.05em; font-weight: 600; color: var(--lbp-text-muted, #6c757d); border-bottom: 2px solid var(--lbp-border, #dee2e6);">
-                                    IP Address</th>
-                                <th
-                                    style="text-transform: uppercase; font-size: 0.7rem; letter-spacing: 0.05em; font-weight: 600; color: var(--lbp-text-muted, #6c757d); border-bottom: 2px solid var(--lbp-border, #dee2e6);">
-                                    Last Activity</th>
-                                <th
-                                    style="text-transform: uppercase; font-size: 0.7rem; letter-spacing: 0.05em; font-weight: 600; color: var(--lbp-text-muted, #6c757d); border-bottom: 2px solid var(--lbp-border, #dee2e6);">
-                                    Created</th>
-                                <th
-                                    style="text-transform: uppercase; font-size: 0.7rem; letter-spacing: 0.05em; font-weight: 600; color: var(--lbp-text-muted, #6c757d); border-bottom: 2px solid var(--lbp-border, #dee2e6);">
-                                    Status</th>
+                                <th>Device</th>
+                                <th>IP Address</th>
+                                <th>Last Activity</th>
+                                <th>Created</th>
+                                <th>Status</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -49,8 +52,7 @@
                                 <td>{{ request()->ip() }}</td>
                                 <td>{{ now()->format('Y-m-d H:i') }}</td>
                                 <td>{{ auth()->user()->created_at->format('Y-m-d') }}</td>
-                                <td><span class="badge bg-success-subtle text-success"
-                                        style="border-radius: 6px;">Active</span></td>
+                                <td><span class="badge bg-success-subtle text-success">Active</span></td>
                             </tr>
 
                             {{-- API tokens (other devices) --}}
@@ -63,7 +65,7 @@
                                     <td>{{ $token->last_used_at?->format('Y-m-d H:i') ?? '—' }}</td>
                                     <td>{{ $token->created_at->format('Y-m-d H:i') }}</td>
                                     <td>
-                                        <span class="badge bg-info-subtle text-info" style="border-radius: 6px;">API</span>
+                                        <span class="badge bg-info-subtle text-info">API</span>
                                     </td>
                                 </tr>
                             @endforeach
