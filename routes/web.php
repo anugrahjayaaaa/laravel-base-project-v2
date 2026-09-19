@@ -35,6 +35,8 @@ Route::controller(WebAuthController::class)->group(function () {
         ->middleware('auth');
 
     Route::get('/sessions', 'showSessions')->name('sessions')->middleware('auth');
+
+    Route::post('/sessions/logout-all', 'logoutAllDevices')->name('sessions.logout-all')->middleware('auth');
 });
 
 // Authenticated routes — require Sanctum auth (consistent with API).

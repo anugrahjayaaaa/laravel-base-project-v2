@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Web\V1\Auth;
 
 use App\Actions\Auth\AuthenticateUserAction;
+use App\Actions\Auth\LogoutAllDevicesAction;
 use App\Actions\Auth\SendPasswordResetLinkAction;
 use App\Actions\Auth\ResetPasswordAction;
 use App\Http\Controllers\Controller;
@@ -176,6 +177,20 @@ class WebAuthController extends Controller
             'title' => 'Active Sessions',
             'tokens' => $tokens,
         ]);
+    }
+
+    // === LOGIC: Logout All Devices ===
+
+    public function logoutAllDevices(Request $request, LogoutAllDevicesAction $action)
+    {
+        $user = $request->user();
+        $action->run($user);
+
+        $this->audit('auth.logout_all', $user, $user);
+
+        Auth::logout();
+
+        return redirect('/login');
     }
 
     // === LOGIC (no view) ===
