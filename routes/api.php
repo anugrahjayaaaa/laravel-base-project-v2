@@ -40,12 +40,8 @@ Route::prefix('v1')->group(function () {
         Route::get('/email/verify/{id}/{hash}', VerifyEmailController::class)->name('verification.verify.api')->middleware('signed');
     });
 
-    // Protected API endpoints: require Sanctum auth + non-expired password.
-    // The middleware exempts verification, logout, and email.resend routes
-    // by route-name substring (see web.php for the matching pattern).
-    // NOTE: the password-change route is intentionally NOT in this group —
-    // it must remain reachable while the password is expired/must-change.
-    Route::middleware(['auth:sanctum', 'password.change.required'])->group(function () {
+    // Protected API endpoints: require Sanctum auth + email verification + non-expired password.
+    Route::middleware(['auth:sanctum', 'verified', 'password.change.required'])->group(function () {
         Route::post('/auth/logout', LogoutController::class)->name('api.v1.auth.logout');
         Route::post('/auth/logout-all', LogoutAllController::class)->name('api.v1.auth.logout-all');
         Route::post('/auth/email/resend', ResendVerificationController::class)->name('api.v1.auth.email.resend')->middleware('throttle:resend-verification');

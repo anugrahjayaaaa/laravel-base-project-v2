@@ -25,21 +25,25 @@ Route::controller(WebAuthController::class)->group(function () {
         ->middleware('throttle:reset-password');
 
     Route::get('/verify-email', 'showVerifyEmail')->name('verification.notice');
-    Route::get('/email/verify/{id}/{hash}', 'showVerified')->name('verification.verify');
+
+    Route::get('/email/verify/{id}/{hash}', 'verifyEmail')->name('verification.verify');
+
     Route::post('/email/resend', 'resendVerification')
         ->name('verification.resend')
-        ->middleware('auth');
-
-    Route::post('/logout', 'logout')
-        ->name('logout')
-        ->middleware('auth');
-
-    Route::get('/sessions', 'showSessions')->name('sessions')->middleware('auth');
-
-    Route::post('/sessions/logout-all', 'logoutAllDevices')->name('sessions.logout-all')->middleware('auth');
+        ->middleware('throttle:resend-verification');
 });
 
-// Authenticated routes — require Sanctum auth (consistent with API).
-Route::middleware('auth:sanctum')->group(function () {
+Route::middleware('auth')->group(function () {
+    Route::controller(WebAuthController::class)->group(function () {
+        Route::post('/logout', 'logout')->name('logout');
+
+        Route::get('/sessions', 'showSessions')->name('sessions');
+        
+        Route::post('/sessions/logout-all', 'logoutAllDevices')->name('sessions.logout-all');
+    });
+});
+
+// Authenticated routes — require Sanctum auth + email verification.
+Route::middleware(['auth:sanctum', 'verified'])->group(function () {
     Route::get('/dashboard', DashboardController::class)->name('dashboard');
 });
