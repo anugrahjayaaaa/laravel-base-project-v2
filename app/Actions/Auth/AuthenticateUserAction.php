@@ -23,7 +23,7 @@ class AuthenticateUserAction
         $user = $this->findUser($identifier, $password);
 
         if (! $user) {
-            $lockedSeconds = $throttle->recordFailed($identifier, $ip);
+            $lockedSeconds = $throttle->recordFailed($identifier, $ip, $user);
 
             return ['error' => ['message' => 'Invalid credentials.', 'status' => 401], 'lockedSeconds' => $lockedSeconds];
         }
@@ -46,9 +46,10 @@ class AuthenticateUserAction
     protected function checkThrottle(string $identifier, string $ip, LoginThrottle $throttle): ?array
     {
         if ($throttle->isLocked($identifier, $ip)) {
-            $minutes = (int) ceil(max($throttle->lockedFor($identifier, $ip), 0) / 60);
+            $lockedSeconds = $throttle->lockedFor($identifier, $ip);
+            $minutes = (int) ceil(max($lockedSeconds, 0) / 60);
 
-            return ['message' => "Account is locked. Try again in {$minutes} minute(s).", 'status' => 403];
+            return ['message' => "Account is locked. Try again in {$minutes} minute(s).", 'status' => 403, 'lockedSeconds' => $lockedSeconds];
         }
 
         return null;

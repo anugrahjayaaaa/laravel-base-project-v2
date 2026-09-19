@@ -3,6 +3,7 @@
 namespace App\Auth;
 
 use App\Models\FailedLoginAttempt;
+use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
@@ -77,7 +78,7 @@ class LoginThrottle
      *
      * @return int Lock duration in seconds, or 0 if not locked.
      */
-    public function recordFailed(string $identifier, string $ip): int
+    public function recordFailed(string $identifier, string $ip, ?User $user = null): int
     {
         $key = $this->key($identifier, $ip);
         $maxAttempts = (int) config('rate_limits.login.max_attempts', 5);
@@ -91,13 +92,17 @@ class LoginThrottle
         // sequential execution. Production uses MySQL/PostgreSQL.
         $lockedSeconds = 0;
 
-        DB::transaction(function () use ($identifier, $ip, $maxAttempts, $key, &$lockedSeconds) {
+        DB::transaction(function () use ($identifier, $ip, $maxAttempts, $key, $user, &$lockedSeconds) {
             $record = FailedLoginAttempt::firstOrCreate(
                 ['identifier' => $identifier, 'ip_address' => $ip],
                 ['attempts' => 0, 'lock_count' => 0, 'locked_until' => null]
             );
 
             $record->attempts++;
+
+            if ($user) {
+                $record->user_id = $user->getKey();
+            }
 
             if (! $record->isLocked() && $record->attempts >= $maxAttempts) {
                 $durationMinutes = $record->nextLockoutMinutes();
