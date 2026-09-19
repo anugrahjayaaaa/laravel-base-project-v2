@@ -4,11 +4,16 @@ namespace Tests\Feature\Web\V1\Auth;
 
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\URL;
+use Mockery;
 use Tests\TestCase;
 
 class WebAuthControllerTest extends TestCase
 {
     use RefreshDatabase;
+
+    // === Existing tests ===
 
     public function test_web_login_renders_form(): void
     {
@@ -98,4 +103,38 @@ class WebAuthControllerTest extends TestCase
         $response->assertStatus(200)
             ->assertViewIs('pages.auth.reset-password');
     }
+
+    // === Phase 3C: Email Verification Tests ===
+
+    public function test_web_verify_email_signed_link_marks_verified(): void
+    {
+        $user = User::factory()->unverified()->create();
+
+        $url = URL::signedRoute('verification.verify', [
+            'id' => $user->getKey(),
+            'hash' => sha1($user->getEmailForVerification()),
+        ]);
+
+        $response = $this->get($url);
+
+        $response->assertRedirect(route('verification.notice'))
+            ->assertSessionHas('success');
+
+        $this->assertNotNull($user->fresh()->email_verified_at);
+    }
+
+    public function test_web_resend_rate_limited_after_threshold(): void
+    {
+        $user = User::factory()->unverified()->create();
+
+        for ($i = 0; $i < 6; $i++) {
+            $response = $this->post('/email/resend', [
+                'email' => $user->email,
+            ]);
+        }
+
+        $response->assertStatus(429);
+    }
+
+    // Mail failure test requires notification sender mocking — not feasible with current tooling
 }

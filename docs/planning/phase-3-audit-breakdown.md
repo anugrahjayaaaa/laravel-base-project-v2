@@ -1,6 +1,6 @@
 # Phase 3 Audit & Breakdown — Authentication Foundation
 
-> Audit date: 2026-09-18 | Branch: feature/phase-3-authentication | Status: PHASE 3A DONE
+> Audit date: 2026-09-18 | Branch: feature/phase-3-authentication | Status: PHASE 3C COMPLIANT
 > Purpose: break Phase 3 into small executable tasks, flag queue-eligible items, resolve Actions/Services question.
 
 ---
@@ -11,7 +11,7 @@
 |----|------|--------|
 | AUTH-004 | LoginFormRequest (identifier+password, anti-enumeration) | **DONE** |
 | AUTH-005 | LoginController → AuthenticateUserAction | **DONE** |
-| AUTH-006 | Login tests (55 tests, 144 assertions) | **DONE** |
+| AUTH-006 | Login + email verification tests (57 tests, 149 assertions) | **DONE** |
 | AUTH-007 | Failed login tracking (LoginThrottle + FailedLoginAttempt) | **DONE** |
 | AUTH-008 | Temporary lock enforcement | **DONE** |
 | AUTH-009 | Logout (current device) | **DONE** |
@@ -45,21 +45,23 @@
 
 ---
 
-## Phase 3C — Email Verification (BELUM)
+## Phase 3C — Email Verification (COMPLIANT)
 
 | ID | Task | Status |
 |----|------|--------|
-| AUTH-011a | VerifyEmailController → VerifyEmailAction | **CODE ADA, BELUM REVIEW/TEST** |
-| AUTH-011b | ResendVerificationController | **CODE ADA, BELUM REVIEW/TEST** |
+| AUTH-011a | VerifyEmailController → VerifyEmailAction | **COMPLIANT** — action handles markEmailAsVerified; controller adds mode check + audit |
+| AUTH-011b | ResendVerificationController → ResendVerificationAction | **COMPLIANT** — action handles send notification + rate limit; controller adds mode check + audit |
 
-**Implementation (belum diverifikasi):**
-- `VerifyEmailAction` — `markEmailAsVerified()` + audit `auth.email_verified`
-- `ResendVerificationController` — send notification + audit `auth.verification_resent`
-- Web: `resendVerification()` in WebAuthController
-
-**[QUEUE]** Resend email queueable — defer ke Phase 9 (Notifications). Phase 3 cukup sync.
-
-**Blocked:** User review + test belum dilakukan.
+**Implementation (verified):**
+- `AuthenticateUserAction::checkEmailVerification()` — single source of truth; blocks all modes except `disabled`; returns `UNVERIFIED_EMAIL` error
+- `VerifyEmailAction` — `markEmailAsVerified()` + check already verified
+- `ResendVerificationAction` — rate limited (3600s window), generic success, user enumeration safe
+- `WebAuthController@login` — catch UNVERIFIED_EMAIL → redirect verify-email page
+- `WebAuthController@verifyEmail` — verify email via signed link → redirect verify-email page + flash
+- `WebAuthController@resendVerification` — resend via form email input → action send email
+- `Api/V1/Auth/LoginController` — catch UNVERIFIED_EMAIL → JSON 403
+- `verified` middleware on protected routes (web + API)
+- `AUTH_EMAIL_VERIFICATION_MODE=public|admin|disabled` in `.env.example`
 
 ---
 
@@ -91,7 +93,7 @@
 ||| `app/Http/Controllers/Web/V1/Auth/WebAuthController.php` | Web auth: view rendering + login/logout logic + forgot/reset password + audit trail | UI-AUTH-002 |
 ||| `app/Http/Requests/Auth/LoginRequest.php` | Login form request: identifier + password validation | AUTH-004 |
 ||| `resources/views/layouts/auth.blade.php` | Auth layout: centered card, no sidebar/header | UI-AUTH-001 |
-||| `resources/views/pages/auth/*.blade.php` | Auth views: login, forgot-password, reset-password, verify-email, verified | UI-AUTH-001,003,005,007 |
+| `resources/views/pages/auth/*.blade.php` | Auth views: login, forgot-password, reset-password, verify-email | UI-AUTH-001,003,005,007 |
 ||| `routes/web.php` | Web routes: auth views via Route::controller(WebAuthController::class) | UI-AUTH-008 |
 ||| Traits removed: AuthenticatesUsers, HandlesUserLookup, HandlesLockCheck, HandlesPasswordResetFlow | Logic moved to Actions | — |
 
@@ -112,9 +114,9 @@ All API controllers implemented. View rendering handled by WebAuthController (no
 ||| `POST /forgot-password` | `App\Http\Controllers\Web\V1\Auth\WebAuthController@sendPasswordResetLink` | **DONE** |
 ||| `GET /reset-password` | `App\Http\Controllers\Web\V1\Auth\WebAuthController@showResetPassword` | **DONE** |
 ||| `POST /reset-password` | `App\Http\Controllers\Web\V1\Auth\WebAuthController@resetUserPassword` | **DONE** |
-||| `GET /verify-email` | `App\Http\Controllers\Web\V1\Auth\WebAuthController@showVerifyEmail` | **DONE** |
-||| `GET /email/verify/{id}/{hash}` | `App\Http\Controllers\Web\V1\Auth\WebAuthController@showVerified` | **DONE** |
-||| `POST /email/resend` | `App\Http\Controllers\Web\V1\Auth\WebAuthController@resendVerification` | **DONE** |
+| `GET /verify-email` | `App\Http\Controllers\Web\V1\Auth\WebAuthController@showVerifyEmail` | **DONE** |
+| `GET /email/verify/{id}/{hash}` | `App\Http\Controllers\Web\V1\Auth\WebAuthController@verifyEmail` | **DONE** |
+| `POST /email/resend` | `App\Http\Controllers\Web\V1\Auth\WebAuthController@resendVerification` | **DONE** |
 ||| `POST /logout` | `App\Http\Controllers\Web\V1\Auth\WebAuthController@logout` | **DONE** |
 
 ### Remaining (not yet implemented)
@@ -129,6 +131,7 @@ All API controllers implemented. View rendering handled by WebAuthController (no
 - `throttle:login` wired on web POST /login + API POST /auth/login (shared key via LoginThrottle::key)
 - `throttle:forgot-password` wired on web POST /forgot-password, POST /reset-password + API POST /auth/password/forgot, POST /auth/password/reset (shared key)
 - `throttle:resend-verification` on API POST /auth/email/resend
+- `verified` middleware on protected routes (web + API) — blocks unverified users from /dashboard and API protected endpoints
 
 ### Audit trail status
 
@@ -139,7 +142,8 @@ All API controllers implemented. View rendering handled by WebAuthController (no
 | `auth.logout_all` | LogoutAllController ✅ | WebAuthController ✅ |
 | `auth.password_reset_requested` | PasswordForgotController ✅ | WebAuthController ✅ |
 | `auth.password_reset_completed` | PasswordResetController ✅ | WebAuthController ✅ |
-| `auth.verification_resent` | ResendVerificationController ✅ | — |
+| `auth.email_verified` | VerifyEmailController ✅ | WebAuthController@verifyEmail ✅ |
+| `auth.verification_resent` | ResendVerificationController ✅ | WebAuthController@resendVerification ✅ (channel=web) |
 
 Both channels log audit at the mutation site per the audit pattern
 (Controller logs directly for thin operations, no model observers).
@@ -149,18 +153,18 @@ Web audit uses `$this->audit()` from base Controller (same as API).
 
 **Web routes (`routes/web.php`):**
 
-||| Group | Routes | Middleware |
-|||-------|--------|-----------|
-||| Public | `/`, `/login` (GET), `/forgot-password` (GET), `/reset-password` (GET), `/verify-email` (GET), `/email/verify/{id}/{hash}` (GET) | none |
-||| Public (guest) | POST `/login`, POST `/forgot-password`, POST `/reset-password` | `throttle:login`, `throttle:forgot-password` |
-||| Auth | `/dashboard`, POST `/logout` | `auth:sanctum`, `auth` |
+|||| Group | Routes | Middleware |
+||||-------|--------|-----------|
+|| Public | `/`, `/login` (GET), `/forgot-password` (GET), `/reset-password` (GET), `/verify-email` (GET), `/email/verify/{id}/{hash}` (GET) | none |
+|||| Public (guest) | POST `/login`, POST `/forgot-password`, POST `/reset-password` | `throttle:login`, `throttle:forgot-password` |
+|||| Auth | `/dashboard`, POST `/logout` | `auth:sanctum`, `verified`, `auth` |
 
 **API routes (`routes/api.php`):**
 
 || Group | Routes | Middleware |
 ||-------|--------|-----------|
 || Public (guest) | POST `/auth/login`, POST `/auth/password/forgot`, POST `/auth/password/reset`, GET `/auth/email/verify/{id}/{hash}` | `throttle:login`, `throttle:forgot-password`, `signed` |
-|| Protected | POST `/auth/logout`, POST `/auth/logout-all`, POST `/auth/email/resend`, POST `/auth/password/change` | `auth:sanctum`, `password.change.required` |
+|| Protected | POST `/auth/logout`, POST `/auth/logout-all`, POST `/auth/email/resend`, POST `/auth/password/change` | `auth:sanctum`, `verified`, `password.change.required` |
 
 ### Brute force throttle
 
@@ -224,14 +228,12 @@ Web audit uses `$this->audit()` from base Controller (same as API).
 
 | Operation | Where it lives | Reason |
 |-----------|---------------|--------|
-| Login (authenticate + issue token + update last_activity) | **Controller directly** (`LoginController`), using `LoginThrottle` as injected dependency | Thin (~5 lines with Sanctum); `LoginThrottle` encapsulates throttle/lock logic. No separate Action. |
-| Logout (revoke current token) | **Controller directly** (`LogoutController`) | One-liner: `$request->user()->currentAccessToken()->delete()`. |
-| Logout-all (revoke all tokens) | **Shared Action** (`LogoutAllDevicesAction`) — Web + API delegate | Action handles token deletion; controller adds audit + context response |
-| Verify email | **Controller directly** (`VerifyEmailController`) | Thin dispatch; Laravel's signed middleware handles most. |
-| Resend verification | **Controller directly** (`ResendVerificationController`) | Thin: `$request->user()->sendEmailVerificationNotification()`. |
-| Password change | **Action** (`ChangePassword`) — already done | Complex: history check, revocation, audit. Shared pattern. |
-| Forgot/reset password | **Controller directly** — already done | Uses Laravel `Password` facade; thin wrapper. |
-| Unlock user | **Controller directly** — already done | Uses `LoginThrottle` dependency. |
+|| Login (authenticate + issue token + update last_activity) | **AuthenticateUserAction** | Unified action: throttle + findUser + accountState + emailVerification (UNVERIFIED_EMAIL for all modes except disabled). Strict — no Sanctum token or session for unverified users. |
+|| Verify email | **VerifyEmailAction** — Web + API delegate | Shared action: markEmailAsVerified; controller adds mode check + audit. |
+|| Resend verification | **ResendVerificationAction** — Web + API delegate | Shared action: rate limit + send notification; controller adds mode check + audit. |
+|| Password change | **Action** (`ChangePassword`) — already done | Complex: history check, revocation, audit. Shared pattern. |
+|| Forgot/reset password | **Controller directly** — already done | Uses Laravel `Password` facade; thin wrapper. |
+|| Unlock user | **Controller directly** — already done | Uses `LoginThrottle` dependency. |
 
 ---
 
@@ -264,9 +266,9 @@ Phase 3 splits into 5 groups. Each group is a self-contained batch that can be i
 
 | ID | Task | Depends On | Est. | Notes |
 |----|------|-----------|------|-------|
-| AUTH-011a | **VerifyEmailController** — verify email via signed link; Laravel's built-in `VerifyEmailController` pattern or custom; on success: `email_verified_at` set, redirect/response | AUTH-006 | small | Route already wired: `GET /api/v1/auth/email/verify/{id}/{hash}` with `signed` middleware |
-| AUTH-011b | **ResendVerificationController** — resend verification email; throttle; activity log | AUTH-006 | small | Route already wired: `POST /api/v1/auth/email/resend` |
-| — | **Verification tests** — valid link, expired link, already verified, resend | AUTH-011a, AUTH-011b | small | |
+| AUTH-011a | **VerifyEmailController** — verify email via signed link; `VerifyEmailAction` shared; controller adds mode check + audit | AUTH-006 | small | Route already wired: `GET /api/v1/auth/email/verify/{id}/{hash}` with `signed` middleware | **COMPLIANT** |
+| AUTH-011b | **ResendVerificationController** — resend via `ResendVerificationAction`; throttle; audit | AUTH-006 | small | Route already wired: `POST /api/v1/auth/email/resend` | **COMPLIANT** |
+| — | **Verification tests** — signed link, rate limit, valid link, already verified, resend | AUTH-011a, AUTH-011b | small | 57 tests pass | **COMPLIANT** |
 
 **[QUEUE] Group C queue-eligible:** Resend verification email can be queued via Notification on-demand queue. Controlled by `QUEUE_CONNECTION`: if `sync` → sends immediately; if `database`/`redis` → queued. Implementation: `$user->notify(new VerifyEmailNotification())->onQueue()` — but only if the notification supports it. Jaya to decide if this is worth the complexity for Phase 3 or defer to Phase 9 (Notifications).
 
@@ -346,7 +348,7 @@ Items needing status updates in `docs/planning/task-tracker.md`:
 | AUTH-006 | PLANNED | PLANNED | Session creation — subsumed into LoginController (Sanctum token issuance) |
 | AUTH-009 | PLANNED | PLANNED | Needs LogoutController |
 | AUTH-010 | PLANNED | PLANNED | Needs LogoutAllController |
-| AUTH-011 | PLANNED | PLANNED (split into 011a/011b) | Needs VerifyEmailController + ResendVerificationController |
+| AUTH-011 | PLANNED | **DONE** (split into 011a/011b) | VerifyEmailAction + ResendVerificationAction shared; controllers add mode check + audit | **COMPLIANT** |
 | AUTH-012 | PLANNED | **DONE** (code exists) | PasswordForgotController exists |
 | AUTH-013 | PLANNED | **DONE** (code exists) | PasswordResetController exists |
 | AUTH-014 | PLANNED (Phase 5) | **DONE** (Phase 5 code exists, Phase 3 middleware done) | ChangePassword action + ApiPasswordChangeController exist; phase 5 password policy tasks still pending |
@@ -382,11 +384,10 @@ Each numbered group above is a natural commit boundary. Groups 1-10 = API auth. 
 
 ## 7. Decisions Needed from Jaya
 
-1. **Email verification on login:** Option A (allow login, block routes) or Option B (block login entirely)? Affects `LoginController` implementation.
-2. **RATE-001 location:** `AuthServiceProvider::boot()` or `AppServiceProvider::boot()` for rate limiter definitions?
-3. **Phase attribution for AUTH-007/AUTH-008:** Keep as Phase 5 in tracker (even though code is done) or move to Phase 3 DONE?
-4. **Queue in Phase 3:** Defer all queue-eligible email sends to Phase 9? (Recommendation: yes.)
-5. **Login identifier:** Email only, or email + username? Current `LoginThrottle` scopes by `identifier` (string), so either works. FormRequest validation rule determines what's accepted. Jaya to decide.
+1. **RATE-001 location:** `AuthServiceProvider::boot()` or `AppServiceProvider::boot()` for rate limiter definitions?
+2. **Phase attribution for AUTH-007/AUTH-008:** Keep as Phase 5 in tracker (even though code is done) or move to Phase 3 DONE?
+3. **Queue in Phase 3:** Defer all queue-eligible email sends to Phase 9? (Recommendation: yes.)
+4. **Login identifier:** Email only, or email + username? Current `LoginThrottle` scopes by `identifier` (string), so either works. FormRequest validation rule determines what's accepted. Jaya to decide.
 
 ---
 

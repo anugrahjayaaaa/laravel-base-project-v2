@@ -92,7 +92,7 @@ class LoginControllerTest extends TestCase
             ->assertJsonPath('data.message', fn ($msg) => str($msg)->startsWith('Account is locked'));
     }
 
-    public function test_login_succeeds_for_unverified_email(): void
+    public function test_login_fails_for_unverified_email(): void
     {
         $user = User::factory()->unverified()->create();
 
@@ -101,8 +101,12 @@ class LoginControllerTest extends TestCase
             'password' => 'password',
         ]);
 
-        $response->assertStatus(200)
-            ->assertJsonPath('data.user.email_verified', false);
+        $response->assertStatus(403)
+            ->assertJson([
+                'message' => 'Email not verified',
+                'email' => $user->email,
+                'verified' => false,
+            ]);
     }
 
     public function test_login_is_rate_limited_after_too_many_attempts(): void
