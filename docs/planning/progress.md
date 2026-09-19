@@ -9,7 +9,7 @@
 | 0 | Architecture & project conventions | DONE |
 ||| 1 | Laravel foundation & environment | DONE |
 || 2 | Database foundation | DONE |
-| 3 | Authentication foundation | PLANNED |
+|| 3 | Authentication foundation | IN PROGRESS |
 | 4 | User lifecycle & user management | PLANNED |
 | 5 | Password/security lifecycle | PLANNED |
 | 6 | RBAC & authorization | PLANNED |

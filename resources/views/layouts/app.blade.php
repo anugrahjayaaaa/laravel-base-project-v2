@@ -38,24 +38,9 @@
 
 <script src="{{ asset('vendor/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
 <script src="{{ asset('vendor/adminlte/js/adminlte.min.js') }}"></script>
-<script>
-    // Theme toggle — icon-only: sun icon in dark mode (click for light), moon in light mode (click for dark)
-    function updateThemeIcon() {
-        var icon = document.getElementById('theme-icon');
-        if (!icon) return;
-        var current = document.documentElement.getAttribute('data-bs-theme') || 'light';
-        icon.className = current === 'dark' ? 'fas fa-sun' : 'fas fa-moon';
-    }
-    updateThemeIcon();
-    document.getElementById('theme-toggle').addEventListener('click', function(e) {
-        e.preventDefault();
-        var current = document.documentElement.getAttribute('data-bs-theme') || 'light';
-        var next = current === 'dark' ? 'light' : 'dark';
-        document.documentElement.setAttribute('data-bs-theme', next);
-        localStorage.setItem('theme', next);
-        updateThemeIcon();
-    });
-</script>
+@include('layouts.partials.theme-toggle')
+@vite('resources/js/app.js')
+<script src="{{ \Illuminate\Support\Facades\Vite::asset('resources/js/app.js') }}" defer></script>
 @stack('scripts')
 </body>
 </html>

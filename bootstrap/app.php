@@ -1,6 +1,8 @@
 <?php
 
+use App\Http\Middleware\EnsurePasswordChangeRequired;
 use App\Http\Middleware\GenerateRequestCorrelationId;
+use App\Providers\AuthServiceProvider;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -13,9 +15,17 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
         api: __DIR__.'/../routes/api.php',
     )
+    ->withProviders([
+        AuthServiceProvider::class,
+    ])
     ->withMiddleware(function (Middleware $middleware): void {
         // Generate and propagate correlation/request ID on every request.
         $middleware->append(GenerateRequestCorrelationId::class);
+
+        // Aliases for middleware used in route definitions.
+        $middleware->alias([
+            'password.change.required' => EnsurePasswordChangeRequired::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

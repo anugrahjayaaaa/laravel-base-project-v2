@@ -1,0 +1,39 @@
+<?php
+
+namespace App\Http\Controllers\Api\V1\Auth;
+
+use App\Actions\Auth\UnlockUserAction;
+use App\Auth\LoginThrottle;
+use App\Http\Controllers\Controller;
+use App\Http\Requests\Auth\UnlockUserRequest;
+use App\Models\User;
+use Illuminate\Http\JsonResponse;
+use Spatie\Activitylog\Facades\Activity;
+
+class UnlockController extends Controller
+{
+    public function __invoke(
+        UnlockUserRequest $request,
+        User $user,
+        LoginThrottle $throttle,
+        UnlockUserAction $action,
+    ): JsonResponse {
+        $action->run($user, $request->ip(), $request, $throttle);
+
+        activity('auth.user_unlocked')
+            ->causedBy($request->user())
+            ->withProperties([
+                'target_id' => $user->id,
+                'target_email' => $user->email
+            ])
+            ->log('auth.user_unlocked');
+
+        return response()->json([
+            'data' => ['message' => 'User unlocked successfully.'],
+            'meta' => [
+                'request_id' => app('request_id'),
+                'timestamp' => now()->toIso8601String(),
+            ],
+        ]);
+    }
+}

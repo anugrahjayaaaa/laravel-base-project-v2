@@ -23,11 +23,7 @@
         <i class="far fa-bell"></i>
       </button>
 
-      <!-- Theme toggle (icon-only: sun when dark, moon when light) -->
-      <button type="button" class="nav-link text-secondary"
-              id="theme-toggle" title="Toggle theme">
-        <i id="theme-icon" class="fas fa-moon"></i>
-      </button>
+      @include('layouts.partials.theme-toggle')
 
       <!-- User menu (dropdown) -->
       <div class="dropdown">

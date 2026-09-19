@@ -64,6 +64,12 @@ class AppMenuComposer
                         'active' => 'settings.*',
                     ],
                     [
+                        'label' => 'Sessions',
+                        'icon' => 'fas fa-laptop',
+                        'route' => 'sessions',
+                        'active' => 'sessions',
+                    ],
+                    [
                         'label' => 'Translations',
                         'icon' => 'fas fa-language',
                         'route' => 'translations.index',
@@ -95,6 +101,5 @@ class AppMenuComposer
                 ],
             ],
         ]);
-
     }
 }

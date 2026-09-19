@@ -24,20 +24,34 @@ Do NOT update it on every HTTP request.
 
 ## Login Flow
 
+Login accepts `identifier` (email OR username) + password.
+Identifier lookup queries both `email` and `username` columns.
+
+Both Web and API share the same authentication logic via the
+`AuthenticatesUsers` trait (`findUser()` + `checkAccountState()`).
+Controllers only differ in response format (JSON vs redirect).
+
 ```
-Authenticate credentials
+Receive request (identifier + password)
   ↓
-Check account state (is_active, is_locked, email_verified_at, password_expires_at)
+findUser() — lookup by email/username + Hash::check
   ↓
-Rate limit check
+Null? → recordFailed() + return error (401 / back with error)
+  ↓
+checkAccountState() — is_active, is_locked
+  ↓
+Blocked? → return error (403 / back with error)
+  ↓
+Web only: email_verified_at null? → redirect to verification notice
   ↓
 Success
   ↓
+Reset throttle counters
+  ↓
 Update last_activity_at
   ↓
-Check must_change_password / password_expires_at → redirect to password change
-  ↓
-Redirect to intended destination
+API: createToken + audit + return JSON
+Web: Auth::login + audit + redirect to intended
 ```
 
 ### Failed Login
