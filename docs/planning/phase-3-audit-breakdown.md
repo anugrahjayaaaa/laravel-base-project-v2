@@ -30,6 +30,38 @@
 
 ---
 
+## Phase 3B — Logout Flow (DONE)
+
+| ID | Task | Status |
+|----|------|--------|
+| AUTH-009 | Logout (current device) | **DONE** |
+| AUTH-010 | Logout-all-devices | **DONE** |
+
+**Implementation:**
+- `LogoutController` → delete current Sanctum token + audit `auth.logout`
+- `LogoutAllController` → delete all tokens + audit `auth.logout_all`
+- Web logout via `WebAuthController@logout` → `Auth::logout()` + session invalidate + audit
+
+---
+
+## Phase 3C — Email Verification (DONE)
+
+| ID | Task | Status |
+|----|------|--------|
+| AUTH-011a | VerifyEmailController → VerifyEmailAction | **DONE** |
+| AUTH-011b | ResendVerificationController | **DONE** |
+
+**Implementation:**
+- `VerifyEmailAction` — `markEmailAsVerified()` + audit `auth.email_verified`
+- `ResendVerificationController` — send notification + audit `auth.verification_resent`
+- Web: `resendVerification()` in WebAuthController
+
+**[QUEUE]** Resend email queueable — defer ke Phase 9 (Notifications). Phase 3 cukup sync.
+
+---
+
+---
+
 ## 1. Current State Snapshot
 
 ### Already implemented (code exists, not yet reflected in task tracker)
