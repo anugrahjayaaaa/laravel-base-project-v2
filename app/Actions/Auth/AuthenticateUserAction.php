@@ -31,7 +31,7 @@ class AuthenticateUserAction
         $accountError = $this->checkAccountState($user);
 
         if ($accountError) {
-            return ['error' => $accountError];
+            return ['error' => $accountError, 'user' => $user];
         }
 
         $verificationError = $this->checkEmailVerification($user);
