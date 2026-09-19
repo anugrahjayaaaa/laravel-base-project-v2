@@ -2,44 +2,39 @@
 
 namespace App\Http\Controllers\Api\V1\Auth;
 
+use App\Actions\Auth\ResetPasswordAction;
+use App\Auth\LoginThrottle;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\PasswordResetRequest;
-use App\Auth\LoginThrottle;
-use App\Traits\Auth\HandlesUserLookup;
-use App\Traits\Auth\HandlesLockCheck;
-use App\Traits\Auth\HandlesPasswordResetFlow;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Password;
 
 class PasswordResetController extends Controller
 {
-    use HandlesUserLookup;
-    use HandlesLockCheck;
-    use HandlesPasswordResetFlow;
-
     public function __invoke(
         PasswordResetRequest $request,
         LoginThrottle $throttle,
+        ResetPasswordAction $action,
     ): JsonResponse {
-        $email = $request->input('email');
-        $user = $this->lookupUser($email);
+        $data = $request->validated();
+        $email = $data['email'];
+        $ip = $request->ip();
+        $result = $action->run($email, $ip, $request, $throttle);
 
-        $lockError = $this->checkUserLock($user, $request->ip(), $throttle);
-        if ($lockError) {
-            $this->audit('auth.password_reset_requested', $user, $user, [
-                'ip' => $request->ip(),
-            ]);
-
+        if (isset($result['error'])) {
             return response()->json([
-                'message' => 'Account is locked. Reset password unavailable.',
-                'code' => 'ACCOUNT_LOCKED',
-            ], 403);
+                'message' => $result['error']['message'],
+                'code' => 'RESET_TOKEN_INVALID',
+            ], $result['error']['status']);
         }
 
-        $status = $this->resetPassword($request, $user);
-        $this->auditPasswordResetCompleted($status, $user, $request);
+        if ($result['status'] === Password::PASSWORD_RESET && $result['user']) {
+            $this->audit('auth.password_reset_completed', $result['user'], $result['user'], [
+                'ip' => $ip,
+            ]);
+        }
 
-        if ($status === Password::PASSWORD_RESET) {
+        if ($result['status'] === Password::PASSWORD_RESET) {
             return response()->json([
                 'data' => ['message' => 'Password reset successfully.'],
                 'meta' => [

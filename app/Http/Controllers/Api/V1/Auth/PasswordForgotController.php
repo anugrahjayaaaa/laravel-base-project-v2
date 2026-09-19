@@ -2,31 +2,27 @@
 
 namespace App\Http\Controllers\Api\V1\Auth;
 
+use App\Actions\Auth\SendPasswordResetLinkAction;
+use App\Auth\LoginThrottle;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\PasswordForgotRequest;
-use App\Auth\LoginThrottle;
-use App\Traits\Auth\HandlesUserLookup;
-use App\Traits\Auth\HandlesLockCheck;
-use App\Traits\Auth\HandlesPasswordResetFlow;
 use Illuminate\Http\JsonResponse;
 
 class PasswordForgotController extends Controller
 {
-    use HandlesUserLookup;
-    use HandlesLockCheck;
-    use HandlesPasswordResetFlow;
-
     public function __invoke(
         PasswordForgotRequest $request,
         LoginThrottle $throttle,
+        SendPasswordResetLinkAction $action,
     ): JsonResponse {
-        $email = $request->input('email');
-        $user = $this->lookupUser($email);
+        $data = $request->validated();
+        $email = $data['email'];
+        $ip = $request->ip();
+        $result = $action->run($email, $ip, $request, $throttle);
 
-        $lockError = $this->checkUserLock($user, $request->ip(), $throttle);
-        if ($lockError) {
-            $this->audit('auth.password_reset_requested', $user, $user, [
-                'ip' => $request->ip(),
+        if (isset($result['error'])) {
+            $this->audit('auth.password_reset_requested', $result['user'], $result['user'], [
+                'ip' => $ip,
             ]);
 
             return response()->json([
@@ -35,7 +31,11 @@ class PasswordForgotController extends Controller
             ], 403);
         }
 
-        $this->sendResetLink($email, $user, $request);
+        if ($result['user']) {
+            $this->audit('auth.password_reset_requested', $result['user'], $result['user'], [
+                'ip' => $ip,
+            ]);
+        }
 
         return response()->json([
             'data' => ['message' => 'If the email exists, a reset link has been sent.'],

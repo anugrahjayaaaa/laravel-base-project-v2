@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1\Auth;
 
+use App\Actions\Auth\VerifyEmailAction;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
@@ -9,17 +10,17 @@ use Illuminate\Http\Request;
 
 class VerifyEmailController extends Controller
 {
-    public function __invoke(Request $request): JsonResponse
+    public function __invoke(Request $request, VerifyEmailAction $action): JsonResponse
     {
         $user = User::findOrFail($request->route('id'));
 
-        if ($user->hasVerifiedEmail()) {
-            return $this->respond('Email already verified.', 422);
+        $result = $action->run($user);
+
+        if (isset($result['error'])) {
+            return $this->respond($result['error']['message'], $result['error']['status']);
         }
 
-        $user->markEmailAsVerified();
-
-        $this->audit('auth.email_verified', $user, $user);
+        $this->audit('auth.email_verified', $result['user'], $result['user']);
 
         return $this->respond('Email verified successfully.');
     }

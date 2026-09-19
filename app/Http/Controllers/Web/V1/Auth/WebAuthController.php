@@ -2,9 +2,9 @@
 
 namespace App\Http\Controllers\Web\V1\Auth;
 
-use App\Traits\Auth\AuthenticatesUsers;
-use App\Traits\Auth\HandlesUserLookup;
-use App\Traits\Auth\HandlesPasswordResetFlow;
+use App\Actions\Auth\AuthenticateUserAction;
+use App\Actions\Auth\SendPasswordResetLinkAction;
+use App\Actions\Auth\ResetPasswordAction;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Http\Requests\Auth\PasswordForgotRequest;
@@ -16,68 +16,52 @@ use Illuminate\Support\Facades\Password;
 
 class WebAuthController extends Controller
 {
-    use AuthenticatesUsers;
-    use HandlesUserLookup;
-    use HandlesPasswordResetFlow;
+    // === VIEW: Login ===
 
-    public function login()
+    public function showLogin()
     {
         return response()->view('pages.auth.login', ['title' => 'Login']);
     }
 
-    public function handleLogin(LoginRequest $request, LoginThrottle $throttle)
+    // === LOGIC: Login ===
+
+    public function login(LoginRequest $request, LoginThrottle $throttle, AuthenticateUserAction $action)
     {
-        $validated = $request->validated();
-        $identifier = $validated['identifier'];
+        $data = $request->validated();
+        $identifier = $data['identifier'];
         $ip = $request->ip();
 
-        $throttleError = $this->checkThrottle($identifier, $ip, $throttle);
-        if ($throttleError) {
-            return back()->withInput($request->only('identifier'))
-                ->withErrors(['identifier' => $throttleError['message']]);
-        }
+        $result = $action->run($identifier, $data['password'], $ip, $throttle);
 
-        $user = $this->findUser($identifier, $validated['password']);
-
-        if (! $user) {
-            $lockedSeconds = $throttle->recordFailed($identifier, $ip);
-            $this->audit('auth.login_failed', null, null, [
-                'identifier' => $identifier,
-                'ip' => $ip,
-                'user_agent' => $request->userAgent(),
-                'channel' => 'web',
-            ]);
-            if ($lockedSeconds > 0) {
+        if (isset($result['error'])) {
+            if (isset($result['lockedSeconds']) && $result['lockedSeconds'] > 0) {
+                $this->audit('auth.login_failed', null, null, [
+                    'identifier' => $identifier,
+                    'ip' => $ip,
+                    'user_agent' => $request->userAgent(),
+                    'channel' => 'web',
+                ]);
                 $this->audit('auth.account_locked', null, null, [
                     'identifier' => $identifier,
                     'ip' => $ip,
                     'user_agent' => $request->userAgent(),
                     'channel' => 'web',
-                    'lock_duration_seconds' => $lockedSeconds,
+                    'lock_duration_seconds' => $result['lockedSeconds'],
+                ]);
+            } else {
+                $this->audit('auth.login_failed', null, null, [
+                    'identifier' => $identifier,
+                    'ip' => $ip,
+                    'user_agent' => $request->userAgent(),
+                    'channel' => 'web',
                 ]);
             }
 
             return back()->withInput($request->only('identifier'))
-                ->withErrors(['identifier' => 'The provided credentials do not match our records.']);
+                ->withErrors(['identifier' => $result['error']['message']]);
         }
 
-        $accountError = $this->checkAccountState($user);
-
-        if ($accountError) {
-            if ($user->is_locked) {
-                $accountError['message'] = 'Your account is locked by administrator.';
-            }
-
-            $this->audit('auth.login_failed', $user, $user, [
-                'identifier' => $identifier,
-                'ip' => $ip,
-                'user_agent' => $request->userAgent(),
-                'channel' => 'web',
-            ]);
-
-            return back()->withInput($request->only('identifier'))
-                ->withErrors(['identifier' => $accountError['message']]);
-        }
+        $user = $result['user'];
 
         if (! $user->email_verified_at) {
             return redirect()->route('verification.notice')
@@ -97,36 +81,71 @@ class WebAuthController extends Controller
         return redirect()->intended('/dashboard');
     }
 
-    public function forgotPassword()
+    // === VIEW: Forgot Password ===
+
+    public function showForgotPassword()
     {
         return response()->view('pages.auth.forgot-password', ['title' => 'Forgot Password']);
     }
 
-    public function sendResetLink(PasswordForgotRequest $request)
-    {
-        $email = $request->input('email');
-        $user = $this->lookupUser($email);
+    // === LOGIC: Send Password Reset Link ===
 
-        $this->sendResetLink($email, $user, $request);
+    public function sendPasswordResetLink(PasswordForgotRequest $request, LoginThrottle $throttle, SendPasswordResetLinkAction $action)
+    {
+        $data = $request->validated();
+        $email = $data['email'];
+        $ip = $request->ip();
+
+        $result = $action->run($email, $ip, $request, $throttle);
+
+        if (isset($result['error'])) {
+            $this->audit('auth.password_reset_requested', $result['user'], $result['user'], [
+                'ip' => $ip,
+            ]);
+
+            return back()->withInput($request->only('email'))
+                ->withErrors(['email' => $result['error']['message']]);
+        }
+
+        if ($result['user']) {
+            $this->audit('auth.password_reset_requested', $result['user'], $result['user'], [
+                'ip' => $ip,
+            ]);
+        }
 
         return back()->withInput($request->only('email'))
             ->with('success', 'If the email exists, a reset link has been sent.');
     }
 
-    public function resetPassword()
+    // === VIEW: Reset Password ===
+
+    public function showResetPassword()
     {
         return response()->view('pages.auth.reset-password', ['title' => 'Reset Password']);
     }
 
-    public function resetPasswordSubmit(PasswordResetRequest $request)
+    // === LOGIC: Reset User Password ===
+
+    public function resetUserPassword(PasswordResetRequest $request, LoginThrottle $throttle, ResetPasswordAction $action)
     {
-        $email = $request->input('email');
-        $user = $this->lookupUser($email);
+        $data = $request->validated();
+        $email = $data['email'];
+        $ip = $request->ip();
 
-        $status = $this->resetPassword($request, $user);
-        $this->auditPasswordResetCompleted($status, $user, $request);
+        $result = $action->run($email, $ip, $request, $throttle);
 
-        if ($status === Password::PASSWORD_RESET) {
+        if (isset($result['error'])) {
+            return back()->withInput($request->only('email'))
+                ->withErrors(['email' => $result['error']['message']]);
+        }
+
+        if ($result['status'] === Password::PASSWORD_RESET && $result['user']) {
+            $this->audit('auth.password_reset_completed', $result['user'], $result['user'], [
+                'ip' => $ip,
+            ]);
+        }
+
+        if ($result['status'] === Password::PASSWORD_RESET) {
             return redirect()->route('login')
                 ->with('success', 'Password has been reset. You may now log in.');
         }
@@ -135,15 +154,19 @@ class WebAuthController extends Controller
             ->withErrors(['email' => 'Failed to reset password. Please try again.']);
     }
 
-    public function verifyEmail()
+    // === VIEW: Verify Email ===
+
+    public function showVerifyEmail()
     {
         return response()->view('pages.auth.verify-email', ['title' => 'Verify Email']);
     }
 
-    public function verified()
+    public function showVerified()
     {
         return response()->view('pages.auth.verified', ['title' => 'Email Verified']);
     }
+
+    // === LOGIC (no view) ===
 
     public function resendVerification()
     {

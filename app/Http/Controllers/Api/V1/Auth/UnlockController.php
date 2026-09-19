@@ -2,30 +2,30 @@
 
 namespace App\Http\Controllers\Api\V1\Auth;
 
+use App\Actions\Auth\UnlockUserAction;
 use App\Auth\LoginThrottle;
+use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\UnlockUserRequest;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\DB;
 use Spatie\Activitylog\Facades\Activity;
 
-class UnlockController
+class UnlockController extends Controller
 {
     public function __invoke(
         UnlockUserRequest $request,
         User $user,
         LoginThrottle $throttle,
+        UnlockUserAction $action,
     ): JsonResponse {
-        DB::transaction(function () use ($user, $throttle, $request) {
-            $user->update(['is_locked' => false]);
-
-            // Clear failed-login escalation state for this user.
-            $throttle->reset($user->email, $request->ip());
-        });
+        $action->run($user, $request->ip(), $request, $throttle);
 
         activity('auth.user_unlocked')
             ->causedBy($request->user())
-            ->withProperties(['target_id' => $user->id, 'target_email' => $user->email])
+            ->withProperties([
+                'target_id' => $user->id,
+                'target_email' => $user->email
+            ])
             ->log('auth.user_unlocked');
 
         return response()->json([
