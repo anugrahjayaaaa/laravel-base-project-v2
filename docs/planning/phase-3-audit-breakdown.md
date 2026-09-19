@@ -136,7 +136,7 @@ All API controllers implemented. View rendering handled by WebAuthController (no
 |-------|-----|-----|
 | `auth.login` | LoginController ✅ | WebAuthController ✅ (channel=web) |
 | `auth.logout` | LogoutController ✅ | WebAuthController ✅ |
-| `auth.logout_all` | LogoutAllController ✅ | — |
+| `auth.logout_all` | LogoutAllController ✅ | WebAuthController ✅ |
 | `auth.password_reset_requested` | PasswordForgotController ✅ | WebAuthController ✅ |
 | `auth.password_reset_completed` | PasswordResetController ✅ | WebAuthController ✅ |
 | `auth.verification_resent` | ResendVerificationController ✅ | — |
@@ -226,7 +226,7 @@ Web audit uses `$this->audit()` from base Controller (same as API).
 |-----------|---------------|--------|
 | Login (authenticate + issue token + update last_activity) | **Controller directly** (`LoginController`), using `LoginThrottle` as injected dependency | Thin (~5 lines with Sanctum); `LoginThrottle` encapsulates throttle/lock logic. No separate Action. |
 | Logout (revoke current token) | **Controller directly** (`LogoutController`) | One-liner: `$request->user()->currentAccessToken()->delete()`. |
-| Logout-all (revoke all tokens) | **Controller directly** (`LogoutAllController`) | One-liner: `$request->user()->tokens()->delete()`. |
+| Logout-all (revoke all tokens) | **Shared Action** (`LogoutAllDevicesAction`) — Web + API delegate | Action handles token deletion; controller adds audit + context response |
 | Verify email | **Controller directly** (`VerifyEmailController`) | Thin dispatch; Laravel's signed middleware handles most. |
 | Resend verification | **Controller directly** (`ResendVerificationController`) | Thin: `$request->user()->sendEmailVerificationNotification()`. |
 | Password change | **Action** (`ChangePassword`) — already done | Complex: history check, revocation, audit. Shared pattern. |
