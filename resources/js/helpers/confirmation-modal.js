@@ -88,6 +88,9 @@
         if (methodInput) methodInput.remove();
         form.action = '#';
         modal._ctx = null;
+        // Clean up stuck backdrop / modal-open if Bootstrap missed it
+        document.body.classList.remove('modal-open');
+        document.querySelectorAll('.modal-backdrop').forEach(function (b) { b.remove(); });
     }
 
     if (document.readyState === 'loading') {
