@@ -9,23 +9,23 @@ Route::get('/', function () {
 });
 
 Route::controller(WebAuthController::class)->group(function () {
-    Route::get('/login', 'login')->name('login');
-    Route::post('/login', 'handleLogin')
+    Route::get('/login', 'showLogin')->name('login');
+    Route::post('/login', 'login')
         ->name('login.submit')
         ->middleware('throttle:login');
 
-    Route::get('/forgot-password', 'forgotPassword')->name('password.request');
-    Route::post('/forgot-password', 'sendResetLink')
+    Route::get('/forgot-password', 'showForgotPassword')->name('password.request');
+    Route::post('/forgot-password', 'sendPasswordResetLink')
         ->name('password.email')
         ->middleware('throttle:forgot-password');
 
-    Route::get('/reset-password', 'resetPassword')->name('password.reset');
-    Route::post('/reset-password', 'resetPasswordSubmit')
+    Route::get('/reset-password', 'showResetPassword')->name('password.reset');
+    Route::post('/reset-password', 'resetUserPassword')
         ->name('password.update')
         ->middleware('throttle:reset-password');
 
-    Route::get('/verify-email', 'verifyEmail')->name('verification.notice');
-    Route::get('/email/verify/{id}/{hash}', 'verified')->name('verification.verify');
+    Route::get('/verify-email', 'showVerifyEmail')->name('verification.notice');
+    Route::get('/email/verify/{id}/{hash}', 'showVerified')->name('verification.verify');
     Route::post('/email/resend', 'resendVerification')
         ->name('verification.resend')
         ->middleware('auth');
