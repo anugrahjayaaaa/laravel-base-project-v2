@@ -9,7 +9,7 @@
   --lbp-border: #e3e6ea;
   --lbp-text: #1f2430;
   --lbp-muted: #6b7280;
-  --lbp-primary: #6366f1;
+  --lbp-primary: #2563eb;
   --lbp-primary-ink: #ffffff;
   --lbp-success: #22c59e;
   --lbp-info: #3b82f6;
@@ -142,12 +142,13 @@ body.sidebar-collapse #sidebar-toggle-icon {
   color: var(--lbp-text);
 }
 
-/* Active: slightly more prominent than hover via color + font-weight
-   (bg is same subtle 10% opacity as hover — avoids card-like appearance) */
+/* Active: subtle left accent border + weight + color — no heavy bg fill */
 .app-sidebar .sidebar-menu .nav-link.active,
 .app-sidebar .sidebar-menu .nav-link.show > .nav-link {
   color: var(--lbp-primary) !important;
   font-weight: 600;
+  border-left: 3px solid var(--lbp-primary);
+  padding-left: calc(.75rem - 3px);
 }
 
 /* Collapsed sidebar — body.sidebar-collapse (AdminLTE state).

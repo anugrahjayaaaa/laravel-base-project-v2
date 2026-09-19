@@ -17,10 +17,13 @@
                     </button>
                     @php($action = $action ?? 'Delete')
                     @php($variant = $variant ?? 'danger')
-                    @php($btnClass = $variant === 'warning' ? 'btn-warning' : ($variant === 'info' ? 'btn-info' : 'btn-danger'))
+                    @php($btnClass = match($variant) {
+                        'warning' => 'bg-warning-subtle text-warning',
+                        'info' => 'bg-info-subtle text-info',
+                        default => 'bg-danger-subtle text-danger',
+                    })
                     @php($confirmBtnLabel = $confirmLabel ?? $action)
-                    <button type="submit"
-                        class="btn {{ $btnClass }} {{ $variant === 'info' ? 'text-white' : '' }}">
+                    <button type="submit" class="btn {{ $btnClass }}">
                         {{ $confirmBtnLabel }}
                     </button>
                 </div>

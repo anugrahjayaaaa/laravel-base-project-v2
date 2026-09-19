@@ -2,7 +2,7 @@
 
 @section('content')
 <div class="auth-card mx-auto" style="max-width: 420px;">
-    <div class="card shadow-sm">
+    <div class="card">
         <div class="card-body p-4 p-md-5 text-center">
             <div class="auth-icon mb-3">
                 <i class="fas fa-envelope-open-text text-primary" style="font-size: 2rem;"></i>
@@ -11,7 +11,7 @@
             <p class="text-muted small mb-4">We've sent a verification link to your email address</p>
 
             @if (session('success'))
-                <div class="alert bg-success-subtle border-0 rounded mb-3" role="alert">
+                <div class="alert bg-success-subtle mb-3" role="alert">
                     <div class="d-flex align-items-center gap-2 justify-content-center">
                         <i class="fas fa-circle-check text-success"></i>
                         <span class="text-success flex-grow-1">{{ session('success') }}</span>
@@ -21,7 +21,7 @@
             @endif
 
             @if (session('error'))
-                <div class="alert bg-danger-subtle border-0 rounded mb-3" role="alert">
+                <div class="alert bg-danger-subtle mb-3" role="alert">
                     <div class="d-flex align-items-center gap-2 justify-content-center">
                         <i class="fas fa-circle-exclamation text-danger"></i>
                         <span class="text-danger flex-grow-1">{{ session('error') }}</span>
@@ -33,7 +33,7 @@
             @php($mode = config('auth.verification.mode', 'public'))
 
             @if ($mode === 'admin')
-                <div class="alert bg-info-subtle border-0 rounded mb-3" role="alert">
+                <div class="alert bg-info-subtle mb-3" role="alert">
                     <div class="d-flex align-items-center gap-2 justify-content-center">
                         <i class="fas fa-circle-info text-info"></i>
                         <span class="text-info flex-grow-1">Contact your admin to resend the verification email.</span>

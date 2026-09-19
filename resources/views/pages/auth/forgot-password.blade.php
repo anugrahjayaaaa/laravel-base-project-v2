@@ -2,7 +2,7 @@
 
 @section('content')
 <div class="auth-card mx-auto" style="max-width: 420px;">
-    <div class="card shadow-sm">
+    <div class="card">
         <div class="card-body p-4 p-md-5">
             <div class="text-center mb-4">
                 <div class="auth-icon mb-3">
@@ -13,7 +13,7 @@
             </div>
 
             @if (session('success'))
-                <div class="alert bg-success-subtle border-0 rounded mb-3" role="alert">
+                <div class="alert bg-success-subtle mb-3" role="alert">
                     <div class="d-flex align-items-center gap-2">
                         <i class="fas fa-circle-check text-success"></i>
                         <span class="text-success flex-grow-1">{{ session('success') }}</span>
@@ -23,7 +23,7 @@
             @endif
 
             @if (session('rate_limit_seconds'))
-                <div class="alert bg-danger-subtle border-0 rounded mb-3" role="alert">
+                <div class="alert bg-danger-subtle mb-3" role="alert">
                     <div class="d-flex align-items-center gap-2">
                         <i class="fas fa-circle-exclamation text-danger"></i>
                         <span class="text-danger flex-grow-1">

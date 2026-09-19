@@ -2,15 +2,13 @@
 
 @section('content')
 <div class="container-fluid py-4">
-    <h1 class="mb-4">Welcome</h1>
-    <p class="lead">AdminLTE 4 layout is loaded from vendored release ZIP assets.</p>
+    <h1 class="page-title mb-1">Welcome</h1>
+    <p class="page-description mb-4">Laravel Base Project v2 — AdminLTE 4.9.1 foundation is active.</p>
 
     <div class="card">
-        <div class="card-header">
-            <h3 class="card-title">Project Status</h3>
-        </div>
         <div class="card-body">
-            <p class="mb-0">Laravel {{ app()->version() }} is running.</p>
+            <h5 class="card-title mb-3">Application Status</h5>
+            <p class="text-muted mb-0">Laravel {{ app()->version() }} is running.</p>
         </div>
     </div>
 </div>
