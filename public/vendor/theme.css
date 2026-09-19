@@ -84,14 +84,14 @@ body {
 }
 
 /* Theme toggle button — circular icon, same padding as other header icons */
-#theme-toggle {
+.theme-toggle {
   border-radius: 9999px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
 }
 
-#theme-toggle:hover {
+.theme-toggle:hover {
   background: var(--lbp-surface-2);
   color: var(--lbp-text);
 }

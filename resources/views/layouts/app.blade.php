@@ -38,7 +38,6 @@
 
 <script src="{{ asset('vendor/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
 <script src="{{ asset('vendor/adminlte/js/adminlte.min.js') }}"></script>
-@include('layouts.partials.theme-toggle')
 @vite('resources/js/app.js')
 <script src="{{ \Illuminate\Support\Facades\Vite::asset('resources/js/app.js') }}" defer></script>
 @stack('scripts')
