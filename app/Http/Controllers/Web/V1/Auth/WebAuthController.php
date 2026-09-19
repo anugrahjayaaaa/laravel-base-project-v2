@@ -65,8 +65,7 @@ class WebAuthController extends Controller
 
         if ($accountError) {
             if ($user->is_locked) {
-                $minutes = (int) ceil(max($throttle->lockedFor($identifier, $ip), 0) / 60);
-                $accountError['message'] = "Your account is locked. Try again in {$minutes} minute(s).";
+                $accountError['message'] = 'Your account is locked by administrator.';
             }
 
             $this->audit('auth.login_failed', $user, $user, [

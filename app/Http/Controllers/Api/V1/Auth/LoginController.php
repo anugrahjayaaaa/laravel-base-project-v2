@@ -52,8 +52,7 @@ class LoginController extends Controller
 
         if ($accountError) {
             if ($user->is_locked) {
-                $minutes = (int) ceil(max($throttle->lockedFor($identifier, $ip), 0) / 60);
-                $accountError['message'] = "Account is locked. Try again in {$minutes} minute(s).";
+                $accountError['message'] = 'Account is locked by administrator.';
             }
             $this->audit('auth.login_failed', $user, $user, [
                 'identifier' => $identifier,
