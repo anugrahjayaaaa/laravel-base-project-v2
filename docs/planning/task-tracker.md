@@ -95,14 +95,8 @@ observers for audit. See `docs/base/architecture/application-components.md` §Ac
     "depends_on": [
       "FOUND-004"
     ],
-    "status": "PLANNED",
-    "tests": [
-      "TEST-AUTH-001"
-    ],
-    "docs": [
-      "authentication.md",
-      "requirements.md"
-    ]
+    "status": "DONE",
+    "note": "requirements.md + authentication.md exist. Phase 3 implemented per spec."
   },
   {
     "id": "AUTH-002",
@@ -112,7 +106,8 @@ observers for audit. See `docs/base/architecture/application-components.md` §Ac
     "depends_on": [
       "FOUND-004"
     ],
-    "status": "PLANNED"
+    "status": "DONE",
+    "note": "Sanctum configured — middleware, token creation in LoginController, logout deletes token."
   },
   {
     "id": "AUTH-003",
@@ -122,7 +117,8 @@ observers for audit. See `docs/base/architecture/application-components.md` §Ac
     "depends_on": [
       "DB-002"
     ],
-    "status": "PLANNED"
+    "status": "DONE",
+    "note": "User model: email_verified_at, is_active, is_locked, must_change_password, password_expires_at, last_activity_at, verification_token."
   },
   {
     "id": "AUTH-004",
@@ -267,8 +263,8 @@ observers for audit. See `docs/base/architecture/application-components.md` §Ac
       "UI-A-003",
       "UI-A-004"
     ],
-    "status": "PLANNED",
-    "note": "Wire forms to API endpoints: login, forgot, reset, verify, resend."
+    "status": "DONE",
+    "note": "Web forms wired via controller redirects (not JS fetch). POST /login, /forgot-password, /reset-password, /email/resend → WebAuthController → redirect."
   },
   {
     "id": "AUTH-012",
@@ -668,23 +664,25 @@ observers for audit. See `docs/base/architecture/application-components.md` §Ac
   {
     "id": "RATE-001",
     "task": "Define rate limit config",
-    "phase": 5,
+    "phase": 3,
     "priority": "P0",
     "depends_on": [
       "SET-001"
     ],
-    "status": "PLANNED"
+    "status": "DONE",
+    "note": "AuthServiceProvider::boot() — 4 RateLimiter: login (5/min), forgot-password (3/min), reset-password (3/min), resend-verification (5/hour). Config: config/rate_limits.php."
   },
   {
     "id": "RATE-002",
     "task": "Implement rate limiting middleware",
-    "phase": 5,
+    "phase": 3,
     "priority": "P0",
     "depends_on": [
       "RATE-001",
       "FOUND-003"
     ],
-    "status": "PLANNED"
+    "status": "DONE",
+    "note": "throttle:login, throttle:forgot-password, throttle:reset-password, throttle:resend-verification wired on web + API routes. Shared key via LoginThrottle::key()."
   },
   {
     "id": "CACHE-001",

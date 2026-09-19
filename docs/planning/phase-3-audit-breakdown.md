@@ -30,7 +30,7 @@
 
 ---
 
-## Phase 3B — Logout Flow (IN PROGRESS)
+## Phase 3B — Logout Flow (DONE)
 
 | ID | Task | Status |
 |----|------|--------|
@@ -356,8 +356,8 @@ Items needing status updates in `docs/planning/task-tracker.md`:
 | AUTH-012 | PLANNED | **DONE** (code exists) | PasswordForgotController exists |
 | AUTH-013 | PLANNED | **DONE** (code exists) | PasswordResetController exists |
 | AUTH-014 | PLANNED (Phase 5) | **DONE** (Phase 5 code exists, Phase 3 middleware done) | ChangePassword action + ApiPasswordChangeController exist; phase 5 password policy tasks still pending |
-| RATE-001 | PLANNED (Phase 5) | PLANNED | Needs rate limiter definitions |
-| RATE-002 | PLANNED (Phase 5) | PLANNED | Needs tests |
+| RATE-001 | PLANNED (Phase 5) | **DONE** (Phase 3) | RateLimiter defined in AuthServiceProvider — 4 limiters: login (5/min), forgot-password (3/min), reset-password (3/min), resend-verification (5/hour) |
+| RATE-002 | PLANNED (Phase 5) | **DONE** (Phase 3) | Rate limit tests — HTTP 429 verified: login (5), forgot (3), reset (3), resend web (6), resend API (6) |
 
 ---
 
