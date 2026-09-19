@@ -17,8 +17,8 @@
               @php($route = $item['route'] ?? null)
               @php($href = $route ? (Route::has($route) ? route($route) : '#') : '#')
               @php($active = isset($item['active']) && $item['active']
-                ? (request()->route() && $route && request()->route()->getName() === $route)
-                : false)
+                  ? (request()->route() && $route && fnmatch($item['active'], request()->route()->getName()))
+                  : false)
               <li class="nav-item">
                 <a href="{{ $href }}"
                    class="nav-link{{ $active ? ' active' : '' }}">
