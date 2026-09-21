@@ -10,7 +10,7 @@
 ||| 1 | Laravel foundation & environment | DONE |
 || 2 | Database foundation | DONE |
 || 3 | Authentication foundation | IN PROGRESS |
-|| 4 | User lifecycle & user management | IN PROGRESS (Group B DONE) |
+|| 4 | User lifecycle & user management | IN PROGRESS (Group B DONE, Group E ON PROGRESS) |
 | 5 | Password/security lifecycle | PLANNED |
 | 6 | RBAC & authorization | PLANNED |
 | 7 | Feature availability / feature flags | PLANNED |
@@ -28,6 +28,20 @@
 ## Current Task
 
 Phase 4B Group B (P4-B1 through P4-B11) — User CRUD (Web UI): DONE
+
+Phase 4E Group E (P4-E1 through P4-E11) — Username/Email Change + System Settings + Email Verification: ON PROGRESS
+
+- Migration: `username_changed_at`, `email_changed_at`, `pending_email` on users; `system_settings` table
+- Model: User canChangeUsername(), canChangeEmail(); SystemSetting model
+- Actions: CreateUserAction (username), UpdateUserAction (cooldown + email flow)
+- Requests: CreateUserRequest (username), UpdateUserRequest (cooldown guard), EmailChangeRequest
+- Notification: ChangeEmailVerificationNotification (signed URL, 24h expiry)
+- Controller: requestEmailChange, cancelEmailChange, verifyEmailChange, resendVerification
+- Routes: users.request-email-change, users.cancel-email-change, email.verify-change
+- Views: create (username @input), edit (cooldown badges, pending email callout)
+- Tests: UsernameEmailChangeTest (7 tests, all pass)
+
+Phase 4D Group D (P4-D1 through P4-D6) — Restore Detail & Permanent Delete: PLANNED
 
 ## Next Phase
 
@@ -187,10 +201,11 @@ Not yet started (Phase 15).
   UI-001 through UI-006, SOFT-001, TABLE-001, FLAG-001 with Laravel Pennant)
 2. ~~Begin Phase 2: Database foundation~~ — Phase 2 complete (DB-001 base migrations, DB-002 RoleSeeder wired)
 5. ~~Begin Phase 4C Group C: Activate/Deactivate + Lock/Unlock~~ — Group C complete (P4-C1 through P4-C6).
+6. Phase 4E Group E — Username/Email Change + System Settings + Email Verification: ON PROGRESS.
 
 ## Summary
 
 All documentation and planning system complete. Phase 1 implementation
 complete (FOUND-001 through FOUND-010, CACHE-001, QUEUE-001, CORR-001,
 UI-001 through UI-006, SOFT-001, TABLE-001, FLAG-001 with Laravel Pennant).
-Phase 2 complete (DB-001 + DB-002). Phase 4B Group B + Group C complete. Next: Group D — Admin User Creation.
+Phase 2 complete (DB-001 + DB-002). Phase 4B Group B + Group C complete. Group E — Username/Email Change + System Settings + Email Verification: ON PROGRESS.

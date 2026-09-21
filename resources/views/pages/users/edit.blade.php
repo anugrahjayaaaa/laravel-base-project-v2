@@ -122,6 +122,23 @@
         </div>
     @endif
 
+    @if ($user->pending_email)
+        <div class="callout callout-warning mb-3">
+            <div class="d-flex align-items-center justify-content-between">
+                <div>
+                    <i class="bi bi-envelope-arrow-up me-2"></i>
+                    <strong>Pending email change:</strong> {{ $user->pending_email }}
+                </div>
+                <div class="d-flex gap-2">
+                    <form method="POST" action="{{ route('users.cancel-email-change', $user) }}" class="d-inline">
+                        @csrf
+                        <button type="submit" class="btn btn-outline-secondary btn-sm">Cancel Request</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    @endif
+
     <div class="row g-4">
         {{-- Main Content --}}
         <div class="col-lg-8">
@@ -175,14 +192,26 @@
                                 @error('email')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
+                                @if (! $user->canChangeEmail())
+                                    <small class="text-muted"><i class="bi bi-clock-history me-1"></i>Email can be changed again on {{ $user->email_changed_at->copy()->addDays((int) (\App\Models\SystemSetting::where('key', 'email_change_cooldown_days')->value('value') ?? 30))->format('Y-m-d') }}.</small>
+                                @endif
                             </div>
                         </div>
 
                         <div class="mt-3">
                             <label for="username" class="form-label">Username</label>
-                            <input type="text" id="username" class="form-control form-control-sm"
-                                value="{{ $user->username }}" disabled>
-                            <small class="form-text text-muted">Username cannot be changed.</small>
+                            <input type="text" name="username" id="username"
+                                class="form-control form-control-sm @error('username') is-invalid @enderror"
+                                value="{{ old('username', $user->username) }}" maxlength="50"
+                                {{ $user->trashed() ? 'disabled' : '' }}>
+                            @if (! $user->canChangeUsername())
+                                <small class="text-muted"><i class="bi bi-clock-history me-1"></i>Username can be changed again on {{ $user->username_changed_at->copy()->addDays((int) (\App\Models\SystemSetting::where('key', 'username_change_cooldown_days')->value('value') ?? 30))->format('Y-m-d') }}.</small>
+                            @else
+                                <small class="form-text text-muted">Username can be changed.</small>
+                            @endif
+                            @error('username')
+                                <div class="invalid-feedback d-block">{{ $message }}</div>
+                            @enderror
                         </div>
 
                         <div class="mt-3">

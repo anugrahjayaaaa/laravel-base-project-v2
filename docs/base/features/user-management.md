@@ -176,7 +176,46 @@ All state endpoints return JSON `{ data: { message }, meta: { request_id, timest
 
 `UnlockController` (`Api\V1\Auth\`) removed — `unlock` method merged into `Api\V1\User\UserStateController`. Backwards-compat route `/api/v1/auth/unlock` redirects to `api.v1.users.unlock`.
 
-## Planned — Restore Detail & Permanent Delete (Phase 5+)
+## Username, Email Change & System Settings (Phase 4)
+
+### Schema Additions (`users` table)
+
+|| Column | Type | Description |
+||--------|------|-------------|
+|| `username` | string, unique | Login identifier (added earlier) |
+|| `username_changed_at` | timestamp nullable | Last username change timestamp |
+|| `email_changed_at` | timestamp nullable | Last email change timestamp |
+|| `pending_email` | string nullable | New email awaiting verification |
+
+### System Settings (`system_settings` table)
+
+|| Key | Type | Default | Description |
+||-----|------|---------|-------------|
+|| `allow_username_change` | boolean | true | Toggle username change feature |
+|| `allow_email_change` | boolean | true | Toggle email change feature |
+|| `username_change_cooldown_days` | integer | 30 | Days before username can be changed again |
+|| `email_change_cooldown_days` | integer | 30 | Days before email can be changed again |
+
+### Email Change Verification Flow
+
+1. Admin/user requests email change → `pending_email` + `email_change_token` + `email_change_token_expires_at` set
+2. Signed email sent to **new** address (`pending_email`) with 24h expiry
+3. User clicks link → `email` ← `pending_email`, `email_changed_at = now()`, `email_verified_at = now()`
+4. All sessions + API tokens revoked on successful change
+5. Cancel request clears `pending_email`
+
+### Model Helpers
+
+- `User::canChangeUsername()` — checks `allow_username_change` setting + cooldown
+- `User::canChangeEmail()` — checks `allow_email_change` setting + cooldown
+
+### Dual Login Support
+
+Login accepts `email` OR `username` via `User::where('email', $id)->orWhere('username', $id)->first()`.
+
+### Design System Compliance
+
+All user management views follow `docs/base/ui/design-system.md` page skeleton templates.
 
 ### Restore Detail
 - Dedicated restore flow with confirmation modal (warning variant)

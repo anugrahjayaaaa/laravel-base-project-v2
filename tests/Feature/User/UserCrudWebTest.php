@@ -101,7 +101,7 @@ class UserCrudWebTest extends TestCase
         $this->assertDatabaseHas('users', [
             'id' => $target->id,
             'name' => 'New Name',
-            'email' => 'new@example.com',
+            'pending_email' => 'new@example.com',
         ]);
     }
 
