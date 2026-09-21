@@ -9,6 +9,11 @@ enum UserStatusEnum: string
     case LOCKED = 'locked';
     case PENDING_VERIFICATION = 'pending_verification';
 
+    public function label(): string
+    {
+        return str($this->value)->replace('_', ' ')->title();
+    }
+
     /**
      * Resolve the primary status from the User model's boolean/date fields.
      *
