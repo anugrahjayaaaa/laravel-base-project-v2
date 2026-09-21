@@ -25,7 +25,7 @@ class UserExtendedCrudTest extends TestCase
 
     // -- Soft Delete --
 
-    public function test_soft_delete_deactivates_and_soft_deletes_user(): void
+    public function test_soft_delete_deletes_without_changing_is_active(): void
     {
         $user = User::factory()->create(['is_active' => true]);
 
@@ -33,7 +33,7 @@ class UserExtendedCrudTest extends TestCase
             ->assertRedirect();
 
         $this->assertSoftDeleted($user);
-        $this->assertFalse($user->fresh()->is_active);
+        $this->assertTrue($user->fresh()->is_active);
     }
 
     public function test_soft_delete_cannot_delete_self(): void
