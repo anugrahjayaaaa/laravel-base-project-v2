@@ -49,7 +49,7 @@ Cache::tags(['users'])->flush(); // flush only user-related cache
 | Permissions | 3600s (1 hour) | Rarely changes; re-derived on role change |
 | Settings | 300s (5 min) | Operational settings may change |
 | User profile | 600s (10 min) | Read-heavy, infrequent changes |
-| Feature flags | 300s | May toggle based on conditions |
+| User index counts | forever + observer invalidation | Always fresh via Model Observer; no stale counts |
 
 ## Cache-Aside Pattern
 

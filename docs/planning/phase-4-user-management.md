@@ -35,7 +35,7 @@
 
 || ID | Task | Depends | Status |
 ||----|------|---------|--------|
-|| P4-B1 | `UserIndexAction` (paginated list, filter/sort) | A3 | DONE |
+|| P4-B1 | `UserIndexAction` (paginated list, filter/sort) + counts() conditional aggregation + forever cache | A3 | DONE |
 || P4-B2 | `UserRequest` (filter/sort/form params) | A3 | DONE |
 || P4-B3 | `Web\UserController` (index + update — thin) | B1,B2 | DONE |
 || P4-B4 | `resources/views/pages/users/index.blade.php` (AdminLTE table, status badges) | B3 | DONE |
