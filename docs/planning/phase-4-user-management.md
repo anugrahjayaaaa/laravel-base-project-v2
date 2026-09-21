@@ -31,21 +31,21 @@
 
 **Gate:** A verified + tested. Proceed to Group B.
 
-## Group B — User CRUD (Web UI)
+## Group B — User CRUD (Web UI) ✅ DONE
 
-| ID | Task | Depends | Status |
-|----|------|---------|--------|
-| P4-B1 | `UserIndexAction` (paginated list, filter/sort) | A3 | PLANNED |
-| P4-B2 | `UserRequest` (filter/sort/form params) | A3 | PLANNED |
-| P4-B3 | `Web\UserController` (index + update — thin) | B1,B2 | PLANNED |
-| P4-B4 | `resources/views/pages/users/index.blade.php` (AdminLTE table, status badges) | B3 | PLANNED |
-| P4-B5 | Route `web.php` → `users.index`, `users.update` | B3 | PLANNED |
-| P4-B6 | Tests: list users, toggle user status | B4,B5 | PLANNED |
-|| P4-B7 | Soft Delete: `DeleteUserAction` — deactivate + soft delete | A3 | DONE ✅ |
-|| P4-B8 | Restore: `RestoreUserAction` — undo soft delete | B7 | DONE ✅ |
-|| P4-B9 | Permanent Delete: `ForceDeleteUserAction` — force delete | B7 | DONE ✅ |
-|| P4-B10 | Detail/Edit View: `ShowUserAction` + edit form | B1 | DONE ✅ |
-|| P4-B11 | Resend verification email (admin mode trigger) | B10 | DONE ✅ |
+|| ID | Task | Depends | Status |
+||----|------|---------|--------|
+|| P4-B1 | `UserIndexAction` (paginated list, filter/sort) | A3 | DONE |
+|| P4-B2 | `UserRequest` (filter/sort/form params) | A3 | DONE |
+|| P4-B3 | `Web\UserController` (index + update — thin) | B1,B2 | DONE |
+|| P4-B4 | `resources/views/pages/users/index.blade.php` (AdminLTE table, status badges) | B3 | DONE |
+|| P4-B5 | Route `web.php` → `users.index`, `users.update` | B3 | DONE |
+|| P4-B6 | Tests: list users, toggle user status | B4,B5 | DONE |
+|| P4-B7 | Soft Delete: `DeleteUserAction` — deactivate + soft delete | A3 | DONE |
+|| P4-B8 | Restore: `RestoreUserAction` — undo soft delete | B7 | DONE |
+|| P4-B9 | Permanent Delete: `ForceDeleteUserAction` — force delete | B7 | DONE |
+|| P4-B10 | Detail/Edit View: `ShowUserAction` + edit form | B1 | DONE |
+|| P4-B11 | Resend verification email (admin mode trigger) | B10 | DONE |
 
 ## Group C — Activate/Deactivate + Lock/Unlock (Web UI)
 
