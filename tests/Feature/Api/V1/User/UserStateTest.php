@@ -42,6 +42,14 @@ class UserStateTest extends TestCase
             ->assertJsonPath('data.message', 'User activated successfully.');
     }
 
+    public function test_activate_locked_user_via_api_forbidden(): void
+    {
+        $user = User::factory()->create(['is_active' => false, 'is_locked' => true, 'email_verified_at' => now()]);
+
+        $this->postJson(route('api.v1.users.activate', $user))
+            ->assertStatus(422);
+    }
+
     // -- Deactivate --
 
     public function test_deactivate_active_user_via_api(): void
@@ -58,6 +66,12 @@ class UserStateTest extends TestCase
         $user = User::factory()->create(['is_active' => true, 'is_locked' => true, 'email_verified_at' => now()]);
 
         $this->postJson(route('api.v1.users.deactivate', $user))
+            ->assertStatus(422);
+    }
+
+    public function test_deactivate_self_forbidden_via_api(): void
+    {
+        $this->postJson(route('api.v1.users.deactivate', $this->admin))
             ->assertStatus(422);
     }
 
@@ -80,6 +94,14 @@ class UserStateTest extends TestCase
             ->assertStatus(422);
     }
 
+    public function test_lock_already_locked_user_via_api(): void
+    {
+        $user = User::factory()->create(['is_active' => true, 'is_locked' => true, 'email_verified_at' => now()]);
+
+        $this->postJson(route('api.v1.users.lock', $user))
+            ->assertStatus(200);
+    }
+
     // -- Unlock --
 
     public function test_unlock_locked_user_via_api(): void
@@ -89,6 +111,14 @@ class UserStateTest extends TestCase
         $this->postJson(route('api.v1.users.unlock', $user))
             ->assertStatus(200)
             ->assertJsonPath('data.message', 'User unlocked successfully.');
+    }
+
+    public function test_unlock_already_unlocked_user_via_api(): void
+    {
+        $user = User::factory()->create(['is_locked' => false, 'email_verified_at' => now()]);
+
+        $this->postJson(route('api.v1.users.unlock', $user))
+            ->assertStatus(200);
     }
 
     // -- Force Logout / Token Revocation --

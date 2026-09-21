@@ -29,12 +29,14 @@ class DeactivateUserAction
     protected function validate(User $user, User $causer): void
     {
         if ($user->id === $causer->id) {
+            \Log::warning('Deactivate self forbidden', ['user_id' => $user->id, 'causer_id' => $causer->id]);
             $validator = \Illuminate\Support\Facades\Validator::make([], []);
             $validator->errors()->add('email', __('You cannot deactivate your own account.'));
             throw new ValidationException($validator);
         }
 
         if ($user->is_locked) {
+            \Log::warning('Deactivate locked user forbidden', ['user_id' => $user->id, 'causer_id' => $causer->id]);
             $validator = \Illuminate\Support\Facades\Validator::make([], []);
             $validator->errors()->add('status', __('Cannot deactivate a locked user. Please unlock the user first.'));
             throw new ValidationException($validator);

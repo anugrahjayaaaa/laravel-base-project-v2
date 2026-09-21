@@ -29,6 +29,7 @@ class LockUserAction
     protected function validate(User $user): void
     {
         if (! $user->is_active) {
+            \Log::warning('Lock inactive user forbidden', ['user_id' => $user->id]);
             $validator = \Illuminate\Support\Facades\Validator::make([], []);
             $validator->errors()->add('status', __('Cannot lock an inactive user. Please activate the user first.'));
             throw new ValidationException($validator);

@@ -21,6 +21,7 @@ class ActivateUserAction
     protected function validate(User $user): void
     {
         if ($user->is_locked) {
+            \Log::warning('Activate locked user forbidden', ['user_id' => $user->id]);
             $validator = \Illuminate\Support\Facades\Validator::make([], []);
             $validator->errors()->add('status', __('Cannot activate a locked user. Please unlock first.'));
             throw new \Illuminate\Validation\ValidationException($validator);
