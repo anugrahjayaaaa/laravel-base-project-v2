@@ -56,7 +56,7 @@
                 </p>
             </div>
             <div class="text-end">
-                <small class="text-muted d-block">Created {{ $user->created_at->format('Y-m-d') }}</small>
+                <small class="text-muted d-block">Registered {{ $user->created_at->format('Y-m-d') }}</small>
                 <small class="text-muted">Updated {{ $user->updated_at->diffForHumans() }}</small>
             </div>
         </div>
@@ -151,12 +151,12 @@
                             @enderror
                         </div>
                     </div>
-                    <div class="card-body d-flex justify-content-end">
-                        <button type="submit" class="btn btn-primary btn-sm">
-                            <i class="fas fa-save me-1"></i> Save Changes
-                        </button>
-                    </div>
-                </form>
+                <div class="card-body d-flex justify-content-end">
+                                    <button type="submit" class="btn btn-primary btn-sm">
+                                        <i class="fas fa-save me-1"></i> Save Changes
+                                    </button>
+                                </div>
+                                </form>
             </div>
         </div>
 

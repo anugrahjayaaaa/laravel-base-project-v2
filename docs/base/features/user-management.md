@@ -162,12 +162,12 @@ Not yet broken down in this phase. Tracked here for reference.
 ## UI Patterns — User Index (Phase 4)
 
 ### Pagination
-- Shows "Page X of Y" format (no "Showing X to Y of Z")
+- Shows "Showing X to Y of Z entries" format
 - Layout: info text left, pagination links right, responsive wrap
 
 ### Soft-Deleted User Visual
 - Trashed rows: subtle red background (`color-mix(in srgb, var(--lbp-danger) 8%, transparent)`)
-- Badge: `bg-dark` with "DELETED" label on user name
+- Badge: `bg-danger text-white` with "DELETED" label on user name
 - Row opacity maintained at full (background tint provides distinction)
 
 ### Permanent Delete Flow (Index)
@@ -182,9 +182,9 @@ Not yet broken down in this phase. Tracked here for reference.
 
 ### Card 1 — Profile Information (col-lg-8)
 - **Header**: Avatar initials + Name + "Registered YYYY-MM-DD" metadata
-- **Trashed user**: `badge bg-dark` "TRASHED" in header (replaces status badge)
+- **Trashed user**: `badge bg-danger text-white` "TRASHED" in header (replaces status badge)
 - **Form**: Name + Email (`col-md-6` grid), Username (readonly), **Status dropdown** (only status input on page)
-- **Footer**: Save Changes, `card-footer bg-light d-flex justify-content-end`
+- **Footer**: Save Changes, `card-body d-flex justify-content-end`
 
 ### Card 2 — Quick Actions & Security (col-lg-4)
 - Unverified email warning + Resend button
@@ -193,6 +193,6 @@ Not yet broken down in this phase. Tracked here for reference.
 
 ### Card 3 — Danger Zone (col-lg-4)
 - Red-tinted card: `card-outline-danger bg-danger-subtle bg-opacity-10`
-- Active: Deactivate / Soft Delete (outline danger)
+- Active: Soft Delete only (outline danger)
 - Trashed: Restore (outline success) + Permanent Delete (solid danger)
 - All destructive actions → shared `#confirmModal` with `data-*` attributes

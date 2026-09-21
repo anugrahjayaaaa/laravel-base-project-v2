@@ -144,4 +144,32 @@ class UserCrudWebTest extends TestCase
         $this->get(route('users.index'))
             ->assertRedirect('/login');
     }
+
+    // -- Toggle Status (P4-B6) --
+
+    public function test_toggle_status_active_to_inactive(): void
+    {
+        $user = User::factory()->create(['is_active' => true]);
+
+        $this->put(route('users.update', $user), [
+            'name' => $user->name,
+            'email' => $user->email,
+            'status' => \App\Enums\UserStatusEnum::INACTIVE->value,
+        ])->assertRedirect();
+
+        $this->assertFalse($user->fresh()->is_active);
+    }
+
+    public function test_toggle_status_inactive_to_active(): void
+    {
+        $user = User::factory()->create(['is_active' => false]);
+
+        $this->put(route('users.update', $user), [
+            'name' => $user->name,
+            'email' => $user->email,
+            'status' => \App\Enums\UserStatusEnum::ACTIVE->value,
+        ])->assertRedirect();
+
+        $this->assertTrue($user->fresh()->is_active);
+    }
 }
