@@ -133,4 +133,29 @@ class UserStateTest extends TestCase
 
         $this->assertDatabaseCount('personal_access_tokens', 1);
     }
+
+    // -- Soft Delete / Force Logout --
+
+    public function test_soft_delete_revokes_api_tokens_and_sessions(): void
+    {
+        $user = User::factory()->create(['is_active' => true, 'email_verified_at' => now()]);
+        $user->createToken('test-token')->plainTextToken;
+        \Illuminate\Support\Facades\DB::table('sessions')->insert([
+            'id' => 'test-session',
+            'user_id' => $user->id,
+            'ip_address' => '127.0.0.1',
+            'user_agent' => 'test',
+            'payload' => '',
+            'last_activity' => time(),
+        ]);
+
+        $this->delete(route('users.destroy', $user))->assertRedirect();
+
+        $this->assertDatabaseMissing('personal_access_tokens', [
+            'tokenable_id' => $user->id,
+            'tokenable_type' => User::class,
+        ]);
+        $this->assertDatabaseMissing('sessions', ['user_id' => $user->id]);
+        $this->assertNull(\App\Models\User::withTrashed()->find($user->id)->remember_token);
+    }
 }

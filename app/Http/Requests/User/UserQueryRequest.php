@@ -16,7 +16,7 @@ class UserQueryRequest extends FormRequest
     {
         return [
             'search' => ['nullable', 'string', 'max:255'],
-            'status' => ['nullable', 'in:' . implode(',', array_column(UserStatusEnum::cases(), 'value'))],
+            'status' => ['nullable', 'in:active,inactive,locked,pending_verification,trashed'],
             'sort' => ['nullable', 'in:created_at,name,email,is_active'],
             'direction' => ['nullable', 'in:asc,desc'],
             'per_page' => ['nullable', 'integer', 'min:5', 'max:100'],

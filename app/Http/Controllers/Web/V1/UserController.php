@@ -27,18 +27,23 @@ class UserController extends Controller
 
     public function index(UserQueryRequest $request)
     {
+        $status = $request->validated('status') ?? 'active';
+
         $users = $this->indexAction->run(
             search: $request->validated('search'),
-            status: $request->validated('status'),
+            status: $status,
             sort: $request->validated('sort', 'created_at'),
             direction: $request->validated('direction', 'desc'),
             perPage: $request->validated('per_page', 10),
         );
 
+        $counts = $this->indexAction->counts();
+
         return view('pages.users.index', [
             'title' => 'Users',
             'users' => $users,
             'filters' => $request->only('search', 'status', 'sort', 'direction'),
+            'counts' => $counts,
         ]);
     }
 

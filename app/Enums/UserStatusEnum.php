@@ -8,6 +8,7 @@ enum UserStatusEnum: string
     case INACTIVE = 'inactive';
     case LOCKED = 'locked';
     case PENDING_VERIFICATION = 'pending_verification';
+    case TRASHED = 'trashed';
 
     public function label(): string
     {

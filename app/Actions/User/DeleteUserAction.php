@@ -23,6 +23,7 @@ class DeleteUserAction
     private function invalidateSessions(User $user): void
     {
         DB::table('sessions')->where('user_id', $user->id)->delete();
+        DB::table('users')->where('id', $user->id)->update(['remember_token' => null]);
         $user->tokens()->delete();
     }
 

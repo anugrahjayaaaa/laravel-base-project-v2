@@ -40,7 +40,7 @@ class CheckAccountState
             }
         }
 
-        if (! $user->is_active || $user->is_locked) {
+        if (! $user->is_active || $user->is_locked || $user->trashed()) {
             // Revoke all sessions + tokens immediately
             $user->tokens()->delete();
             \Illuminate\Support\Facades\DB::table('sessions')
