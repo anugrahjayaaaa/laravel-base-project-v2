@@ -19,6 +19,12 @@ class AppServiceProvider extends ServiceProvider
         view()->composer('layouts.partials.sidebar', AppMenuComposer::class);
 
         User::observe(UserObserver::class);
+
+        \Illuminate\Support\Facades\RateLimiter::for('user-state-actions', function ($request) {
+            $key = $request->user()?->id ?: $request->ip();
+
+            return \Illuminate\Cache\RateLimiting\Limit::perMinute(15)->by($key);
+        });
     }
 
     /**

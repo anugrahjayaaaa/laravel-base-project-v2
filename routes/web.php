@@ -57,8 +57,8 @@ Route::middleware(['auth:sanctum', 'verified', 'account.state'])->group(function
     Route::post('/users/{user}/resend-verification', [UserController::class, 'resendVerification'])->name('users.resend-verification');
 
     // User state toggles (Activate/Deactivate/Lock/Unlock)
-    Route::post('/users/{user}/activate', [UserStateController::class, 'activate'])->name('users.activate');
-    Route::post('/users/{user}/deactivate', [UserStateController::class, 'deactivate'])->name('users.deactivate');
-    Route::post('/users/{user}/lock', [UserStateController::class, 'lock'])->name('users.lock');
-    Route::post('/users/{user}/unlock', [UserStateController::class, 'unlock'])->name('users.unlock');
+    Route::post('/users/{user}/activate', [UserStateController::class, 'activate'])->name('users.activate')->middleware('throttle:user-state-actions');
+    Route::post('/users/{user}/deactivate', [UserStateController::class, 'deactivate'])->name('users.deactivate')->middleware('throttle:user-state-actions');
+    Route::post('/users/{user}/lock', [UserStateController::class, 'lock'])->name('users.lock')->middleware('throttle:user-state-actions');
+    Route::post('/users/{user}/unlock', [UserStateController::class, 'unlock'])->name('users.unlock')->middleware('throttle:user-state-actions');
 });

@@ -188,4 +188,19 @@ class UserStateTest extends TestCase
         $this->assertDatabaseMissing('sessions', ['user_id' => $user->id]);
         $this->assertNull(\App\Models\User::withTrashed()->find($user->id)->remember_token);
     }
+
+    // -- Rate Limiter --
+
+    public function test_state_actions_rate_limited_after_15_requests(): void
+    {
+        $user = User::factory()->create(['is_active' => true, 'email_verified_at' => now()]);
+
+        for ($i = 0; $i < 15; $i++) {
+            $this->postJson(route('api.v1.users.lock', $user))->assertOk();
+            // restore state so next iteration can lock again
+            $user->update(['is_locked' => false]);
+        }
+
+        $this->postJson(route('api.v1.users.lock', $user))->assertStatus(429);
+    }
 }
