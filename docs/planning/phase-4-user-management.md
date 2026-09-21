@@ -11,9 +11,11 @@
 ## Existing Foundation (already in place)
 
 - Spatie Permission ^6.0 installed (Phase 6 scope — NOT for Phase 4 use)
-- Action class pattern: `App\Actions\Auth\*`
-- Form Request pattern: `App\Http\Requests\Auth\*`
+- Action class pattern: `App\Actions\Auth\*` + `App\Actions\User\*`
+- Form Request pattern: `App\Http\Requests\Auth\*` + `App\Http\Requests\User\*`
 - `UnlockUserAction` + `UnlockUserRequest` exist (API only)
+- `ChangePassword` action exists — reuse for user password updates
+- `EnsurePasswordChangeRequired` middleware — enforces `must_change_password`
 - No Filament — pure Blade + AdminLTE
 - Base database roles/user traits initialized in Phase 2/3 only
 
@@ -39,6 +41,11 @@
 | P4-B4 | `resources/views/pages/users/index.blade.php` (AdminLTE table, status badges) | B3 | PLANNED |
 | P4-B5 | Route `web.php` → `users.index`, `users.update` | B3 | PLANNED |
 | P4-B6 | Tests: list users, toggle user status | B4,B5 | PLANNED |
+|| P4-B7 | Soft Delete: `DeleteUserAction` — deactivate + soft delete | A3 | DONE ✅ |
+|| P4-B8 | Restore: `RestoreUserAction` — undo soft delete | B7 | DONE ✅ |
+|| P4-B9 | Permanent Delete: `ForceDeleteUserAction` — force delete | B7 | DONE ✅ |
+|| P4-B10 | Detail/Edit View: `ShowUserAction` + edit form | B1 | DONE ✅ |
+|| P4-B11 | Resend verification email (admin mode trigger) | B10 | DONE ✅ |
 
 ## Group C — Activate/Deactivate + Lock/Unlock (Web UI)
 

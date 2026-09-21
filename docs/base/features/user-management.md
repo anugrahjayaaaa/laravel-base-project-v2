@@ -70,9 +70,10 @@ Soft Delete/Restore   →  deleted_at set/cleared (if permitted)
 | Failed-login threshold | any | locked | configurable (default: 5 attempts → 15 min) |
 | Inactivity timeout | active/unlocked | locked | scheduled job; revokes sessions |
 | Password expires | valid | expired | configured `security.password_expiration.days`; forces change |
-| Admin deactivates last superadmin | — | rejected | system-role protection |
-| Soft delete | active/inactive | deleted | `users.delete` permission; preserves data |
-| Restore | deleted | active/inactive | `users.update` permission |
+|| Admin deactivates last superadmin | — | rejected | system-role protection |
+|| Soft delete | active/inactive | deleted | `users.delete` permission; preserves data |
+|| Restore | deleted | active/inactive | `users.update` permission |
+|| Permanent delete | deleted | — | `users.delete` permission; irreversibly removes data |
 
 ## States
 
@@ -139,5 +140,59 @@ users.delete     (soft delete user)
 users.activate   (activate account)
 users.deactivate  (deactivate account)
 users.lock       (lock account)
-users.unlock     (unlock account)
+|users.unlock     (unlock account) |
 ```
+
+## Planned — Restore Detail & Permanent Delete (Phase 5+)
+
+Not yet broken down in this phase. Tracked here for reference.
+
+### Restore Detail
+- Dedicated restore flow with confirmation modal (warning variant)
+- Restored user returns to previous status (active/inactive)
+- Audit log entry on restore
+- Notification to restored user (optional)
+
+### Permanent Delete
+- Only available from trash state (never from active)
+- Double-confirmation: first modal (warning), second modal (danger)
+- Audit log entry on permanent delete
+- Associated data handling: cascade vs restrict (TBD per relationship)
+
+## UI Patterns — User Index (Phase 4)
+
+### Pagination
+- Shows "Page X of Y" format (no "Showing X to Y of Z")
+- Layout: info text left, pagination links right, responsive wrap
+
+### Soft-Deleted User Visual
+- Trashed rows: subtle red background (`color-mix(in srgb, var(--lbp-danger) 8%, transparent)`)
+- Badge: `bg-dark` with "DELETED" label on user name
+- Row opacity maintained at full (background tint provides distinction)
+
+### Permanent Delete Flow (Index)
+- Trashed users show: Restore button (info variant) + Permanent Delete button (danger variant)
+- Both trigger the shared `#confirmModal` with appropriate variant/message
+- Permanent Delete uses `ForceDeleteUserAction` via `users.force-delete` route
+
+## UI Patterns — Edit User (Phase 4)
+
+### Layout
+- Two-column grid: `col-lg-8` (form) + `col-lg-4` (sidebar)
+
+### Card 1 — Profile Information (col-lg-8)
+- **Header**: Avatar initials + Name + "Registered YYYY-MM-DD" metadata
+- **Trashed user**: `badge bg-dark` "TRASHED" in header (replaces status badge)
+- **Form**: Name + Email (`col-md-6` grid), Username (readonly), **Status dropdown** (only status input on page)
+- **Footer**: Save Changes, `card-footer bg-light d-flex justify-content-end`
+
+### Card 2 — Quick Actions & Security (col-lg-4)
+- Unverified email warning + Resend button
+- Failed Login Attempts widget
+- **No status widget** — status only in form dropdown (eliminates duplication)
+
+### Card 3 — Danger Zone (col-lg-4)
+- Red-tinted card: `card-outline-danger bg-danger-subtle bg-opacity-10`
+- Active: Deactivate / Soft Delete (outline danger)
+- Trashed: Restore (outline success) + Permanent Delete (solid danger)
+- All destructive actions → shared `#confirmModal` with `data-*` attributes
