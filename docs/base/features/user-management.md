@@ -158,10 +158,11 @@ User MUST change password before normal application access
 
 || Method | Endpoint | Exists | Description |
 ||--------|----------|--------|-------------|
-|| POST | `/api/v1/users/{user}/activate` | YES | `UserStateController@activate` |
-|| POST | `/api/v1/users/{user}/deactivate` | YES | `UserStateController@deactivate` |
-|| POST | `/api/v1/users/{user}/lock` | YES | `UserStateController@lock` |
-|| POST | `/api/v1/users/{user}/unlock` | YES | `UserStateController@unlock` (also `UnlockController` legacy) |
+||| POST | `/api/v1/users/{user}/activate` | YES | `UserStateController@activate` |
+||| POST | `/api/v1/users/{user}/deactivate` | YES | `UserStateController@deactivate` |
+||| POST | `/api/v1/users/{user}/lock` | YES | `UserStateController@lock` |
+||| POST | `/api/v1/users/{user}/unlock` | YES | `UserStateController@unlock` |
+||| POST | `/api/v1/auth/unlock` | YES (legacy redirect) | redirects to `api.v1.users.unlock` |
 
 All state endpoints return JSON `{ data: { message }, meta: { request_id, timestamp } }`.
 
@@ -173,7 +174,7 @@ All state endpoints return JSON `{ data: { message }, meta: { request_id, timest
 
 `UnlockUserAction` moved from `App\Actions\Auth\` → `App\Actions\User\` for consistency. All state actions now live in `App\Actions\User\`.
 
-Not yet broken down in this phase. Tracked here for reference.
+`UnlockController` (`Api\V1\Auth\`) removed — `unlock` method merged into `Api\V1\User\UserStateController`. Backwards-compat route `/api/v1/auth/unlock` redirects to `api.v1.users.unlock`.
 
 ## Planned — Restore Detail & Permanent Delete (Phase 5+)
 

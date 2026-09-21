@@ -53,10 +53,10 @@
 |----|------|---------|--------|
 || P4-C1 | `ActivateUserAction` + `DeactivateUserAction` | A3 | DONE |
 || P4-C2 | `LockUserAction` + `UnlockUserAction` (moved to User namespace) | A3 | DONE |
-|| P4-C3 | `Web\\UserStateController` (activate/deactivate/lock/unlock — thin) | C1,C2 | DONE |
-|| P4-C4 | Views: user state toggle (index + edit sidebar) | C3 | DONE |
-|| P4-C5 | Route `web.php` → user state endpoints | C3 | DONE |
-|| P4-C6 | Tests: activate, deactivate, lock, unlock flows + guards + API tests | C4,C5 | DONE |
+||| P4-C3 | `Web\\UserStateController` + `Api\\V1\\User\\UserStateController` (activate/deactivate/lock/unlock — thin) | C1,C2 | DONE |
+||| P4-C4 | Views: user state toggle (index + edit sidebar) | C3 | DONE |
+||| P4-C5 | Route `web.php` + `api.php` → user state endpoints | C3 | DONE |
+||| P4-C6 | Tests: activate, deactivate, lock, unlock flows + guards + API tests + rate limiter | C4,C5 | DONE |
 
 ### State Design — Two Flags with Guards (Option B)
 
@@ -91,9 +91,12 @@
 - Activating/unlocking does NOT invalidate sessions — user stays logged in
 - Applies to both web and API layers when user is currently authenticated
 
-**API Endpoint Gap:**
-- Only `unlock` exists in API (`UnlockController`)
-- `activate`, `deactivate`, `lock` are WEB-ONLY — no API controllers yet
+**API Endpoints (all unified under `Api\V1\User\UserStateController`):**
+- `POST /api/v1/users/{user}/activate` — `UserStateController@activate`
+- `POST /api/v1/users/{user}/deactivate` — `UserStateController@deactivate`
+- `POST /api/v1/users/{user}/lock` — `UserStateController@lock`
+- `POST /api/v1/users/{user}/unlock` — `UserStateController@unlock`
+- Backwards-compat: `/api/v1/auth/unlock` redirects to `api.v1.users.unlock`
 
 **Contextual UI rules:**
 - Active → show Deactivate + Lock

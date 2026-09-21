@@ -90,7 +90,7 @@ Phase 4B Group B (P4-B1 through P4-B11) — User CRUD (Web UI): DONE
 - DeleteUserAction, RestoreUserAction, ForceDeleteUserAction
 - ShowUserAction + edit form, AdminResendVerificationAction
 - Tests: UserCrudWebTest + UserExtendedCrudTest + toggle status
-+ Phase 4C Group C (P4-C1 through P4-C6) — Activate/Deactivate/Lock/Unlock: DONE + performance optimization
+|| Phase 4C Group C (P4-C1 through P4-C6) — Activate/Deactivate/Lock/Unlock: DONE ✅ (approved, closed) |
 
 Architecture gap-closing pass — added:
 
