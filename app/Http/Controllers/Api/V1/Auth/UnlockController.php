@@ -5,7 +5,7 @@ namespace App\Http\Controllers\Api\V1\Auth;
 use App\Actions\User\UnlockUserAction;
 use App\Auth\LoginThrottle;
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Auth\UnlockUserRequest;
+use Illuminate\Http\Request;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Spatie\Activitylog\Facades\Activity;
@@ -13,7 +13,7 @@ use Spatie\Activitylog\Facades\Activity;
 class UnlockController extends Controller
 {
     public function __invoke(
-        UnlockUserRequest $request,
+        Request $request,
         User $user,
         LoginThrottle $throttle,
         UnlockUserAction $action,

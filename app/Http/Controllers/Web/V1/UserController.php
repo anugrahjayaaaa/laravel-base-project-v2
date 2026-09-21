@@ -9,12 +9,9 @@ use App\Actions\User\RestoreUserAction;
 use App\Actions\User\UpdateUserAction;
 use App\Actions\User\UserIndexAction;
 use App\Http\Controllers\Controller;
-use App\Http\Requests\User\DeleteUserRequest;
-use App\Http\Requests\User\ForceDeleteUserRequest;
-use App\Http\Requests\User\ResendVerificationRequest;
-use App\Http\Requests\User\RestoreUserRequest;
 use App\Http\Requests\User\UpdateUserRequest;
 use App\Http\Requests\User\UserQueryRequest;
+use Illuminate\Http\Request;
 use App\Models\User;
 
 class UserController extends Controller
@@ -66,14 +63,14 @@ class UserController extends Controller
         return back()->with('status', 'User updated successfully.');
     }
 
-    public function destroy(DeleteUserRequest $request, User $user)
+    public function destroy(Request $request, User $user)
     {
         $this->deleteAction->run($user, $request->user());
 
         return back()->with('status', 'User deleted successfully.');
     }
 
-    public function restore(RestoreUserRequest $request, int $id)
+    public function restore(int $id)
     {
         $user = User::withTrashed()->findOrFail($id);
         $this->restoreAction->run($user);
@@ -81,7 +78,7 @@ class UserController extends Controller
         return back()->with('status', 'User restored successfully.');
     }
 
-    public function forceDelete(ForceDeleteUserRequest $request, int $id)
+    public function forceDelete(Request $request, int $id)
     {
         $user = User::withTrashed()->findOrFail($id);
         $this->forceDeleteAction->run($user, $request->user());
@@ -89,7 +86,7 @@ class UserController extends Controller
         return redirect()->route('users.index')->with('status', 'User permanently deleted.');
     }
 
-    public function resendVerification(ResendVerificationRequest $request, User $user)
+    public function resendVerification(Request $request, User $user)
     {
         $result = $this->resendVerificationAction->run($user, $request->ip());
 
