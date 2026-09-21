@@ -90,6 +90,7 @@ Phase 4B Group B (P4-B1 through P4-B11) — User CRUD (Web UI): DONE
 - DeleteUserAction, RestoreUserAction, ForceDeleteUserAction
 - ShowUserAction + edit form, AdminResendVerificationAction
 - Tests: UserCrudWebTest + UserExtendedCrudTest + toggle status
++ Phase 4C Group C (P4-C1 through P4-C6) — Activate/Deactivate + Lock/Unlock: DONE
 
 Architecture gap-closing pass — added:
 
@@ -185,11 +186,11 @@ Not yet started (Phase 15).
   (FOUND-001 through FOUND-010, CACHE-001, QUEUE-001, CORR-001,
   UI-001 through UI-006, SOFT-001, TABLE-001, FLAG-001 with Laravel Pennant)
 2. ~~Begin Phase 2: Database foundation~~ — Phase 2 complete (DB-001 base migrations, DB-002 RoleSeeder wired)
-4. ~~Begin Phase 4B Group B: User CRUD~~ — Group B complete (P4-B1 through P4-B11). Proceed to Group C (Activate/Deactivate + Lock/Unlock).
+5. ~~Begin Phase 4C Group C: Activate/Deactivate + Lock/Unlock~~ — Group C complete (P4-C1 through P4-C6).
 
 ## Summary
 
 All documentation and planning system complete. Phase 1 implementation
 complete (FOUND-001 through FOUND-010, CACHE-001, QUEUE-001, CORR-001,
 UI-001 through UI-006, SOFT-001, TABLE-001, FLAG-001 with Laravel Pennant).
-Phase 2 complete (DB-001 + DB-002). Phase 4B Group B complete (P4-B1 through P4-B11). Next: Group C — Activate/Deactivate + Lock/Unlock.
+Phase 2 complete (DB-001 + DB-002). Phase 4B Group B + Group C complete. Next: Group D — Admin User Creation.

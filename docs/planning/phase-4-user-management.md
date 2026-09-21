@@ -47,16 +47,59 @@
 || P4-B10 | Detail/Edit View: `ShowUserAction` + edit form | B1 | DONE |
 || P4-B11 | Resend verification email (admin mode trigger) | B10 | DONE |
 
-## Group C — Activate/Deactivate + Lock/Unlock (Web UI)
+## Group C — Activate/Deactivate + Lock/Unlock (Web UI) ✅ DONE
 
-| ID | Task | Depends | Status |
+|| ID | Task | Depends | Status |
 |----|------|---------|--------|
-| P4-C1 | `ActivateUserAction` + `DeactivateUserAction` | A3 | PLANNED |
-| P4-C2 | `LockUserAction` + `UnlockUserAction` (extend existing API action) | A3 | PLANNED |
-| P4-C3 | `Web\UserStateController` (activate/deactivate/lock/unlock — thin) | C1,C2 | PLANNED |
-| P4-C4 | Views: user state toggle (reuse confirm-action modal) | C3 | PLANNED |
-| P4-C5 | Route `web.php` → user state endpoints | C3 | PLANNED |
-| P4-C6 | Tests: activate, deactivate, lock, unlock flows | C4,C5 | PLANNED |
+|| P4-C1 | `ActivateUserAction` + `DeactivateUserAction` | A3 | DONE |
+|| P4-C2 | `LockUserAction` + `UnlockUserAction` (moved to User namespace) | A3 | DONE |
+|| P4-C3 | `Web\\UserStateController` (activate/deactivate/lock/unlock — thin) | C1,C2 | DONE |
+|| P4-C4 | Views: user state toggle (index + edit sidebar) | C3 | DONE |
+|| P4-C5 | Route `web.php` → user state endpoints | C3 | DONE |
+|| P4-C6 | Tests: activate, deactivate, lock, unlock flows + guards | C4,C5 | DONE |
+
+### State Design — Two Flags with Guards (Option B)
+
+`is_active` and `is_locked` are separate boolean flags with distinct lifecycles:
+
+| Flag | Purpose | Trigger | Reversed By |
+|------|---------|---------|-------------|
+| `is_active` | Account lifecycle (deactivate/suspend) | Admin action | Activate |
+| `is_locked` | Security intervention (admin lock) | Admin action | Unlock |
+
+**Business Guards:**
+- Deactivate blocked if `is_locked = true` — must unlock first
+- Lock blocked if `is_active = false` — must activate first
+- These guards prevent contradictory states (locked+inactive)
+
+**Status precedence** (`UserStatusEnum::resolve`):
+1. PENDING_VERIFICATION (email null)
+2. LOCKED (is_locked = true) — overrides inactive
+3. INACTIVE (is_active = false)
+4. ACTIVE (default)
+
+**Design tokens (badge colors):**
+- ACTIVE: `bg-success-subtle text-success border border-success-subtle`
+- INACTIVE: `bg-secondary-subtle text-secondary border border-secondary-subtle`
+- LOCKED: `bg-warning-subtle text-warning border border-warning-subtle`
+- TRASHED: `bg-danger text-white`
+
+**Session Invalidation (WEB + API) — Force Logout Specs:**
+- Deactivating or locking a user INVALIDATES all active sessions (force logout)
+- **WEB Layer**: Delete session records from `sessions` table where `user_id`
+- **API Layer**: Revoke all Sanctum tokens via `$user->tokens()->delete()` → subsequent API requests return `401 Unauthorized`
+- Activating/unlocking does NOT invalidate sessions — user stays logged in
+- Applies to both web and API layers when user is currently authenticated
+
+**API Endpoint Gap:**
+- Only `unlock` exists in API (`UnlockController`)
+- `activate`, `deactivate`, `lock` are WEB-ONLY — no API controllers yet
+
+**Contextual UI rules:**
+- Active → show Deactivate + Lock
+- Inactive → show Activate only (no Lock)
+- Locked → show Unlock only (no Deactivate)
+- Trashed → show Restore + Permanent Delete
 
 ## Group D — Admin User Creation + Temp Password
 

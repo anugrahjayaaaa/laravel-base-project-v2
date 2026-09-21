@@ -37,6 +37,16 @@ Primary status resolution: `App\Enums\UserStatusEnum::resolve()` — precedence:
 `Email Verified` ≠ `Authorized`
 `Authorized` ≠ `Feature Available`
 
+### Two Lock Mechanisms — CRITICAL DISTINCTION
+
+| Mechanism | Storage | Auto-expires | Toggles `is_locked` |
+|-----------|---------|-------------|---------------------|
+| Admin Lock | `users.is_locked = true` | No (manual unlock) | Yes |
+| Failed-login lockout | Cache + `failed_login_attempts.locked_until` | Yes | No |
+| Inactivity lock | `users.is_locked = true` | No | Yes |
+
+`users.is_locked` is ONLY set by admin actions (LockUserAction). Failed-login brute-force protection is 100% handled by the throttle layer — it never touches `users.is_locked`.
+
 ## Lifecycle Transitions
 
 ```
@@ -56,34 +66,35 @@ Deactivate/Activate   →  is_active toggles
   ↓
 Password lifecycle    →  must_change_password, expiration, history
   ↓
-Soft Delete/Restore   →  deleted_at set/cleared (if permitted)
+| Soft Delete/Restore   | deleted_at set/cleared (is_active unchanged) |
 ```
 
 ### Transition Rules
 
-| Trigger | From | To | Rule |
+|| Trigger | From | To | Rule |
 |---------|------|----|------|
-| Admin deactivation | active | inactive | `users.deactivate` permission; revokes sessions |
-| Admin activation | inactive | active | `users.activate` permission |
-| Administrator lock | any unlocked | locked | `users.lock` permission; revokes sessions |
-| Administrator unlock | locked | unlocked | `users.unlock` permission |
-| Failed-login threshold | any | locked | configurable (default: 5 attempts → 15 min) |
-| Inactivity timeout | active/unlocked | locked | scheduled job; revokes sessions |
-| Password expires | valid | expired | configured `security.password_expiration.days`; forces change |
-|| Admin deactivates last superadmin | — | rejected | system-role protection |
-|| Soft delete | active/inactive | deleted | `users.delete` permission; preserves data |
-|| Restore | deleted | active/inactive | `users.update` permission |
-|| Permanent delete | deleted | — | `users.delete` permission; irreversibly removes data |
+|| Admin deactivation | active | inactive | `users.deactivate` permission; blocked if `is_locked` (must unlock first) |
+|| Admin activation | inactive | active | `users.activate` permission |
+|| Admin lock | active/unlocked | locked | `users.lock` permission; blocked if `!is_active` (must activate first) |
+|| Admin unlock | locked | unlocked | `users.unlock` permission |
+|| Failed-login threshold | any | throttle lock | configurable (default: 5 attempts → 15 min); cache + DB, does NOT touch `is_locked` |
+|| Inactivity timeout | active/unlocked | locked | scheduled job; sets `is_locked` |
+|| Password expires | valid | expired | configured `security.password_expiration.days`; forces change |
+||| Admin deactivates last superadmin | — | rejected | system-role protection |
+||| Soft delete | active/inactive | deleted | `users.delete` permission; does NOT set `is_active = false` |
+||| Restore | deleted | active/inactive | `users.update` permission |
+||| Permanent delete | deleted | — | `users.delete` permission; irreversibly removes data |
 
 ## States
 
 || State | Field | Description |
-||-------|-------|-------------|
-|| Active/Inactive | `is_active` | Account lifecycle (admin deactivation) |
-|| Locked/Unlocked | `is_locked` | Security state (inactivity, failed login, admin lock) |
-|| Email verified | `email_verified_at` | Email verification (separate from activation) |
-|| Last activity | `last_activity_at` | Inactivity tracking |
-|| Password state | password-related columns | Expiration, history, forced change |
+|-------|-------|-------------|
+| Active/Inactive | `is_active` | Account lifecycle (admin deactivation) |
+| Locked | `is_locked` | Admin security intervention only |
+| Throttle lock | Cache + `failed_login_attempts.locked_until` | Auto-expiring brute-force protection |
+| Email verified | `email_verified_at` | Email verification (separate from activation) |
+| Last activity | `last_activity_at` | Inactivity tracking |
+| Password state | password-related columns | Expiration, history, forced change |
 
 ## Inactivity Policy
 
@@ -133,19 +144,35 @@ User MUST change password before normal application access
 ## Permissions
 
 ```
-users.view       (view user list/detail)
-users.create     (create new user)
-users.update     (update user, force password change)
-users.delete     (soft delete user)
-users.activate   (activate account)
-users.deactivate  (deactivate account)
-users.lock       (lock account)
+|users.view       (view user list/detail)
+|users.create     (create new user)
+|users.update     (update user, force password change)
+|users.delete     (soft delete user)
+|users.activate   (activate account)
+|users.deactivate  (deactivate account)
+|users.lock       (lock account)
 |users.unlock     (unlock account) |
 ```
 
-## Planned — Restore Detail & Permanent Delete (Phase 5+)
+## API Endpoints — User State
+
+|| Method | Endpoint | Exists | Description |
+||--------|----------|--------|-------------|
+|| POST | `/api/v1/users/{user}/activate` | NO | Not implemented |
+|| POST | `/api/v1/users/{user}/deactivate` | NO | Not implemented |
+|| POST | `/api/v1/users/{user}/lock` | NO | Not implemented |
+|| POST | `/api/v1/users/{user}/unlock` | YES | `UnlockController` (Auth namespace) |
+
+All state endpoints return redirect with flash `status` message on success (WEB).
+API endpoints return structured JSON (when implemented).
+
+### Namespace Fix (Phase 4C)
+
+`UnlockUserAction` moved from `App\Actions\Auth\` → `App\Actions\User\` for consistency. All state actions now live in `App\Actions\User\`.
 
 Not yet broken down in this phase. Tracked here for reference.
+
+## Planned — Restore Detail & Permanent Delete (Phase 5+)
 
 ### Restore Detail
 - Dedicated restore flow with confirmation modal (warning variant)

@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use App\Models\User;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Hash;
 
 class UserSeeder extends Seeder
 {
@@ -12,9 +13,14 @@ class UserSeeder extends Seeder
 
     public function run(): void
     {
-        User::factory()->count(20)->create();
-        User::factory()->count(5)->inactive()->create();
-        User::factory()->count(3)->locked()->create();
-        User::factory()->count(4)->unverified()->create();
+        // Fixed users user1-user10 with known password for dev/testing
+        for ($i = 1; $i <= 10; $i++) {
+            User::factory()->create([
+                'name' => "User {$i}",
+                'username' => "User{$i}",
+                'email' => "user{$i}@example.com",
+                'password' => Hash::make('#Password123'),
+            ]);
+        }
     }
 }
