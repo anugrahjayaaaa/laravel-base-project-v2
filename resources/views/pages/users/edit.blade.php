@@ -42,7 +42,7 @@
         'data-message="This cannot be undone. ' .
         e($user->name) .
         ' will be permanently removed." ' .
-                'data-variant="danger" data-icon="bi-trash3" data-label="Permanent Delete"';
+        'data-variant="danger" data-icon="bi-trash3" data-label="Permanent Delete"';
 
     $activateModal =
         'data-bs-toggle="modal" data-bs-target="#confirmModal" ' .
@@ -91,14 +91,18 @@
 
 @section('content')
     <div class="content-header mb-3">
-        <div class="d-flex justify-content-between align-items-start">
+        <div class="d-flex justify-content-between align-items-start w-100">
             <div>
-                <h1 class="page-title mb-1">Edit User</h1>
-                <p class="page-description mb-0">
+                <h1 class="page-title fw-bold">Edit User</h1>
+                <p class="page-description text-muted fs-7 mb-0">
                     <a href="{{ route('users.index') }}" class="text-muted text-decoration-none"><i
-                            class="fas fa-arrow-left me-1"></i>Back to Users</a>
+                            class="fas fa-arrow-left me-1"></i>Back to User List</a>
                 </p>
             </div>
+            <ol class="breadcrumb float-sm-end mb-0">
+                <li class="breadcrumb-item"><a href="{{ route('users.index') }}">Users</a></li>
+                <li class="breadcrumb-item active">Edit User</li>
+            </ol>
         </div>
     </div>
 
@@ -121,26 +125,31 @@
     <div class="row g-4">
         {{-- Main Content --}}
         <div class="col-lg-8">
-            <div class="card border-0 shadow-sm">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <div class="d-flex align-items-center gap-2">
-                        <div class="avatar-sm rounded-circle d-flex align-items-center justify-content-center text-white fw-bold"
-                            style="background: var(--lbp-primary, #6366f1); width: 36px; height: 36px; font-size: 0.85rem;">
-                            {{ $initials }}
-                        </div>
-                        <div>
-                            <strong>{{ $user->name }}</strong>
-                            <small class="text-muted d-block">Registered {{ $user->created_at->format('Y-m-d') }}</small>
-                            <small class="text-muted d-block">Updated {{ $user->updated_at->diffForHumans() }}</small>
-                        </div>
-                    </div>
-                    @if ($user->trashed())
-                        <span class="badge bg-danger text-white">TRASHED</span>
-                    @endif
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-transparent border-bottom py-3">
+                    <h5 class="card-title mb-0 fw-semibold">User Information</h5>
                 </div>
                 <form method="POST" action="{{ route('users.update', $user) }}">
                     @csrf @method('PUT')
-                    <div class="card-body">
+                    <div class="card-body p-4">
+                        {{-- Profile Summary --}}
+                        <div class="d-flex align-items-center gap-3 mb-4 pb-3 border-bottom">
+                            <div class="avatar-sm rounded-circle d-flex align-items-center justify-content-center text-white fw-bold"
+                                style="background: var(--lbp-primary, #6366f1); width: 40px; height: 40px; font-size: 0.9rem;">
+                                {{ $initials }}
+                            </div>
+                            <div>
+                                <strong>{{ $user->name }}</strong>
+                                <div>
+                                    <small class="text-muted d-block">Registered {{ $user->created_at->format('Y-m-d') }}</small>
+                                    <small class="text-muted d-block">Updated {{ $user->updated_at->diffForHumans() }}</small>
+                                </div>
+                            </div>
+                            @if ($user->trashed())
+                                <span class="badge bg-danger text-white ms-auto">TRASHED</span>
+                            @endif
+                        </div>
+
                         <div class="row g-3">
                             <div class="col-md-6">
                                 <label for="name" class="form-label">Name</label>
@@ -169,14 +178,14 @@
                             </div>
                         </div>
 
-                        <div class="mb-0 mt-3">
+                        <div class="mt-3">
                             <label for="username" class="form-label">Username</label>
                             <input type="text" id="username" class="form-control form-control-sm"
                                 value="{{ $user->username }}" disabled>
                             <small class="form-text text-muted">Username cannot be changed.</small>
                         </div>
 
-                        <div class="mb-0 mt-3">
+                        <div class="mt-3">
                             <label for="status" class="form-label">Status</label>
                             <select name="status" id="status"
                                 class="form-select form-select-sm @error('status') is-invalid @enderror">
@@ -192,12 +201,15 @@
                             @enderror
                         </div>
                     </div>
-                <div class="card-body d-flex justify-content-end">
-                                    <button type="submit" class="btn btn-primary btn-sm">
-                                        <i class="fas fa-save me-1"></i> Save Changes
-                                    </button>
-                                </div>
-                                </form>
+                    <div class="card-footer bg-body-tertiary border-top py-3 d-flex justify-content-end align-items-center gap-2">
+                        <a href="{{ route('users.index') }}" class="btn btn-outline-secondary d-inline-flex align-items-center gap-2">
+                            <i class="bi bi-x-circle"></i> Cancel
+                        </a>
+                        <button type="submit" class="btn btn-primary d-inline-flex align-items-center gap-2">
+                            <i class="bi bi-check-circle-fill"></i> Save Changes
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
 
@@ -205,7 +217,9 @@
         <div class="col-lg-4">
             {{-- Quick Actions & Security --}}
             <div class="card border-0 shadow-sm mb-3">
-                <div class="card-header"><strong>Quick Actions</strong></div>
+                <div class="card-header bg-transparent border-bottom py-2">
+                    <strong class="fw-semibold">Quick Actions</strong>
+                </div>
                 <div class="card-body d-grid gap-2">
                     @if ($user->email_verified_at === null && !$user->trashed())
                         <div class="alert alert-warning d-flex align-items-center justify-content-between py-2 px-3 mb-2"
@@ -258,7 +272,7 @@
 
             {{-- Danger Zone --}}
             <div class="card border-0 shadow-sm card-outline-danger bg-danger-subtle bg-opacity-10">
-                <div class="card-header bg-white">
+                <div class="card-header border-bottom">
                     <strong class="text-danger"><i class="fas fa-exclamation-triangle me-1"></i> Danger Zone</strong>
                 </div>
                 <div class="card-body d-grid gap-2">
