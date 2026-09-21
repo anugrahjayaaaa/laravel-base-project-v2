@@ -6,12 +6,35 @@ use App\Enums\UserStatusEnum;
 use App\Models\User;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 
 class UserIndexAction
 {
+    public function counts(): array
+    {
+        return Cache::rememberForever('user_index_counts', function () {
+            $row = DB::table('users')
+                ->selectRaw('
+                    COUNT(CASE WHEN is_active = true  AND is_locked = false AND deleted_at IS NULL THEN 1 END) as active,
+                    COUNT(CASE WHEN is_active = false AND is_locked = false AND deleted_at IS NULL THEN 1 END) as inactive,
+                    COUNT(CASE WHEN is_locked = true  AND deleted_at IS NULL        THEN 1 END) as locked,
+                    COUNT(CASE WHEN deleted_at IS NOT NULL                              THEN 1 END) as trashed
+                ')
+                ->first();
+
+            return [
+                'active'   => (int) $row->active,
+                'inactive' => (int) $row->inactive,
+                'locked'   => (int) $row->locked,
+                'trashed'  => (int) $row->trashed,
+            ];
+        });
+    }
+
     public function run(
         ?string $search = null,
-        ?string $status = null,
+        ?string $status = 'active',
         ?string $sort = 'created_at',
         ?string $direction = 'desc',
         int $perPage = 10,
@@ -47,10 +70,11 @@ class UserIndexAction
         }
 
         match ($status) {
-            UserStatusEnum::ACTIVE->value => $query->where('is_active', true)->where('is_locked', false),
-            UserStatusEnum::INACTIVE->value => $query->where('is_active', false),
-            UserStatusEnum::LOCKED->value => $query->where('is_locked', true),
-            UserStatusEnum::PENDING_VERIFICATION->value => $query->whereNull('email_verified_at'),
+            \App\Enums\UserStatusEnum::ACTIVE->value       => $query->where('is_active', true)->where('is_locked', false)->whereNull('deleted_at'),
+            \App\Enums\UserStatusEnum::INACTIVE->value     => $query->where('is_active', false)->where('is_locked', false)->whereNull('deleted_at'),
+            \App\Enums\UserStatusEnum::LOCKED->value       => $query->where('is_locked', true)->whereNull('deleted_at'),
+            \App\Enums\UserStatusEnum::PENDING_VERIFICATION->value => $query->whereNull('email_verified_at')->whereNull('deleted_at'),
+            \App\Enums\UserStatusEnum::TRASHED->value      => $query->whereNotNull('deleted_at'),
             default => null,
         };
     }
