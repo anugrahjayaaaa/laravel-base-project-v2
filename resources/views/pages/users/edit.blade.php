@@ -56,7 +56,6 @@
                 </p>
             </div>
             <div class="text-end">
-                <small class="text-muted d-block">Registered {{ $user->created_at->format('Y-m-d') }}</small>
                 <small class="text-muted">Updated {{ $user->updated_at->diffForHumans() }}</small>
             </div>
         </div>
