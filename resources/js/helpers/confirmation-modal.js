@@ -15,7 +15,18 @@
         var el = document.getElementById(MODAL_ID);
         if (!el) return;
 
-        modal = new bootstrap.Modal(el);
+        if (typeof bootstrap === 'undefined' || typeof bootstrap.Modal !== 'function') {
+            console.warn('ConfirmationModal: Bootstrap Modal not available');
+            return;
+        }
+
+        try {
+            modal = new bootstrap.Modal(el);
+        } catch (err) {
+            console.warn('ConfirmationModal: Failed to init Bootstrap Modal', err);
+            return;
+        }
+
         form = el.querySelector('#confirmModalForm');
         header = el.querySelector('#confirmModalHeader');
         title = el.querySelector('#confirmModalTitle');

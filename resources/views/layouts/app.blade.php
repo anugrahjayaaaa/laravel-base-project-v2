@@ -33,8 +33,9 @@
     </main>
 
     @include('layouts.partials.footer')
-    @include('layouts.partials.modals.confirmation')
 </div>
+
+@include('layouts.partials.modals.confirmation')
 
 <script src="{{ asset('vendor/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
 <script src="{{ asset('vendor/adminlte/js/adminlte.min.js') }}"></script>

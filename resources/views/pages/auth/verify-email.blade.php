@@ -11,22 +11,18 @@
             <p class="text-muted small mb-4">We've sent a verification link to your email address</p>
 
             @if (session('success'))
-                <div class="alert alert-success alert-dismissible mb-0" role="alert">
-                    <div class="d-flex align-items-center gap-2 justify-content-center">
-                        <i class="fas fa-circle-check"></i>
-                        <span class="flex-grow-1">{{ session('success') }}</span>
-                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                    </div>
+                <div class="alert alert-success alert-dismissible fade show mb-0 text-center" role="alert">
+                    <i class="fas fa-circle-check me-1"></i>
+                    {{ session('success') }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                 </div>
             @endif
 
             @if (session('error'))
-                <div class="alert alert-danger alert-dismissible mb-0" role="alert">
-                    <div class="d-flex align-items-center gap-2 justify-content-center">
-                        <i class="fas fa-circle-exclamation"></i>
-                        <span class="flex-grow-1">{{ session('error') }}</span>
-                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                    </div>
+                <div class="alert alert-danger alert-dismissible fade show mb-0 text-center" role="alert">
+                    <i class="fas fa-circle-exclamation me-1"></i>
+                    {{ session('error') }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                 </div>
             @endif
 
