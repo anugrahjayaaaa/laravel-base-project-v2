@@ -2,10 +2,11 @@
 
 use App\Http\Controllers\Web\V1\Auth\WebAuthController;
 use App\Http\Controllers\Web\V1\DashboardController;
+use App\Http\Controllers\Web\V1\UserController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
-    return view('pages.welcome', ['title' => config('app.name', 'Laravel')]);
+    return view('pages.welcome', ['title' => config('app.name', 'Laravel Base Project')]);
 });
 
 Route::controller(WebAuthController::class)->group(function () {
@@ -46,4 +47,13 @@ Route::middleware('auth')->group(function () {
 // Authenticated routes — require Sanctum auth + email verification.
 Route::middleware(['auth:sanctum', 'verified'])->group(function () {
     Route::get('/dashboard', DashboardController::class)->name('dashboard');
+
+    Route::get('/users', [UserController::class, 'index'])->name('users.index');
+    Route::get('/users/{id}', [UserController::class, 'show'])->name('users.show');
+    Route::get('/users/{id}/edit', [UserController::class, 'edit'])->name('users.edit');
+    Route::match(['put', 'patch'], '/users/{user}', [UserController::class, 'update'])->name('users.update');
+    Route::delete('/users/{user}', [UserController::class, 'destroy'])->name('users.destroy');
+    Route::post('/users/{id}/restore', [UserController::class, 'restore'])->name('users.restore');
+    Route::delete('/users/{id}/force', [UserController::class, 'forceDelete'])->name('users.force-delete');
+    Route::post('/users/{user}/resend-verification', [UserController::class, 'resendVerification'])->name('users.resend-verification');
 });
