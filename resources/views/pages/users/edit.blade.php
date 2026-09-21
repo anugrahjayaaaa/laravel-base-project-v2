@@ -250,7 +250,7 @@
                         <i class="fas fa-lock text-muted"></i>
                         <div>
                             <small class="text-muted d-block">Failed Login Attempts</small>
-                            <span class="fw-bold">0</span>
+                            <span class="fw-bold">{{ \App\Models\FailedLoginAttempt::where('user_id', $user->id)->sum('attempts') }}</span>
                         </div>
                     </div>
                 </div>
