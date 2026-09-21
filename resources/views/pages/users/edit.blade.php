@@ -55,9 +55,6 @@
                             class="fas fa-arrow-left me-1"></i>Back to Users</a>
                 </p>
             </div>
-            <div class="text-end">
-                <small class="text-muted">Updated {{ $user->updated_at->diffForHumans() }}</small>
-            </div>
         </div>
     </div>
 
@@ -90,6 +87,7 @@
                         <div>
                             <strong>{{ $user->name }}</strong>
                             <small class="text-muted d-block">Registered {{ $user->created_at->format('Y-m-d') }}</small>
+                            <small class="text-muted d-block">Updated {{ $user->updated_at->diffForHumans() }}</small>
                         </div>
                     </div>
                     @if ($user->trashed())
