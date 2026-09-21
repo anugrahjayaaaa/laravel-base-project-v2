@@ -154,17 +154,20 @@ User MUST change password before normal application access
 |users.unlock     (unlock account) |
 ```
 
-## API Endpoints — User State
+## API Endpoints — User State (Group C)
 
 || Method | Endpoint | Exists | Description |
 ||--------|----------|--------|-------------|
-|| POST | `/api/v1/users/{user}/activate` | NO | Not implemented |
-|| POST | `/api/v1/users/{user}/deactivate` | NO | Not implemented |
-|| POST | `/api/v1/users/{user}/lock` | NO | Not implemented |
-|| POST | `/api/v1/users/{user}/unlock` | YES | `UnlockController` (Auth namespace) |
+|| POST | `/api/v1/users/{user}/activate` | YES | `UserStateController@activate` |
+|| POST | `/api/v1/users/{user}/deactivate` | YES | `UserStateController@deactivate` |
+|| POST | `/api/v1/users/{user}/lock` | YES | `UserStateController@lock` |
+|| POST | `/api/v1/users/{user}/unlock` | YES | `UserStateController@unlock` (also `UnlockController` legacy) |
 
-All state endpoints return redirect with flash `status` message on success (WEB).
-API endpoints return structured JSON (when implemented).
+All state endpoints return JSON `{ data: { message }, meta: { request_id, timestamp } }`.
+
+**Force Logout on State Change:**
+- `deactivate`, `lock`, `delete` → revoke ALL sessions (web `sessions` table + API Sanctum tokens)
+- `activate`, `unlock` → does NOT revoke sessions (user stays authenticated)
 
 ### Namespace Fix (Phase 4C)
 

@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\V1\Auth\PasswordResetController;
 use App\Http\Controllers\Api\V1\Auth\VerifyEmailController;
 use App\Http\Controllers\Api\V1\Auth\ResendVerificationController;
 use App\Http\Controllers\Api\V1\Auth\UnlockController;
+use App\Http\Controllers\Api\V1\User\UserStateController;
 use App\Http\Controllers\Api\V1\HealthCheck\HealthCheckController;
 use Illuminate\Support\Facades\Route;
 
@@ -46,6 +47,9 @@ Route::prefix('v1')->group(function () {
         Route::post('/auth/logout-all', LogoutAllController::class)->name('api.v1.auth.logout-all');
         Route::post('/auth/email/resend', ResendVerificationController::class)->name('api.v1.auth.email.resend')->middleware('throttle:resend-verification');
         Route::post('/users/{user}/unlock', UnlockController::class)->name('api.v1.users.unlock');
+        Route::post('/users/{user}/activate', [UserStateController::class, 'activate'])->name('api.v1.users.activate');
+        Route::post('/users/{user}/deactivate', [UserStateController::class, 'deactivate'])->name('api.v1.users.deactivate');
+        Route::post('/users/{user}/lock', [UserStateController::class, 'lock'])->name('api.v1.users.lock');
     });
 
     // Authenticated password change — reachable even when the password is

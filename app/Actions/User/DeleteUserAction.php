@@ -13,10 +13,17 @@ class DeleteUserAction
         $this->validate($user, $causer);
 
         DB::transaction(function () use ($user) {
+            $this->invalidateSessions($user);
             $user->delete();
         });
 
         return ['user' => $user];
+    }
+
+    private function invalidateSessions(User $user): void
+    {
+        DB::table('sessions')->where('user_id', $user->id)->delete();
+        $user->tokens()->delete();
     }
 
     protected function validate(User $user, User $causer): void

@@ -56,7 +56,7 @@
 || P4-C3 | `Web\\UserStateController` (activate/deactivate/lock/unlock — thin) | C1,C2 | DONE |
 || P4-C4 | Views: user state toggle (index + edit sidebar) | C3 | DONE |
 || P4-C5 | Route `web.php` → user state endpoints | C3 | DONE |
-|| P4-C6 | Tests: activate, deactivate, lock, unlock flows + guards | C4,C5 | DONE |
+|| P4-C6 | Tests: activate, deactivate, lock, unlock flows + guards + API tests | C4,C5 | DONE |
 
 ### State Design — Two Flags with Guards (Option B)
 
