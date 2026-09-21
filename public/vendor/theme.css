@@ -30,6 +30,14 @@
   --lbp-muted: #9ca3af;
 }
 
+/* === User index navbar — theme-adaptive === */
+.users-navbar {
+  background-color: var(--lbp-surface) !important;
+  border-bottom-color: var(--lbp-border) !important;
+}
+.users-navbar .nav-link:not(.active) { color: var(--lbp-muted) !important; }
+.users-navbar .nav-link.active { color: var(--lbp-primary) !important; }
+
 body {
   font-family: var(--lbp-font);
   background: var(--lbp-bg);
@@ -423,6 +431,8 @@ body.sidebar-collapse .app-sidebar:not(:hover) .sidebar-brand i {
 .dropdown-header {
   color: var(--lbp-muted);
 }
+
+.bg-light-subtle { background: var(--lbp-surface-2) !important; }
 
 /* Focus ring (a11y) */
 .btn:focus-visible,
