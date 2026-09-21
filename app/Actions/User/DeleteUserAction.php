@@ -13,7 +13,6 @@ class DeleteUserAction
         $this->validate($user, $causer);
 
         DB::transaction(function () use ($user) {
-            $user->update(['is_active' => false]);
             $user->delete();
         });
 
