@@ -35,18 +35,16 @@ Route::controller(WebAuthController::class)->group(function () {
         ->middleware('throttle:resend-verification');
 });
 
-Route::middleware('auth')->group(function () {
+Route::middleware(['auth'])->group(function () {
     Route::controller(WebAuthController::class)->group(function () {
         Route::post('/logout', 'logout')->name('logout');
-
         Route::get('/sessions', 'showSessions')->name('sessions');
-        
         Route::post('/sessions/logout-all', 'logoutAllDevices')->name('sessions.logout-all');
     });
-});
+})->middleware('account.state');
 
 // Authenticated routes — require Sanctum auth + email verification.
-Route::middleware(['auth:sanctum', 'verified'])->group(function () {
+Route::middleware(['auth:sanctum', 'verified', 'account.state'])->group(function () {
     Route::get('/dashboard', DashboardController::class)->name('dashboard');
 
     Route::get('/users', [UserController::class, 'index'])->name('users.index');

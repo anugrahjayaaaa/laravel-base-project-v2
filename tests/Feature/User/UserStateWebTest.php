@@ -152,4 +152,16 @@ class UserStateWebTest extends TestCase
 
         $this->assertFalse($user->fresh()->is_locked); // still unlocked
     }
+
+    public function test_activate_locked_user_forbidden(): void
+    {
+        $user = User::factory()->create(['is_active' => false, 'is_locked' => true]);
+
+        $this->post(route('users.activate', $user))
+            ->assertRedirect()
+            ->assertSessionHasErrors(['status']);
+
+        $this->assertFalse($user->fresh()->is_active); // still inactive
+        $this->assertTrue($user->fresh()->is_locked); // still locked
+    }
 }

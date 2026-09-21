@@ -42,7 +42,7 @@
         'data-message="This cannot be undone. ' .
         e($user->name) .
         ' will be permanently removed." ' .
-        'data-variant="danger" data-label="Permanent Delete"';
+                'data-variant="danger" data-icon="bi-trash3" data-label="Permanent Delete"';
 
     $activateModal =
         'data-bs-toggle="modal" data-bs-target="#confirmModal" ' .
@@ -86,7 +86,7 @@
         'data-message="Are you sure you want to unlock ' .
         e($user->name) .
         '? The administrative lock will be removed, allowing normal access." ' .
-        'data-variant="success" data-label="Unlock"';
+        'data-variant="success" data-icon="bi-shield-check" data-label="Unlock"';
 @endphp
 
 @section('content')

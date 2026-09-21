@@ -25,13 +25,13 @@
             headerMix: 'var(--lbp-warning, #f59e0b)'
         },
         danger: {
-            icon: 'bi bi-lock',
+            icon: 'bi bi-shield-lock',
             iconColor: 'text-danger',
             btnClass: 'btn-danger',
             headerMix: 'var(--lbp-danger, #ef4444)'
         },
         info: {
-            icon: 'bi bi-unlock',
+            icon: 'bi bi-shield-check',
             iconColor: 'text-info',
             btnClass: 'btn-info',
             headerMix: 'var(--lbp-info, #0ea5e9)'
@@ -79,12 +79,13 @@
         var label    = trigger.getAttribute('data-label')
                     || trigger.getAttribute('data-action-label')
                     || 'Confirm';
+        var iconOverride = trigger.getAttribute('data-icon');
 
         modal._ctx = { action, method, variant, trigger };
 
         title.textContent = titleTxt;
         message.textContent = msgTxt;
-        applyVariant(variant);
+        applyVariant(variant, iconOverride);
         submitBtn.textContent = label;
         submitBtn.disabled = false;
 
@@ -107,11 +108,12 @@
         modal.show();
     }
 
-    function applyVariant(variant) {
+    function applyVariant(variant, iconOverride) {
         var meta = VARIANT_META[variant] || VARIANT_META.danger;
+        var icon = iconOverride || meta.icon;
 
         // Icon
-        iconEl.className = meta.icon + ' fs-1 ' + meta.iconColor;
+        iconEl.className = icon + ' fs-1 ' + meta.iconColor;
 
         // Header background
         header.style.background = 'color-mix(in srgb, ' + meta.headerMix + ' 12%, transparent)';

@@ -42,7 +42,7 @@ Route::prefix('v1')->group(function () {
     });
 
     // Protected API endpoints: require Sanctum auth + email verification + non-expired password.
-    Route::middleware(['auth:sanctum', 'verified', 'password.change.required'])->group(function () {
+    Route::middleware(['auth:sanctum', 'verified', 'password.change.required', 'account.state'])->group(function () {
         Route::post('/auth/logout', LogoutController::class)->name('api.v1.auth.logout');
         Route::post('/auth/logout-all', LogoutAllController::class)->name('api.v1.auth.logout-all');
         Route::post('/auth/email/resend', ResendVerificationController::class)->name('api.v1.auth.email.resend')->middleware('throttle:resend-verification');

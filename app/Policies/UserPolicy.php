@@ -38,6 +38,10 @@ class UserPolicy
      */
     public function activate(User $user, User $target): Response
     {
+        if ($target->is_locked) {
+            return Response::deny('Cannot activate a locked user. Please unlock first.', 409);
+        }
+
         if (! $target->is_active) {
             return Response::allow();
         }

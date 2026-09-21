@@ -53,7 +53,7 @@
         } elseif ($status->value === \App\Enums\UserStatusEnum::INACTIVE->value) {
             $btns .= '<button type="button" class="btn btn-sm btn-outline-success" title="Activate" data-bs-toggle="modal" data-bs-target="#confirmModal" data-action="' . route('users.activate', $user) . '" data-method="POST" data-title="Activate User Account?" data-message="Are you sure you want to activate ' . e($user->name) . '? This will restore the user login access to the system." data-variant="success" data-label="Activate"><i class="fas fa-user-check"></i></button>';
         } elseif ($status->value === \App\Enums\UserStatusEnum::LOCKED->value) {
-            $btns .= '<button type="button" class="btn btn-sm btn-outline-success" title="Unlock Account" data-bs-toggle="modal" data-bs-target="#confirmModal" data-action="' . route('users.unlock', $user) . '" data-method="POST" data-title="Unlock User Account?" data-message="Are you sure you want to unlock ' . e($user->name) . '? The administrative lock will be removed, allowing normal access." data-variant="success" data-label="Unlock"><i class="fas fa-lock-open"></i></button>';
+            $btns .= '<button type="button" class="btn btn-sm btn-outline-success" title="Unlock Account" data-bs-toggle="modal" data-bs-target="#confirmModal" data-action="' . route('users.unlock', $user) . '" data-method="POST" data-title="Unlock User Account?" data-message="Are you sure you want to unlock ' . e($user->name) . '? The administrative lock will be removed, allowing normal access." data-variant="success" data-icon="bi-shield-check" data-label="Unlock"><i class="fas fa-lock-open"></i></button>';
         }
         return $btns;
     };
@@ -61,7 +61,7 @@
     $deleteBtn = function ($user) {
         if ($user->trashed()) {
             return '<button type="button" class="btn btn-sm btn-outline-success" title="Restore" data-bs-toggle="modal" data-bs-target="#confirmModal" data-action="' . route('users.restore', $user) . '" data-method="POST" data-title="Restore User?" data-message="Restore ' . e($user->name) . '? They will be reactivated." data-variant="info" data-label="Restore"><i class="fas fa-rotate-left"></i></button>'
-                . '<button type="button" class="btn btn-sm btn-outline-danger" title="Permanent Delete" data-bs-toggle="modal" data-bs-target="#confirmModal" data-action="' . route('users.force-delete', $user) . '" data-method="DELETE" data-title="Permanently Delete?" data-message="This cannot be undone. ' . e($user->name) . ' will be permanently removed." data-variant="danger" data-label="Permanent Delete"><i class="fas fa-trash"></i></button>';
+                . '<button type="button" class="btn btn-sm btn-danger" title="Permanent Delete" data-bs-toggle="modal" data-bs-target="#confirmModal" data-action="' . route('users.force-delete', $user) . '" data-method="DELETE" data-title="Permanently Delete?" data-message="This cannot be undone. ' . e($user->name) . ' will be permanently removed." data-variant="danger" data-icon="bi-trash3" data-label="Permanent Delete"><i class="fas fa-trash"></i></button>';
         }
         return '<button type="button" class="btn btn-sm btn-outline-danger" title="Delete" data-bs-toggle="modal" data-bs-target="#confirmModal" data-action="' . route('users.destroy', $user) . '" data-method="DELETE" data-title="Delete User?" data-message="Move ' . e($user->name) . ' to trash? They can be restored later." data-variant="danger" data-label="Delete"><i class="fas fa-trash"></i></button>';
     };

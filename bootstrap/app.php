@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\CheckAccountState;
 use App\Http\Middleware\EnsurePasswordChangeRequired;
 use App\Http\Middleware\GenerateRequestCorrelationId;
 use App\Providers\AuthServiceProvider;
@@ -25,6 +26,7 @@ return Application::configure(basePath: dirname(__DIR__))
         // Aliases for middleware used in route definitions.
         $middleware->alias([
             'password.change.required' => EnsurePasswordChangeRequired::class,
+            'account.state' => CheckAccountState::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

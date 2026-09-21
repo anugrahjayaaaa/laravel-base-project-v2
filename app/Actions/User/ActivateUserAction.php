@@ -9,10 +9,21 @@ class ActivateUserAction
 {
     public function run(User $user): array
     {
+        $this->validate($user);
+
         DB::transaction(function () use ($user) {
-            $user->update(['is_active' => true]);
+            $user->update(['is_active' => true, 'is_locked' => false]);
         });
 
         return ['user' => $user];
+    }
+
+    protected function validate(User $user): void
+    {
+        if ($user->is_locked) {
+            $validator = \Illuminate\Support\Facades\Validator::make([], []);
+            $validator->errors()->add('status', __('Cannot activate a locked user. Please unlock first.'));
+            throw new \Illuminate\Validation\ValidationException($validator);
+        }
     }
 }
