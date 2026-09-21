@@ -6,7 +6,6 @@ use App\Actions\User\AdminResendVerificationAction;
 use App\Actions\User\DeleteUserAction;
 use App\Actions\User\ForceDeleteUserAction;
 use App\Actions\User\RestoreUserAction;
-use App\Actions\User\ShowUserAction;
 use App\Actions\User\UpdateUserAction;
 use App\Actions\User\UserIndexAction;
 use App\Http\Controllers\Controller;
@@ -26,7 +25,6 @@ class UserController extends Controller
         private readonly DeleteUserAction $deleteAction,
         private readonly RestoreUserAction $restoreAction,
         private readonly ForceDeleteUserAction $forceDeleteAction,
-        private readonly ShowUserAction $showAction,
         private readonly AdminResendVerificationAction $resendVerificationAction,
     ) {}
 
@@ -47,10 +45,9 @@ class UserController extends Controller
         ]);
     }
 
-    public function show(ShowUserAction $action, int $id)
+    public function show(int $id)
     {
         $user = User::withTrashed()->findOrFail($id);
-        $action->run($user);
 
         return view('pages.users.edit', ['title' => 'User Detail', 'user' => $user]);
     }

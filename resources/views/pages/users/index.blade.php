@@ -29,14 +29,33 @@
 
     $badgeClass = function (\App\Enums\UserStatusEnum $s, bool $trashed) {
         if ($trashed) {
-            return 'bg-dark text-white';
+            return 'bg-danger text-white';
         }
         return match ($s->value) {
-            \App\Enums\UserStatusEnum::ACTIVE->value => 'bg-success',
-            \App\Enums\UserStatusEnum::INACTIVE->value => 'bg-secondary',
-            \App\Enums\UserStatusEnum::LOCKED->value => 'bg-danger',
-            \App\Enums\UserStatusEnum::PENDING_VERIFICATION->value => 'bg-warning text-dark',
+            \App\Enums\UserStatusEnum::ACTIVE->value => 'bg-success-subtle text-success border border-success-subtle',
+            \App\Enums\UserStatusEnum::INACTIVE->value => 'bg-secondary-subtle text-secondary border border-secondary-subtle',
+            \App\Enums\UserStatusEnum::LOCKED->value => 'bg-warning-subtle text-warning border border-warning-subtle',
+            \App\Enums\UserStatusEnum::PENDING_VERIFICATION->value => 'bg-warning-subtle text-dark border border-warning-subtle',
         };
+    };
+
+    $editBtn = function ($user) {
+        return '<a href="' . route('users.show', $user) . '" class="btn btn-sm btn-outline-primary" title="Edit"><i class="fas fa-pen"></i></a>';
+    };
+
+    $stateBtn = function ($user) {
+        if ($user->trashed()) return '';
+        $status = $user->getStatus();
+        $btns = '';
+        if ($status->value === \App\Enums\UserStatusEnum::ACTIVE->value) {
+            $btns .= '<button type="button" class="btn btn-sm btn-outline-warning" title="Deactivate" data-bs-toggle="modal" data-bs-target="#confirmModal" data-action="' . route('users.deactivate', $user) . '" data-method="POST" data-title="Deactivate User Account?" data-message="Are you sure you want to deactivate ' . e($user->name) . '? This user will be immediately logged out and unable to access the system until reactivated." data-variant="warning" data-label="Deactivate"><i class="fas fa-user-slash"></i></button>';
+            $btns .= '<button type="button" class="btn btn-sm btn-outline-danger" title="Lock Account" data-bs-toggle="modal" data-bs-target="#confirmModal" data-action="' . route('users.lock', $user) . '" data-method="POST" data-title="Lock User Account?" data-message="Are you sure you want to lock ' . e($user->name) . '? The account will be forcefully locked and all active sessions will be revoked." data-variant="danger" data-label="Lock"><i class="fas fa-lock"></i></button>';
+        } elseif ($status->value === \App\Enums\UserStatusEnum::INACTIVE->value) {
+            $btns .= '<button type="button" class="btn btn-sm btn-outline-success" title="Activate" data-bs-toggle="modal" data-bs-target="#confirmModal" data-action="' . route('users.activate', $user) . '" data-method="POST" data-title="Activate User Account?" data-message="Are you sure you want to activate ' . e($user->name) . '? This will restore the user login access to the system." data-variant="success" data-label="Activate"><i class="fas fa-user-check"></i></button>';
+        } elseif ($status->value === \App\Enums\UserStatusEnum::LOCKED->value) {
+            $btns .= '<button type="button" class="btn btn-sm btn-outline-success" title="Unlock Account" data-bs-toggle="modal" data-bs-target="#confirmModal" data-action="' . route('users.unlock', $user) . '" data-method="POST" data-title="Unlock User Account?" data-message="Are you sure you want to unlock ' . e($user->name) . '? The administrative lock will be removed, allowing normal access." data-variant="success" data-label="Unlock"><i class="fas fa-lock-open"></i></button>';
+        }
+        return $btns;
     };
 
     $deleteBtn = function ($user) {
@@ -44,8 +63,7 @@
             return '<button type="button" class="btn btn-sm btn-outline-success" title="Restore" data-bs-toggle="modal" data-bs-target="#confirmModal" data-action="' . route('users.restore', $user) . '" data-method="POST" data-title="Restore User?" data-message="Restore ' . e($user->name) . '? They will be reactivated." data-variant="info" data-label="Restore"><i class="fas fa-rotate-left"></i></button>'
                 . '<button type="button" class="btn btn-sm btn-outline-danger" title="Permanent Delete" data-bs-toggle="modal" data-bs-target="#confirmModal" data-action="' . route('users.force-delete', $user) . '" data-method="DELETE" data-title="Permanently Delete?" data-message="This cannot be undone. ' . e($user->name) . ' will be permanently removed." data-variant="danger" data-label="Permanent Delete"><i class="fas fa-trash"></i></button>';
         }
-        return '<a href="' . route('users.show', $user) . '" class="btn btn-sm btn-outline-primary" title="Edit"><i class="fas fa-pen"></i></a>'
-            . '<button type="button" class="btn btn-sm btn-outline-danger" title="Delete" data-bs-toggle="modal" data-bs-target="#confirmModal" data-action="' . route('users.destroy', $user) . '" data-method="DELETE" data-title="Delete User?" data-message="Move ' . e($user->name) . ' to trash? They can be restored later." data-variant="danger" data-label="Delete"><i class="fas fa-trash"></i></button>';
+        return '<button type="button" class="btn btn-sm btn-outline-danger" title="Delete" data-bs-toggle="modal" data-bs-target="#confirmModal" data-action="' . route('users.destroy', $user) . '" data-method="DELETE" data-title="Delete User?" data-message="Move ' . e($user->name) . ' to trash? They can be restored later." data-variant="danger" data-label="Delete"><i class="fas fa-trash"></i></button>';
     };
 @endphp
 
@@ -124,6 +142,8 @@
                             <td>{{ $user->created_at->format('Y-m-d') }}</td>
                             <td>
                                 <div class="d-flex gap-1">
+                                    {!! $editBtn($user) !!}
+                                    {!! $stateBtn($user) !!}
                                     {!! $deleteBtn($user) !!}
                                 </div>
                             </td>

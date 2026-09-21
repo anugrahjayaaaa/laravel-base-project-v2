@@ -3,10 +3,10 @@
 @php
     $status = $user->getStatus();
     $badgeClass = match ($status->value) {
-        \App\Enums\UserStatusEnum::ACTIVE->value => 'bg-success-subtle text-success',
-        \App\Enums\UserStatusEnum::INACTIVE->value => 'bg-secondary-subtle text-secondary',
-        \App\Enums\UserStatusEnum::LOCKED->value => 'bg-danger-subtle text-danger',
-        \App\Enums\UserStatusEnum::PENDING_VERIFICATION->value => 'bg-warning-subtle text-dark',
+        \App\Enums\UserStatusEnum::ACTIVE->value => 'bg-success-subtle text-success border border-success-subtle',
+        \App\Enums\UserStatusEnum::INACTIVE->value => 'bg-secondary-subtle text-secondary border border-secondary-subtle',
+        \App\Enums\UserStatusEnum::LOCKED->value => 'bg-warning-subtle text-warning border border-warning-subtle',
+        \App\Enums\UserStatusEnum::PENDING_VERIFICATION->value => 'bg-warning-subtle text-dark border border-warning-subtle',
     };
 
     $initials = str($user->name)->explode(' ')->take(2)->map(fn($w) => strtoupper($w[0]))->implode('');
@@ -43,6 +43,50 @@
         e($user->name) .
         ' will be permanently removed." ' .
         'data-variant="danger" data-label="Permanent Delete"';
+
+    $activateModal =
+        'data-bs-toggle="modal" data-bs-target="#confirmModal" ' .
+        'data-action="' .
+        route('users.activate', $user) .
+        '" data-method="POST" ' .
+        'data-title="Activate User Account?" ' .
+        'data-message="Are you sure you want to activate ' .
+        e($user->name) .
+        '? This will restore the user login access to the system." ' .
+        'data-variant="success" data-label="Activate"';
+
+    $deactivateModal =
+        'data-bs-toggle="modal" data-bs-target="#confirmModal" ' .
+        'data-action="' .
+        route('users.deactivate', $user) .
+        '" data-method="POST" ' .
+        'data-title="Deactivate User Account?" ' .
+        'data-message="Are you sure you want to deactivate ' .
+        e($user->name) .
+        '? This user will be immediately logged out and unable to access the system until reactivated." ' .
+        'data-variant="warning" data-label="Deactivate"';
+
+    $lockModal =
+        'data-bs-toggle="modal" data-bs-target="#confirmModal" ' .
+        'data-action="' .
+        route('users.lock', $user) .
+        '" data-method="POST" ' .
+        'data-title="Lock User Account?" ' .
+        'data-message="Are you sure you want to lock ' .
+        e($user->name) .
+        '? The account will be forcefully locked and all active sessions will be revoked." ' .
+        'data-variant="danger" data-label="Lock"';
+
+    $unlockModal =
+        'data-bs-toggle="modal" data-bs-target="#confirmModal" ' .
+        'data-action="' .
+        route('users.unlock', $user) .
+        '" data-method="POST" ' .
+        'data-title="Unlock User Account?" ' .
+        'data-message="Are you sure you want to unlock ' .
+        e($user->name) .
+        '? The administrative lock will be removed, allowing normal access." ' .
+        'data-variant="success" data-label="Unlock"';
 @endphp
 
 @section('content')
@@ -91,7 +135,7 @@
                         </div>
                     </div>
                     @if ($user->trashed())
-                        <span class="badge bg-dark text-white">TRASHED</span>
+                        <span class="badge bg-danger text-white">TRASHED</span>
                     @endif
                 </div>
                 <form method="POST" action="{{ route('users.update', $user) }}">
@@ -179,6 +223,27 @@
                                 <i class="fas fa-envelope me-1"></i> Resend Verification
                             </button>
                         </form>
+                    @endif
+
+                    {{-- State Toggles --}}
+                    @if (!$user->trashed())
+                        @php $s = $user->getStatus(); @endphp
+                        @if ($s->value === \App\Enums\UserStatusEnum::ACTIVE->value)
+                            <button type="button" class="btn btn-outline-warning btn-sm w-100" {!! $deactivateModal !!}>
+                                <i class="fas fa-user-slash me-1"></i> Deactivate
+                            </button>
+                            <button type="button" class="btn btn-outline-danger btn-sm w-100" {!! $lockModal !!}>
+                                <i class="fas fa-lock me-1"></i> Lock
+                            </button>
+                        @elseif ($s->value === \App\Enums\UserStatusEnum::INACTIVE->value)
+                            <button type="button" class="btn btn-outline-success btn-sm w-100" {!! $activateModal !!}>
+                                <i class="fas fa-user-check me-1"></i> Activate
+                            </button>
+                        @elseif ($s->value === \App\Enums\UserStatusEnum::LOCKED->value)
+                            <button type="button" class="btn btn-outline-success btn-sm w-100" {!! $unlockModal !!}>
+                                <i class="fas fa-lock-open me-1"></i> Unlock
+                            </button>
+                        @endif
                     @endif
 
                     <div class="d-flex align-items-center gap-2 py-1">

@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1\Auth;
 
-use App\Actions\Auth\UnlockUserAction;
+use App\Actions\User\UnlockUserAction;
 use App\Auth\LoginThrottle;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\UnlockUserRequest;
@@ -24,6 +24,7 @@ class UnlockController extends Controller
             ->causedBy($request->user())
             ->withProperties([
                 'target_id' => $user->id,
+                'target_username' => $user->username,
                 'target_email' => $user->email
             ])
             ->log('auth.user_unlocked');

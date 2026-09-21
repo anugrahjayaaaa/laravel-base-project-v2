@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Web\V1\Auth\WebAuthController;
 use App\Http\Controllers\Web\V1\DashboardController;
+use App\Http\Controllers\Web\V1\UserStateController;
 use App\Http\Controllers\Web\V1\UserController;
 use Illuminate\Support\Facades\Route;
 
@@ -56,4 +57,10 @@ Route::middleware(['auth:sanctum', 'verified'])->group(function () {
     Route::post('/users/{id}/restore', [UserController::class, 'restore'])->name('users.restore');
     Route::delete('/users/{id}/force', [UserController::class, 'forceDelete'])->name('users.force-delete');
     Route::post('/users/{user}/resend-verification', [UserController::class, 'resendVerification'])->name('users.resend-verification');
+
+    // User state toggles (Activate/Deactivate/Lock/Unlock)
+    Route::post('/users/{user}/activate', [UserStateController::class, 'activate'])->name('users.activate');
+    Route::post('/users/{user}/deactivate', [UserStateController::class, 'deactivate'])->name('users.deactivate');
+    Route::post('/users/{user}/lock', [UserStateController::class, 'lock'])->name('users.lock');
+    Route::post('/users/{user}/unlock', [UserStateController::class, 'unlock'])->name('users.unlock');
 });

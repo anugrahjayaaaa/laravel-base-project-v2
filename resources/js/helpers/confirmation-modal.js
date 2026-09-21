@@ -9,7 +9,34 @@
     'use strict';
 
     var MODAL_ID = 'confirmModal';
-    var modal, form, header, title, message, submitBtn;
+    var modal, form, header, title, message, submitBtn, iconEl;
+
+    var VARIANT_META = {
+        success: {
+            icon: 'bi bi-person-check',
+            iconColor: 'text-success',
+            btnClass: 'btn-success',
+            headerMix: 'var(--lbp-success, #198754)'
+        },
+        warning: {
+            icon: 'bi bi-person-x',
+            iconColor: 'text-warning',
+            btnClass: 'btn-warning',
+            headerMix: 'var(--lbp-warning, #f59e0b)'
+        },
+        danger: {
+            icon: 'bi bi-lock',
+            iconColor: 'text-danger',
+            btnClass: 'btn-danger',
+            headerMix: 'var(--lbp-danger, #ef4444)'
+        },
+        info: {
+            icon: 'bi bi-unlock',
+            iconColor: 'text-info',
+            btnClass: 'btn-info',
+            headerMix: 'var(--lbp-info, #0ea5e9)'
+        }
+    };
 
     function init() {
         var el = document.getElementById(MODAL_ID);
@@ -31,7 +58,8 @@
         header = el.querySelector('#confirmModalHeader');
         title = el.querySelector('#confirmModalTitle');
         message = el.querySelector('#confirmModalMessage');
-        submitBtn = form.querySelector('button[type="submit"]');
+        iconEl = el.querySelector('#confirmModalIcon');
+        submitBtn = form.querySelector('#confirmModalSubmit') || form.querySelector('button[type="submit"]');
 
         document.addEventListener('click', onTriggerClick);
         el.addEventListener('hidden.bs.modal', onHidden);
@@ -80,15 +108,16 @@
     }
 
     function applyVariant(variant) {
-        var color = variant === 'warning' ? 'var(--lbp-warning, #f59e0b)'
-                  : variant === 'info'    ? 'var(--lbp-info, #0ea5e9)'
-                  :                            'var(--lbp-danger, #ef4444)';
-        header.style.background = 'color-mix(in srgb, ' + color + ' 12%, transparent)';
+        var meta = VARIANT_META[variant] || VARIANT_META.danger;
 
-        var btnClass = variant === 'warning' ? 'btn-warning'
-                     : variant === 'info'    ? 'btn-info'
-                     :                           'btn-danger';
-        submitBtn.className = 'btn ' + btnClass + (variant === 'info' ? ' text-white' : '');
+        // Icon
+        iconEl.className = meta.icon + ' fs-1 ' + meta.iconColor;
+
+        // Header background
+        header.style.background = 'color-mix(in srgb, ' + meta.headerMix + ' 12%, transparent)';
+
+        // Submit button
+        submitBtn.className = 'btn ' + meta.btnClass + (variant === 'info' ? ' text-white' : '');
     }
 
     function onHidden() {
