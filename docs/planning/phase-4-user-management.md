@@ -122,29 +122,44 @@ API `POST /api/v1/users` shares same Action + Request (single source of truth).
 - API user CRUD: only `POST /api/v1/users` (create) exists. list/show/edit/update (soft delete + permanent delete) not implemented — needed for RBAC permission management
 - Authorization middleware (`can:users.create`) on create/store — permission defined in user-management.md, not enforced yet
 
-## Group E — Username/Email Change + System Settings + Email Verification 🔄 ON PROGRESS
+## Group E — API User CRUD (Read, Update, Delete, Restore)
 
 | ID | Task | Depends | Status |
 |----|------|---------|--------|
-| P4-E1 | Migration: `username_changed_at`, `email_changed_at`, `pending_email`, `email_change_token`, `email_change_token_expires_at` on users; `system_settings` table | D | ON PROGRESS |
-| P4-E2 | Model: User `canChangeUsername()`/`canChangeEmail()`, SystemSetting model | E1 | ON PROGRESS |
-| P4-E3 | Actions: CreateUserAction (username), UpdateUserAction (cooldown + email flow) | E1,E2 | ON PROGRESS |
-| P4-E4 | Requests: CreateUserRequest (username), UpdateUserRequest (cooldown guard), EmailChangeRequest | E2 | ON PROGRESS |
-| P4-E5 | Notification: ChangeEmailVerificationNotification (signed URL, 24h expiry) | E1,E2 | ON PROGRESS |
-| P4-E6 | Controller: requestEmailChange, cancelEmailChange, verifyEmailChange, resendVerification | E3,E4,E5 | ON PROGRESS |
-| P4-E7 | Routes: users.request-email-change, users.cancel-email-change, email.verify-change | E6 | ON PROGRESS |
-| P4-E8 | Views: create (username @input), edit (cooldown badges, pending email callout) | E6 | ON PROGRESS |
-| P4-E9 | Tests: UsernameEmailChangeTest (7 tests, all pass) | E1-E8 | ON PROGRESS |
-| P4-E10 | System Settings UI: allow_username_change, allow_email_change, cooldown days | E1 | PLANNED |
-| P4-E11 | Docs: user-management.md + progress.md Phase 4E update | E9 | ON PROGRESS |
+| P4-E1 | API endpoint: list users (GET /api/v1/users) | D | PLANNED |
+| P4-E2 | API endpoint: show user (GET /api/v1/users/{user}) | D | PLANNED |
+| P4-E3 | API endpoint: update user (PUT/PATCH /api/v1/users/{user}) | D | PLANNED |
+| P4-E4 | API endpoint: soft delete user (DELETE /api/v1/users/{user}) | D | PLANNED |
+| P4-E5 | API endpoint: permanent delete (DELETE /api/v1/users/{user}/force) | D | PLANNED |
+| P4-E6 | API endpoint: restore soft-deleted user (POST /api/v1/users/{id}/restore) | D | PLANNED |
+| P4-E7 | Tests: API CRUD operations + soft delete / restore flows | E1-E6 | PLANNED |
 
-## Group F — Audit & Close-out
+**Note:** API user CRUD only. WEB UI CRUD already done (Group B).
+Authorization via RBAC (Phase 6) — permission gates applied per endpoint.
+
+## Group F — Username/Email Change + System Settings + Email Verification 🔄 ON PROGRESS
 
 | ID | Task | Depends | Status |
 |----|------|---------|--------|
-| P4-F1 | Audit logging on user state changes (Auditable trait) | B,C,D,E | PLANNED |
-| P4-F2 | Integration test: full user lifecycle flow (create → activate → lock → unlock → deactivate) | B,C,D,E | PLANNED |
-| P4-F3 | Final audit: all views use @error, no magic strings, no hardcoded routes | F1,F2 | PLANNED |
+| P4-F1 | Migration: `username_changed_at`, `email_changed_at`, `pending_email`, `email_change_token`, `email_change_token_expires_at` on users; `system_settings` table | D | ON PROGRESS |
+| P4-F2 | Model: User `canChangeUsername()`/`canChangeEmail()`, SystemSetting model | F1 | ON PROGRESS |
+| P4-F3 | Actions: CreateUserAction (username), UpdateUserAction (cooldown + email flow) | F1,F2 | ON PROGRESS |
+| P4-F4 | Requests: CreateUserRequest (username), UpdateUserRequest (cooldown guard), EmailChangeRequest | F2 | ON PROGRESS |
+| P4-F5 | Notification: ChangeEmailVerificationNotification (signed URL, 24h expiry) | F1,F2 | ON PROGRESS |
+| P4-F6 | Controller: requestEmailChange, cancelEmailChange, verifyEmailChange, resendVerification | F3,F4,F5 | ON PROGRESS |
+| P4-F7 | Routes: users.request-email-change, users.cancel-email-change, email.verify-change | F6 | ON PROGRESS |
+| P4-F8 | Views: create (username @input), edit (cooldown badges, pending email callout) | F6 | ON PROGRESS |
+| P4-F9 | Tests: UsernameEmailChangeTest (7 tests, all pass) | F1-F8 | ON PROGRESS |
+| P4-F10 | System Settings UI: allow_username_change, allow_email_change, cooldown days | F1 | PLANNED |
+| P4-F11 | Docs: user-management.md + progress.md Phase 4F update | F9 | ON PROGRESS |
+
+## Group G — Audit & Close-out
+
+| ID | Task | Depends | Status |
+|----|------|---------|--------|
+| P4-G1 | Audit logging on user state changes (Auditable trait) | B,C,D,F | PLANNED |
+| P4-G2 | Integration test: full user lifecycle flow (create → activate → lock → unlock → deactivate) | B,C,D,F | PLANNED |
+| P4-G3 | Final audit: all views use @error, no magic strings, no hardcoded routes | G1,G2 | PLANNED |
 
 ---
 
