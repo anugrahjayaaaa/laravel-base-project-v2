@@ -186,6 +186,9 @@ class WebAuthController extends Controller
                 ->with('error', 'Invalid verification link.');
         }
 
+        // New user: first verification → login. Existing user: already verified → notice page.
+        $isNewUser = ! $user->hasVerifiedEmail();
+
         $result = $action->run($user);
 
         if (isset($result['error'])) {
@@ -194,6 +197,11 @@ class WebAuthController extends Controller
         }
 
         $this->audit('auth.email_verified', $result['user'], $result['user']);
+
+        if ($isNewUser) {
+            return redirect()->route('login')
+                ->with('success', 'Email verified. Please log in.');
+        }
 
         return redirect()->route('verification.notice')
             ->with('success', 'Email verified successfully.');
