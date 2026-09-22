@@ -60,7 +60,7 @@ class AppMenuComposer
                     [
                         'label' => 'Settings',
                         'icon' => 'fas fa-gear',
-                        'route' => 'settings.preferences',
+                        'route' => 'settings.index',
                         'active' => 'settings.*',
                     ],
                     [

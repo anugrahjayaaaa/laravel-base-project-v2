@@ -3,6 +3,7 @@
 use App\Http\Controllers\Web\V1\AdminUserController;
 use App\Http\Controllers\Web\V1\Auth\WebAuthController;
 use App\Http\Controllers\Web\V1\DashboardController;
+use App\Http\Controllers\Web\V1\SystemSettingController;
 use App\Http\Controllers\Web\V1\UserStateController;
 use App\Http\Controllers\Web\V1\UserController;
 use App\Models\User;
@@ -54,6 +55,9 @@ Route::middleware(['auth', 'verified', 'account.state'])->group(function () {
     });
 
     Route::get('/dashboard', DashboardController::class)->name('dashboard');
+
+    Route::get('/settings', [SystemSettingController::class, 'index'])->name('settings.index');
+    Route::post('/settings', [SystemSettingController::class, 'update'])->name('settings.update');
 
     // User CRUD — resource + custom actions
     Route::bind('user', function ($id) {
