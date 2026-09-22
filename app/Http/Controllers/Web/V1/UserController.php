@@ -96,9 +96,12 @@ class UserController extends Controller
 
     public function show(User $user)
     {
+        $initials = str($user->name)->substr(0, 2)->upper();
+
         return view('pages.users.edit', [
             'title' => 'User Detail',
             'user' => $user,
+            'initials' => $initials,
             'statuses' => UserStatusEnum::cases(),
             'allowUsernameChange' => SystemSetting::getBool('allow_username_change', true),
             'allowEmailChange' => SystemSetting::getBool('allow_email_change', true),
@@ -110,9 +113,12 @@ class UserController extends Controller
 
     public function edit(User $user)
     {
+        $initials = str($user->name)->substr(0, 2)->upper();
+
         return view('pages.users.edit', [
             'title' => 'Edit User',
             'user' => $user,
+            'initials' => $initials,
             'statuses' => UserStatusEnum::cases(),
             'allowUsernameChange' => SystemSetting::getBool('allow_username_change', true),
             'allowEmailChange' => SystemSetting::getBool('allow_email_change', true),
@@ -197,7 +203,7 @@ class UserController extends Controller
 
     public function verifyEmailChange(Request $request, User $user)
     {
-        $token = $request->route('token');
+        $token = $request->query('token') ?? $request->route('token');
 
         if (! $token) {
             return redirect()->route('login')->withErrors(['email' => 'Missing verification token.']);

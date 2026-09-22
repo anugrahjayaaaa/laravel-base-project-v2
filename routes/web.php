@@ -73,7 +73,8 @@ Route::middleware(['auth', 'verified', 'account.state'])->group(function () {
     Route::post('/users/{user}/resend-verification', [UserController::class, 'resendVerification'])->name('users.resend-verification');
     Route::post('/users/{user}/request-email-change', [UserController::class, 'requestEmailChange'])->name('users.request-email-change');
     Route::post('/users/{user}/cancel-email-change', [UserController::class, 'cancelEmailChange'])->name('users.cancel-email-change');
-    Route::get('/email/verify-change/{user}/{token}', [UserController::class, 'verifyEmailChange'])->name('email.verify-change');
+    Route::get('/email/verify-change/{user}', [UserController::class, 'verifyEmailChange'])
+        ->name('email.verify-change')->middleware('signed');
 
     // User state toggles (Activate / Deactivate / Lock / Unlock)
     Route::middleware(['throttle:user-state-actions'])->group(function () {

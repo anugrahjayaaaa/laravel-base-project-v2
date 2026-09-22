@@ -26,7 +26,7 @@ class ProfileUpdateRequest extends FormRequest
                 Rule::unique('users', 'username')->ignore($user),
             ],
             'email' => [
-                'required', 'email', 'max:255',
+                'sometimes', 'email', 'max:255',
                 Rule::unique('users')->ignore($user),
             ],
             'current_password' => ['nullable', 'string'],

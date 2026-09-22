@@ -21,15 +21,14 @@ class ProfileController extends Controller
     public function show()
     {
         $user = Auth::user();
-        $statuses = UserStatusEnum::cases();
+        $initials = str($user->name)->substr(0, 2)->upper();
         $allowEmailChange = SystemSetting::getBool('allow_email_change', true);
         $allowUsernameChange = SystemSetting::getBool('allow_username_change', true);
         $emailCooldownDays = (int) SystemSetting::getInt('email_change_cooldown_days', 0);
         $usernameCooldownDays = (int) SystemSetting::getInt('username_change_cooldown_days', 0);
 
         return view('pages.profile.edit', compact(
-            'user',
-            'statuses',
+            'user', 'initials',
             'allowEmailChange',
             'allowUsernameChange',
             'emailCooldownDays',
@@ -55,7 +54,12 @@ class ProfileController extends Controller
 
         $this->audit('user.profile_updated', $user, $user);
 
+        if ($request->filled('email') && $request->input('email') !== $user->getOriginal('email')) {
+            return redirect()->route('profile.show')
+                ->with('status', 'Verification email sent to new email address.');
+        }
+
         return redirect()->route('profile.show')
-            ->with('status', 'Profile updated successfully.');
+            ->with('status', 'User updated successfully.');
     }
 }

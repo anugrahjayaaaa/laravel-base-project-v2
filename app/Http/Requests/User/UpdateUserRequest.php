@@ -24,7 +24,7 @@ class UpdateUserRequest extends FormRequest
             'name' => ['required', 'string', 'max:255'],
             'username' => ['sometimes', 'string', 'max:50', 'alpha_dash', Rule::unique('users', 'username')->ignore($user)],
             'email' => [
-                'required', 'email', 'max:255',
+                'sometimes', 'email', 'max:255',
                 Rule::unique('users')->ignore($user),
             ],
             'status' => ['required', Rule::in(array_column(UserStatusEnum::cases(), 'value'))],
