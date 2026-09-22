@@ -7,6 +7,24 @@
 </div>
 
 <div class="row g-4">
+    @if (session('status'))
+        <div class="col-12">
+            <div class="alert alert-success alert-dismissible fade show mb-3" role="alert">
+                <i class="fas fa-circle-check me-1"></i>
+                {{ session('status') }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        </div>
+    @endif
+    @if (session('error'))
+        <div class="col-12">
+            <div class="alert alert-danger alert-dismissible fade show mb-3" role="alert">
+                <i class="fas fa-circle-exclamation me-1"></i>
+                {{ session('error') }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        </div>
+    @endif
     <div class="col-12">
         <div class="card">
             <div class="card-body">
