@@ -55,6 +55,8 @@ Route::middleware(['auth', 'verified', 'account.state'])->group(function () {
     Route::get('/dashboard', DashboardController::class)->name('dashboard');
 
     // User CRUD
+    Route::get('/users/create', [UserController::class, 'create'])->name('users.create');
+    Route::post('/users', [UserController::class, 'store'])->name('users.store');
     Route::get('/users', [UserController::class, 'index'])->name('users.index');
     Route::get('/users/{id}', [UserController::class, 'show'])->name('users.show');
     Route::get('/users/{id}/edit', [UserController::class, 'edit'])->name('users.edit');

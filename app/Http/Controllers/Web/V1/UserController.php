@@ -3,12 +3,14 @@
 namespace App\Http\Controllers\Web\V1;
 
 use App\Actions\User\AdminResendVerificationAction;
+use App\Actions\User\CreateUserAction;
 use App\Actions\User\DeleteUserAction;
 use App\Actions\User\ForceDeleteUserAction;
 use App\Actions\User\RestoreUserAction;
 use App\Actions\User\UpdateUserAction;
 use App\Actions\User\UserIndexAction;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\User\CreateUserRequest;
 use App\Http\Requests\User\UpdateUserRequest;
 use App\Http\Requests\User\UserQueryRequest;
 use Illuminate\Http\Request;
@@ -18,12 +20,26 @@ class UserController extends Controller
 {
     public function __construct(
         private readonly UserIndexAction $indexAction,
+        private readonly CreateUserAction $createAction,
         private readonly UpdateUserAction $updateAction,
         private readonly DeleteUserAction $deleteAction,
         private readonly RestoreUserAction $restoreAction,
         private readonly ForceDeleteUserAction $forceDeleteAction,
         private readonly AdminResendVerificationAction $resendVerificationAction,
     ) {}
+
+    public function create()
+    {
+        return view('pages.users.create', ['title' => 'Create User']);
+    }
+
+    public function store(CreateUserRequest $request)
+    {
+        $this->createAction->run($request->validated());
+
+        return redirect()->route('users.index')
+            ->with('status', 'User created successfully.');
+    }
 
     public function index(UserQueryRequest $request)
     {
@@ -78,6 +94,7 @@ class UserController extends Controller
     public function restore(int $id)
     {
         $user = User::withTrashed()->findOrFail($id);
+
         $this->restoreAction->run($user);
 
         return back()->with('status', 'User restored successfully.');
@@ -86,6 +103,7 @@ class UserController extends Controller
     public function forceDelete(Request $request, int $id)
     {
         $user = User::withTrashed()->findOrFail($id);
+
         $this->forceDeleteAction->run($user, $request->user());
 
         return redirect()->route('users.index')->with('status', 'User permanently deleted.');

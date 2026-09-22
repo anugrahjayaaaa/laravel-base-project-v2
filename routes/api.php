@@ -50,6 +50,9 @@ Route::prefix('v1')->group(function () {
             Route::post('/users/{user}/lock', [UserStateController::class, 'lock'])->name('api.v1.users.lock');
             Route::post('/users/{user}/unlock', [UserStateController::class, 'unlock'])->name('api.v1.users.unlock');
         });
+
+        // User CRUD
+        Route::post('/users', [UserController::class, 'store'])->name('api.v1.users.store');
     });
 
     // ---------------------------------------------------------------------------
