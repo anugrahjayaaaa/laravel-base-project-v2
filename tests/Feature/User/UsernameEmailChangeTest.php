@@ -66,7 +66,8 @@ class UsernameEmailChangeTest extends TestCase
             'status' => 'active',
         ]);
 
-        $this->assertDatabaseHas('users', ['pending_email' => 'new@example.com', 'email_changed_at' => null]);
+        $this->assertSame('new@example.com', $user->fresh()->pending_email);
+        $this->assertNull($user->fresh()->email_changed_at);
         Notification::assertSentTo($user, \App\Notifications\ChangeEmailVerificationNotification::class);
     }
 

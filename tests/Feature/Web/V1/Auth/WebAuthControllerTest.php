@@ -118,7 +118,7 @@ class WebAuthControllerTest extends TestCase
 
         $response = $this->get($url);
 
-        $response->assertRedirect(route('verification.notice'))
+        $response->assertRedirect(route('login'))
             ->assertSessionHas('success');
 
         $this->assertNotNull($user->fresh()->email_verified_at);
