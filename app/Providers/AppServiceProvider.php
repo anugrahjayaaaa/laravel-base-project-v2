@@ -5,9 +5,11 @@ namespace App\Providers;
 use App\Models\User;
 use App\Observers\UserObserver;
 use App\View\Composers\AppMenuComposer;
+use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Pagination\Paginator;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\RateLimiter;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -20,10 +22,10 @@ class AppServiceProvider extends ServiceProvider
 
         User::observe(UserObserver::class);
 
-        \Illuminate\Support\Facades\RateLimiter::for('user-state-actions', function ($request) {
+        RateLimiter::for('user-state-actions', function ($request) {
             $key = $request->user()?->id ?: $request->ip();
 
-            return \Illuminate\Cache\RateLimiting\Limit::perMinute(15)->by($key);
+            return Limit::perMinute(15)->by($key);
         });
     }
 

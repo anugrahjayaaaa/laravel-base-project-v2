@@ -4,6 +4,8 @@ namespace App\Actions\User;
 
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
 
 class DeactivateUserAction
@@ -29,16 +31,22 @@ class DeactivateUserAction
     protected function validate(User $user, User $causer): void
     {
         if ($user->id === $causer->id) {
-            \Log::warning('Deactivate self forbidden', ['user_id' => $user->id, 'causer_id' => $causer->id]);
-            $validator = \Illuminate\Support\Facades\Validator::make([], []);
+            Log::warning('Deactivate self forbidden', ['user_id' => $user->id, 'causer_id' => $causer->id]);
+
+            $validator = Validator::make([], []);
+
             $validator->errors()->add('email', __('You cannot deactivate your own account.'));
+
             throw new ValidationException($validator);
         }
 
         if ($user->is_locked) {
-            \Log::warning('Deactivate locked user forbidden', ['user_id' => $user->id, 'causer_id' => $causer->id]);
-            $validator = \Illuminate\Support\Facades\Validator::make([], []);
+            Log::warning('Deactivate locked user forbidden', ['user_id' => $user->id, 'causer_id' => $causer->id]);
+
+            $validator = Validator::make([], []);
+
             $validator->errors()->add('status', __('Cannot deactivate a locked user. Please unlock the user first.'));
+
             throw new ValidationException($validator);
         }
     }

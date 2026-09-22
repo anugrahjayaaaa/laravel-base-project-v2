@@ -3,6 +3,7 @@
 namespace Tests\Feature\User;
 
 use App\Models\User;
+use App\Notifications\UserCreatedNotification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
 use Laravel\Sanctum\Sanctum;
@@ -143,7 +144,7 @@ class CreateUserTest extends TestCase
 
         Notification::assertSentTo(
             User::where('email', 'notified@example.com')->first(),
-            \App\Notifications\UserCreatedNotification::class
+            UserCreatedNotification::class
         );
     }
 

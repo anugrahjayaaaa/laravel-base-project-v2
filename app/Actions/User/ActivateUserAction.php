@@ -4,6 +4,9 @@ namespace App\Actions\User;
 
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\ValidationException;
 
 class ActivateUserAction
 {
@@ -21,10 +24,13 @@ class ActivateUserAction
     protected function validate(User $user): void
     {
         if ($user->is_locked) {
-            \Log::warning('Activate locked user forbidden', ['user_id' => $user->id]);
-            $validator = \Illuminate\Support\Facades\Validator::make([], []);
+            Log::warning('Activate locked user forbidden', ['user_id' => $user->id]);
+
+            $validator = Validator::make([], []);
+
             $validator->errors()->add('status', __('Cannot activate a locked user. Please unlock first.'));
-            throw new \Illuminate\Validation\ValidationException($validator);
+
+            throw new ValidationException($validator);
         }
     }
 }

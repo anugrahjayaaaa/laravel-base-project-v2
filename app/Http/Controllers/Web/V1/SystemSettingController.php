@@ -31,8 +31,11 @@ class SystemSettingController extends Controller
         ]);
 
         SystemSetting::set('allow_username_change', $request->boolean('allow_username_change') ? 'true' : 'false');
+
         SystemSetting::set('allow_email_change', $request->boolean('allow_email_change') ? 'true' : 'false');
+
         SystemSetting::set('username_change_cooldown_days', (string) $request->integer('username_change_cooldown_days', 30));
+
         SystemSetting::set('email_change_cooldown_days', (string) $request->integer('email_change_cooldown_days', 30));
 
         return back()->with('status', 'Settings updated successfully.');

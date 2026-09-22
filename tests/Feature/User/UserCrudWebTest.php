@@ -93,7 +93,7 @@ class UserCrudWebTest extends TestCase
         $this->put(route('users.update', $target), [
             'name' => 'New Name',
             'email' => 'new@example.com',
-            'status' => \App\Enums\UserStatusEnum::ACTIVE->value,
+            'status' => UserStatusEnum::ACTIVE->value,
         ])
             ->assertRedirect()
             ->assertSessionHas('status', 'User updated successfully.');
@@ -112,7 +112,7 @@ class UserCrudWebTest extends TestCase
         $this->put(route('users.update', $target), [
             'name' => '',
             'email' => 'valid@example.com',
-            'status' => \App\Enums\UserStatusEnum::ACTIVE->value,
+            'status' => UserStatusEnum::ACTIVE->value,
         ])
             ->assertStatus(302)
             ->assertSessionHasErrors('name');
@@ -126,7 +126,7 @@ class UserCrudWebTest extends TestCase
         $this->put(route('users.update', $target), [
             'name' => 'Test',
             'email' => 'other@example.com',
-            'status' => \App\Enums\UserStatusEnum::ACTIVE->value,
+            'status' => UserStatusEnum::ACTIVE->value,
         ])
             ->assertStatus(302)
             ->assertSessionHasErrors('email');
@@ -154,7 +154,7 @@ class UserCrudWebTest extends TestCase
         $this->put(route('users.update', $user), [
             'name' => $user->name,
             'email' => $user->email,
-            'status' => \App\Enums\UserStatusEnum::INACTIVE->value,
+            'status' => UserStatusEnum::INACTIVE->value,
         ])->assertRedirect();
 
         $this->assertFalse($user->fresh()->is_active);
@@ -167,7 +167,7 @@ class UserCrudWebTest extends TestCase
         $this->put(route('users.update', $user), [
             'name' => $user->name,
             'email' => $user->email,
-            'status' => \App\Enums\UserStatusEnum::ACTIVE->value,
+            'status' => UserStatusEnum::ACTIVE->value,
         ])->assertRedirect();
 
         $this->assertTrue($user->fresh()->is_active);

@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Web\V1\Auth;
 
+use App\Models\FailedLoginAttempt;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Log;
@@ -206,7 +207,7 @@ class WebAuthControllerTest extends TestCase
 
                public function test_web_login_locked_shows_duration(): void
                {
-                   \App\Models\FailedLoginAttempt::create([
+                   FailedLoginAttempt::create([
                        'identifier' => 'locked@example.com',
                        'ip_address' => '127.0.0.1',
                        'attempts' => 5,

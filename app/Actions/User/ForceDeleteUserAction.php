@@ -5,6 +5,7 @@ namespace App\Actions\User;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\ValidationException;
 
 class ForceDeleteUserAction
 {
@@ -23,15 +24,19 @@ class ForceDeleteUserAction
     {
         if ($user->id === $causer->id) {
             $validator = Validator::make([], []);
+
             $validator->errors()->add('email', __('You cannot delete your own account.'));
-            throw new \Illuminate\Validation\ValidationException($validator);
+
+            throw new ValidationException($validator);
         }
 
         $remaining = User::withTrashed()->count();
         if ($remaining <= 1) {
             $validator = Validator::make([], []);
+
             $validator->errors()->add('email', __('Cannot delete the last active user.'));
-            throw new \Illuminate\Validation\ValidationException($validator);
+
+            throw new ValidationException($validator);
         }
     }
 }

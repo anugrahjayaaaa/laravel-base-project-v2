@@ -4,6 +4,7 @@ namespace App\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -43,7 +44,7 @@ class CheckAccountState
         if (! $user->is_active || $user->is_locked || $user->trashed()) {
             // Revoke all sessions + tokens immediately
             $user->tokens()->delete();
-            \Illuminate\Support\Facades\DB::table('sessions')
+            DB::table('sessions')
                 ->where('user_id', $user->id)
                 ->delete();
 

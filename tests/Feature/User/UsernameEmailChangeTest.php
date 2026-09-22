@@ -4,6 +4,7 @@ namespace Tests\Feature\User;
 
 use App\Models\SystemSetting;
 use App\Models\User;
+use App\Notifications\ChangeEmailVerificationNotification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
 use Tests\TestCase;
@@ -67,7 +68,7 @@ class UsernameEmailChangeTest extends TestCase
         ]);
 
         $this->assertTrue($response->isRedirect() || $response->getStatusCode() === 302);
-        Notification::assertSentTo($user, \App\Notifications\ChangeEmailVerificationNotification::class);
+        Notification::assertSentTo($user, ChangeEmailVerificationNotification::class);
     }
 
     public function test_email_verification_link_updates_email_and_sets_timestamp(): void

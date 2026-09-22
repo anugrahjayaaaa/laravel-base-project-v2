@@ -70,11 +70,11 @@ class UserIndexAction
         }
 
         match ($status) {
-            \App\Enums\UserStatusEnum::ACTIVE->value       => $query->where('is_active', true)->where('is_locked', false)->whereNull('deleted_at'),
-            \App\Enums\UserStatusEnum::INACTIVE->value     => $query->where('is_active', false)->where('is_locked', false)->whereNull('deleted_at'),
-            \App\Enums\UserStatusEnum::LOCKED->value       => $query->where('is_locked', true)->whereNull('deleted_at'),
-            \App\Enums\UserStatusEnum::PENDING_VERIFICATION->value => $query->whereNull('email_verified_at')->whereNull('deleted_at'),
-            \App\Enums\UserStatusEnum::TRASHED->value      => $query->whereNotNull('deleted_at'),
+            UserStatusEnum::ACTIVE->value       => $query->where('is_active', true)->where('is_locked', false)->whereNull('deleted_at'),
+            UserStatusEnum::INACTIVE->value     => $query->where('is_active', false)->where('is_locked', false)->whereNull('deleted_at'),
+            UserStatusEnum::LOCKED->value       => $query->where('is_locked', true)->whereNull('deleted_at'),
+            UserStatusEnum::PENDING_VERIFICATION->value => $query->whereNull('email_verified_at')->whereNull('deleted_at'),
+            UserStatusEnum::TRASHED->value      => $query->whereNotNull('deleted_at'),
             default => null,
         };
     }

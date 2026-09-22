@@ -9,8 +9,6 @@ use App\Actions\User\UnlockUserAction;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Support\Facades\Log;
-use Spatie\Activitylog\Facades\Activity;
 
 class UserStateController extends Controller
 {

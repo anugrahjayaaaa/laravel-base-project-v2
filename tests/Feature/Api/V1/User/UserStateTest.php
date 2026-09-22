@@ -186,7 +186,7 @@ class UserStateTest extends TestCase
             'tokenable_type' => User::class,
         ]);
         $this->assertDatabaseMissing('sessions', ['user_id' => $user->id]);
-        $this->assertNull(\App\Models\User::withTrashed()->find($user->id)->remember_token);
+        $this->assertNull(User::withTrashed()->find($user->id)->remember_token);
     }
 
     // -- Rate Limiter --

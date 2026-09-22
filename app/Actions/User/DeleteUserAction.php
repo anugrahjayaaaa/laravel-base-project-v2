@@ -5,6 +5,7 @@ namespace App\Actions\User;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\ValidationException;
 
 class DeleteUserAction
 {
@@ -23,7 +24,9 @@ class DeleteUserAction
     private function invalidateSessions(User $user): void
     {
         DB::table('sessions')->where('user_id', $user->id)->delete();
+
         DB::table('users')->where('id', $user->id)->update(['remember_token' => null]);
+
         $user->tokens()->delete();
     }
 
@@ -31,8 +34,10 @@ class DeleteUserAction
     {
         if ($user->id === $causer->id) {
             $validator = Validator::make([], []);
+
             $validator->errors()->add('email', __('You cannot delete your own account.'));
-            throw new \Illuminate\Validation\ValidationException($validator);
+
+            throw new ValidationException($validator);
         }
     }
 }

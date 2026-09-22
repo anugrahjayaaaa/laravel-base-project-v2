@@ -3,6 +3,8 @@
 namespace Tests\Feature;
 
 use Illuminate\Support\Facades\App;
+use Illuminate\Support\Facades\Route;
+use Laravel\Telescope\Telescope;
 use Tests\TestCase;
 
 class PeriscopeFoundationTest extends TestCase
@@ -13,7 +15,7 @@ class PeriscopeFoundationTest extends TestCase
      */
     public function test_periscope_routes_are_registered(): void
     {
-        $names = collect(\Illuminate\Support\Facades\Route::getRoutes())->map->getName();
+        $names = collect(Route::getRoutes())->map->getName();
 
         $this->assertTrue($names->contains('periscope.index'));
         $this->assertTrue($names->contains('periscope.entries.index'));
@@ -46,7 +48,7 @@ class PeriscopeFoundationTest extends TestCase
      */
     public function test_telescope_is_still_installed(): void
     {
-        $this->assertTrue(class_exists(\Laravel\Telescope\Telescope::class));
+        $this->assertTrue(class_exists(Telescope::class));
         $this->assertNotNull(config('telescope'));
     }
 }
