@@ -1,0 +1,289 @@
+{
+  "info": {
+    "_postman_id": "454a5bb2-cdf0-4358-a119-17c9947480b1",
+    "name": "Laravel Base Project V2",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "14404282"
+  },
+  "item": [
+    {
+      "name": "V1",
+      "item": [
+        {
+          "name": "Auth",
+          "item": [
+            {
+              "name": "Login",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"identifier\": \"{{test_email}}\",\n  \"password\": \"{{test_password}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/{{api_version}}/auth/login",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "{{api_version}}",
+                    "auth",
+                    "login"
+                  ]
+                },
+                "description": "Authenticate with email/username + password. Returns Sanctum token on success."
+              },
+              "response": []
+            },
+            {
+              "name": "Forgot Password",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"{{test_email}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/{{api_version}}/auth/password/forgot",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "{{api_version}}",
+                    "auth",
+                    "password",
+                    "forgot"
+                  ]
+                },
+                "description": "Request password reset link. Returns generic success message (anti-enumeration)."
+              },
+              "response": []
+            },
+            {
+              "name": "Reset Password",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"{{test_email}}\",\n  \"token\": \"{{reset_token}}\",\n  \"password\": \"#Password123\",\n  \"password_confirmation\": \"#Password123\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/{{api_version}}/auth/password/reset",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "{{api_version}}",
+                    "auth",
+                    "password",
+                    "reset"
+                  ]
+                },
+                "description": "Reset password using token from forgot-password flow."
+              },
+              "response": []
+            },
+            {
+              "name": "Resend Verification",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"{{test_email}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/{{api_version}}/auth/email/resend",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "{{api_version}}",
+                    "auth",
+                    "email",
+                    "resend"
+                  ]
+                },
+                "description": "Resend email verification link. Rate limited: 5/hour."
+              },
+              "response": []
+            },
+            {
+              "name": "Verify Email",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/{{api_version}}/auth/email/verify/{{test_user_id}}/{{email_hash}}",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "{{api_version}}",
+                    "auth",
+                    "email",
+                    "verify",
+                    "{{test_user_id}}",
+                    "{{email_hash}}"
+                  ]
+                },
+                "description": "Verify email via signed route (id + hash)."
+              },
+              "response": []
+            },
+            {
+              "name": "Logout",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "1|GIq0R7OwToNSq7MedlEdbOgdvjheqkHniv7f5uQQ28b2eb96",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{auth_token}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/{{api_version}}/auth/logout",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "{{api_version}}",
+                    "auth",
+                    "logout"
+                  ]
+                },
+                "description": "Revoke current Sanctum token."
+              },
+              "response": []
+            },
+            {
+              "name": "Logout All Devices",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{auth_token}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/{{api_version}}/auth/logout-all",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "{{api_version}}",
+                    "auth",
+                    "logout-all"
+                  ]
+                },
+                "description": "Revoke all Sanctum tokens for the authenticated user."
+              },
+              "response": []
+            },
+            {
+              "name": "Change Password",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{auth_token}}",
+                    "type": "text"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"current_password\": \"OldPassword123!\",\n  \"password\": \"NewPassword456!\",\n  \"password_confirmation\": \"NewPassword456!\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/{{api_version}}/auth/password/change",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "{{api_version}}",
+                    "auth",
+                    "password",
+                    "change"
+                  ]
+                },
+                "description": "Change password for authenticated user."
+              },
+              "response": []
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8000"
+    },
+    {
+      "key": "api_version",
+      "value": "api/v1"
+    }
+  ]
+}
