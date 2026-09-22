@@ -10,7 +10,7 @@
 ||| 1 | Laravel foundation & environment | DONE |
 || 2 | Database foundation | DONE |
 || 3 | Authentication foundation | IN PROGRESS |
-|| 4 | User lifecycle & user management | IN PROGRESS (Groups B, C, D DONE) |
+|| 4 | User lifecycle & user management | IN PROGRESS (Groups B, C, D, E, F DONE) |
 | 5 | Password/security lifecycle | PLANNED |
 | 6 | RBAC & authorization | PLANNED |
 | 7 | Feature availability / feature flags | PLANNED |
