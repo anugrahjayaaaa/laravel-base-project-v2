@@ -38,8 +38,8 @@
     @endif
 
     <div class="row g-4">
-        {{-- Kolom Kiri: Profile Information --}}
-        <div class="col-lg-7 col-12">
+        {{-- Left column : Profile Information --}}
+        <div class="col-lg-8 col-12">
             <div class="card border-0 shadow-sm mb-4">
                 <div class="card-header bg-transparent border-bottom py-3">
                     <div class="d-flex align-items-center gap-3">
@@ -61,6 +61,23 @@
                 <form method="POST" action="{{ route('profile.update') }}">
                     @csrf @method('PUT')
                     <div class="card-body p-4">
+                        {{-- Pending Email Callout --}}
+                        @if ($user->pending_email)
+                            <div class="callout callout-warning mb-3 d-flex align-items-center justify-content-between p-3">
+                                <div>
+                                    <i class="bi bi-envelope-arrow-up me-2"></i>
+                                    <strong>Pending email change:</strong> {{ $user->pending_email }}
+                                </div>
+                                <form method="POST" action="{{ route('users.cancel-email-change', $user) }}"
+                                    class="d-inline">
+                                    @csrf
+                                    <button type="submit" class="btn btn-outline-secondary btn-sm">Cancel
+                                        Request</button>
+                                </form>
+                            </div>
+                        @endif
+
+                        {{-- Name --}}
                         <div class="mb-3">
                             <label for="name" class="form-label">Name</label>
                             <input type="text" name="name" id="name"
@@ -71,6 +88,7 @@
                             @enderror
                         </div>
 
+                        {{-- Username --}}
                         <div class="mb-3">
                             <label for="username" class="form-label">Username</label>
                             <input type="text" name="username" id="username"
@@ -80,10 +98,10 @@
                             @error('username')
                                 <div class="invalid-feedback d-block">{{ $message }}</div>
                             @enderror
-                            @if (! $allowUsernameChange)
+                            @if (!$allowUsernameChange)
                                 <small class="text-muted"><i class="bi bi-slash-circle me-1"></i>Username changes are
                                     currently disabled.</small>
-                            @elseif (! $user->canChangeUsername())
+                            @elseif (!$user->canChangeUsername())
                                 <small class="text-muted"><i class="bi bi-clock-history me-1"></i>Username can be
                                     changed again on
                                     {{ $user->username_changed_at->copy()->addDays((int) $usernameCooldownDays)->format('Y-m-d') }}.</small>
@@ -92,6 +110,7 @@
                             @endif
                         </div>
 
+                        {{-- Email --}}
                         <div class="mb-3">
                             <label for="email" class="form-label">Email</label>
                             <input type="email" name="email" id="email"
@@ -101,10 +120,24 @@
                             @error('email')
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
-                            @if (! $allowEmailChange)
+                            <div class="d-flex align-items-center gap-2 mt-1 flex-wrap">
+                                @if ($user->email_verified_at)
+                                    <span class="badge bg-success-subtle text-success"><i
+                                            class="fas fa-circle-check me-1"></i>Verified</span>
+                                @else
+                                    <span class="badge bg-warning-subtle text-warning"><i
+                                            class="fas fa-circle-exclamation me-1"></i>Unverified</span>
+                                @endif
+                                @if ($user->pending_email)
+                                    <span class="badge bg-info-subtle text-info"><i
+                                            class="fas fa-envelope-circle-check me-1"></i>Pending:
+                                        {{ $user->pending_email }}</span>
+                                @endif
+                            </div>
+                            @if (!$allowEmailChange)
                                 <small class="text-muted"><i class="bi bi-slash-circle me-1"></i>Email changes are
                                     currently disabled.</small>
-                            @elseif (! $user->canChangeEmail())
+                            @elseif (!$user->canChangeEmail())
                                 <small class="text-muted"><i class="bi bi-clock-history me-1"></i>Email can be
                                     changed again on
                                     {{ $user->email_changed_at->copy()->addDays((int) $emailCooldownDays)->format('Y-m-d') }}.</small>
@@ -113,7 +146,8 @@
                             @endif
                         </div>
                     </div>
-                    <div class="card-footer bg-body-tertiary border-top py-3 d-flex justify-content-end gap-2">
+                    <div
+                        class="card-footer bg-body-tertiary border-top py-3 d-flex justify-content-end align-items-center gap-2">
                         <a href="{{ route('dashboard') }}"
                             class="btn btn-outline-secondary d-inline-flex align-items-center gap-2">
                             <i class="bi bi-x-circle"></i> Cancel
@@ -126,8 +160,8 @@
             </div>
         </div>
 
-        {{-- Kolom Kanan: Change Password + Security --}}
-        <div class="col-lg-5 col-12">
+        {{-- Right Column --}}
+        <div class="col-lg-4 col-12">
             <div class="card border-0 shadow-sm mb-4">
                 <div class="card-header bg-transparent border-bottom py-3">
                     <h5 class="card-title mb-0 fw-semibold"><i class="bi bi-shield-lock me-2"></i>Change Password</h5>
@@ -141,8 +175,10 @@
                                 <input type="password" name="current_password" id="current_password"
                                     class="form-control form-control-sm pe-5 @error('current_password') is-invalid @enderror"
                                     autocomplete="current-password">
-                                <button type="button" class="btn btn-sm position-absolute top-50 end-0 translate-middle-y me-2 text-muted"
-                                    data-password-toggle="current_password" aria-label="Toggle password visibility" tabindex="-1">
+                                <button type="button"
+                                    class="btn btn-sm position-absolute top-50 end-0 translate-middle-y me-2 text-muted"
+                                    data-password-toggle="current_password" aria-label="Toggle password visibility"
+                                    tabindex="-1">
                                     <i class="fas fa-eye"></i>
                                 </button>
                             </div>
@@ -156,8 +192,10 @@
                                 <input type="password" name="password" id="password"
                                     class="form-control form-control-sm pe-5 @error('password') is-invalid @enderror"
                                     autocomplete="new-password" minlength="8">
-                                <button type="button" class="btn btn-sm position-absolute top-50 end-0 translate-middle-y me-2 text-muted"
-                                    data-password-toggle="password" aria-label="Toggle password visibility" tabindex="-1">
+                                <button type="button"
+                                    class="btn btn-sm position-absolute top-50 end-0 translate-middle-y me-2 text-muted"
+                                    data-password-toggle="password" aria-label="Toggle password visibility"
+                                    tabindex="-1">
                                     <i class="fas fa-eye"></i>
                                 </button>
                             </div>
@@ -170,8 +208,10 @@
                             <div class="position-relative">
                                 <input type="password" name="password_confirmation" id="password_confirmation"
                                     class="form-control form-control-sm pe-5" autocomplete="new-password">
-                                <button type="button" class="btn btn-sm position-absolute top-50 end-0 translate-middle-y me-2 text-muted"
-                                    data-password-toggle="password_confirmation" aria-label="Toggle password visibility" tabindex="-1">
+                                <button type="button"
+                                    class="btn btn-sm position-absolute top-50 end-0 translate-middle-y me-2 text-muted"
+                                    data-password-toggle="password_confirmation" aria-label="Toggle password visibility"
+                                    tabindex="-1">
                                     <i class="fas fa-eye"></i>
                                 </button>
                             </div>
@@ -200,20 +240,20 @@
 @endsection
 
 @push('scripts')
-<script>
-(function() {
-    document.addEventListener('click', function(e) {
-        var btn = e.target.closest('[data-password-toggle]');
-        if (!btn) return;
-        var target = document.getElementById(btn.dataset.passwordToggle);
-        if (!target) return;
-        var isPassword = target.type === 'password';
-        target.type = isPassword ? 'text' : 'password';
-        var icon = btn.querySelector('i');
-        icon.classList.toggle('fa-eye', !isPassword);
-        icon.classList.toggle('fa-eye-slash', isPassword);
-        btn.setAttribute('aria-label', isPassword ? 'Hide password' : 'Show password');
-    });
-})();
-</script>
+    <script>
+        (function() {
+            document.addEventListener('click', function(e) {
+                var btn = e.target.closest('[data-password-toggle]');
+                if (!btn) return;
+                var target = document.getElementById(btn.dataset.passwordToggle);
+                if (!target) return;
+                var isPassword = target.type === 'password';
+                target.type = isPassword ? 'text' : 'password';
+                var icon = btn.querySelector('i');
+                icon.classList.toggle('fa-eye', !isPassword);
+                icon.classList.toggle('fa-eye-slash', isPassword);
+                btn.setAttribute('aria-label', isPassword ? 'Hide password' : 'Show password');
+            });
+        })();
+    </script>
 @endpush

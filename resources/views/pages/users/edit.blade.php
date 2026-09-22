@@ -4,11 +4,9 @@
     $status = $user->getStatus();
     $badgeClass = match ($status->value) {
         'active' => 'bg-success-subtle text-success border border-success-subtle',
-        'inactive'
-            => 'bg-secondary-subtle text-secondary border border-secondary-subtle',
+        'inactive' => 'bg-secondary-subtle text-secondary border border-secondary-subtle',
         'locked' => 'bg-warning-subtle text-warning border border-warning-subtle',
-        'pending_verification'
-            => 'bg-warning-subtle text-dark border border-warning-subtle',
+        'pending_verification' => 'bg-warning-subtle text-dark border border-warning-subtle',
     };
 
     $initials = str($user->name)->explode(' ')->take(2)->map(fn($w) => strtoupper($w[0]))->implode('');
@@ -124,126 +122,131 @@
         </div>
     @endif
 
-    @if ($user->pending_email)
-        <div class="callout callout-warning mb-3">
-            <div class="d-flex align-items-center justify-content-between">
-                <div>
-                    <i class="bi bi-envelope-arrow-up me-2"></i>
-                    <strong>Pending email change:</strong> {{ $user->pending_email }}
-                </div>
-                <div class="d-flex gap-2">
-                    <form method="POST" action="{{ route('users.cancel-email-change', $user) }}" class="d-inline">
-                        @csrf
-                        <button type="submit" class="btn btn-outline-secondary btn-sm">Cancel Request</button>
-                    </form>
-                </div>
-            </div>
-        </div>
-    @endif
-
     <div class="row g-4">
         {{-- Main Content --}}
         <div class="col-lg-8">
             <div class="card border-0 shadow-sm mb-4">
                 <div class="card-header bg-transparent border-bottom py-3">
-                    <h5 class="card-title mb-0 fw-semibold">User Information</h5>
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="avatar-sm rounded-circle d-flex align-items-center justify-content-center text-white fw-bold"
+                            style="background: var(--lbp-primary, #6366f1); width: 40px; height: 40px; font-size: 0.9rem;">
+                            {{ $initials }}
+                        </div>
+                        <div>
+                            <strong>{{ $user->name }}</strong>
+                            <div>
+                                <small class="text-muted d-block">Registered
+                                    {{ $user->created_at->format('Y-m-d') }}</small>
+                                <small class="text-muted d-block">Updated
+                                    {{ $user->updated_at->diffForHumans() }}</small>
+                            </div>
+                        </div>
+                        @if ($user->trashed())
+                            <span class="badge bg-danger text-white ms-auto">TRASHED</span>
+                        @endif
+                    </div>
                 </div>
                 <form method="POST" action="{{ route('users.update', $user) }}">
                     @csrf @method('PUT')
                     <div class="card-body p-4">
-                        {{-- Profile Summary --}}
-                        <div class="d-flex align-items-center gap-3 mb-4 pb-3 border-bottom">
-                            <div class="avatar-sm rounded-circle d-flex align-items-center justify-content-center text-white fw-bold"
-                                style="background: var(--lbp-primary, #6366f1); width: 40px; height: 40px; font-size: 0.9rem;">
-                                {{ $initials }}
-                            </div>
-                            <div>
-                                <strong>{{ $user->name }}</strong>
+                        {{-- Pending Email Callout --}}
+                        @if ($user->pending_email)
+                            <div class="callout callout-warning mb-3 d-flex align-items-center justify-content-between p-3">
                                 <div>
-                                    <small class="text-muted d-block">Registered
-                                        {{ $user->created_at->format('Y-m-d') }}</small>
-                                    <small class="text-muted d-block">Updated
-                                        {{ $user->updated_at->diffForHumans() }}</small>
+                                    <i class="bi bi-envelope-arrow-up me-2"></i>
+                                    <strong>Pending email change:</strong> {{ $user->pending_email }}
                                 </div>
+                                <form method="POST" action="{{ route('users.cancel-email-change', $user) }}"
+                                    class="d-inline">
+                                    @csrf
+                                    <button type="submit" class="btn btn-outline-secondary btn-sm">Cancel
+                                        Request</button>
+                                </form>
                             </div>
-                            @if ($user->trashed())
-                                <span class="badge bg-danger text-white ms-auto">TRASHED</span>
-                            @endif
+                        @endif
+                        {{-- Name --}}
+                        <div class="mb-3">
+                            <label for="name" class="form-label">Name</label>
+                            <input type="text" name="name" id="name"
+                                class="form-control form-control-sm @error('name') is-invalid @enderror"
+                                value="{{ old('name', $user->name) }}" required maxlength="255">
+                            @error('name')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
                         </div>
 
-                        <div class="row g-3">
-                            <div class="col-md-6">
-                                <label for="name" class="form-label">Name</label>
-                                <input type="text" name="name" id="name"
-                                    class="form-control form-control-sm @error('name') is-invalid @enderror"
-                                    value="{{ old('name', $user->name) }}" required maxlength="255">
-                                @error('name')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
-                            <div class="col-md-6">
-                                <label for="email" class="form-label">Email</label>
-                                <input type="email" name="email" id="email"
-                                    class="form-control form-control-sm @error('email') is-invalid @enderror"
-                                    value="{{ old('email', $user->email) }}" required maxlength="255"
-                                    {{ !$user->canChangeEmail() ? 'disabled' : '' }}>
-                                @if ($user->email_verified_at)
-                                    <span class="badge bg-success-subtle text-success mt-1"><i
-                                            class="fas fa-circle-check me-1"></i>Verified</span>
-                                @else
-                                    <span class="badge bg-warning-subtle text-warning mt-1"><i
-                                            class="fas fa-circle-exclamation me-1"></i>Unverified</span>
-                                @endif
-                                @error('email')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                                @if (!$allowEmailChange)
-                                    <small class="text-muted"><i class="bi bi-slash-circle me-1"></i>Email changes are
-                                        currently disabled.</small>
-                                @elseif (!$user->canChangeEmail())
-                                    <small class="text-muted"><i class="bi bi-clock-history me-1"></i>Email can be changed
-                                        again on
-                                        {{ $user->email_changed_at->copy()->addDays((int) $emailCooldownDays)->format('Y-m-d') }}.</small>
-                                @endif
-                            </div>
-                        </div>
-
-                        <div class="mt-3">
+                        {{-- Username --}}
+                        <div class="mb-3">
                             <label for="username" class="form-label">Username</label>
                             <input type="text" name="username" id="username"
                                 class="form-control form-control-sm @error('username') is-invalid @enderror"
                                 value="{{ old('username', $user->username) }}" maxlength="50"
-                                {{ !$user->canChangeUsername() ? 'disabled' : '' }}>
+                                {{ !$allowUsernameChange || !$user->canChangeUsername() ? 'disabled' : '' }}>
+                            @error('username')
+                                <div class="invalid-feedback d-block">{{ $message }}</div>
+                            @enderror
                             @if (!$allowUsernameChange)
                                 <small class="text-muted"><i class="bi bi-slash-circle me-1"></i>Username changes are
                                     currently disabled.</small>
                             @elseif (!$user->canChangeUsername())
-                                <small class="text-muted"><i class="bi bi-clock-history me-1"></i>Username can be changed
-                                    again on
+                                <small class="text-muted"><i class="bi bi-clock-history me-1"></i>Username can be
+                                    changed again on
                                     {{ $user->username_changed_at->copy()->addDays((int) $usernameCooldownDays)->format('Y-m-d') }}.</small>
                             @else
                                 <small class="form-text text-muted">Username can be changed.</small>
                             @endif
-                            @error('username')
-                                <div class="invalid-feedback d-block">{{ $message }}</div>
-                            @enderror
                         </div>
 
-                        <div class="mt-3">
-                            <label for="status" class="form-label">Status</label>
-                            <select name="status" id="status"
-                                class="form-select form-select-sm @error('status') is-invalid @enderror">
-                                @foreach ($statuses as $s)
-                                    <option value="{{ $s->value }}"
-                                        {{ old('status', $user->getStatus()->value) === $s->value ? 'selected' : '' }}>
-                                        {{ $s->label() }}
-                                    </option>
-                                @endforeach
-                            </select>
-                            @error('status')
+                        {{-- Email --}}
+                        <div class="mb-3">
+                            <label for="email" class="form-label">Email</label>
+                            <input type="email" name="email" id="email"
+                                class="form-control form-control-sm @error('email') is-invalid @enderror"
+                                value="{{ old('email', $user->email) }}" required maxlength="255"
+                                {{ !$allowEmailChange || !$user->canChangeEmail() ? 'disabled' : '' }}>
+                            @error('email')
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
+                            <div class="d-flex align-items-center gap-2 mt-1 flex-wrap">
+                                @if ($user->email_verified_at)
+                                    <span class="badge bg-success-subtle text-success"><i
+                                            class="fas fa-circle-check me-1"></i>Verified</span>
+                                @else
+                                    <span class="badge bg-warning-subtle text-warning"><i
+                                            class="fas fa-circle-exclamation me-1"></i>Unverified</span>
+                                @endif
+                                @if ($user->pending_email)
+                                    <span class="badge bg-info-subtle text-info"><i
+                                            class="fas fa-envelope-circle-check me-1"></i>Pending:
+                                        {{ $user->pending_email }}</span>
+                                @endif
+                            </div>
+                            @if (!$allowEmailChange)
+                                <small class="text-muted"><i class="bi bi-slash-circle me-1"></i>Email changes are
+                                    currently disabled.</small>
+                            @elseif (!$user->canChangeEmail())
+                                <small class="text-muted"><i class="bi bi-clock-history me-1"></i>Email can be
+                                    changed again on
+                                    {{ $user->email_changed_at->copy()->addDays((int) $emailCooldownDays)->format('Y-m-d') }}.</small>
+                            @else
+                                <small class="form-text text-muted">Email can be changed.</small>
+                            @endif
                         </div>
+
+                        {{-- Status --}}
+                        <label for="status" class="form-label">Status</label>
+                        <select name="status" id="status"
+                            class="form-select form-select-sm @error('status') is-invalid @enderror">
+                            @foreach ($statuses as $s)
+                                <option value="{{ $s->value }}"
+                                    {{ old('status', $user->getStatus()->value) === $s->value ? 'selected' : '' }}>
+                                    {{ $s->label() }}
+                                </option>
+                            @endforeach
+                        </select>
+                        @error('status')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
                     </div>
                     <div
                         class="card-footer bg-body-tertiary border-top py-3 d-flex justify-content-end align-items-center gap-2">
@@ -259,12 +262,12 @@
             </div>
         </div>
 
-        {{-- Sidebar --}}
+        {{-- Right column --}}
         <div class="col-lg-4">
             {{-- Quick Actions & Security --}}
             <div class="card border-0 shadow-sm mb-3">
                 <div class="card-header bg-transparent border-bottom py-2">
-                    <strong class="fw-semibold">Quick Actions</strong>
+                    <h5 class="card-title mb-0 fw-semibold">Quick Actions</h5>
                 </div>
                 <div class="card-body d-grid gap-2">
                     @if ($user->email_verified_at === null && !$user->trashed())
@@ -318,8 +321,9 @@
 
             {{-- Danger Zone --}}
             <div class="card border-0 shadow-sm card-outline-danger bg-danger-subtle bg-opacity-10">
-                <div class="card-header border-bottom">
-                    <strong class="text-danger"><i class="fas fa-exclamation-triangle me-1"></i> Danger Zone</strong>
+                <div class="card-header bg-transparent border-bottom">
+                    <h5 class="card-title mb-0 fw-semibold text-danger"><i class="fas fa-exclamation-triangle me-1"></i>
+                        Danger Zone</h5>
                 </div>
                 <div class="card-body d-grid gap-2">
                     @if ($user->trashed())
