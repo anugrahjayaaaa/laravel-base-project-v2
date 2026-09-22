@@ -5,6 +5,7 @@ use App\Http\Controllers\Web\V1\Auth\WebAuthController;
 use App\Http\Controllers\Web\V1\DashboardController;
 use App\Http\Controllers\Web\V1\UserStateController;
 use App\Http\Controllers\Web\V1\UserController;
+use App\Models\User;
 use Illuminate\Support\Facades\Route;
 
 // ---------------------------------------------------------------------------
@@ -54,14 +55,11 @@ Route::middleware(['auth', 'verified', 'account.state'])->group(function () {
 
     Route::get('/dashboard', DashboardController::class)->name('dashboard');
 
-    // User CRUD
-    Route::get('/users/create', [UserController::class, 'create'])->name('users.create');
-    Route::post('/users', [UserController::class, 'store'])->name('users.store');
-    Route::get('/users', [UserController::class, 'index'])->name('users.index');
-    Route::get('/users/{id}', [UserController::class, 'show'])->name('users.show');
-    Route::get('/users/{id}/edit', [UserController::class, 'edit'])->name('users.edit');
-    Route::match(['put', 'patch'], '/users/{user}', [UserController::class, 'update'])->name('users.update');
-    Route::delete('/users/{user}', [UserController::class, 'destroy'])->name('users.destroy');
+    // User CRUD — resource + custom actions
+    Route::bind('user', function ($id) {
+        return User::withTrashed()->findOrFail($id);
+    });
+    Route::resource('users', UserController::class)->except(['restore', 'force-delete', 'resend-verification']);
     Route::post('/users/{id}/restore', [UserController::class, 'restore'])->name('users.restore');
     Route::delete('/users/{id}/force', [UserController::class, 'forceDelete'])->name('users.force-delete');
     Route::post('/users/{user}/resend-verification', [UserController::class, 'resendVerification'])->name('users.resend-verification');
