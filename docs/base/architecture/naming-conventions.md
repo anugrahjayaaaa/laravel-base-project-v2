@@ -16,6 +16,8 @@
 | Config files | snake_case |
 | Routes | kebab-case for URI |
 | Policy methods | CRUD verb + model (`view`, `create`, `update`, `delete`) |
+| Imports | Short import only — no FQCN in code bodies |
+| Views | No FQCN — move to controller variables (enum cases, settings, model queries) |
 
 ## ID Strategy
 
