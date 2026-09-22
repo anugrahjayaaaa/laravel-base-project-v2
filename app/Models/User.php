@@ -99,13 +99,13 @@ class User extends Authenticatable implements MustVerifyEmail
 
     public function canChangeUsername(): bool
     {
-        $cooldown = SystemSetting::getInt('username_change_cooldown_days', 0);
-
-        if ($cooldown <= 0) {
-            return true;
+        if (! SystemSetting::getBool('allow_username_change', true)) {
+            return false;
         }
 
-        if ($this->username_changed_at === null) {
+        $cooldown = SystemSetting::getInt('username_change_cooldown_days', 0);
+
+        if ($cooldown <= 0 || $this->username_changed_at === null) {
             return true;
         }
 
@@ -114,13 +114,13 @@ class User extends Authenticatable implements MustVerifyEmail
 
     public function canChangeEmail(): bool
     {
-        $cooldown = SystemSetting::getInt('email_change_cooldown_days', 0);
-
-        if ($cooldown <= 0) {
-            return true;
+        if (! SystemSetting::getBool('allow_email_change', true)) {
+            return false;
         }
 
-        if ($this->email_changed_at === null) {
+        $cooldown = SystemSetting::getInt('email_change_cooldown_days', 0);
+
+        if ($cooldown <= 0 || $this->email_changed_at === null) {
             return true;
         }
 

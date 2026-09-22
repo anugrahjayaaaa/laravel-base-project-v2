@@ -4,9 +4,11 @@
     $status = $user->getStatus();
     $badgeClass = match ($status->value) {
         \App\Enums\UserStatusEnum::ACTIVE->value => 'bg-success-subtle text-success border border-success-subtle',
-        \App\Enums\UserStatusEnum::INACTIVE->value => 'bg-secondary-subtle text-secondary border border-secondary-subtle',
+        \App\Enums\UserStatusEnum::INACTIVE->value
+            => 'bg-secondary-subtle text-secondary border border-secondary-subtle',
         \App\Enums\UserStatusEnum::LOCKED->value => 'bg-warning-subtle text-warning border border-warning-subtle',
-        \App\Enums\UserStatusEnum::PENDING_VERIFICATION->value => 'bg-warning-subtle text-dark border border-warning-subtle',
+        \App\Enums\UserStatusEnum::PENDING_VERIFICATION->value
+            => 'bg-warning-subtle text-dark border border-warning-subtle',
     };
 
     $initials = str($user->name)->explode(' ')->take(2)->map(fn($w) => strtoupper($w[0]))->implode('');
@@ -158,8 +160,10 @@
                             <div>
                                 <strong>{{ $user->name }}</strong>
                                 <div>
-                                    <small class="text-muted d-block">Registered {{ $user->created_at->format('Y-m-d') }}</small>
-                                    <small class="text-muted d-block">Updated {{ $user->updated_at->diffForHumans() }}</small>
+                                    <small class="text-muted d-block">Registered
+                                        {{ $user->created_at->format('Y-m-d') }}</small>
+                                    <small class="text-muted d-block">Updated
+                                        {{ $user->updated_at->diffForHumans() }}</small>
                                 </div>
                             </div>
                             @if ($user->trashed())
@@ -181,7 +185,8 @@
                                 <label for="email" class="form-label">Email</label>
                                 <input type="email" name="email" id="email"
                                     class="form-control form-control-sm @error('email') is-invalid @enderror"
-                                    value="{{ old('email', $user->email) }}" required maxlength="255">
+                                    value="{{ old('email', $user->email) }}" required maxlength="255"
+                                    {{ !$user->canChangeEmail() ? 'disabled' : '' }}>
                                 @if ($user->email_verified_at)
                                     <span class="badge bg-success-subtle text-success mt-1"><i
                                             class="fas fa-circle-check me-1"></i>Verified</span>
@@ -192,8 +197,13 @@
                                 @error('email')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
-                                @if (! $user->canChangeEmail())
-                                    <small class="text-muted"><i class="bi bi-clock-history me-1"></i>Email can be changed again on {{ $user->email_changed_at->copy()->addDays((int) (\App\Models\SystemSetting::where('key', 'email_change_cooldown_days')->value('value') ?? 30))->format('Y-m-d') }}.</small>
+                                @if (!\App\Models\SystemSetting::getBool('allow_email_change', true))
+                                    <small class="text-muted"><i class="bi bi-slash-circle me-1"></i>Email changes are
+                                        currently disabled.</small>
+                                @elseif (!$user->canChangeEmail())
+                                    <small class="text-muted"><i class="bi bi-clock-history me-1"></i>Email can be changed
+                                        again on
+                                        {{ $user->email_changed_at->copy()->addDays((int) (\App\Models\SystemSetting::where('key', 'email_change_cooldown_days')->value('value') ?? 30))->format('Y-m-d') }}.</small>
                                 @endif
                             </div>
                         </div>
@@ -203,9 +213,14 @@
                             <input type="text" name="username" id="username"
                                 class="form-control form-control-sm @error('username') is-invalid @enderror"
                                 value="{{ old('username', $user->username) }}" maxlength="50"
-                                {{ $user->trashed() ? 'disabled' : '' }}>
-                            @if (! $user->canChangeUsername())
-                                <small class="text-muted"><i class="bi bi-clock-history me-1"></i>Username can be changed again on {{ $user->username_changed_at->copy()->addDays((int) (\App\Models\SystemSetting::where('key', 'username_change_cooldown_days')->value('value') ?? 30))->format('Y-m-d') }}.</small>
+                                {{ !$user->canChangeUsername() ? 'disabled' : '' }}>
+                            @if (!\App\Models\SystemSetting::getBool('allow_username_change', true))
+                                <small class="text-muted"><i class="bi bi-slash-circle me-1"></i>Username changes are
+                                    currently disabled.</small>
+                            @elseif (!$user->canChangeUsername())
+                                <small class="text-muted"><i class="bi bi-clock-history me-1"></i>Username can be changed
+                                    again on
+                                    {{ $user->username_changed_at->copy()->addDays((int) (\App\Models\SystemSetting::where('key', 'username_change_cooldown_days')->value('value') ?? 30))->format('Y-m-d') }}.</small>
                             @else
                                 <small class="form-text text-muted">Username can be changed.</small>
                             @endif
@@ -230,8 +245,10 @@
                             @enderror
                         </div>
                     </div>
-                    <div class="card-footer bg-body-tertiary border-top py-3 d-flex justify-content-end align-items-center gap-2">
-                        <a href="{{ route('users.index') }}" class="btn btn-outline-secondary d-inline-flex align-items-center gap-2">
+                    <div
+                        class="card-footer bg-body-tertiary border-top py-3 d-flex justify-content-end align-items-center gap-2">
+                        <a href="{{ route('users.index') }}"
+                            class="btn btn-outline-secondary d-inline-flex align-items-center gap-2">
                             <i class="bi bi-x-circle"></i> Cancel
                         </a>
                         <button type="submit" class="btn btn-primary d-inline-flex align-items-center gap-2">
@@ -293,7 +310,8 @@
                         <i class="fas fa-lock text-muted"></i>
                         <div>
                             <small class="text-muted d-block">Failed Login Attempts</small>
-                            <span class="fw-bold">{{ \App\Models\FailedLoginAttempt::where('user_id', $user->id)->sum('attempts') }}</span>
+                            <span
+                                class="fw-bold">{{ \App\Models\FailedLoginAttempt::where('user_id', $user->id)->sum('attempts') }}</span>
                         </div>
                     </div>
                 </div>
