@@ -139,13 +139,13 @@ Authorization via RBAC (Phase 6) — permission gates applied per endpoint.
 
 ## Group F — Username/Email Change + System Settings + Email Verification 🔄 ON PROGRESS
 
-| ID | Task | Depends | Status |
+|| ID | Task | Depends | Status |
 |----|------|---------|--------|
-| P4-F1 | Migration: `username_changed_at`, `email_changed_at`, `pending_email`, `email_change_token`, `email_change_token_expires_at` on users; `system_settings` table | D | ON PROGRESS |
-| P4-F2 | Model: User `canChangeUsername()`/`canChangeEmail()`, SystemSetting model | F1 | ON PROGRESS |
-| P4-F3 | Actions: CreateUserAction (username), UpdateUserAction (cooldown + email flow) | F1,F2 | ON PROGRESS |
-| P4-F4 | Requests: CreateUserRequest (username), UpdateUserRequest (cooldown guard), EmailChangeRequest | F2 | ON PROGRESS |
-| P4-F5 | Notification: ChangeEmailVerificationNotification (signed URL, 24h expiry) | F1,F2 | ON PROGRESS |
+| P4-F1 | Migration: `username_changed_at`, `email_changed_at`, `pending_email`, `email_change_token`, `email_change_token_expires_at` on users; `system_settings` table | D | DONE |
+| P4-F2 | Model: User `canChangeUsername()`/`canChangeEmail()`, SystemSetting model | F1 | DONE |
+| P4-F3 | Actions: CreateUserAction (username), UpdateUserAction (cooldown + email flow) | F1,F2 | DONE |
+| P4-F4 | Requests: CreateUserRequest (username), UpdateUserRequest (cooldown guard), EmailChangeRequest | F2 | DONE |
+| P4-F5 | Notification: ChangeEmailVerificationNotification (signed URL, 24h expiry) | F1,F2 | DONE |
 | P4-F6 | Controller: requestEmailChange, cancelEmailChange, verifyEmailChange, resendVerification | F3,F4,F5 | ON PROGRESS |
 | P4-F7 | Routes: users.request-email-change, users.cancel-email-change, email.verify-change | F6 | ON PROGRESS |
 | P4-F8 | Views: create (username @input), edit (cooldown badges, pending email callout) | F6 | ON PROGRESS |
