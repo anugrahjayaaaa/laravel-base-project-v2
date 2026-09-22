@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\V1\Auth\PasswordForgotController;
 use App\Http\Controllers\Api\V1\Auth\PasswordResetController;
 use App\Http\Controllers\Api\V1\Auth\VerifyEmailController;
 use App\Http\Controllers\Api\V1\Auth\ResendVerificationController;
+use App\Http\Controllers\Api\V1\ProfileController;
 use App\Http\Controllers\Api\V1\User\UserController;
 use App\Http\Controllers\Api\V1\User\UserStateController;
 use App\Http\Controllers\Api\V1\HealthCheck\HealthCheckController;
@@ -42,6 +43,12 @@ Route::prefix('v1')->group(function () {
         Route::post('/auth/logout', LogoutController::class)->name('api.v1.auth.logout');
         Route::post('/auth/logout-all', LogoutAllController::class)->name('api.v1.auth.logout-all');
         Route::post('/auth/email/resend', ResendVerificationController::class)->name('api.v1.auth.email.resend')->middleware('throttle:resend-verification');
+
+        // Profile (authenticated user only)
+        Route::controller(ProfileController::class)->group(function () {
+            Route::get('/profile', 'show')->name('api.v1.profile.show');
+            Route::put('/profile', 'update')->name('api.v1.profile.update');
+        });
 
         // User state management (Activate / Deactivate / Lock / Unlock)
         Route::middleware(['throttle:user-state-actions'])->group(function () {
