@@ -10,7 +10,7 @@
 ||| 1 | Laravel foundation & environment | DONE |
 || 2 | Database foundation | DONE |
 || 3 | Authentication foundation | IN PROGRESS |
-|| 4 | User lifecycle & user management | IN PROGRESS (Group B DONE) |
+|| 4 | User lifecycle & user management | IN PROGRESS (Groups B, C, D DONE) |
 | 5 | Password/security lifecycle | PLANNED |
 | 6 | RBAC & authorization | PLANNED |
 | 7 | Feature availability / feature flags | PLANNED |
@@ -28,6 +28,8 @@
 ## Current Task
 
 Phase 4B Group B (P4-B1 through P4-B11) — User CRUD (Web UI): DONE
+Phase 4C Group C (P4-C1 through P4-C6) — Activate/Deactivate/Lock/Unlock: DONE
+Phase 4D Group D (P4-D1 through P4-D6) — Admin User Creation + Temp Password: DONE
 
 ## Next Phase
 
@@ -84,6 +86,8 @@ Phase 2 (DB-001, DB-002) — database foundation:
 - RoleSeeder created + wired into DatabaseSeeder (DB-002)
 
 Phase 4B Group B (P4-B1 through P4-B11) — User CRUD (Web UI): DONE
+Phase 4C Group C (P4-C1 through P4-C6) — Activate/Deactivate/Lock/Unlock: DONE
+Phase 4D Group D (P4-D1 through P4-D6) — Admin User Creation + Temp Password: DONE
 
 - UserIndexAction, UserQueryRequest, thin UserController, index + edit views
 - 8 routes (users.index through users.resend-verification)

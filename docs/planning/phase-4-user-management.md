@@ -104,16 +104,23 @@
 - Locked → show Unlock only (no Deactivate)
 - Trashed → show Restore + Permanent Delete
 
-## Group D — Admin User Creation + Temp Password
+## Group D — Admin User Creation + Temp Password ✅ DONE
 
 | ID | Task | Depends | Status |
 |----|------|---------|--------|
-| P4-D1 | `CreateUserByAdminAction` (generate temp password, send email) | A3 | PLANNED |
-| P4-D2 | `CreateUserRequest` (validation) | A3 | PLANNED |
-| P4-D3 | `Web\UserController` (create + store — thin) | D1,D2 | PLANNED |
-| P4-D4 | View: admin create user form (AdminLTE consistent) | D3 | PLANNED |
-| P4-D5 | Route `web.php` → admin user creation | D3 | PLANNED |
-| P4-D6 | Tests: admin creates user, temp password enforced on first login | D4,D5 | PLANNED |
+| P4-D1 | `CreateUserAction` (generate temp password, send email) | A3 | DONE |
+| P4-D2 | `CreateUserRequest` (validation) | A3 | DONE |
+| P4-D3 | `Web\\UserController` (create + store — thin) | D1,D2 | DONE |
+| P4-D4 | View: admin create user form (AdminLTE consistent) | D3 | DONE |
+| P4-D5 | Route `web.php` → admin user creation | D3 | DONE |
+| P4-D6 | Tests: admin creates user, temp password enforced on first login | D4,D5 | DONE |
+
+**Note:** `CreateUserAction` (renamed from planned `CreateUserByAdminAction` — no conflict expected).
+API `POST /api/v1/users` shares same Action + Request (single source of truth).
+
+**Gaps → Phase 6 (RBAC):**
+- API list/show/edit/update endpoints — not Phase 4 scope, needed for RBAC permission management
+- Authorization middleware (`can:users.create`) on create/store — permission defined in user-management.md, not enforced yet
 
 ## Group E — Username/Email Change + System Settings + Email Verification 🔄 ON PROGRESS
 
