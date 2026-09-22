@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\UserStatusEnum;
 use Database\Factories\UserFactory;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -38,15 +39,18 @@ class User extends Authenticatable implements MustVerifyEmail
             'must_change_password' => 'boolean',
             'password_expires_at' => 'datetime',
             'last_activity_at' => 'datetime',
+            'username_changed_at' => 'datetime',
+            'email_changed_at' => 'datetime',
+            'email_change_token_expires_at' => 'datetime',
             'password' => 'hashed',
         ];
     }
 
     // === Status (uses UserStatusEnum, no magic strings) ===
 
-    public function getStatus(): \App\Enums\UserStatusEnum
+    public function getStatus(): UserStatusEnum
     {
-        return \App\Enums\UserStatusEnum::resolve(
+        return UserStatusEnum::resolve(
             $this->is_active,
             $this->is_locked,
             $this->email_verified_at?->format('Y-m-d H:i:s'),
@@ -55,22 +59,22 @@ class User extends Authenticatable implements MustVerifyEmail
 
     public function isActiveUser(): bool
     {
-        return $this->getStatus()->value === \App\Enums\UserStatusEnum::ACTIVE->value;
+        return $this->getStatus()->value === UserStatusEnum::ACTIVE->value;
     }
 
     public function isInactiveUser(): bool
     {
-        return $this->getStatus()->value === \App\Enums\UserStatusEnum::INACTIVE->value;
+        return $this->getStatus()->value === UserStatusEnum::INACTIVE->value;
     }
 
     public function isLockedUser(): bool
     {
-        return $this->getStatus()->value === \App\Enums\UserStatusEnum::LOCKED->value;
+        return $this->getStatus()->value === UserStatusEnum::LOCKED->value;
     }
 
     public function isPendingVerification(): bool
     {
-        return $this->getStatus()->value === \App\Enums\UserStatusEnum::PENDING_VERIFICATION->value;
+        return $this->getStatus()->value === UserStatusEnum::PENDING_VERIFICATION->value;
     }
 
     public function scopeActive($query)

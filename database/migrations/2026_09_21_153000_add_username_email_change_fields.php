@@ -15,19 +15,12 @@ return new class extends Migration
             $table->string('email_change_token')->nullable()->after('pending_email');
             $table->timestamp('email_change_token_expires_at')->nullable()->after('email_change_token');
         });
-
-        Schema::create('system_settings', function (Blueprint $table) {
-            $table->id();
-            $table->string('key')->unique();
-            $table->string('value')->nullable();
-            $table->timestamps();
-        });
     }
 
     public function down(): void
     {
         Schema::table('users', function (Blueprint $table) {
-            $table->dropColumn(['username_changed_at', 'email_changed_at', 'pending_email']);
+            $table->dropColumn(['username_changed_at', 'email_changed_at', 'pending_email', 'email_change_token', 'email_change_token_expires_at']);
         });
         Schema::dropIfExists('system_settings');
     }
