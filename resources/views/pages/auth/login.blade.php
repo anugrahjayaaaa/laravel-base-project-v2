@@ -61,8 +61,7 @@
                         <input type="password" class="form-control pe-5" id="password" name="password"
                                required autocomplete="current-password">
                         <button type="button" class="btn btn-sm position-absolute top-50 end-0 translate-middle-y me-2 text-muted"
-                                onclick="var e=document.getElementById('password');e.type=e.type==='password'?'text':'password';this.querySelector('i').classList.toggle('fa-eye');this.querySelector('i').classList.toggle('fa-eye-slash')"
-                                aria-label="Toggle password visibility" tabindex="-1">
+                                data-password-toggle="password" aria-label="Toggle password visibility" tabindex="-1">
                             <i class="fas fa-eye"></i>
                         </button>
                     </div>

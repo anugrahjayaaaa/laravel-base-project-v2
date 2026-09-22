@@ -59,7 +59,11 @@ Route::middleware(['auth', 'verified', 'account.state'])->group(function () {
     Route::get('/settings', [SystemSettingController::class, 'index'])->name('settings.index');
     Route::post('/settings', [SystemSettingController::class, 'update'])->name('settings.update');
 
-    // User CRUD — resource + custom actions
+    // Profile
+    Route::controller(\App\Http\Controllers\Web\V1\ProfileController::class)->group(function () {
+        Route::get('/profile', 'show')->name('profile.show');
+        Route::put('/profile', 'update')->name('profile.update');
+    });
     Route::bind('user', function ($id) {
         return User::withTrashed()->findOrFail($id);
     });
