@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 
 /**
@@ -9,16 +10,9 @@ use Illuminate\Database\Eloquent\Model;
  * identifier + IP scope. Serves as the durable store for the escalation
  * counter; the RateLimiter (cache) handles per-request throttling.
  */
+#[Fillable(['identifier', 'ip_address', 'attempts', 'lock_count', 'locked_until'])]
 class FailedLoginAttempt extends Model
 {
-    protected $fillable = [
-        'identifier',
-        'ip_address',
-        'attempts',
-        'lock_count',
-        'locked_until',
-    ];
-
     protected $casts = [
         'locked_until' => 'datetime',
         'attempts' => 'integer',
