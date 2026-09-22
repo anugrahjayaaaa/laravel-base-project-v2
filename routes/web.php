@@ -63,6 +63,9 @@ Route::middleware(['auth', 'verified', 'account.state'])->group(function () {
     Route::post('/users/{id}/restore', [UserController::class, 'restore'])->name('users.restore');
     Route::delete('/users/{id}/force', [UserController::class, 'forceDelete'])->name('users.force-delete');
     Route::post('/users/{user}/resend-verification', [UserController::class, 'resendVerification'])->name('users.resend-verification');
+    Route::post('/users/{user}/request-email-change', [UserController::class, 'requestEmailChange'])->name('users.request-email-change');
+    Route::post('/users/{user}/cancel-email-change', [UserController::class, 'cancelEmailChange'])->name('users.cancel-email-change');
+    Route::get('/email/verify-change/{user}/{token}', [UserController::class, 'verifyEmailChange'])->name('email.verify-change');
 
     // User state toggles (Activate / Deactivate / Lock / Unlock)
     Route::middleware(['throttle:user-state-actions'])->group(function () {

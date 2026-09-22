@@ -3,12 +3,15 @@
 namespace App\Http\Controllers\Web\V1;
 
 use App\Actions\User\AdminResendVerificationAction;
+use App\Actions\User\CancelEmailChangeAction;
 use App\Actions\User\CreateUserAction;
 use App\Actions\User\DeleteUserAction;
 use App\Actions\User\ForceDeleteUserAction;
+use App\Actions\User\RequestEmailChangeAction;
 use App\Actions\User\RestoreUserAction;
 use App\Actions\User\UpdateUserAction;
 use App\Actions\User\UserIndexAction;
+use App\Actions\User\VerifyEmailChangeAction;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\User\CreateUserRequest;
 use App\Http\Requests\User\UpdateUserRequest;
@@ -26,6 +29,9 @@ class UserController extends Controller
         private readonly RestoreUserAction $restoreAction,
         private readonly ForceDeleteUserAction $forceDeleteAction,
         private readonly AdminResendVerificationAction $resendVerificationAction,
+        private readonly RequestEmailChangeAction $requestEmailChangeAction,
+        private readonly CancelEmailChangeAction $cancelEmailChangeAction,
+        private readonly VerifyEmailChangeAction $verifyEmailChangeAction,
     ) {}
 
     public function create()
@@ -35,7 +41,9 @@ class UserController extends Controller
 
     public function store(CreateUserRequest $request)
     {
-        $this->createAction->run($request->validated());
+        $user = $this->createAction->run($request->validated());
+
+        $this->audit('user.created', $user, $request->user());
 
         return redirect()->route('users.index')
             ->with('status', 'User created successfully.');
@@ -77,12 +85,16 @@ class UserController extends Controller
     {
         $this->updateAction->run($user, $request->validated());
 
+        $this->audit('user.updated', $user, $request->user());
+
         return back()->with('status', 'User updated successfully.');
     }
 
     public function destroy(Request $request, User $user)
     {
         $this->deleteAction->run($user, $request->user());
+
+        $this->audit('user.deleted', $user, $request->user());
 
         return back()->with('status', 'User deleted successfully.');
     }
@@ -93,6 +105,8 @@ class UserController extends Controller
 
         $this->restoreAction->run($user);
 
+        $this->audit('user.restored', $user, auth()->user());
+
         return back()->with('status', 'User restored successfully.');
     }
 
@@ -101,6 +115,8 @@ class UserController extends Controller
         $user = User::withTrashed()->findOrFail($id);
 
         $this->forceDeleteAction->run($user, $request->user());
+
+        $this->audit('user.force_deleted', $user, $request->user());
 
         return redirect()->route('users.index')->with('status', 'User permanently deleted.');
     }
@@ -113,6 +129,47 @@ class UserController extends Controller
             return back()->withErrors(['error' => $result['error']['message']]);
         }
 
+        $this->audit('user.verification_resent', $user, $request->user());
+
         return back()->with('status', 'Verification email successfully sent to user.');
+    }
+
+    public function requestEmailChange(Request $request, User $user)
+    {
+        $request->validate(['email' => ['required', 'email', 'max:255', 'unique:users,email']]);
+
+        $this->requestEmailChangeAction->run($user, $request->validated('email'));
+
+        $this->audit('user.email_change_requested', $user, $request->user(), ['pending_email' => $request->validated('email')]);
+
+        return back()->with('status', 'Verification email sent to new email address.');
+    }
+
+    public function cancelEmailChange(User $user)
+    {
+        $this->cancelEmailChangeAction->run($user);
+
+        $this->audit('user.email_change_cancelled', $user, auth()->user());
+
+        return back()->with('status', 'Email change cancelled.');
+    }
+
+    public function verifyEmailChange(Request $request, User $user)
+    {
+        $token = $request->route('token');
+
+        if (! $token) {
+            return redirect()->route('login')->withErrors(['email' => 'Missing verification token.']);
+        }
+
+        $verified = $this->verifyEmailChangeAction->run($user, $token);
+
+        if (! $verified) {
+            return redirect()->route('login')->withErrors(['email' => 'Invalid or expired verification link.']);
+        }
+
+        $this->audit('user.email_changed', $user, auth()->user(), ['new_email' => $user->fresh()->email]);
+
+        return redirect()->route('login')->with('status', 'Email changed successfully. Please login with your new email.');
     }
 }
