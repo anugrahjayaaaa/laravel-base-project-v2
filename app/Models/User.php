@@ -96,4 +96,34 @@ class User extends Authenticatable implements MustVerifyEmail
     {
         return $query->whereNull('email_verified_at');
     }
+
+    public function canChangeUsername(): bool
+    {
+        $cooldown = SystemSetting::getInt('username_change_cooldown_days', 0);
+
+        if ($cooldown <= 0) {
+            return true;
+        }
+
+        if ($this->username_changed_at === null) {
+            return true;
+        }
+
+        return $this->username_changed_at->addDays($cooldown)->isPast();
+    }
+
+    public function canChangeEmail(): bool
+    {
+        $cooldown = SystemSetting::getInt('email_change_cooldown_days', 0);
+
+        if ($cooldown <= 0) {
+            return true;
+        }
+
+        if ($this->email_changed_at === null) {
+            return true;
+        }
+
+        return $this->email_changed_at->addDays($cooldown)->isPast();
+    }
 }
