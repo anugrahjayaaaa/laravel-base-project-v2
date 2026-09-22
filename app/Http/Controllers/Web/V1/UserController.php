@@ -206,17 +206,25 @@ class UserController extends Controller
         $token = $request->query('token') ?? $request->route('token');
 
         if (! $token) {
-            return redirect()->route('login')->withErrors(['email' => 'Missing verification token.']);
+            return $this->verifyRedirect('Missing verification token.', false);
         }
 
         $verified = $this->verifyEmailChangeAction->run($user, $token);
 
         if (! $verified) {
-            return redirect()->route('login')->withErrors(['email' => 'Invalid or expired verification link.']);
+            return $this->verifyRedirect('Invalid or expired verification link.', false);
         }
 
-        $this->audit('user.email_changed', $user, auth()->user(), ['new_email' => $user->fresh()->email]);
+        $this->audit('user.email_changed', $user, auth()->user() ?? $user, ['new_email' => $user->fresh()->email]);
 
-        return redirect()->route('login')->with('status', 'Email changed successfully. Please login with your new email.');
+        return $this->verifyRedirect('Email changed successfully. Please login with your new email.', true);
+    }
+
+    protected function verifyRedirect(string $message, bool $success)
+    {
+        $route = auth()->check() ? 'dashboard' : 'login';
+        $key = $success ? 'status' : 'error';
+
+        return redirect()->route($route)->with($key, $message);
     }
 }
