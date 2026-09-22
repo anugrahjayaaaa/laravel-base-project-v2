@@ -83,7 +83,7 @@ class UsernameEmailChangeTest extends TestCase
         $url = \Illuminate\Support\Facades\URL::temporarySignedRoute(
             'email.verify-change',
             now()->addHours(24),
-            ['user' => $user]
+            ['user' => $user, 'token' => $token]
         );
 
         $response = $this->actingAs($user)->get($url);
