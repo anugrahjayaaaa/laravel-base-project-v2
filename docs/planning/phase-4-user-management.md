@@ -33,30 +33,30 @@
 
 ## Group B — User CRUD (Web UI) ✅ DONE
 
-| ID | Task | Depends | Status |
-|----|------|---------|--------|
-| P4-B1 | `UserIndexAction` (paginated list, filter/sort) + counts() conditional aggregation + forever cache | A3 | DONE |
-| P4-B2 | `UserRequest` (filter/sort/form params) | A3 | DONE |
-| P4-B3 | `Web\UserController` (index + update — thin) | B1,B2 | DONE |
-| P4-B4 | `resources/views/pages/users/index.blade.php` (AdminLTE table, status badges) | B3 | DONE |
-| P4-B5 | Route `web.php` → `users.index`, `users.update` | B3 | DONE |
-| P4-B6 | Tests: list users, toggle user status | B4,B5 | DONE |
-| P4-B7 | Soft Delete: `DeleteUserAction` — deactivate + soft delete | A3 | DONE |
-| P4-B8 | Restore: `RestoreUserAction` — undo soft delete | B7 | DONE |
-| P4-B9 | Permanent Delete: `ForceDeleteUserAction` — force delete | B7 | DONE |
-| P4-B10 | Detail/Edit View: `ShowUserAction` + edit form | B1 | DONE |
-| P4-B11 | Resend verification email (admin mode trigger) | B10 | DONE |
+|| ID | Task | Depends | Status |
+||----|------|---------|--------|
+|| P4-B1 | `UserIndexAction` (paginated list, filter/sort) + counts() conditional aggregation + forever cache | A3 | DONE |
+|| P4-B2 | `UserRequest` (filter/sort/form params) | A3 | DONE |
+|| P4-B3 | `Web\UserController` (index + update — thin) | B1,B2 | DONE |
+|| P4-B4 | `resources/views/pages/users/index.blade.php` (AdminLTE table, status badges) | B3 | DONE |
+|| P4-B5 | Route `web.php` → `users.index`, `users.update` | B3 | DONE |
+|| P4-B6 | Tests: list users, toggle user status | B4,B5 | DONE |
+|| P4-B7 | Soft Delete: `DeleteUserAction` — deactivate + soft delete | A3 | DONE |
+|| P4-B8 | Restore: `RestoreUserAction` — undo soft delete | B7 | DONE |
+|| P4-B9 | Permanent Delete: `ForceDeleteUserAction` — force delete | B7 | DONE |
+|| P4-B10 | Detail/Edit View: `ShowUserAction` + edit form | B1 | DONE |
+|| P4-B11 | Resend verification email (admin mode trigger) | B10 | DONE |
 
 ## Group C — Activate/Deactivate + Lock/Unlock (Web UI) ✅ DONE
 
-| ID | Task | Depends | Status |
+|| ID | Task | Depends | Status |
 |----|------|---------|--------|
-| P4-C1 | `ActivateUserAction` + `DeactivateUserAction` | A3 | DONE |
-| P4-C2 | `LockUserAction` + `UnlockUserAction` (moved to User namespace) | A3 | DONE |
-| P4-C3 | `Web\\UserStateController` + `Api\\V1\\User\\UserStateController` (activate/deactivate/lock/unlock — thin) | C1,C2 | DONE |
-| P4-C4 | Views: user state toggle (index + edit sidebar) | C3 | DONE |
-| P4-C5 | Route `web.php` + `api.php` → user state endpoints | C3 | DONE |
-| P4-C6 | Tests: activate, deactivate, lock, unlock flows + guards + API tests + rate limiter | C4,C5 | DONE |
+|| P4-C1 | `ActivateUserAction` + `DeactivateUserAction` | A3 | DONE |
+|| P4-C2 | `LockUserAction` + `UnlockUserAction` (moved to User namespace) | A3 | DONE |
+||| P4-C3 | `Web\\UserStateController` + `Api\\V1\\User\\UserStateController` (activate/deactivate/lock/unlock — thin) | C1,C2 | DONE |
+||| P4-C4 | Views: user state toggle (index + edit sidebar) | C3 | DONE |
+||| P4-C5 | Route `web.php` + `api.php` → user state endpoints | C3 | DONE |
+||| P4-C6 | Tests: activate, deactivate, lock, unlock flows + guards + API tests + rate limiter | C4,C5 | DONE |
 
 ### State Design — Two Flags with Guards (Option B)
 
