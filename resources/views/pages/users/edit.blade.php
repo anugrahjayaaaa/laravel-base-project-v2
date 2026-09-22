@@ -3,11 +3,11 @@
 @php
     $status = $user->getStatus();
     $badgeClass = match ($status->value) {
-        \App\Enums\UserStatusEnum::ACTIVE->value => 'bg-success-subtle text-success border border-success-subtle',
-        \App\Enums\UserStatusEnum::INACTIVE->value
+        'active' => 'bg-success-subtle text-success border border-success-subtle',
+        'inactive'
             => 'bg-secondary-subtle text-secondary border border-secondary-subtle',
-        \App\Enums\UserStatusEnum::LOCKED->value => 'bg-warning-subtle text-warning border border-warning-subtle',
-        \App\Enums\UserStatusEnum::PENDING_VERIFICATION->value
+        'locked' => 'bg-warning-subtle text-warning border border-warning-subtle',
+        'pending_verification'
             => 'bg-warning-subtle text-dark border border-warning-subtle',
     };
 
@@ -197,13 +197,13 @@
                                 @error('email')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
-                                @if (!\App\Models\SystemSetting::getBool('allow_email_change', true))
+                                @if (!$allowEmailChange)
                                     <small class="text-muted"><i class="bi bi-slash-circle me-1"></i>Email changes are
                                         currently disabled.</small>
                                 @elseif (!$user->canChangeEmail())
                                     <small class="text-muted"><i class="bi bi-clock-history me-1"></i>Email can be changed
                                         again on
-                                        {{ $user->email_changed_at->copy()->addDays((int) (\App\Models\SystemSetting::where('key', 'email_change_cooldown_days')->value('value') ?? 30))->format('Y-m-d') }}.</small>
+                                        {{ $user->email_changed_at->copy()->addDays((int) $emailCooldownDays)->format('Y-m-d') }}.</small>
                                 @endif
                             </div>
                         </div>
@@ -214,13 +214,13 @@
                                 class="form-control form-control-sm @error('username') is-invalid @enderror"
                                 value="{{ old('username', $user->username) }}" maxlength="50"
                                 {{ !$user->canChangeUsername() ? 'disabled' : '' }}>
-                            @if (!\App\Models\SystemSetting::getBool('allow_username_change', true))
+                            @if (!$allowUsernameChange)
                                 <small class="text-muted"><i class="bi bi-slash-circle me-1"></i>Username changes are
                                     currently disabled.</small>
                             @elseif (!$user->canChangeUsername())
                                 <small class="text-muted"><i class="bi bi-clock-history me-1"></i>Username can be changed
                                     again on
-                                    {{ $user->username_changed_at->copy()->addDays((int) (\App\Models\SystemSetting::where('key', 'username_change_cooldown_days')->value('value') ?? 30))->format('Y-m-d') }}.</small>
+                                    {{ $user->username_changed_at->copy()->addDays((int) $usernameCooldownDays)->format('Y-m-d') }}.</small>
                             @else
                                 <small class="form-text text-muted">Username can be changed.</small>
                             @endif
@@ -233,7 +233,7 @@
                             <label for="status" class="form-label">Status</label>
                             <select name="status" id="status"
                                 class="form-select form-select-sm @error('status') is-invalid @enderror">
-                                @foreach (\App\Enums\UserStatusEnum::cases() as $s)
+                                @foreach ($statuses as $s)
                                     <option value="{{ $s->value }}"
                                         {{ old('status', $user->getStatus()->value) === $s->value ? 'selected' : '' }}>
                                         {{ $s->label() }}
@@ -288,18 +288,18 @@
                     {{-- State Toggles --}}
                     @if (!$user->trashed())
                         @php $s = $user->getStatus(); @endphp
-                        @if ($s->value === \App\Enums\UserStatusEnum::ACTIVE->value)
+                        @if ($s->value === 'active')
                             <button type="button" class="btn btn-outline-warning btn-sm w-100" {!! $deactivateModal !!}>
                                 <i class="fas fa-user-slash me-1"></i> Deactivate
                             </button>
                             <button type="button" class="btn btn-outline-danger btn-sm w-100" {!! $lockModal !!}>
                                 <i class="fas fa-lock me-1"></i> Lock
                             </button>
-                        @elseif ($s->value === \App\Enums\UserStatusEnum::INACTIVE->value)
+                        @elseif ($s->value === 'inactive')
                             <button type="button" class="btn btn-outline-success btn-sm w-100" {!! $activateModal !!}>
                                 <i class="fas fa-user-check me-1"></i> Activate
                             </button>
-                        @elseif ($s->value === \App\Enums\UserStatusEnum::LOCKED->value)
+                        @elseif ($s->value === 'locked')
                             <button type="button" class="btn btn-outline-success btn-sm w-100" {!! $unlockModal !!}>
                                 <i class="fas fa-lock-open me-1"></i> Unlock
                             </button>
@@ -310,8 +310,7 @@
                         <i class="fas fa-lock text-muted"></i>
                         <div>
                             <small class="text-muted d-block">Failed Login Attempts</small>
-                            <span
-                                class="fw-bold">{{ \App\Models\FailedLoginAttempt::where('user_id', $user->id)->sum('attempts') }}</span>
+                            <span class="fw-bold">{{ $failedLoginCount }}</span>
                         </div>
                     </div>
                 </div>

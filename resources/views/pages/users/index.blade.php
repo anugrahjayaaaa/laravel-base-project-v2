@@ -31,19 +31,7 @@
             : '<i class="fas fa-sort-down text-primary ml-1"></i>';
     };
 
-    $badgeClass = function (\App\Enums\UserStatusEnum $s, bool $trashed) {
-        if ($trashed) {
-            return 'bg-danger text-white';
-        }
-        return match ($s->value) {
-            \App\Enums\UserStatusEnum::ACTIVE->value => 'bg-success-subtle text-success border border-success-subtle',
-            \App\Enums\UserStatusEnum::INACTIVE->value
-                => 'bg-secondary-subtle text-secondary border border-secondary-subtle',
-            \App\Enums\UserStatusEnum::LOCKED->value => 'bg-warning-subtle text-warning border border-warning-subtle',
-            \App\Enums\UserStatusEnum::PENDING_VERIFICATION->value
-                => 'bg-warning-subtle text-dark border border-warning-subtle',
-        };
-    };
+    $badgeClass = $badgeClass;
 
     $tabClass = function (string $tab) use ($currentStatus) {
         return $currentStatus === $tab ? 'active' : '';
@@ -75,7 +63,7 @@
         }
         $status = $user->getStatus();
         $btns = '';
-        if ($currentStatus === 'active' && $status->value === \App\Enums\UserStatusEnum::ACTIVE->value) {
+        if ($currentStatus === 'active' && $status->value === 'active') {
             $btns .=
                 '<button type="button" class="btn btn-sm btn-outline-warning" title="Deactivate" data-bs-toggle="modal" data-bs-target="#confirmModal" data-action="' .
                 route('users.deactivate', $user) .
@@ -88,14 +76,14 @@
                 '" data-method="POST" data-title="Lock User Account?" data-message="Are you sure you want to lock ' .
                 e($user->name) .
                 '? The account will be forcefully locked and all active sessions will be revoked." data-variant="danger" data-label="Lock"><i class="fas fa-lock"></i></button>';
-        } elseif ($currentStatus === 'inactive' && $status->value === \App\Enums\UserStatusEnum::INACTIVE->value) {
+        } elseif ($currentStatus === 'inactive' && $status->value === 'inactive') {
             $btns .=
                 '<button type="button" class="btn btn-sm btn-outline-success" title="Activate" data-bs-toggle="modal" data-bs-target="#confirmModal" data-action="' .
                 route('users.activate', $user) .
                 '" data-method="POST" data-title="Activate User Account?" data-message="Are you sure you want to activate ' .
                 e($user->name) .
                 '? This will restore the user login access to the system." data-variant="success" data-label="Activate"><i class="fas fa-user-check"></i></button>';
-        } elseif ($currentStatus === 'locked' && $status->value === \App\Enums\UserStatusEnum::LOCKED->value) {
+        } elseif ($currentStatus === 'locked' && $status->value === 'locked') {
             $btns .=
                 '<button type="button" class="btn btn-sm btn-outline-success" title="Unlock Account" data-bs-toggle="modal" data-bs-target="#confirmModal" data-action="' .
                 route('users.unlock', $user) .

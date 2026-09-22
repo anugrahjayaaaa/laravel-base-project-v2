@@ -78,7 +78,7 @@
                 <div class="mt-3">
                     <label class="form-label">Roles</label>
                     <div class="border rounded p-3" style="max-height: 200px; overflow-y: auto;">
-                        @foreach (\Spatie\Permission\Models\Role::all() as $role)
+                        @foreach ($roles as $role)
                             <div class="form-check">
                                 <input class="form-check-input" type="checkbox" name="roles[]"
                                     value="{{ $role->name }}" id="role_{{ $loop->index }}"

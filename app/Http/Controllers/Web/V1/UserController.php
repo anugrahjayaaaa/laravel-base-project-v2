@@ -6,18 +6,22 @@ use App\Actions\User\AdminResendVerificationAction;
 use App\Actions\User\CancelEmailChangeAction;
 use App\Actions\User\CreateUserAction;
 use App\Actions\User\DeleteUserAction;
+use App\Models\FailedLoginAttempt;
 use App\Actions\User\ForceDeleteUserAction;
 use App\Actions\User\RequestEmailChangeAction;
 use App\Actions\User\RestoreUserAction;
 use App\Actions\User\UpdateUserAction;
 use App\Actions\User\UserIndexAction;
 use App\Actions\User\VerifyEmailChangeAction;
+use App\Enums\UserStatusEnum;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\User\CreateUserRequest;
 use App\Http\Requests\User\UpdateUserRequest;
 use App\Http\Requests\User\UserQueryRequest;
-use Illuminate\Http\Request;
+use App\Models\SystemSetting;
 use App\Models\User;
+use Illuminate\Http\Request;
+use Spatie\Permission\Models\Role;
 
 class UserController extends Controller
 {
@@ -36,7 +40,10 @@ class UserController extends Controller
 
     public function create()
     {
-        return view('pages.users.create', ['title' => 'Create User']);
+        return view('pages.users.create', [
+            'title' => 'Create User',
+            'roles' => Role::all(),
+        ]);
     }
 
     public function store(CreateUserRequest $request)
@@ -63,22 +70,56 @@ class UserController extends Controller
 
         $counts = $this->indexAction->counts();
 
+        $badgeClass = function (UserStatusEnum $s, bool $trashed) {
+            if ($trashed) {
+                return 'bg-danger text-white';
+            }
+            return match ($s->value) {
+                UserStatusEnum::ACTIVE->value => 'bg-success-subtle text-success border border-success-subtle',
+                UserStatusEnum::INACTIVE->value
+                    => 'bg-secondary-subtle text-secondary border border-secondary-subtle',
+                UserStatusEnum::LOCKED->value => 'bg-warning-subtle text-warning border border-warning-subtle',
+                UserStatusEnum::PENDING_VERIFICATION->value
+                    => 'bg-warning-subtle text-dark border border-warning-subtle',
+            };
+        };
+
         return view('pages.users.index', [
             'title' => 'Users',
             'users' => $users,
             'filters' => $request->only('search', 'status', 'sort', 'direction'),
             'counts' => $counts,
+            'statuses' => UserStatusEnum::cases(),
+            'badgeClass' => $badgeClass,
         ]);
     }
 
     public function show(User $user)
     {
-        return view('pages.users.edit', ['title' => 'User Detail', 'user' => $user]);
+        return view('pages.users.edit', [
+            'title' => 'User Detail',
+            'user' => $user,
+            'statuses' => UserStatusEnum::cases(),
+            'allowUsernameChange' => SystemSetting::getBool('allow_username_change', true),
+            'allowEmailChange' => SystemSetting::getBool('allow_email_change', true),
+            'usernameCooldownDays' => SystemSetting::getInt('username_change_cooldown_days', 30),
+            'emailCooldownDays' => SystemSetting::getInt('email_change_cooldown_days', 30),
+            'failedLoginCount' => FailedLoginAttempt::where('user_id', $user->id)->sum('attempts'),
+        ]);
     }
 
     public function edit(User $user)
     {
-        return view('pages.users.edit', ['title' => 'Edit User', 'user' => $user]);
+        return view('pages.users.edit', [
+            'title' => 'Edit User',
+            'user' => $user,
+            'statuses' => UserStatusEnum::cases(),
+            'allowUsernameChange' => SystemSetting::getBool('allow_username_change', true),
+            'allowEmailChange' => SystemSetting::getBool('allow_email_change', true),
+            'usernameCooldownDays' => SystemSetting::getInt('username_change_cooldown_days', 30),
+            'emailCooldownDays' => SystemSetting::getInt('email_change_cooldown_days', 30),
+            'failedLoginCount' => FailedLoginAttempt::where('user_id', $user->id)->sum('attempts'),
+        ]);
     }
 
     public function update(UpdateUserRequest $request, User $user)
