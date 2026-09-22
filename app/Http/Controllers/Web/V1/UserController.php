@@ -63,17 +63,13 @@ class UserController extends Controller
         ]);
     }
 
-    public function show(int $id)
+    public function show(User $user)
     {
-        $user = User::withTrashed()->findOrFail($id);
-
         return view('pages.users.edit', ['title' => 'User Detail', 'user' => $user]);
     }
 
-    public function edit(int $id)
+    public function edit(User $user)
     {
-        $user = User::withTrashed()->findOrFail($id);
-
         return view('pages.users.edit', ['title' => 'Edit User', 'user' => $user]);
     }
 

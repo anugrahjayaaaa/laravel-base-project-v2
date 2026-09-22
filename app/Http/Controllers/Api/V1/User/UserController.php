@@ -66,10 +66,8 @@ class UserController extends Controller
         ], 201);
     }
 
-    public function show(int $id): JsonResponse
+    public function show(User $user): JsonResponse
     {
-        $user = User::withTrashed()->findOrFail($id);
-
         return $this->respond('', 200, [
             'user' => new UserResource($user),
         ]);
