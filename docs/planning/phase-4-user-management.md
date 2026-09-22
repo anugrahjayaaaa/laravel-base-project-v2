@@ -150,7 +150,7 @@ Authorization via RBAC (Phase 6) — permission gates applied per endpoint.
 | P4-F7 | Routes: users.request-email-change, users.cancel-email-change, email.verify-change | F6 | DONE |
 | P4-F8 | Views: create (username @input), edit (cooldown badges, pending email callout) | F6 | DONE |
 | P4-F9 | Tests: UsernameEmailChangeTest (7 tests, all pass) | F1-F8 | ON PROGRESS |
-| P4-F10 | System Settings UI: allow_username_change, allow_email_change, cooldown days | F1 | PLANNED |
+| P4-F10 | System Settings UI: allow_username_change, allow_email_change, cooldown days | F1 | DONE |
 | P4-F11 | Docs: user-management.md + progress.md Phase 4F update | F9 | ON PROGRESS |
 
 ### Phase 4F Additions (from user request)
