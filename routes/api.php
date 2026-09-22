@@ -53,6 +53,14 @@ Route::prefix('v1')->group(function () {
 
         // User CRUD
         Route::post('/users', [UserController::class, 'store'])->name('api.v1.users.store');
+
+        // User CRUD (Read / Update / Delete / Restore)
+        Route::get('/users', [UserController::class, 'index'])->name('api.v1.users.index');
+        Route::get('/users/{user}', [UserController::class, 'show'])->name('api.v1.users.show');
+        Route::match(['put', 'patch'], '/users/{user}', [UserController::class, 'update'])->name('api.v1.users.update');
+        Route::delete('/users/{user}', [UserController::class, 'destroy'])->name('api.v1.users.destroy');
+        Route::delete('/users/{user}/force', [UserController::class, 'forceDelete'])->name('api.v1.users.force-delete');
+        Route::post('/users/{id}/restore', [UserController::class, 'restore'])->name('api.v1.users.restore');
     });
 
     // ---------------------------------------------------------------------------
