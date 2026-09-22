@@ -25,10 +25,7 @@ class UserStateController extends Controller
     {
         $this->activateAction->run($user);
 
-        activity('user.activated')
-            ->causedBy(auth()->user())
-            ->withProperties(['target_id' => $user->id, 'target_email' => $user->email])
-            ->log('user.activated');
+        $this->audit('user.activated', $user, auth()->user(), ['target_id' => $user->id, 'target_email' => $user->email]);
 
         return back()->with('status', 'User activated successfully.');
     }
@@ -37,10 +34,7 @@ class UserStateController extends Controller
     {
         $this->deactivateAction->run($user, auth()->user());
 
-        activity('user.deactivated')
-            ->causedBy(auth()->user())
-            ->withProperties(['target_id' => $user->id, 'target_email' => $user->email])
-            ->log('user.deactivated');
+        $this->audit('user.deactivated', $user, auth()->user(), ['target_id' => $user->id, 'target_email' => $user->email]);
 
         return back()->with('status', 'User deactivated successfully.');
     }
@@ -49,10 +43,7 @@ class UserStateController extends Controller
     {
         $this->lockAction->run($user);
 
-        activity('user.locked')
-            ->causedBy(auth()->user())
-            ->withProperties(['target_id' => $user->id, 'target_email' => $user->email])
-            ->log('user.locked');
+        $this->audit('user.locked', $user, auth()->user(), ['target_id' => $user->id, 'target_email' => $user->email]);
 
         return back()->with('status', 'User locked successfully.');
     }
@@ -61,10 +52,7 @@ class UserStateController extends Controller
     {
         $this->unlockAction->run($user, request()->ip(), request());
 
-        activity('user.unlocked')
-            ->causedBy(auth()->user())
-            ->withProperties(['target_id' => $user->id, 'target_email' => $user->email])
-            ->log('user.unlocked');
+        $this->audit('user.unlocked', $user, auth()->user(), ['target_id' => $user->id, 'target_email' => $user->email]);
 
         return back()->with('status', 'User unlocked successfully.');
     }

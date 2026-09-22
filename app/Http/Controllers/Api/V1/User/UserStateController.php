@@ -9,7 +9,6 @@ use App\Actions\User\UnlockUserAction;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
-use Spatie\Activitylog\Facades\Activity;
 use App\Models\User;
 
 class UserStateController extends Controller
@@ -25,10 +24,7 @@ class UserStateController extends Controller
     {
         $this->activateAction->run($user);
 
-        activity('user.activated')
-            ->causedBy($request->user())
-            ->withProperties(['target_id' => $user->id, 'target_email' => $user->email])
-            ->log('user.activated');
+        $this->audit('user.activated', $user, $request->user(), ['target_id' => $user->id, 'target_email' => $user->email]);
 
         return $this->success('User activated successfully.');
     }
@@ -37,10 +33,7 @@ class UserStateController extends Controller
     {
         $this->deactivateAction->run($user, $request->user());
 
-        activity('user.deactivated')
-            ->causedBy($request->user())
-            ->withProperties(['target_id' => $user->id, 'target_email' => $user->email])
-            ->log('user.deactivated');
+        $this->audit('user.deactivated', $user, $request->user(), ['target_id' => $user->id, 'target_email' => $user->email]);
 
         return $this->success('User deactivated successfully.');
     }
@@ -49,10 +42,7 @@ class UserStateController extends Controller
     {
         $this->lockAction->run($user);
 
-        activity('user.locked')
-            ->causedBy($request->user())
-            ->withProperties(['target_id' => $user->id, 'target_email' => $user->email])
-            ->log('user.locked');
+        $this->audit('user.locked', $user, $request->user(), ['target_id' => $user->id, 'target_email' => $user->email]);
 
         return $this->success('User locked successfully.');
     }
@@ -61,10 +51,7 @@ class UserStateController extends Controller
     {
         $this->unlockAction->run($user, $request->ip(), $request);
 
-        activity('user.unlocked')
-            ->causedBy($request->user())
-            ->withProperties(['target_id' => $user->id, 'target_email' => $user->email])
-            ->log('user.unlocked');
+        $this->audit('user.unlocked', $user, $request->user(), ['target_id' => $user->id, 'target_email' => $user->email]);
 
         return $this->success('User unlocked successfully.');
     }
