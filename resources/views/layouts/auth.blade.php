@@ -69,12 +69,12 @@
     @stack('styles')
 </head>
 <body class="auth-page">
-    @include('layouts.partials.theme-toggle', ['class' => 'nav-link text-secondary auth-theme-toggle'])
+    @include('layouts.partials.scripts.theme-toggle', ['class' => 'nav-link text-secondary auth-theme-toggle'])
     <div class="auth-wrapper w-100 px-3">
         @yield('content')
     </div>
     <script src="{{ asset('vendor/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
-    @include('layouts.partials.password-toggle')
+    @include('layouts.partials.scripts.password-toggle')
     @stack('scripts')
 </body>
 </html>

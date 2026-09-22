@@ -23,7 +23,7 @@
         <i class="far fa-bell"></i>
       </button>
 
-      @include('layouts.partials.theme-toggle')
+      @include('layouts.partials.scripts.theme-toggle')
 
       <!-- User menu (dropdown) -->
       <div class="dropdown">
