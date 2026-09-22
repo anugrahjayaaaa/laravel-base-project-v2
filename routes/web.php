@@ -1,6 +1,5 @@
 <?php
 
-use App\Http\Controllers\Web\V1\AdminUserController;
 use App\Http\Controllers\Web\V1\Auth\WebAuthController;
 use App\Http\Controllers\Web\V1\DashboardController;
 use App\Http\Controllers\Web\V1\SystemSettingController;
@@ -68,8 +67,8 @@ Route::middleware(['auth', 'verified', 'account.state'])->group(function () {
         return User::withTrashed()->findOrFail($id);
     });
     Route::resource('users', UserController::class)->except(['restore', 'force-delete', 'resend-verification']);
-    Route::post('/users/{id}/restore', [UserController::class, 'restore'])->name('users.restore');
-    Route::delete('/users/{id}/force', [UserController::class, 'forceDelete'])->name('users.force-delete');
+    Route::post('/users/{user}/restore', [UserController::class, 'restore'])->name('users.restore');
+    Route::delete('/users/{user}/force', [UserController::class, 'forceDelete'])->name('users.force-delete');
     Route::post('/users/{user}/resend-verification', [UserController::class, 'resendVerification'])->name('users.resend-verification');
     Route::post('/users/{user}/request-email-change', [UserController::class, 'requestEmailChange'])->name('users.request-email-change');
     Route::post('/users/{user}/cancel-email-change', [UserController::class, 'cancelEmailChange'])->name('users.cancel-email-change');

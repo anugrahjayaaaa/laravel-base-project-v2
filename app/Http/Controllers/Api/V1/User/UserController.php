@@ -14,6 +14,7 @@ use App\Actions\User\UpdateUserAction;
 use App\Actions\User\UserIndexAction;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\User\CreateUserRequest;
+use App\Http\Requests\User\EmailChangeRequest;
 use App\Http\Requests\User\UpdateUserRequest;
 use App\Http\Requests\User\UserQueryRequest;
 use App\Http\Resources\Api\V1\User\UserResource;
@@ -102,10 +103,8 @@ class UserController extends Controller
         return $this->respond('User deleted successfully.', 200);
     }
 
-    public function forceDelete(Request $request, int $id): JsonResponse
+    public function forceDelete(Request $request, User $user): JsonResponse
     {
-        $user = User::withTrashed()->findOrFail($id);
-
         $this->forceDeleteAction->run($user, $request->user());
 
         $this->audit('user.force_deleted', $user, $request->user());
@@ -113,10 +112,8 @@ class UserController extends Controller
         return $this->respond('User permanently deleted.', 200);
     }
 
-    public function restore(Request $request, int $id): JsonResponse
+    public function restore(Request $request, User $user): JsonResponse
     {
-        $user = User::withTrashed()->findOrFail($id);
-
         $this->restoreAction->run($user);
 
         $this->audit('user.restored', $user, $request->user());
@@ -127,10 +124,8 @@ class UserController extends Controller
         ]);
     }
 
-    public function requestEmailChange(Request $request, User $user): JsonResponse
+    public function requestEmailChange(EmailChangeRequest $request, User $user): JsonResponse
     {
-        $request->validate(['email' => ['required', 'email', 'max:255', 'unique:users,email']]);
-
         $this->requestEmailChangeAction->run($user, $request->validated('email'));
 
         $this->audit('user.email_change_requested', $user, $request->user(), ['pending_email' => $request->validated('email')]);

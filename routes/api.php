@@ -53,8 +53,8 @@ Route::prefix('v1')->group(function () {
 
         // User CRUD — resource + custom actions
         Route::resource('users', UserController::class)->names('api.v1.users')->only(['index', 'store', 'show', 'update', 'destroy']);
-        Route::delete('/users/{id}/force', [UserController::class, 'forceDelete'])->name('api.v1.users.force-delete');
-        Route::post('/users/{id}/restore', [UserController::class, 'restore'])->name('api.v1.users.restore');
+        Route::delete('/users/{user}/force', [UserController::class, 'forceDelete'])->name('api.v1.users.force-delete');
+        Route::post('/users/{user}/restore', [UserController::class, 'restore'])->name('api.v1.users.restore');
 
         // Email change flow
         Route::post('/users/{user}/request-email-change', [UserController::class, 'requestEmailChange'])->name('api.v1.users.request-email-change');

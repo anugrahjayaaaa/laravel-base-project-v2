@@ -16,6 +16,7 @@ use App\Actions\User\VerifyEmailChangeAction;
 use App\Enums\UserStatusEnum;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\User\CreateUserRequest;
+use App\Http\Requests\User\EmailChangeRequest;
 use App\Http\Requests\User\UpdateUserRequest;
 use App\Http\Requests\User\UserQueryRequest;
 use App\Models\SystemSetting;
@@ -146,10 +147,8 @@ class UserController extends Controller
         return back()->with('status', 'User deleted successfully.');
     }
 
-    public function restore(int $id)
+    public function restore(User $user)
     {
-        $user = User::withTrashed()->findOrFail($id);
-
         $this->restoreAction->run($user);
 
         $this->audit('user.restored', $user, auth()->user());
@@ -157,10 +156,8 @@ class UserController extends Controller
         return back()->with('status', 'User restored successfully.');
     }
 
-    public function forceDelete(Request $request, int $id)
+    public function forceDelete(Request $request, User $user)
     {
-        $user = User::withTrashed()->findOrFail($id);
-
         $this->forceDeleteAction->run($user, $request->user());
 
         $this->audit('user.force_deleted', $user, $request->user());
@@ -181,10 +178,8 @@ class UserController extends Controller
         return back()->with('status', 'Verification email successfully sent to user.');
     }
 
-    public function requestEmailChange(Request $request, User $user)
+    public function requestEmailChange(EmailChangeRequest $request, User $user)
     {
-        $request->validate(['email' => ['required', 'email', 'max:255', 'unique:users,email']]);
-
         $this->requestEmailChangeAction->run($user, $request->validated('email'));
 
         $this->audit('user.email_change_requested', $user, $request->user(), ['pending_email' => $request->validated('email')]);
