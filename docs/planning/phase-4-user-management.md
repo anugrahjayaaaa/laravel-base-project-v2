@@ -119,7 +119,7 @@
 API `POST /api/v1/users` shares same Action + Request (single source of truth).
 
 **Gaps → Phase 6 (RBAC):**
-- API list/show/edit/update endpoints — not Phase 4 scope, needed for RBAC permission management
+- API user CRUD: only `POST /api/v1/users` (create) exists. list/show/edit/update (soft delete + permanent delete) not implemented — needed for RBAC permission management
 - Authorization middleware (`can:users.create`) on create/store — permission defined in user-management.md, not enforced yet
 
 ## Group E — Username/Email Change + System Settings + Email Verification 🔄 ON PROGRESS
