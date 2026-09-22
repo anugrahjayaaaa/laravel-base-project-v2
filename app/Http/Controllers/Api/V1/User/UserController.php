@@ -2,7 +2,11 @@
 
 namespace App\Http\Controllers\Api\V1\User;
 
+use App\Actions\User\AdminResendVerificationAction;
+use App\Actions\User\CancelEmailChangeAction;
 use App\Actions\User\CreateUserAction;
+use App\Actions\User\RequestEmailChangeAction;
+use App\Actions\User\VerifyEmailChangeAction;
 use App\Actions\User\DeleteUserAction;
 use App\Actions\User\ForceDeleteUserAction;
 use App\Actions\User\RestoreUserAction;
@@ -26,6 +30,10 @@ class UserController extends Controller
         private readonly DeleteUserAction $deleteAction,
         private readonly RestoreUserAction $restoreAction,
         private readonly ForceDeleteUserAction $forceDeleteAction,
+        private readonly RequestEmailChangeAction $requestEmailChangeAction,
+        private readonly CancelEmailChangeAction $cancelEmailChangeAction,
+        private readonly VerifyEmailChangeAction $verifyEmailChangeAction,
+        private readonly AdminResendVerificationAction $resendVerificationAction,
     ) {}
 
     public function index(UserQueryRequest $request): JsonResponse
@@ -117,5 +125,57 @@ class UserController extends Controller
             'message' => 'User restored successfully.',
             'user' => new UserResource($user->fresh()),
         ]);
+    }
+
+    public function requestEmailChange(Request $request, User $user): JsonResponse
+    {
+        $request->validate(['email' => ['required', 'email', 'max:255', 'unique:users,email']]);
+
+        $this->requestEmailChangeAction->run($user, $request->validated('email'));
+
+        $this->audit('user.email_change_requested', $user, $request->user(), ['pending_email' => $request->validated('email')]);
+
+        return $this->respond('Verification email sent to new email address.', 200);
+    }
+
+    public function cancelEmailChange(Request $request, User $user): JsonResponse
+    {
+        $this->cancelEmailChangeAction->run($user);
+
+        $this->audit('user.email_change_cancelled', $user, $request->user());
+
+        return $this->respond('Email change cancelled.', 200);
+    }
+
+    public function verifyEmailChange(Request $request, User $user): JsonResponse
+    {
+        $token = $request->route('token');
+
+        if (! $token) {
+            return $this->respond('Missing verification token.', 400);
+        }
+
+        $verified = $this->verifyEmailChangeAction->run($user, $token);
+
+        if (! $verified) {
+            return $this->respond('Invalid or expired verification link.', 400);
+        }
+
+        $this->audit('user.email_changed', $user, $request->user(), ['new_email' => $user->fresh()->email]);
+
+        return $this->respond('Email changed successfully. Please login with your new email.', 200);
+    }
+
+    public function resendVerification(Request $request, User $user): JsonResponse
+    {
+        $result = $this->resendVerificationAction->run($user, $request->ip());
+
+        if (isset($result['error'])) {
+            return $this->respond($result['error']['message'], 400);
+        }
+
+        $this->audit('user.verification_resent', $user, $request->user());
+
+        return $this->respond('Verification email successfully sent.', 200);
     }
 }

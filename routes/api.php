@@ -55,6 +55,12 @@ Route::prefix('v1')->group(function () {
         Route::resource('users', UserController::class)->names('api.v1.users')->only(['index', 'store', 'show', 'update', 'destroy']);
         Route::delete('/users/{id}/force', [UserController::class, 'forceDelete'])->name('api.v1.users.force-delete');
         Route::post('/users/{id}/restore', [UserController::class, 'restore'])->name('api.v1.users.restore');
+
+        // Email change flow
+        Route::post('/users/{user}/request-email-change', [UserController::class, 'requestEmailChange'])->name('api.v1.users.request-email-change');
+        Route::post('/users/{user}/cancel-email-change', [UserController::class, 'cancelEmailChange'])->name('api.v1.users.cancel-email-change');
+        Route::get('/email/verify-change/{user}/{token}', [UserController::class, 'verifyEmailChange'])->name('api.v1.email.verify-change')->middleware('signed');
+        Route::post('/users/{user}/resend-verification', [UserController::class, 'resendVerification'])->name('api.v1.users.resend-verification')->middleware('throttle:resend-verification');
     });
 
     // ---------------------------------------------------------------------------
