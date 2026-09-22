@@ -30,6 +30,7 @@
 Phase 4B Group B (P4-B1 through P4-B11) — User CRUD (Web UI): DONE
 Phase 4C Group C (P4-C1 through P4-C6) — Activate/Deactivate/Lock/Unlock: DONE
 Phase 4D Group D (P4-D1 through P4-D6) — Admin User Creation + Temp Password: DONE
+Phase 4E Group E (P4-E1 through P4-E7) — API User CRUD: DONE
 
 ## Next Phase
 
@@ -88,6 +89,7 @@ Phase 2 (DB-001, DB-002) — database foundation:
 Phase 4B Group B (P4-B1 through P4-B11) — User CRUD (Web UI): DONE
 Phase 4C Group C (P4-C1 through P4-C6) — Activate/Deactivate/Lock/Unlock: DONE
 Phase 4D Group D (P4-D1 through P4-D6) — Admin User Creation + Temp Password: DONE
+Phase 4E Group E (P4-E1 through P4-E7) — API User CRUD: DONE
 
 - UserIndexAction, UserQueryRequest, thin UserController, index + edit views
 - 8 routes (users.index through users.resend-verification)

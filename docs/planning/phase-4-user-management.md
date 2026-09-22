@@ -122,7 +122,7 @@ API `POST /api/v1/users` shares same Action + Request (single source of truth).
 - API user CRUD: only `POST /api/v1/users` (create) exists. list/show/edit/update (soft delete + permanent delete) not implemented — needed for RBAC permission management
 - Authorization middleware (`can:users.create`) on create/store — permission defined in user-management.md, not enforced yet
 
-## Group E — API User CRUD (Read, Update, Delete, Restore)
+## Group E — API User CRUD (Read, Update, Delete, Restore) ✅ DONE
 
 | ID | Task | Depends | Status |
 |----|------|---------|--------|
