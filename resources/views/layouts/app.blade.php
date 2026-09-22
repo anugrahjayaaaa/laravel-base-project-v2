@@ -40,6 +40,7 @@
 <script src="{{ asset('vendor/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
 <script src="{{ asset('vendor/adminlte/js/adminlte.min.js') }}"></script>
 @vite('resources/js/app.js')
+@include('layouts.partials.password-toggle')
 @stack('scripts')
 </body>
 </html>
