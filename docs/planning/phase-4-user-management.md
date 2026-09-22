@@ -157,8 +157,8 @@ Authorization via RBAC (Phase 6) — permission gates applied per endpoint.
 
 | ID | Task | Depends | Status |
 |----|------|---------|--------|
-| P4-F12 | UI: SystemSetting-gated username/email fields — show "Username can be changed" text when enabled, disable input when not | F2,F10 | PLANNED |
-| P4-F13 | UI: disable username/email input during cooldown period | F2 | PLANNED |
+| P4-F12 | UI: SystemSetting-gated username/email fields — show "Username can be changed" text when enabled, disable input when not | F2,F10 | DONE |
+| P4-F13 | UI: disable username/email input during cooldown period | F2 | DONE |
 
 ## Group G — Self-Service Profile Page (NEW)
 
