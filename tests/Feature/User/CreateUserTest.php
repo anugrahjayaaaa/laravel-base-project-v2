@@ -20,12 +20,15 @@ class CreateUserTest extends TestCase
         $this->app->make(\Spatie\Permission\PermissionRegistrar::class)->forgetCachedPermissions();
 
         $adminRole = Role::create(['name' => 'admin']);
+
         $admin = User::factory()->create([
             'name' => 'Admin',
             'email' => 'admin@example.com',
             'is_active' => true,
         ]);
+
         $admin->assignRole($adminRole);
+
         Sanctum::actingAs($admin, ['*']);
     }
 
@@ -47,9 +50,10 @@ class CreateUserTest extends TestCase
         $this->post(route('users.store'), [
             'name' => 'New User',
             'email' => 'newuser@example.com',
+            'username' => 'newuser',
             'roles' => [$role->name],
         ])->assertRedirect(route('users.index'))
-          ->assertSessionHas('status');
+            ->assertSessionHas('status');
 
         $this->assertDatabaseHas('users', [
             'email' => 'newuser@example.com',
@@ -60,6 +64,7 @@ class CreateUserTest extends TestCase
         ]);
 
         $user = User::where('email', 'newuser@example.com')->first();
+
         $this->assertTrue($user->hasRole('editor'));
     }
 
@@ -68,7 +73,8 @@ class CreateUserTest extends TestCase
         $this->post(route('users.store'), [
             'name' => '',
             'email' => 'notanemail',
-        ])->assertSessionHasErrors(['name', 'email']);
+            'username' => '',
+        ])->assertSessionHasErrors(['name', 'email', 'username']);
     }
 
     public function test_create_user_validates_unique_email(): void
@@ -78,6 +84,7 @@ class CreateUserTest extends TestCase
         $this->post(route('users.store'), [
             'name' => 'New User',
             'email' => 'taken@example.com',
+            'username' => 'newuser',
         ])->assertSessionHasErrors('email');
     }
 
@@ -86,6 +93,7 @@ class CreateUserTest extends TestCase
         $this->post(route('users.store'), [
             'name' => 'New User',
             'email' => 'new@example.com',
+            'username' => 'newuser',
             'roles' => ['nonexistent_role'],
         ])->assertSessionHasErrors('roles.0');
     }
@@ -99,9 +107,10 @@ class CreateUserTest extends TestCase
         $this->postJson(route('api.v1.users.store'), [
             'name' => 'API User',
             'email' => 'apiuser@example.com',
+            'username' => 'apiuser',
             'roles' => [$role->name],
         ])->assertStatus(201)
-          ->assertJsonPath('data.message', 'User created successfully.');
+            ->assertJsonPath('data.message', 'User created successfully.');
 
         $this->assertDatabaseHas('users', [
             'email' => 'apiuser@example.com',
@@ -116,6 +125,7 @@ class CreateUserTest extends TestCase
         $this->postJson(route('api.v1.users.store'), [
             'name' => 'API User',
             'email' => 'taken@example.com',
+            'username' => 'apiuser',
         ])->assertStatus(422);
     }
 
@@ -128,6 +138,7 @@ class CreateUserTest extends TestCase
         $this->post(route('users.store'), [
             'name' => 'Notified User',
             'email' => 'notified@example.com',
+            'username' => 'notifieduser',
         ]);
 
         Notification::assertSentTo(
@@ -141,9 +152,11 @@ class CreateUserTest extends TestCase
         $this->post(route('users.store'), [
             'name' => 'PwTest',
             'email' => 'pwt@example.com',
+            'username' => 'pwttest',
         ]);
 
         $user = User::where('email', 'pwt@example.com')->first();
+
         $this->assertNotNull($user);
         // Password is hashed, but we verify the action generates one
         // by checking must_change_password is true (set because temp pw sent)
