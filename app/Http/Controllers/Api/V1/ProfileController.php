@@ -43,6 +43,7 @@ class ProfileController extends Controller
         $this->audit('user.profile_updated', $user, $user);
 
         if ($request->filled('email') && $data['email'] !== $user->getOriginal('email')) {
+            $this->audit('user.email_change_requested', $user, $user, ['pending_email' => $data['email']]);
             return $this->respond('Verification email sent to new email address.', 200, [
                 'message' => 'Verification email sent to new email address.',
                 'user' => new UserResource($user->fresh()),
