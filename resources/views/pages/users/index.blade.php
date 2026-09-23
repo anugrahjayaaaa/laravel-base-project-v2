@@ -192,12 +192,30 @@
                         <i class="fas fa-times"></i> Clear
                     </a>
                 @endif
+                <div id="bulkBar" class="d-none align-items-center gap-2 flex-wrap ms-auto" data-bulk-route="{{ route('users.bulk-action') }}">
+                    <span class="text-muted fs-7">Selected: <strong id="bulkCount">0</strong></span>
+                    <select id="bulkAction" class="form-select form-select-sm d-inline-block" style="width:auto">
+                        <option value="">-- Action --</option>
+                        <option value="delete">Move to Trash</option>
+                        <option value="force_delete">Permanent Delete</option>
+                        <option value="restore">Restore</option>
+                        <option value="lock">Lock</option>
+                        <option value="unlock">Unlock</option>
+                        <option value="activate">Activate</option>
+                        <option value="deactivate">Deactivate</option>
+                    </select>
+                    <button type="button" class="btn btn-sm btn-primary" id="bulkApplyBtn">Apply</button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" id="bulkClearBtn">Clear</button>
+                </div>
             </form>
 
             {{-- Table --}}
             <table class="table table-hover mb-0">
                 <thead>
                     <tr>
+                        <th style="width: 36px" class="align-middle">
+                            <input type="checkbox" id="bulkSelectAll" aria-label="Select all users">
+                        </th>
                         <th style="width: 50px" class="align-middle">#</th>
                         <th style="cursor:pointer" class="align-middle"
                             onclick="window.location.href='{{ $sortUrl('name') }}'">
@@ -219,6 +237,9 @@
                     @forelse ($users as $user)
                         <tr
                             @if ($user->trashed()) style="background-color: color-mix(in srgb, var(--lbp-danger, #ef4444) 8%, transparent);" @endif>
+                            <td>
+                                <input type="checkbox" class="bulk-check" value="{{ $user->id }}" data-bs-toggle="tooltip" title="Select for bulk action">
+                            </td>
                             <td>{{ ($users->currentPage() - 1) * $users->perPage() + $loop->iteration }}</td>
                             <td>
                                 {{ $user->name }}

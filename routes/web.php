@@ -74,6 +74,7 @@ Route::middleware(['auth', 'verified', 'account.state'])->group(function () {
     Route::post('/users/{user}/cancel-email-change', [UserController::class, 'cancelEmailChange'])->name('users.cancel-email-change');
     Route::get('/email/verify-change/{user}', [UserController::class, 'verifyEmailChange'])
         ->name('email.verify-change')->middleware('signed');
+    Route::post('/users/bulk-action', [UserController::class, 'bulkAction'])->name('users.bulk-action');
 
     // User state toggles (Activate / Deactivate / Lock / Unlock)
     Route::middleware(['throttle:user-state-actions'])->group(function () {

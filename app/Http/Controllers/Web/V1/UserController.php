@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Web\V1;
 
 use App\Actions\User\AdminResendVerificationAction;
+use App\Actions\User\BulkUserAction;
 use App\Actions\User\CancelEmailChangeAction;
 use App\Actions\User\CreateUserAction;
 use App\Actions\User\DeleteUserAction;
@@ -15,6 +16,7 @@ use App\Actions\User\UserIndexAction;
 use App\Actions\User\VerifyEmailChangeAction;
 use App\Enums\UserStatusEnum;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\User\BulkUserRequest;
 use App\Http\Requests\User\CreateUserRequest;
 use App\Http\Requests\User\EmailChangeRequest;
 use App\Http\Requests\User\UpdateUserRequest;
@@ -22,6 +24,7 @@ use App\Http\Requests\User\UserQueryRequest;
 use App\Models\SystemSetting;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Http\RedirectResponse;
 use Spatie\Permission\Models\Role;
 
 class UserController extends Controller
@@ -33,6 +36,7 @@ class UserController extends Controller
         private readonly DeleteUserAction $deleteAction,
         private readonly RestoreUserAction $restoreAction,
         private readonly ForceDeleteUserAction $forceDeleteAction,
+        private readonly BulkUserAction $bulkAction,
         private readonly AdminResendVerificationAction $resendVerificationAction,
         private readonly RequestEmailChangeAction $requestEmailChangeAction,
         private readonly CancelEmailChangeAction $cancelEmailChangeAction,
@@ -136,6 +140,17 @@ class UserController extends Controller
         $this->audit('user.updated', $user, $request->user());
 
         return back()->with('status', 'User updated successfully.');
+    }
+
+    public function bulkAction(BulkUserRequest $request): RedirectResponse
+    {
+        $result = $this->bulkAction->run(
+            action: $request->validated('action'),
+            userIds: $request->validated('user_ids'),
+            causer: $request->user(),
+        );
+
+        return back()->with('status', "{$result['label']} ({$result['count']} users).");
     }
 
     public function destroy(Request $request, User $user)

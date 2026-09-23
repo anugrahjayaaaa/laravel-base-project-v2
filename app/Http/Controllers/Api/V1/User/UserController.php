@@ -3,16 +3,18 @@
 namespace App\Http\Controllers\Api\V1\User;
 
 use App\Actions\User\AdminResendVerificationAction;
+use App\Actions\User\BulkUserAction;
 use App\Actions\User\CancelEmailChangeAction;
 use App\Actions\User\CreateUserAction;
-use App\Actions\User\RequestEmailChangeAction;
-use App\Actions\User\VerifyEmailChangeAction;
 use App\Actions\User\DeleteUserAction;
 use App\Actions\User\ForceDeleteUserAction;
+use App\Actions\User\RequestEmailChangeAction;
 use App\Actions\User\RestoreUserAction;
 use App\Actions\User\UpdateUserAction;
 use App\Actions\User\UserIndexAction;
+use App\Actions\User\VerifyEmailChangeAction;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\User\BulkUserRequest;
 use App\Http\Requests\User\CreateUserRequest;
 use App\Http\Requests\User\EmailChangeRequest;
 use App\Http\Requests\User\UpdateUserRequest;
@@ -31,6 +33,7 @@ class UserController extends Controller
         private readonly DeleteUserAction $deleteAction,
         private readonly RestoreUserAction $restoreAction,
         private readonly ForceDeleteUserAction $forceDeleteAction,
+        private readonly BulkUserAction $bulkAction,
         private readonly RequestEmailChangeAction $requestEmailChangeAction,
         private readonly CancelEmailChangeAction $cancelEmailChangeAction,
         private readonly VerifyEmailChangeAction $verifyEmailChangeAction,
@@ -92,6 +95,17 @@ class UserController extends Controller
             'message' => 'User updated successfully.',
             'user' => new UserResource($user->fresh()),
         ]);
+    }
+
+    public function bulkAction(BulkUserRequest $request): JsonResponse
+    {
+        $result = $this->bulkAction->run(
+            action: $request->validated('action'),
+            userIds: $request->validated('user_ids'),
+            causer: $request->user(),
+        );
+
+        return $this->respond("{$result['label']} ({$result['count']} users).", 200);
     }
 
     public function destroy(Request $request, User $user): JsonResponse
