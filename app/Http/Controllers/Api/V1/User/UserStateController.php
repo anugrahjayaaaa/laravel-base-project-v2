@@ -24,7 +24,7 @@ class UserStateController extends Controller
     {
         $this->activateAction->run($user);
 
-        $this->audit('user.activated', $user, $request->user(), ['target_id' => $user->id, 'target_email' => $user->email]);
+        $user->audit('user.activated', $request->user(), ['target_id' => $user->id, 'target_email' => $user->email]);
 
         return $this->success('User activated successfully.');
     }
@@ -33,7 +33,7 @@ class UserStateController extends Controller
     {
         $this->deactivateAction->run($user, $request->user());
 
-        $this->audit('user.deactivated', $user, $request->user(), ['target_id' => $user->id, 'target_email' => $user->email]);
+        $user->audit('user.deactivated', $request->user(), ['target_id' => $user->id, 'target_email' => $user->email]);
 
         return $this->success('User deactivated successfully.');
     }
@@ -42,7 +42,7 @@ class UserStateController extends Controller
     {
         $this->lockAction->run($user);
 
-        $this->audit('user.locked', $user, $request->user(), ['target_id' => $user->id, 'target_email' => $user->email]);
+        $user->audit('user.locked', $request->user(), ['target_id' => $user->id, 'target_email' => $user->email]);
 
         return $this->success('User locked successfully.');
     }
@@ -51,7 +51,7 @@ class UserStateController extends Controller
     {
         $this->unlockAction->run($user, $request->ip(), $request);
 
-        $this->audit('user.unlocked', $user, $request->user(), ['target_id' => $user->id, 'target_email' => $user->email]);
+        $user->audit('user.unlocked', $request->user(), ['target_id' => $user->id, 'target_email' => $user->email]);
 
         return $this->success('User unlocked successfully.');
     }

@@ -69,7 +69,7 @@ class UserController extends Controller
     {
         $user = $this->createAction->run($request->validated());
 
-        $this->audit('user.created', $user, $request->user());
+        $user->audit('user.created', $request->user());
 
         return response()->json([
             'data' => ['message' => 'User created successfully.'],
@@ -91,7 +91,7 @@ class UserController extends Controller
     {
         $this->updateAction->run($user, $request->validated());
 
-        $this->audit('user.updated', $user, $request->user());
+        $user->audit('user.updated', $request->user());
 
         return $this->respond('User updated successfully.', 200, [
             'message' => 'User updated successfully.',
@@ -115,7 +115,7 @@ class UserController extends Controller
     {
         $this->deleteAction->run($user, $request->user());
 
-        $this->audit('user.deleted', $user, $request->user());
+        $user->audit('user.deleted', $request->user());
 
         return $this->respond('User deleted successfully.', 200);
     }
@@ -124,7 +124,7 @@ class UserController extends Controller
     {
         $this->forceDeleteAction->run($user, $request->user());
 
-        $this->audit('user.force_deleted', $user, $request->user());
+        $user->audit('user.force_deleted', $request->user());
 
         return $this->respond('User permanently deleted.', 200);
     }
@@ -133,7 +133,7 @@ class UserController extends Controller
     {
         $this->restoreAction->run($user);
 
-        $this->audit('user.restored', $user, $request->user());
+        $user->audit('user.restored', $request->user());
 
         return $this->respond('User restored successfully.', 200, [
             'message' => 'User restored successfully.',
@@ -145,7 +145,7 @@ class UserController extends Controller
     {
         $this->requestEmailChangeAction->run($user, $request->validated('email'));
 
-        $this->audit('user.email_change_requested', $user, $request->user(), ['pending_email' => $request->validated('email')]);
+        $user->audit('user.email_change_requested', $request->user(), ['pending_email' => $request->validated('email')]);
 
         return $this->respond('Verification email sent to new email address.', 200);
     }
@@ -154,7 +154,7 @@ class UserController extends Controller
     {
         $this->cancelEmailChangeAction->run($user);
 
-        $this->audit('user.email_change_cancelled', $user, $request->user());
+        $user->audit('user.email_change_cancelled', $request->user());
 
         return $this->respond('Email change cancelled.', 200);
     }
@@ -173,7 +173,7 @@ class UserController extends Controller
             return $this->respond('Invalid or expired verification link.', 400);
         }
 
-        $this->audit('user.email_changed', $user, $request->user(), ['new_email' => $user->fresh()->email]);
+        $user->audit('user.email_changed', $request->user(), ['new_email' => $user->fresh()->email]);
 
         return $this->respond('Email changed successfully. Please login with your new email.', 200);
     }
@@ -186,7 +186,7 @@ class UserController extends Controller
             return $this->respond($result['error']['message'], 400);
         }
 
-        $this->audit('user.verification_resent', $user, $request->user());
+        $user->audit('user.verification_resent', $request->user());
 
         return $this->respond('Verification email successfully sent.', 200);
     }
