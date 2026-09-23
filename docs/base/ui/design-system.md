@@ -102,6 +102,13 @@ Shared table conventions:
 - Pagination follows shared convention
 - Search/filter controls follow shared UI convention
 
+### Table Actions Column
+
+Action buttons in tables:
+- Wrapper: `d-flex align-items-center justify-content-end gap-1 flex-wrap flex-md-nowrap`
+- Button size: `btn-sm` or `px-2 py-1` for compact fit
+- Wrap to vertical stack on mobile (`flex-wrap`), horizontal on desktop (`flex-md-nowrap`)
+
 ### Badges
 
 | Variant | Token |
@@ -159,11 +166,21 @@ See [UI Architecture](./ui-architecture.md) § Confirmation Modal.
 
 ### Pagination
 
-| Element | Token |
-|---------|-------|
-| Active page | `primary` |
-| Hover page | `surface-alt` |
-| Border | `border` |
+|| Element | Token |
+||---------|-------|
+|| Active page | `primary` |
+|| Hover page | `surface-alt` |
+|| Border | `border` |
+|| Wrapper | `card-footer bg-body-tertiary border-top py-3` |
+
+### Navigation Tabs (Status Filter)
+
+Shared nav-pills conventions for index page status filters:
+- Container: `nav nav-pills flex-nowrap overflow-auto` — horizontal scroll on mobile
+- Link passive: `nav-link text-secondary fw-medium px-3 py-2 d-flex align-items-center gap-2 border-0 bg-transparent`
+- Link active: `nav-link active fw-semibold text-primary px-3 py-2 d-flex align-items-center gap-2 border-0 border-bottom border-primary border-2 bg-transparent`
+- Counter badge passive: `badge rounded-pill bg-secondary-subtle text-secondary`
+- Counter badge active: `badge rounded-pill bg-primary text-white`
 
 ## Consistency Rules
 
