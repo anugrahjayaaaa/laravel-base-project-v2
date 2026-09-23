@@ -223,7 +223,9 @@ class AuthController extends Controller
      */
     public function showVerifyEmail()
     {
-        return response()->view('pages.auth.verify-email', ['title' => 'Verify Email']);
+        $mode = SystemSetting::getString('auth_verification_mode', 'public');
+
+        return response()->view('pages.auth.verify-email', ['title' => 'Verify Email', 'mode' => $mode]);
     }
 
     /**

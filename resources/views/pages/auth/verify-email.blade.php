@@ -26,8 +26,6 @@
                 </div>
             @endif
 
-            @php($mode = \App\Models\SystemSetting::getString('auth_verification_mode', 'public'))
-
             @if ($mode === 'admin')
                 <div class="alert bg-info-subtle mb-3" role="alert">
                     <div class="d-flex align-items-center gap-2 justify-content-center">
