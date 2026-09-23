@@ -238,7 +238,7 @@
                         <tr
                             @if ($user->trashed()) style="background-color: color-mix(in srgb, var(--lbp-danger, #ef4444) 8%, transparent);" @endif>
                             <td>
-                                <input type="checkbox" class="bulk-check" value="{{ $user->id }}" data-bs-toggle="tooltip" title="Select for bulk action">
+                                <input type="checkbox" class="bulk-check" value="{{ $user->id }}" data-status="{{ $user->trashed() ? 'trashed' : $user->getStatus()->value }}" data-bs-toggle="tooltip" title="Select for bulk action">
                             </td>
                             <td>{{ ($users->currentPage() - 1) * $users->perPage() + $loop->iteration }}</td>
                             <td>
@@ -264,7 +264,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="6" class="text-center text-muted py-4">
+                            <td colspan="7" class="text-center text-muted py-4">
                                 <i class="fas fa-inbox fa-2x text-muted mb-2 d-block"></i>
                                 No users found.
                             </td>
