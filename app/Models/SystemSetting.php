@@ -27,6 +27,11 @@ class SystemSetting extends Model
         return $val === null ? $default : $val;
     }
 
+    public static function getAll(): array
+    {
+        return static::query()->pluck('value', 'key')->all();
+    }
+
     public static function set(string $key, string $value): self
     {
         return static::updateOrCreate(['key' => $key], ['value' => $value]);
