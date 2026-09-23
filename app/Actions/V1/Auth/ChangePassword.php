@@ -2,6 +2,7 @@
 
 namespace App\Actions\V1\Auth;
 
+use App\Models\SystemSetting;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -41,7 +42,7 @@ class ChangePassword
 
         // Password history check.
         if ($this->recentlyUsed($user, $newPassword)) {
-            $count = (int) config('rate_limits.password_history.count', 5);
+            $count = SystemSetting::getInt('auth_password_history_count', 5);
             throw ValidationException::withMessages([
                 'password' => ["You cannot reuse one of your last {$count} passwords."],
             ]);
@@ -68,7 +69,7 @@ class ChangePassword
      */
     protected function calculateExpiration(): ?\Illuminate\Support\Carbon
     {
-        $days = (int) config('rate_limits.password_expiration_days', 90);
+        $days = SystemSetting::getInt('auth_password_expiration_days', 90);
 
         if ($days <= 0) {
             return null;
@@ -82,7 +83,7 @@ class ChangePassword
      */
     protected function recentlyUsed(User $user, string $newPassword): bool
     {
-        $count = (int) config('rate_limits.password_history.count', 5);
+        $count = SystemSetting::getInt('auth_password_history_count', 5);
 
         $history = DB::table('password_histories')
             ->where('user_id', $user->id)

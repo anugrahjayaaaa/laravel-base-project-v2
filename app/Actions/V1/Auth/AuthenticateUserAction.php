@@ -2,6 +2,7 @@
 
 namespace App\Actions\V1\Auth;
 
+use App\Models\SystemSetting;
 use App\Models\User;
 use App\Auth\LoginThrottle;
 use Illuminate\Support\Facades\Hash;
@@ -83,7 +84,7 @@ class AuthenticateUserAction
 
     protected function checkEmailVerification(User $user): ?array
     {
-        if (config('auth.verification.mode', 'public') === 'disabled') {
+        if (SystemSetting::getString('auth_verification_mode', 'public') === 'disabled') {
             return null;
         }
 

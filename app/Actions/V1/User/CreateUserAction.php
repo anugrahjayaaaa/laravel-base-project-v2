@@ -2,6 +2,7 @@
 
 namespace App\Actions\V1\User;
 
+use App\Models\SystemSetting;
 use App\Models\User;
 use App\Notifications\UserCreatedNotification;
 use Illuminate\Support\Facades\DB;
@@ -39,7 +40,7 @@ class CreateUserAction
 
             $verificationUrl = URL::temporarySignedRoute(
                 'verification.verify',
-                now()->addMinutes(config('auth.verification.expire', 60)),
+                now()->addMinutes(SystemSetting::getInt('auth_verification_expire_minutes', 60)),
                 ['id' => $user->getKey(), 'hash' => sha1($user->getEmailForVerification())]
             );
             

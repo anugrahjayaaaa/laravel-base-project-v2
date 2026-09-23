@@ -2,6 +2,7 @@
 
 namespace App\Actions\V1\User;
 
+use App\Models\SystemSetting;
 use App\Models\User;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
@@ -15,7 +16,7 @@ class AdminResendVerificationAction
         }
 
         $key = $this->key($user->email, $ip);
-        $maxAttempts = (int) config('rate_limits.email_verification.rate_limit_per_hour', 5);
+        $maxAttempts = SystemSetting::getInt('auth_email_verification_rate_limit', 5);
 
         if (RateLimiter::tooManyAttempts($key, $maxAttempts)) {
             $seconds = RateLimiter::availableIn($key);

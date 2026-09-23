@@ -2,6 +2,7 @@
 
 namespace App\Actions\V1\Auth;
 
+use App\Models\SystemSetting;
 use App\Models\User;
 use App\Auth\LoginThrottle;
 use Illuminate\Http\Request;
@@ -28,12 +29,11 @@ class ResetPasswordAction
             $request->only('email', 'password', 'password_confirmation', 'token'),
             
             function ($user, string $password) {
+                $days = SystemSetting::getInt('auth_password_expiration_days', 90);
                 $user->forceFill([
                     'password' => Hash::make($password),
                     'must_change_password' => false,
-                    'password_expires_at' => now()->addDays(
-                        (int) config('rate_limits.password_expiration_days', 90)
-                    ),
+                    'password_expires_at' => now()->addDays($days),
                     'remember_token' => Str::random(60),
                 ])->save();
 
