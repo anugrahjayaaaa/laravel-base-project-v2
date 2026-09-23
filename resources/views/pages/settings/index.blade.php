@@ -30,7 +30,7 @@
 
         <div class="row g-4">
             {{-- Main Content Area --}}
-            <div class="col-lg-8">
+            <div class="col-lg-8 col-12">
 
                 {{-- Card 1: Login Security & Progressive Lockout --}}
                 <div class="card border-0 shadow-sm mb-4" id="section-login">
@@ -371,7 +371,7 @@
                     <div class="card-body p-4">
                         <p class="text-muted fs-6 mb-0">Review your changes before saving. All settings are applied immediately upon saving.</p>
                     </div>
-                    <div class="card-footer bg-body-tertiary border-top py-3 d-flex justify-content-end gap-2">
+                    <div class="card-footer bg-body-tertiary border-top py-3 d-flex justify-content-end align-items-center gap-2">
                         <a href="{{ route('dashboard') }}" class="btn btn-outline-secondary d-inline-flex align-items-center gap-2">
                             <i class="bi bi-x-circle"></i> Cancel
                         </a>

@@ -5,7 +5,7 @@
             <div class="modal-content">
                 <div class="modal-header" id="confirmModalHeader">
                     <div class="d-flex align-items-center gap-2">
-                        <i class="fs-1" id="confirmModalIcon"></i>
+                        <i class="fs-3" id="confirmModalIcon"></i>
                         <h5 class="modal-title" id="confirmModalTitle">Confirm Action</h5>
                     </div>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
@@ -21,9 +21,9 @@
                     @php($action = $action ?? 'Delete')
                     @php($variant = $variant ?? 'danger')
                     @php($btnClass = match($variant) {
-                        'warning' => 'bg-warning-subtle text-warning',
-                        'info' => 'bg-info-subtle text-info',
-                        default => 'bg-danger-subtle text-danger',
+                        'warning' => 'btn btn-warning',
+                        'info' => 'btn btn-info',
+                        default => 'btn btn-danger',
                     })
                     @php($confirmBtnLabel = $confirmLabel ?? $action)
                     <button type="submit" class="btn {{ $btnClass }}" id="confirmModalSubmit">
