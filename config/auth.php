@@ -96,19 +96,6 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Email Verification
-    |--------------------------------------------------------------------------
-    |
-    | The expiration time in minutes for email verification links.
-    */
-
-    'verification' => [
-        'expire' => env('AUTH_EMAIL_VERIFICATION_EXPIRE_MINUTES', 60),
-        'mode' => env('AUTH_EMAIL_VERIFICATION_MODE', 'public'), // public|admin|disabled
-    ],
-
-    /*
-    |--------------------------------------------------------------------------
     | Password Confirmation Timeout
     |--------------------------------------------------------------------------
     |
