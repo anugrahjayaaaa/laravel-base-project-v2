@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Web\V1\Auth;
 
 use App\Actions\Auth\AuthenticateUserAction;
+use App\Actions\Auth\ListUserSessionsAction;
 use App\Actions\Auth\LogoutAllDevicesAction;
 use App\Actions\Auth\ResendVerificationAction;
 use App\Actions\Auth\SendPasswordResetLinkAction;
@@ -21,6 +22,10 @@ use Illuminate\Support\Facades\Password;
 
 class WebAuthController extends Controller
 {
+    public function __construct(
+        private readonly ListUserSessionsAction $listSessionsAction,
+    ) {}
+
     // === VIEW: Login ===
 
     public function showLogin()
@@ -186,6 +191,9 @@ class WebAuthController extends Controller
                 ->with('error', 'Invalid verification link.');
         }
 
+        // New user: first verification → login. Existing user: already verified → notice page.
+        $isNewUser = ! $user->hasVerifiedEmail();
+
         $result = $action->run($user);
 
         if (isset($result['error'])) {
@@ -194,6 +202,11 @@ class WebAuthController extends Controller
         }
 
         $this->audit('auth.email_verified', $result['user'], $result['user']);
+
+        if ($isNewUser) {
+            return redirect()->route('login')
+                ->with('success', 'Email verified. Please log in.');
+        }
 
         return redirect()->route('verification.notice')
             ->with('success', 'Email verified successfully.');
@@ -228,7 +241,7 @@ class WebAuthController extends Controller
 
     public function showSessions(Request $request)
     {
-        $tokens = $request->user()->tokens()->orderByDesc('last_used_at')->get();
+        $tokens = $this->listSessionsAction->run($request->user());
 
         return response()->view('pages.sessions', [
             'title' => 'Active Sessions',

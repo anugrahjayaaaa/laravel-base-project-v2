@@ -18,20 +18,20 @@ Replaceable UI
 
 ## Separation of Responsibilities
 
-| Laravel Abstraction | Responsibility |
-|---------------------|---------------|
-| Form Request | Request validation and request-level authorization |
-| Controller | HTTP orchestration |
-| Action/Service | Application/business logic |
-| Model | Persistence/model behavior |
-| Policy | Authorization decisions |
-| Resource | API serialization/presentation |
-| Middleware | Cross-cutting request/application boundaries |
-| Event | Domain/application event communication |
-| Listener | Reaction to events |
-| Job | Asynchronous/background processing |
-| Notification | User notification abstraction |
-| Observer | Only where model lifecycle behavior is genuinely appropriate; never as primary business/audit source of truth |
+| Laravel Abstraction | Responsibility | Convention |
+|---------------------|---------------|------------|
+| Form Request | Request validation and request-level authorization | Controller MUST call `$request->validated()` — never access raw input |
+| Controller | HTTP orchestration | Thin — delegate to Actions |
+| Action/Service | Application/business logic | Self-audits for complex/shared logic |
+| Model | Persistence/model behavior | — |
+| Policy | Authorization decisions | — |
+| Resource | API serialization/presentation | — |
+| Middleware | Cross-cutting request/application boundaries | — |
+| Event | Domain/application event communication | — |
+| Listener | Reaction to events | — |
+| Job | Asynchronous/background processing | — |
+| Notification | User notification abstraction | — |
+| Observer | Only where model lifecycle behavior is genuinely appropriate; never as primary business/audit source of truth | — |
 
 ## Single Source of Truth
 

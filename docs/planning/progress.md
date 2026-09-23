@@ -10,7 +10,7 @@
 ||| 1 | Laravel foundation & environment | DONE |
 || 2 | Database foundation | DONE |
 || 3 | Authentication foundation | IN PROGRESS |
-| 4 | User lifecycle & user management | PLANNED |
+|| 4 | User lifecycle & user management | DONE |
 | 5 | Password/security lifecycle | PLANNED |
 | 6 | RBAC & authorization | PLANNED |
 | 7 | Feature availability / feature flags | PLANNED |
@@ -27,11 +27,17 @@
 
 ## Current Task
 
-DB-001 — Create base migration scaffold (Phase 2, DONE — migrations seeded)
+Phase 4B Group B (P4-B1 through P4-B11) — User CRUD (Web UI): DONE
+Phase 4C Group C (P4-C1 through P4-C6) — Activate/Deactivate/Lock/Unlock: DONE
+Phase 4D Group D (P4-D1 through P4-D6) — Admin User Creation + Temp Password: DONE
+Phase 4E Group E (P4-E1 through P4-E7) — API User CRUD: DONE
+Phase 4F Group F (P4-F1 through P4-F13) — Username/Email Change + System Settings: DONE
+Phase 4G Group G (P4-G1) — Self-Service Profile Page: DONE
+Phase 4H Group H (P4-H1 through P4-H4) — Bulk Actions + Audit Close-out: DONE
 
 ## Next Phase
 
-Phase 3 — Authentication foundation (AUTH-001: Define authentication requirements, PLANNED)
+Phase 5 — Password/security lifecycle (PLANNED)
 
 ## Completed Tasks
 
@@ -82,6 +88,21 @@ Phase 2 (DB-001, DB-002) — database foundation:
 
 - Base migration scaffold: Laravel defaults + Spatie permission tables (DB-001)
 - RoleSeeder created + wired into DatabaseSeeder (DB-002)
+
+Phase 4B Group B (P4-B1 through P4-B11) — User CRUD (Web UI): DONE
+Phase 4C Group C (P4-C1 through P4-C6) — Activate/Deactivate/Lock/Unlock: DONE
+Phase 4D Group D (P4-D1 through P4-D6) — Admin User Creation + Temp Password: DONE
+Phase 4E Group E (P4-E1 through P4-E7) — API User CRUD: DONE
+Phase 4F Group F (P4-F1 through P4-F13) — Username/Email Change + System Settings: DONE
+Phase 4G Group G (P4-G1) — Self-Service Profile Page: DONE
+Phase 4H Group H (P4-H1 through P4-H4) — Bulk Actions + Audit Close-out: DONE
+
+- UserIndexAction, UserQueryRequest, thin UserController, index + edit views
+- 8 routes (users.index through users.resend-verification)
+- DeleteUserAction, RestoreUserAction, ForceDeleteUserAction
+- ShowUserAction + edit form, AdminResendVerificationAction
+- Tests: UserCrudWebTest + UserExtendedCrudTest + toggle status
+|| Phase 4C Group C (P4-C1 through P4-C6) — Activate/Deactivate/Lock/Unlock: DONE ✅ (approved, closed) |
 
 Architecture gap-closing pass — added:
 
@@ -177,12 +198,12 @@ Not yet started (Phase 15).
   (FOUND-001 through FOUND-010, CACHE-001, QUEUE-001, CORR-001,
   UI-001 through UI-006, SOFT-001, TABLE-001, FLAG-001 with Laravel Pennant)
 2. ~~Begin Phase 2: Database foundation~~ — Phase 2 complete (DB-001 base migrations, DB-002 RoleSeeder wired)
-3. Begin Phase 3: Authentication foundation — IN PROGRESS
+5. ~~Begin Phase 4C Group C: Activate/Deactivate + Lock/Unlock~~ — Group C complete (P4-C1 through P4-C6).
 
 ## Summary
 
-All documentation and planning system complete. Phase 1 implementation
+All documentation and planning complete. Phase 1 implementation
 complete (FOUND-001 through FOUND-010, CACHE-001, QUEUE-001, CORR-001,
 UI-001 through UI-006, SOFT-001, TABLE-001, FLAG-001 with Laravel Pennant).
-Phase 1 merged to main (commit f54d0c9).
-Phase 2 complete (DB-001 + DB-002). Next step: Phase 3 — authentication foundation (AUTH-001).
+Phase 2 complete (DB-001 + DB-002). Phase 4 complete (Groups A through H,
+P4-H1 through P4-H4 all verified DONE). Next: Phase 5 — Password/security lifecycle.

@@ -8,7 +8,7 @@
 | 1 | Laravel foundation & environment | P0 | DONE |
 || 2 | Database foundation | P0 | DONE |
 || 3 | Authentication foundation | P0 | IN PROGRESS |
-| 4 | User lifecycle & user management | P1 | PLANNED |
+|| 4 | User lifecycle & user management | DONE |
 | 5 | Password/security lifecycle | P0 | PLANNED |
 | 6 | RBAC & authorization | P0 | PLANNED |
 | 7 | Feature availability / feature flags | P1 | PLANNED |

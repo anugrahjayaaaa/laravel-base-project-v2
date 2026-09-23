@@ -13,34 +13,26 @@
             </div>
 
             @if (session('status'))
-                <div class="alert bg-success-subtle mb-3" role="alert">
-                    <div class="d-flex align-items-center gap-2">
-                        <i class="fas fa-circle-check text-success"></i>
-                        <span class="text-success flex-grow-1">{{ session('status') }}</span>
-                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                    </div>
+                <div class="alert alert-success alert-dismissible fade show mb-0" role="alert">
+                    <i class="fas fa-circle-check me-1"></i>
+                    {{ session('status') }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                 </div>
             @endif
 
             @if (session('rate_limit_seconds'))
-                <div class="alert bg-danger-subtle mb-3" role="alert">
-                    <div class="d-flex align-items-center gap-2">
-                        <i class="fas fa-circle-exclamation text-danger"></i>
-                        <span class="text-danger flex-grow-1">
-                            Too many attempts. Please try again in <span class="rate-limit-seconds" data-seconds="{{ session('rate_limit_seconds') }}">{{ session('rate_limit_seconds') }}</span> seconds.
-                        </span>
-                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                    </div>
+                <div class="alert alert-danger alert-dismissible fade show mb-0" role="alert">
+                    <i class="fas fa-circle-exclamation me-1"></i>
+                    Too many attempts. Please try again in <span class="rate-limit-seconds" data-seconds="{{ session('rate_limit_seconds') }}">{{ session('rate_limit_seconds') }}</span> seconds.
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                 </div>
             @endif
 
             @if (session('error'))
-                <div class="alert bg-danger-subtle mb-3" role="alert">
-                    <div class="d-flex align-items-center gap-2">
-                        <i class="fas fa-circle-exclamation text-danger"></i>
-                        <span class="text-danger flex-grow-1">{{ session('error') }}</span>
-                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                    </div>
+                <div class="alert alert-danger alert-dismissible fade show mb-0" role="alert">
+                    <i class="fas fa-circle-exclamation me-1"></i>
+                    {{ session('error') }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                 </div>
             @endif
 
@@ -58,8 +50,7 @@
                     <div class="position-relative">
                         <input type="password" class="form-control pe-5" id="password" name="password" required>
                         <button type="button" class="btn btn-sm position-absolute top-50 end-0 translate-middle-y me-2 text-muted"
-                                onclick="var e=document.getElementById('password');e.type=e.type==='password'?'text':'password';this.querySelector('i').classList.toggle('fa-eye');this.querySelector('i').classList.toggle('fa-eye-slash')"
-                                aria-label="Toggle password visibility" tabindex="-1">
+                                data-password-toggle="password" aria-label="Toggle password visibility" tabindex="-1">
                             <i class="fas fa-eye"></i>
                         </button>
                     </div>
@@ -73,8 +64,7 @@
                     <div class="position-relative">
                         <input type="password" class="form-control pe-5" id="password_confirmation" name="password_confirmation" required>
                         <button type="button" class="btn btn-sm position-absolute top-50 end-0 translate-middle-y me-2 text-muted"
-                                onclick="var e=document.getElementById('password_confirmation');e.type=e.type==='password'?'text':'password';this.querySelector('i').classList.toggle('fa-eye');this.querySelector('i').classList.toggle('fa-eye-slash')"
-                                aria-label="Toggle password visibility" tabindex="-1">
+                                data-password-toggle="password_confirmation" aria-label="Toggle password visibility" tabindex="-1">
                             <i class="fas fa-eye"></i>
                         </button>
                     </div>

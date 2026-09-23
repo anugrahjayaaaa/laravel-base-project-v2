@@ -36,11 +36,11 @@
                     <table class="table table-hover mb-0 sessions-table">
                         <thead>
                             <tr>
-                                <th>Device</th>
-                                <th>IP Address</th>
-                                <th>Last Activity</th>
-                                <th>Created</th>
-                                <th>Status</th>
+                                <th class="align-middle">Device</th>
+                                <th class="align-middle">IP Address</th>
+                                <th class="align-middle">Last Activity</th>
+                                <th class="align-middle">Created</th>
+                                <th class="align-middle">Status</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -72,7 +72,8 @@
 
                             @if ($tokens->isEmpty())
                                 <tr>
-                                    <td colspan="5" class="text-center text-muted py-3">
+                                    <td colspan="5" class="text-center text-muted py-4">
+                                        <i class="fas fa-inbox fa-2x text-muted mb-2 d-block"></i>
                                         No other active sessions.
                                     </td>
                                 </tr>

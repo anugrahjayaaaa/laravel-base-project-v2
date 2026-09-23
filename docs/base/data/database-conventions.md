@@ -23,6 +23,10 @@
 - Composite indexes for multi-column query filters.
 - Document rationale for each index.
 
+| Index | Columns | Purpose |
+|-------|---------|---------|
+| `idx_user_status_composite` | `is_active, is_locked, deleted_at` | Conditional aggregation counts + status filter |
+
 ## Constraints
 
 - Use database constraints for data integrity.

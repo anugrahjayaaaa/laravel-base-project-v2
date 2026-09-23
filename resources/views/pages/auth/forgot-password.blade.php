@@ -13,24 +13,18 @@
             </div>
 
             @if (session('success'))
-                <div class="alert bg-success-subtle mb-3" role="alert">
-                    <div class="d-flex align-items-center gap-2">
-                        <i class="fas fa-circle-check text-success"></i>
-                        <span class="text-success flex-grow-1">{{ session('success') }}</span>
-                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                    </div>
+                <div class="alert alert-success alert-dismissible fade show mb-0" role="alert">
+                    <i class="fas fa-circle-check me-1"></i>
+                    {{ session('success') }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                 </div>
             @endif
 
             @if (session('rate_limit_seconds'))
-                <div class="alert bg-danger-subtle mb-3" role="alert">
-                    <div class="d-flex align-items-center gap-2">
-                        <i class="fas fa-circle-exclamation text-danger"></i>
-                        <span class="text-danger flex-grow-1">
-                            Too many attempts. Please try again in <span class="rate-limit-seconds" data-seconds="{{ session('rate_limit_seconds') }}">{{ session('rate_limit_seconds') }}</span> seconds.
-                        </span>
-                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                    </div>
+                <div class="alert alert-danger alert-dismissible fade show mb-0" role="alert">
+                    <i class="fas fa-circle-exclamation me-1"></i>
+                    Too many attempts. Please try again in <span class="rate-limit-seconds" data-seconds="{{ session('rate_limit_seconds') }}">{{ session('rate_limit_seconds') }}</span> seconds.
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                 </div>
             @endif
 
@@ -50,7 +44,7 @@
                                  onclick="this.disabled=true;this.form.submit()">Send Reset Link</button>
                 </div>
                 <div class="text-center">
-                    <a href="{{ url('/login') }}" class="text-decoration-none small">Back to Login</a>
+                    <a href="{{ route('login') }}" class="text-decoration-none small">Back to Login</a>
                 </div>
             </form>
         </div>

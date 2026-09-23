@@ -23,7 +23,7 @@
         <i class="far fa-bell"></i>
       </button>
 
-      @include('layouts.partials.theme-toggle')
+      @include('layouts.partials.scripts.theme-toggle')
 
       <!-- User menu (dropdown) -->
       <div class="dropdown">
@@ -31,7 +31,7 @@
            role="button" data-bs-toggle="dropdown" aria-expanded="false"
            title="Admin user menu">
           <i class="fas fa-user-circle"></i>
-          <span class="d-none d-md-inline text-muted ms-2">Admin</span>
+          <span class="d-none d-md-inline text-muted ms-2">{{ Auth::user()->name }}</span>
         </a>
         <ul class="dropdown-menu dropdown-menu-end">
           <li>

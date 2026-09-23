@@ -7,6 +7,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Spatie\Activitylog\Facades\Activity;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\DB;
 
 abstract class Controller
 {
@@ -32,7 +33,7 @@ abstract class Controller
     }
 
     /**
-     * Log an audit event via the spatie/activitylog facade.
+     * Log audit events via the spatie/activitylog facade.
      *
      * - Actions that perform mutations log audit within the action itself.
      * - Controllers log audit directly for thin operations.
@@ -65,5 +66,40 @@ abstract class Controller
         }
 
         $activity->log($event);
+    }
+
+    /**
+     * Bulk log audit events via direct DB insert (bypass spatie facade).
+     * Used for bulk operations where per-user facade calls are too slow.
+     *
+     * @param string $event    Snake_case event name.
+     * @param array $records   [['subject_id' => int, 'properties' => []], ...]
+     * @param User|null $causer User who caused the action.
+     */
+    protected function bulkAudit(string $event, array $records, ?User $causer = null): void
+    {
+        if (empty($records)) {
+            return;
+        }
+
+        $causerType = User::class;
+        $causerId = $causer?->id;
+        $now = now()->toDateTimeString();
+
+        $rows = array_map(function ($record) use ($event, $causerType, $causerId, $now) {
+            return [
+                'log_name' => 'default',
+                'description' => $event,
+                'subject_type' => User::class,
+                'subject_id' => $record['subject_id'],
+                'causer_type' => $causerType,
+                'causer_id' => $causerId,
+                'properties' => isset($record['properties']) && $record['properties'] ? json_encode($record['properties']) : null,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ];
+        }, $records);
+
+        DB::table(config('activitylog.table_name', 'activity_log'))->insert($rows);
     }
 }

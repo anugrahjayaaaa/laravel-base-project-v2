@@ -6,7 +6,6 @@ use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
-use Spatie\Activitylog\Facades\Activity;
 
 /**
  * Shared password-change logic — used by both Web and API controllers.
@@ -59,11 +58,6 @@ class ChangePassword
 
             // Revoke all active Sanctum tokens for this user.
             $user->tokens()->delete();
-
-            activity('password.change.completed')
-                ->causedBy($user)
-                ->withProperties(['reason' => 'self-initiated'])
-                ->log('password.change.completed');
 
             return true;
         });

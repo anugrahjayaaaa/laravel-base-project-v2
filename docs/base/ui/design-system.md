@@ -205,6 +205,111 @@ See [UI Architecture](./ui-architecture.md) § Confirmation Modal.
 - ADR-002: UI-independent core
 - ADR-001: API-first architecture
 
+## Page Skeleton Templates
+
+> Concrete HTML skeletons for all Admin pages. Every new view must match
+> one of these exactly — no ad-hoc layout drift.
+
+### 1. Content Header & Breadcrumbs
+
+```html
+<div class="content-header mb-3">
+    <div class="d-flex justify-content-between align-items-start w-100">
+        <div>
+            <h1 class="page-title fw-bold">Page Title</h1>
+            <p class="page-description text-muted fs-7 mb-0">
+                <a href="..." class="text-muted text-decoration-none"><i class="fas fa-arrow-left me-1"></i>Back to Module List</a>
+            </p>
+        </div>
+        <ol class="breadcrumb float-sm-end mb-0">
+            <li class="breadcrumb-item"><a href="...">Module</a></li>
+            <li class="breadcrumb-item active">Page</li>
+        </ol>
+    </div>
+</div>
+```
+
+### 2. Index Page
+
+```html
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <ul class="nav nav-pills gap-2 p-0 m-0">...</ul>
+        <a href="..." class="btn btn-primary d-inline-flex align-items-center gap-2">
+            <i class="bi bi-plus-lg"></i> Create
+        </a>
+    </div>
+    <div class="card-body p-4">
+        <!-- filters, table, pagination -->
+    </div>
+</div>
+```
+
+### 3. Create & Edit Form
+
+```html
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-transparent border-bottom py-3">
+        <h5 class="card-title mb-0 fw-semibold">Section Title</h5>
+    </div>
+    <form method="POST" action="...">
+        @csrf
+        <div class="card-body p-4">...</div>
+        <div class="card-footer bg-body-tertiary border-top py-3 d-flex justify-content-end align-items-center gap-2">
+            <a href="..." class="btn btn-outline-secondary d-inline-flex align-items-center gap-2">
+                <i class="bi bi-x-circle"></i> Cancel
+            </a>
+            <button type="submit" class="btn btn-primary d-inline-flex align-items-center gap-2">
+                <i class="bi bi-check-lg"></i> Save
+            </button>
+        </div>
+    </form>
+</div>
+```
+
+### 4. Modal (#confirmModal)
+
+```html
+<div class="modal fade" id="confirmModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header border-bottom py-3">
+                <h5 class="modal-title fw-semibold"><i class="bi bi-exclamation-triangle me-2"></i>Title</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">Message</div>
+            <div class="modal-footer bg-body-tertiary border-top py-2 d-flex justify-content-end gap-2">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" id="confirmAction">Confirm</button>
+            </div>
+        </div>
+    </div>
+</div>
+```
+
+### 5. Form Inputs & Validation
+
+```html
+<div class="mb-3">
+    <label for="field" class="form-label">Label</label>
+    <input type="text" name="field" id="field"
+        class="form-control form-control-sm @error('field') is-invalid @enderror"
+        value="{{ old('field') }}">
+    @error('field')
+        <div class="invalid-feedback">{{ $message }}</div>
+    @enderror
+</div>
+```
+
+### Forbidden Classes
+
+| Class | Replace With |
+|---|---|
+| `bg-white` | `bg-body-tertiary` / `bg-transparent` |
+| `bg-light` | `bg-body-tertiary` |
+| Standalone Back button | Back link inside content-header description |
+| `card-body` without `p-4` | Always `card-body.p-4` |
+
 ## Related
 
 - [UI Architecture](./ui-architecture.md)

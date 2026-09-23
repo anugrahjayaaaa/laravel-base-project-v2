@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\Auditable;
+use App\Enums\UserStatusEnum;
 use Database\Factories\UserFactory;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -13,10 +15,11 @@ use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 use Spatie\Permission\Traits\HasRoles;
 
-#[Fillable(['name', 'email', 'password', 'is_active', 'is_locked', 'must_change_password', 'password_expires_at', 'last_activity_at'])]
+#[Fillable(['name', 'username', 'email', 'password', 'is_active', 'is_locked', 'must_change_password', 'password_expires_at', 'last_activity_at', 'username_changed_at', 'email_changed_at', 'pending_email', 'email_change_token', 'email_change_token_expires_at'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable implements MustVerifyEmail
 {
+    use Auditable;
     /** @use HasFactory<UserFactory> */
     use HasApiTokens;
     use HasFactory;
@@ -38,7 +41,91 @@ class User extends Authenticatable implements MustVerifyEmail
             'must_change_password' => 'boolean',
             'password_expires_at' => 'datetime',
             'last_activity_at' => 'datetime',
+            'username_changed_at' => 'datetime',
+            'email_changed_at' => 'datetime',
+            'email_change_token_expires_at' => 'datetime',
             'password' => 'hashed',
         ];
+    }
+
+    // === Status (uses UserStatusEnum, no magic strings) ===
+
+    public function getStatus(): UserStatusEnum
+    {
+        return UserStatusEnum::resolve(
+            $this->is_active,
+            $this->is_locked,
+            $this->email_verified_at?->format('Y-m-d H:i:s'),
+        );
+    }
+
+    public function isActiveUser(): bool
+    {
+        return $this->getStatus()->value === UserStatusEnum::ACTIVE->value;
+    }
+
+    public function isInactiveUser(): bool
+    {
+        return $this->getStatus()->value === UserStatusEnum::INACTIVE->value;
+    }
+
+    public function isLockedUser(): bool
+    {
+        return $this->getStatus()->value === UserStatusEnum::LOCKED->value;
+    }
+
+    public function isPendingVerification(): bool
+    {
+        return $this->getStatus()->value === UserStatusEnum::PENDING_VERIFICATION->value;
+    }
+
+    public function scopeActive($query)
+    {
+        return $query->where('is_active', true)->where('is_locked', false);
+    }
+
+    public function scopeInactive($query)
+    {
+        return $query->where('is_active', false);
+    }
+
+    public function scopeLocked($query)
+    {
+        return $query->where('is_locked', true);
+    }
+
+    public function scopePendingVerification($query)
+    {
+        return $query->whereNull('email_verified_at');
+    }
+
+    public function canChangeUsername(): bool
+    {
+        if (! SystemSetting::getBool('allow_username_change', true)) {
+            return false;
+        }
+
+        $cooldown = SystemSetting::getInt('username_change_cooldown_days', 0);
+
+        if ($cooldown <= 0 || $this->username_changed_at === null) {
+            return true;
+        }
+
+        return $this->username_changed_at->addDays($cooldown)->isPast();
+    }
+
+    public function canChangeEmail(): bool
+    {
+        if (! SystemSetting::getBool('allow_email_change', true)) {
+            return false;
+        }
+
+        $cooldown = SystemSetting::getInt('email_change_cooldown_days', 0);
+
+        if ($cooldown <= 0 || $this->email_changed_at === null) {
+            return true;
+        }
+
+        return $this->email_changed_at->addDays($cooldown)->isPast();
     }
 }

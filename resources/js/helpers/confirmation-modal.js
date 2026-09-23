@@ -9,18 +9,57 @@
     'use strict';
 
     var MODAL_ID = 'confirmModal';
-    var modal, form, header, title, message, submitBtn;
+    var modal, form, header, title, message, submitBtn, iconEl;
+
+    var VARIANT_META = {
+        success: {
+            icon: 'bi bi-person-check',
+            iconColor: 'text-success',
+            btnClass: 'btn-success',
+            headerMix: 'var(--lbp-success, #198754)'
+        },
+        warning: {
+            icon: 'bi bi-person-x',
+            iconColor: 'text-warning',
+            btnClass: 'btn-warning',
+            headerMix: 'var(--lbp-warning, #f59e0b)'
+        },
+        danger: {
+            icon: 'bi bi-shield-lock',
+            iconColor: 'text-danger',
+            btnClass: 'btn-danger',
+            headerMix: 'var(--lbp-danger, #ef4444)'
+        },
+        info: {
+            icon: 'bi bi-shield-check',
+            iconColor: 'text-info',
+            btnClass: 'btn-info',
+            headerMix: 'var(--lbp-info, #0ea5e9)'
+        }
+    };
 
     function init() {
         var el = document.getElementById(MODAL_ID);
         if (!el) return;
 
-        modal = new bootstrap.Modal(el);
+        if (typeof bootstrap === 'undefined' || typeof bootstrap.Modal !== 'function') {
+            console.warn('ConfirmationModal: Bootstrap Modal not available');
+            return;
+        }
+
+        try {
+            modal = new bootstrap.Modal(el);
+        } catch (err) {
+            console.warn('ConfirmationModal: Failed to init Bootstrap Modal', err);
+            return;
+        }
+
         form = el.querySelector('#confirmModalForm');
         header = el.querySelector('#confirmModalHeader');
         title = el.querySelector('#confirmModalTitle');
         message = el.querySelector('#confirmModalMessage');
-        submitBtn = form.querySelector('button[type="submit"]');
+        iconEl = el.querySelector('#confirmModalIcon');
+        submitBtn = form.querySelector('#confirmModalSubmit') || form.querySelector('button[type="submit"]');
 
         document.addEventListener('click', onTriggerClick);
         el.addEventListener('hidden.bs.modal', onHidden);
@@ -40,12 +79,13 @@
         var label    = trigger.getAttribute('data-label')
                     || trigger.getAttribute('data-action-label')
                     || 'Confirm';
+        var iconOverride = trigger.getAttribute('data-icon');
 
         modal._ctx = { action, method, variant, trigger };
 
         title.textContent = titleTxt;
         message.textContent = msgTxt;
-        applyVariant(variant);
+        applyVariant(variant, iconOverride);
         submitBtn.textContent = label;
         submitBtn.disabled = false;
 
@@ -68,16 +108,18 @@
         modal.show();
     }
 
-    function applyVariant(variant) {
-        var color = variant === 'warning' ? 'var(--lbp-warning, #f59e0b)'
-                  : variant === 'info'    ? 'var(--lbp-info, #0ea5e9)'
-                  :                            'var(--lbp-danger, #ef4444)';
-        header.style.background = 'color-mix(in srgb, ' + color + ' 12%, transparent)';
+    function applyVariant(variant, iconOverride) {
+        var meta = VARIANT_META[variant] || VARIANT_META.danger;
+        var icon = iconOverride || meta.icon;
 
-        var btnClass = variant === 'warning' ? 'btn-warning'
-                     : variant === 'info'    ? 'btn-info'
-                     :                           'btn-danger';
-        submitBtn.className = 'btn ' + btnClass + (variant === 'info' ? ' text-white' : '');
+        // Icon
+        iconEl.className = icon + ' fs-1 ' + meta.iconColor;
+
+        // Header background
+        header.style.background = 'color-mix(in srgb, ' + meta.headerMix + ' 12%, transparent)';
+
+        // Submit button
+        submitBtn.className = 'btn ' + meta.btnClass + (variant === 'info' ? ' text-white' : '');
     }
 
     function onHidden() {
