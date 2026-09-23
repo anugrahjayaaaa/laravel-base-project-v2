@@ -27,9 +27,8 @@
                         <h5 class="card-title mb-0">Sessions</h5>
                         <button type="button" class="btn btn-danger btn-sm" data-bs-toggle="modal"
                             data-bs-target="#confirmModal" data-action="{{ route('sessions.logout-all') }}"
-                            data-method="POST" data-title="Logout All Devices?"
-                            data-message="Are you sure you want to logout from all other devices? You will need to login again on those devices."
-                            data-variant="danger" data-label="Logout All">
+                            data-method="POST" data-action-type="logout_all"
+                            data-label="Logout All">
                             <i class="fas fa-sign-out-alt me-1"></i> Logout All Devices
                         </button>
                     </div>
