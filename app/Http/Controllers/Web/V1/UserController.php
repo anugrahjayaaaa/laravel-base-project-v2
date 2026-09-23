@@ -85,10 +85,10 @@ class UserController extends Controller
             return match ($s->value) {
                 UserStatusEnum::ACTIVE->value => 'bg-success-subtle text-success border border-success-subtle',
                 UserStatusEnum::INACTIVE->value
-                    => 'bg-secondary-subtle text-secondary border border-secondary-subtle',
+                => 'bg-secondary-subtle text-secondary border border-secondary-subtle',
                 UserStatusEnum::LOCKED->value => 'bg-warning-subtle text-warning border border-warning-subtle',
                 UserStatusEnum::PENDING_VERIFICATION->value
-                    => 'bg-warning-subtle text-dark border border-warning-subtle',
+                => 'bg-warning-subtle text-dark border border-warning-subtle',
             };
         };
 
@@ -158,7 +158,18 @@ class UserController extends Controller
             handler: $this->userBulkActionHandler,
         );
 
-        return back()->with('status', "{$result['label']} ({$result['count']} users).");
+        $label = match ($request->validated('action')) {
+            'deactivate' => 'deactivated',
+            'activate' => 'activated',
+            'lock' => 'locked',
+            'unlock' => 'unlocked',
+            'restore' => 'restored',
+            'delete' => 'deleted',
+            'force_delete' => 'permanently deleted',
+            default => 'processed',
+        };
+
+        return back()->with('status', "{$result['count']} selected users have been successfully {$label}.");
     }
 
     public function destroy(Request $request, User $user)
@@ -167,7 +178,7 @@ class UserController extends Controller
 
         $user->audit('user.deleted', $request->user());
 
-        return back()->with('status', 'User deleted successfully.');
+        return back()->with('status', "User '{$user->name}' has been successfully deleted.");
     }
 
     public function restore(User $user)
@@ -176,7 +187,7 @@ class UserController extends Controller
 
         $user->audit('user.restored', auth()->user());
 
-        return back()->with('status', 'User restored successfully.');
+        return back()->with('status', "User '{$user->name}' has been successfully restored.");
     }
 
     public function forceDelete(Request $request, User $user)
@@ -185,7 +196,7 @@ class UserController extends Controller
 
         $user->audit('user.force_deleted', $request->user());
 
-        return redirect()->route('users.index')->with('status', 'User permanently deleted.');
+        return redirect()->route('users.index')->with('status', "User '{$user->name}' has been permanently deleted.");
     }
 
     public function resendVerification(Request $request, User $user)
