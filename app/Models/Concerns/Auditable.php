@@ -3,7 +3,6 @@
 namespace App\Models\Concerns;
 
 use Illuminate\Database\Eloquent\Model;
-use Spatie\Activitylog\Facades\Activity;
 
 trait Auditable
 {
