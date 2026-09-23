@@ -10,13 +10,15 @@ use Illuminate\Validation\ValidationException;
 
 class LockUserAction
 {
-    public function run(User $user): array
+    public function run(User $user, bool $invalidateSessions = true): array
     {
         $this->validate($user);
 
-        DB::transaction(function () use ($user) {
+        DB::transaction(function () use ($user, $invalidateSessions) {
             $user->update(['is_locked' => true]);
-            $this->invalidateSessions($user);
+            if ($invalidateSessions) {
+                $this->invalidateSessions($user);
+            }
         });
 
         return ['user' => $user];

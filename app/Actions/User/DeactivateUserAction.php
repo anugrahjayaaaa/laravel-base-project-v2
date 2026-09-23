@@ -10,13 +10,15 @@ use Illuminate\Validation\ValidationException;
 
 class DeactivateUserAction
 {
-    public function run(User $user, User $causer): array
+    public function run(User $user, User $causer, bool $invalidateSessions = true): array
     {
         $this->validate($user, $causer);
 
-        DB::transaction(function () use ($user) {
+        DB::transaction(function () use ($user, $invalidateSessions) {
             $user->update(['is_active' => false]);
-            $this->invalidateSessions($user);
+            if ($invalidateSessions) {
+                $this->invalidateSessions($user);
+            }
         });
 
         return ['user' => $user];
