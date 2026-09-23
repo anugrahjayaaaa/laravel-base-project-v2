@@ -124,7 +124,7 @@
 
     <div class="row g-4">
         {{-- Main Content --}}
-        <div class="col-lg-8">
+        <div class="col-lg-8 col-12">
             <div class="card border-0 shadow-sm mb-4">
                 <div class="card-header bg-transparent border-bottom py-3">
                     <div class="d-flex align-items-center gap-3">

@@ -171,7 +171,6 @@ See [UI Architecture](./ui-architecture.md) § Confirmation Modal.
 || Active page | `primary` |
 || Hover page | `surface-alt` |
 || Border | `border` |
-|| Wrapper | `card-footer bg-body-tertiary border-top py-3` |
 
 ### Navigation Tabs (Status Filter)
 
