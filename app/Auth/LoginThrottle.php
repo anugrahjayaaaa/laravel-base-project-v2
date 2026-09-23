@@ -6,7 +6,6 @@ use App\Models\FailedLoginAttempt;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\RateLimiter;
-use Illuminate\Support\Str;
 
 /**
  * Shared login throttle + progressive lockout logic.
