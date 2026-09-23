@@ -63,27 +63,27 @@
                 route('users.deactivate', $user) .
                 '" data-method="POST" data-title="Deactivate User Account?" data-message="Are you sure you want to deactivate ' .
                 e($user->name) .
-                '? This user will be immediately logged out and unable to access the system until reactivated." data-variant="warning" data-label="Deactivate"><i class="fas fa-user-slash"></i></button>';
+                '? This user will be immediately logged out and unable to access the system until reactivated." data-variant="warning" data-icon="bi bi-person-slash" data-label="Deactivate"><i class="fas fa-user-slash"></i></button>';
             $btns .=
-                '<button type="button" class="btn btn-sm btn-outline-danger" title="Lock Account" data-bs-toggle="modal" data-bs-target="#confirmModal" data-action="' .
+                '<button type="button" class="btn btn-sm btn-outline-warning" title="Lock Account" data-bs-toggle="modal" data-bs-target="#confirmModal" data-action="' .
                 route('users.lock', $user) .
                 '" data-method="POST" data-title="Lock User Account?" data-message="Are you sure you want to lock ' .
                 e($user->name) .
-                '? The account will be forcefully locked and all active sessions will be revoked." data-variant="danger" data-label="Lock"><i class="fas fa-lock"></i></button>';
+                '? The account will be forcefully locked and all active sessions will be revoked." data-variant="warning" data-icon="bi bi-lock" data-label="Lock"><i class="fas fa-lock"></i></button>';
         } elseif ($currentStatus === 'inactive' && $status->value === 'inactive') {
             $btns .=
                 '<button type="button" class="btn btn-sm btn-outline-success" title="Activate" data-bs-toggle="modal" data-bs-target="#confirmModal" data-action="' .
                 route('users.activate', $user) .
                 '" data-method="POST" data-title="Activate User Account?" data-message="Are you sure you want to activate ' .
                 e($user->name) .
-                '? This will restore the user login access to the system." data-variant="success" data-label="Activate"><i class="fas fa-user-check"></i></button>';
+                '? This will restore the user login access to the system." data-variant="success" data-icon="bi bi-person-check" data-label="Activate"><i class="fas fa-user-check"></i></button>';
         } elseif ($currentStatus === 'locked' && $status->value === 'locked') {
             $btns .=
                 '<button type="button" class="btn btn-sm btn-outline-success" title="Unlock Account" data-bs-toggle="modal" data-bs-target="#confirmModal" data-action="' .
                 route('users.unlock', $user) .
                 '" data-method="POST" data-title="Unlock User Account?" data-message="Are you sure you want to unlock ' .
                 e($user->name) .
-                '? The administrative lock will be removed, allowing normal access." data-variant="success" data-icon="bi-shield-check" data-label="Unlock"><i class="fas fa-lock-open"></i></button>';
+                '? The administrative lock will be removed, allowing normal access." data-variant="success" data-icon="bi bi-unlock" data-label="Unlock"><i class="fas fa-lock-open"></i></button>';
         }
         return $btns;
     };
@@ -94,19 +94,19 @@
                 route('users.restore', $user) .
                 '" data-method="POST" data-title="Restore User?" data-message="Restore ' .
                 e($user->name) .
-                '? They will be reactivated." data-variant="info" data-label="Restore"><i class="fas fa-rotate-left"></i></button>' .
+                '? They will be reactivated." data-variant="success" data-icon="bi bi-person-check" data-label="Restore"><i class="fas fa-rotate-left"></i></button>' .
                 '<button type="button" class="btn btn-sm btn-danger" title="Permanent Delete" data-bs-toggle="modal" data-bs-target="#confirmModal" data-action="' .
                 route('users.force-delete', $user) .
                 '" data-method="DELETE" data-title="Permanently Delete?" data-message="This cannot be undone. ' .
                 e($user->name) .
-                ' will be permanently removed." data-variant="danger" data-icon="bi-trash3" data-label="Permanent Delete"><i class="fas fa-trash"></i></button>';
+                ' will be permanently removed." data-variant="danger" data-icon="bi bi-exclamation-triangle" data-label="Permanent Delete"><i class="fas fa-trash"></i></button>';
         }
         if ($currentStatus !== 'trashed') {
             return '<button type="button" class="btn btn-sm btn-outline-danger" title="Delete" data-bs-toggle="modal" data-bs-target="#confirmModal" data-action="' .
                 route('users.destroy', $user) .
                 '" data-method="DELETE" data-title="Delete User?" data-message="Move ' .
                 e($user->name) .
-                ' to trash? They can be restored later." data-variant="danger" data-label="Delete"><i class="fas fa-trash"></i></button>';
+                ' to trash? They can be restored later." data-variant="danger" data-icon="bi bi-trash" data-label="Delete"><i class="fas fa-trash"></i></button>';
         }
         return '';
     };

@@ -31,7 +31,7 @@
         'data-message="Restore ' .
         e($user->name) .
         '? They will be reactivated." ' .
-        'data-variant="info" data-label="Restore"';
+        'data-variant="success" data-label="Restore"';
 
     $forceDeleteModal =
         'data-bs-toggle="modal" data-bs-target="#confirmModal" ' .
