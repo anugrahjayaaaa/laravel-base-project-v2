@@ -149,9 +149,9 @@ Authorization via RBAC (Phase 6) — permission gates applied per endpoint.
 | P4-F6 | Controller: requestEmailChange, cancelEmailChange, verifyEmailChange, resendVerification | F3,F4,F5 | DONE |
 | P4-F7 | Routes: users.request-email-change, users.cancel-email-change, email.verify-change | F6 | DONE |
 | P4-F8 | Views: create (username @input), edit (cooldown badges, pending email callout) | F6 | DONE |
-| P4-F9 | Tests: UsernameEmailChangeTest (7 tests, all pass) | F1-F8 | ON PROGRESS |
+| P4-F9 | Tests: UsernameEmailChangeTest (7 tests, all pass) | F1-F8 | DONE |
 | P4-F10 | System Settings UI: allow_username_change, allow_email_change, cooldown days | F1 | DONE |
-| P4-F11 | Docs: user-management.md + progress.md Phase 4F update | F9 | ON PROGRESS |
+| P4-F11 | Docs: user-management.md + progress.md Phase 4F update | F9 | DONE |
 
 ### Phase 4F Additions (from user request)
 
@@ -160,21 +160,21 @@ Authorization via RBAC (Phase 6) — permission gates applied per endpoint.
 | P4-F12 | UI: SystemSetting-gated username/email fields — show "Username can be changed" text when enabled, disable input when not | F2,F10 | DONE |
 | P4-F13 | UI: disable username/email input during cooldown period | F2 | DONE |
 
-## Group G — Self-Service Profile Page (NEW)
+## Group G — Self-Service Profile Page ✅ DONE
 
-| ID | Task | Depends | Status |
-|----|------|---------|--------|
-| P4-G1 | Profile page: user updates own username/email (if enabled) + change password | F12,F13 | PLANNED |
-| P4-G2 | Route + controller: profile edit/update | G1 | PLANNED |
-| P4-G3 | View: profile form (AdminLTE consistent) | G1 | PLANNED |
+|| ID | Task | Depends | Status |
+||----|------|---------|--------|
+|| P4-G1 | Profile page: user updates own username/email (if enabled) + change password | F12,F13 | DONE |
+|| P4-G2 | Route + controller: profile edit/update | G1 | DONE |
+|| P4-G3 | View: profile form (AdminLTE consistent) | G1 | DONE |
 
 ## Group H — Bulk Actions + Audit Close-out
 
 | ID | Task | Depends | Status |
 |----|------|---------|--------|
-| P4-H1 | Bulk actions: soft delete, force delete (trashed only), lock/unlock, activate/deactivate | B,C,D,F | PLANNED |
-| P4-H2 | Audit logging on user state changes (Auditable trait) | B,C,D,F | PLANNED |
-| P4-H3 | Integration test: full user lifecycle flow (create → activate → lock → unlock → deactivate) | B,C,D,F | PLANNED |
+| P4-H1 | Bulk actions: soft delete, force delete (trashed only), lock/unlock, activate/deactivate | B,C,D,F | DONE |
+| P4-H2 | Audit logging on user state changes (Auditable trait) | B,C,D,E,F,G | PLANNED |
+| P4-H3 | Integration test: full user lifecycle flow (create → activate → lock → unlock → deactivate) | B,C,D,E,F,G | PLANNED |
 | P4-H4 | Final audit: all views use @error, no magic strings, no hardcoded routes | H2,H3 | PLANNED |
 
 ---
