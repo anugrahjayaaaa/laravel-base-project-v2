@@ -20,7 +20,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Password;
 
-class WebAuthController extends Controller
+class AuthController extends Controller
 {
     public function __construct(
         private readonly ListUserSessionsAction $listSessionsAction,

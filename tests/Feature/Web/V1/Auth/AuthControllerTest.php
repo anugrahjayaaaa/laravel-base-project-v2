@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\URL;
 use Mockery;
 use Tests\TestCase;
 
-class WebAuthControllerTest extends TestCase
+class AuthControllerTest extends TestCase
 {
     use RefreshDatabase;
 
