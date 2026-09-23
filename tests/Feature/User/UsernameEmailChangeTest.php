@@ -89,7 +89,6 @@ class UsernameEmailChangeTest extends TestCase
 
         $response = $this->actingAs($user)->get($url);
 
-
         $this->assertDatabaseHas('users', ['email' => 'new@example.com', 'pending_email' => null]);
         $this->assertNotNull(User::find($user->id)->email_changed_at);
         $response->assertRedirect(route('dashboard'));

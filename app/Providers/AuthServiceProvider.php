@@ -132,6 +132,16 @@ class AuthServiceProvider extends ServiceProvider
                         ->with('rate_limit_seconds', $retryAfter);
                 });
         });
+
+        RateLimiter::for('email-verification', function (Request $request) use ($throttle) {
+            $identifier = $request->user()
+                ? (string) $request->user()->getKey()
+                : $request->ip();
+            $limit = (int) config('rate_limits.email_verification.rate_limit_per_hour', 5);
+
+            return Limit::perHour($limit)
+                ->by($throttle->key('email-verification', $identifier, $request->ip()));
+        });
     }
 
     /**
