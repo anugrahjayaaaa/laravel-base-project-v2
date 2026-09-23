@@ -27,20 +27,27 @@ class ProfileController extends Controller
     public function update(ProfileUpdateRequest $request): JsonResponse
     {
         $user = $request->user();
-        $data = $request->safe()->only(['name', 'username', 'email']);
+        $data = $request->validated();
 
         ($this->updateAction)->run($user, $data);
 
         if ($request->filled('password')) {
             ($this->changePasswordAction)->run(
                 user: $user,
-                currentPassword: $request->input('current_password'),
-                newPassword: $request->input('password'),
+                currentPassword: $data['current_password'],
+                newPassword: $data['password'],
             );
             $this->audit('auth.password_changed', $user, $user);
         }
 
         $this->audit('user.profile_updated', $user, $user);
+
+        if ($request->filled('email') && $data['email'] !== $user->getOriginal('email')) {
+            return $this->respond('Verification email sent to new email address.', 200, [
+                'message' => 'Verification email sent to new email address.',
+                'user' => new UserResource($user->fresh()),
+            ]);
+        }
 
         return $this->respond('Profile updated successfully.', 200, [
             'message' => 'Profile updated successfully.',

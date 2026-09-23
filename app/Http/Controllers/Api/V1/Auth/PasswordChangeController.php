@@ -14,11 +14,12 @@ class PasswordChangeController extends Controller
         ChangePassword $action,
     ): JsonResponse {
         $user = $request->user();
+        $data = $request->validated();
 
         $action->run(
             user: $user,
-            currentPassword: $request->currentPassword(),
-            newPassword: $request->password(),
+            currentPassword: $data['current_password'],
+            newPassword: $data['password'],
         );
 
         $this->audit('auth.password_changed', $user, $user);

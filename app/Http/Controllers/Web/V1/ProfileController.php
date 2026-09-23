@@ -24,8 +24,8 @@ class ProfileController extends Controller
         $initials = str($user->name)->substr(0, 2)->upper();
         $allowEmailChange = SystemSetting::getBool('allow_email_change', true);
         $allowUsernameChange = SystemSetting::getBool('allow_username_change', true);
-        $emailCooldownDays = (int) SystemSetting::getInt('email_change_cooldown_days', 0);
-        $usernameCooldownDays = (int) SystemSetting::getInt('username_change_cooldown_days', 0);
+        $emailCooldownDays = (int) SystemSetting::getInt('email_change_cooldown_days', 30);
+        $usernameCooldownDays = (int) SystemSetting::getInt('username_change_cooldown_days', 30);
 
         return view('pages.profile.edit', compact(
             'user', 'initials',
@@ -39,15 +39,15 @@ class ProfileController extends Controller
     public function update(ProfileUpdateRequest $request): RedirectResponse
     {
         $user = $request->user();
-        $data = $request->safe()->only(['name', 'username', 'email']);
+        $data = $request->validated();
 
         ($this->updateAction)->run($user, $data);
 
         if ($request->filled('password')) {
             ($this->changePasswordAction)->run(
                 user: $user,
-                currentPassword: $request->input('current_password'),
-                newPassword: $request->input('password'),
+                currentPassword: $data['current_password'],
+                newPassword: $data['password'],
             );
             $this->audit('auth.password_changed', $user, $user);
         }
