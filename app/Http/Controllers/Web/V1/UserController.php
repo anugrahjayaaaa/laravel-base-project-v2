@@ -29,6 +29,9 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Hash;
 use Spatie\Permission\Models\Role;
 
+/**
+ * User management controller — CRUD, bulk actions, email verification flow.
+ */
 class UserController extends Controller
 {
     public function __construct(
@@ -78,6 +81,7 @@ class UserController extends Controller
 
         $counts = $this->indexAction->counts();
 
+        // Badge CSS class based on user status and trashed state.
         $badgeClass = function (UserStatusEnum $s, bool $trashed) {
             if ($trashed) {
                 return 'bg-danger text-white';
@@ -149,6 +153,12 @@ class UserController extends Controller
         return back()->with('status', 'User updated successfully.');
     }
 
+    /**
+     * Execute bulk user actions (delete, restore, lock, unlock, activate, deactivate).
+     *
+     * @param  BulkUserRequest  $request
+     * @return RedirectResponse
+     */
     public function bulkAction(BulkUserRequest $request): RedirectResponse
     {
         $result = $this->processor->run(
@@ -172,6 +182,13 @@ class UserController extends Controller
         return back()->with('status', "{$result['count']} selected users have been successfully {$label}.");
     }
 
+    /**
+     * Soft-delete a user (moves to trash).
+     *
+     * @param  Request  $request
+     * @param  User  $user
+     * @return RedirectResponse
+     */
     public function destroy(Request $request, User $user)
     {
         $this->deleteAction->run($user, $request->user());
@@ -181,6 +198,12 @@ class UserController extends Controller
         return back()->with('status', "User '{$user->name}' has been successfully deleted.");
     }
 
+    /**
+     * Restore a trashed user.
+     *
+     * @param  User  $user
+     * @return RedirectResponse
+     */
     public function restore(User $user)
     {
         $this->restoreAction->run($user);
@@ -190,6 +213,13 @@ class UserController extends Controller
         return back()->with('status', "User '{$user->name}' has been successfully restored.");
     }
 
+    /**
+     * Permanently delete a user from database.
+     *
+     * @param  Request  $request
+     * @param  User  $user
+     * @return RedirectResponse
+     */
     public function forceDelete(Request $request, User $user)
     {
         $this->forceDeleteAction->run($user, $request->user());
@@ -249,6 +279,13 @@ class UserController extends Controller
         return $this->verifyRedirect('Email changed successfully. Please login with your new email.', true);
     }
 
+    /**
+     * Redirect after email verification flow.
+     *
+     * @param  string  $message
+     * @param  bool  $success
+     * @return RedirectResponse
+     */
     protected function verifyRedirect(string $message, bool $success)
     {
         $route = auth()->check() ? 'dashboard' : 'login';
