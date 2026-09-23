@@ -19,7 +19,7 @@
     var actionOptions = {
         delete: { label: 'Move to Trash', variant: 'danger' },
         force_delete: { label: 'Permanent Delete', variant: 'danger' },
-        restore: { label: 'Restore', variant: 'info' },
+        restore: { label: 'Restore', variant: 'success' },
         lock: { label: 'Lock', variant: 'warning' },
         unlock: { label: 'Unlock', variant: 'success' },
         activate: { label: 'Activate', variant: 'success' },
@@ -130,10 +130,10 @@
         var actionLabels = {
             delete: { title: 'Move to Trash', msg: 'Move ' + selected.length + ' user(s) to trash? They can be restored later.', variant: 'danger', icon: 'bi bi-trash' },
             force_delete: { title: 'Permanent Delete', msg: 'Permanently delete ' + selected.length + ' user(s)? This cannot be undone.', variant: 'danger', icon: 'bi bi-exclamation-triangle' },
-            restore: { title: 'Restore Users', msg: 'Restore ' + selected.length + ' user(s) from trash? They will be reactivated.', variant: 'info', icon: 'bi bi-rotate-left' },
+            restore: { title: 'Restore Users', msg: 'Restore ' + selected.length + ' user(s) from trash? They will be reactivated.', variant: 'success', icon: 'bi bi-person-check' },
             lock: { title: 'Lock Users', msg: 'Lock ' + selected.length + ' user(s)? All sessions will be revoked.', variant: 'warning', icon: 'bi bi-lock' },
             unlock: { title: 'Unlock Users', msg: 'Unlock ' + selected.length + ' user(s)? They can log in again.', variant: 'success', icon: 'bi bi-unlock' },
-            activate: { title: 'Activate Users', msg: 'Activate ' + selected.length + ' user(s)? They can log in again.', variant: 'warning', icon: 'bi bi-person-check' },
+            activate: { title: 'Activate Users', msg: 'Activate ' + selected.length + ' user(s)? They can log in again.', variant: 'success', icon: 'bi bi-person-check' },
             deactivate: { title: 'Deactivate Users', msg: 'Deactivate ' + selected.length + ' user(s)? They will be logged out.', variant: 'warning', icon: 'bi bi-person-slash' },
         };
 
@@ -150,7 +150,7 @@
         iconEl.className += ' ' + (cfg.variant === 'warning' ? 'text-warning' : cfg.variant === 'success' ? 'text-success' : cfg.variant === 'info' ? 'text-info' : 'text-danger');
         headerEl.style.background = 'color-mix(in srgb, var(--lbp-' + cfg.variant + ', #ef4444) 12%, transparent)';
         submitBtn.textContent = cfg.title;
-        submitBtn.className = 'btn ' + (cfg.variant === 'warning' ? 'bg-warning-subtle text-warning' : cfg.variant === 'success' ? 'bg-success-subtle text-success' : cfg.variant === 'info' ? 'bg-info-subtle text-info' : 'bg-danger-subtle text-danger');
+        submitBtn.className = 'btn ' + (cfg.variant === 'warning' ? 'btn btn-warning' : cfg.variant === 'success' ? 'btn btn-success' : cfg.variant === 'info' ? 'btn btn-info' : 'btn btn-danger');
 
         var route = document.querySelector('[data-bulk-route]');
         if (route) {

@@ -19,22 +19,16 @@
             headerMix: 'var(--lbp-success, #198754)'
         },
         warning: {
-            icon: 'bi bi-person-x',
+            icon: 'bi bi-person-slash',
             iconColor: 'text-warning',
             btnClass: 'btn-warning',
             headerMix: 'var(--lbp-warning, #f59e0b)'
         },
         danger: {
-            icon: 'bi bi-shield-lock',
+            icon: 'bi bi-trash',
             iconColor: 'text-danger',
             btnClass: 'btn-danger',
             headerMix: 'var(--lbp-danger, #ef4444)'
-        },
-        info: {
-            icon: 'bi bi-shield-check',
-            iconColor: 'text-info',
-            btnClass: 'btn-info',
-            headerMix: 'var(--lbp-info, #0ea5e9)'
         }
     };
 
@@ -113,7 +107,7 @@
         var icon = iconOverride || meta.icon;
 
         // Icon
-        iconEl.className = icon + ' fs-1 ' + meta.iconColor;
+        iconEl.className = icon + ' fs-3 ' + meta.iconColor;
 
         // Header background
         header.style.background = 'color-mix(in srgb, ' + meta.headerMix + ' 12%, transparent)';
