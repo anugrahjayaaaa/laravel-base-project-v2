@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Web\V1\Auth\WebAuthController;
 use App\Http\Controllers\Web\V1\DashboardController;
+use App\Http\Controllers\Web\V1\ProfileController;
 use App\Http\Controllers\Web\V1\SystemSettingController;
 use App\Http\Controllers\Web\V1\UserStateController;
 use App\Http\Controllers\Web\V1\UserController;
@@ -44,7 +45,7 @@ Route::controller(WebAuthController::class)->group(function () {
 // ---------------------------------------------------------------------------
 // Authenticated + verified + valid account state
 // ---------------------------------------------------------------------------
-Route::middleware(['auth', 'verified', 'account.state'])->group(function () {
+Route::middleware(['auth', 'verified', 'password.change.required', 'account.state'])->group(function () {
 
     // Auth management
     Route::controller(WebAuthController::class)->group(function () {
@@ -59,16 +60,18 @@ Route::middleware(['auth', 'verified', 'account.state'])->group(function () {
     Route::post('/settings', [SystemSettingController::class, 'update'])->name('settings.update');
 
     // Profile
-    Route::controller(\App\Http\Controllers\Web\V1\ProfileController::class)->group(function () {
+    Route::controller(ProfileController::class)->group(function () {
         Route::get('/profile', 'show')->name('profile.show');
         Route::put('/profile', 'update')->name('profile.update');
     });
-    Route::bind('user', function ($id) {
-        return User::withTrashed()->findOrFail($id);
-    });
+
+    // Users
     Route::resource('users', UserController::class)->except(['restore', 'force-delete', 'resend-verification']);
     Route::post('/users/{user}/restore', [UserController::class, 'restore'])->name('users.restore');
     Route::delete('/users/{user}/force', [UserController::class, 'forceDelete'])->name('users.force-delete');
+    Route::bind('user', function ($id) {
+        return User::withTrashed()->findOrFail($id);
+    });
     Route::post('/users/{user}/resend-verification', [UserController::class, 'resendVerification'])->name('users.resend-verification');
     Route::post('/users/{user}/request-email-change', [UserController::class, 'requestEmailChange'])->name('users.request-email-change');
     Route::post('/users/{user}/cancel-email-change', [UserController::class, 'cancelEmailChange'])->name('users.cancel-email-change');

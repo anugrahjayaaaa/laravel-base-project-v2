@@ -44,7 +44,7 @@
                                  onclick="this.disabled=true;this.form.submit()">Send Reset Link</button>
                 </div>
                 <div class="text-center">
-                    <a href="{{ url('/login') }}" class="text-decoration-none small">Back to Login</a>
+                    <a href="{{ route('login') }}" class="text-decoration-none small">Back to Login</a>
                 </div>
             </form>
         </div>

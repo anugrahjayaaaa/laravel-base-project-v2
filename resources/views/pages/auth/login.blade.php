@@ -44,7 +44,7 @@
                 </div>
             @endif
 
-            <form id="loginForm" action="{{ url('/login') }}" method="POST">
+            <form id="loginForm" action="{{ route('login') }}" method="POST">
                 @csrf
                 <div class="mb-3">
                     <label for="identifier" class="form-label">Email / Username</label>
@@ -74,7 +74,7 @@
                                  onclick="this.disabled=true;this.form.submit()">Login</button>
                 </div>
                 <div class="text-center">
-                    <a href="{{ url('/forgot-password') }}" class="text-decoration-none small">Forgot password?</a>
+                    <a href="{{ route('password.request') }}" class="text-decoration-none small">Forgot password?</a>
                 </div>
             </form>
         </div>

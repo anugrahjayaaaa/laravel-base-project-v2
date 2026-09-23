@@ -43,6 +43,9 @@
                         <input type="email" name="email" id="email" class="form form-control"
                                value="{{ old('email') }}" required>
                     </div>
+                    @error('email')
+                        <div class="invalid-feedback d-block">{{ $message }}</div>
+                    @enderror
                     <button type="submit" class="btn btn-primary w-100" id="resendBtn"
                             onclick="this.disabled=true;this.form.submit()">
                         Resend Verification Email

@@ -184,6 +184,9 @@
             <form method="GET" class="d-flex align-items-center gap-2 mb-3 flex-wrap">
                 <input type="text" name="search" class="form-control form-control-sm" style="max-width: 250px"
                     placeholder="Search name or email..." value="{{ $currentSearch }}">
+                @error('search')
+                    <div class="invalid-feedback d-block">{{ $message }}</div>
+                @enderror
                 <button type="submit" class="btn btn-primary btn-sm">
                     <i class="fas fa-search"></i> Filter
                 </button>

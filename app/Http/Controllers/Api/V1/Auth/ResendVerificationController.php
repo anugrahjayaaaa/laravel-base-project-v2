@@ -4,12 +4,13 @@ namespace App\Http\Controllers\Api\V1\Auth;
 
 use App\Actions\Auth\ResendVerificationAction;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Auth\ResendVerificationRequest;
+use App\Models\User;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 
 class ResendVerificationController extends Controller
 {
-    public function __invoke(Request $request, ResendVerificationAction $action): JsonResponse
+    public function __invoke(ResendVerificationRequest $request, ResendVerificationAction $action): JsonResponse
     {
         $mode = config('auth.verification.mode', 'public');
 
@@ -17,10 +18,17 @@ class ResendVerificationController extends Controller
             return $this->respond('Feature disabled.', 403);
         }
 
-        $result = $action->run($request->input('email'), $request->ip());
+        $email = $request->validated('email');
+        $user = User::where('email', $email)->first();
+
+        $result = $action->run($email, $request->ip());
 
         if (isset($result['error'])) {
             return $this->respond($result['error']['message'], $result['error']['status']);
+        }
+
+        if ($user) {
+            $user->audit('auth.verification_resent', $request->user());
         }
 
         return $this->respond('If the email is registered, a verification link has been sent.');

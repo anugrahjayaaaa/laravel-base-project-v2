@@ -54,8 +54,8 @@ class ProfileController extends Controller
 
         $this->audit('user.profile_updated', $user, $user);
 
-        if ($request->filled('email') && $request->input('email') !== $user->getOriginal('email')) {
-            $this->audit('user.email_change_requested', $user, $user, ['pending_email' => $request->input('email')]);
+        if ($request->filled('email') && $data['email'] !== $user->getOriginal('email')) {
+            $this->audit('user.email_change_requested', $user, $user, ['pending_email' => $data['email']]);
             return redirect()->route('profile.show')
                 ->with('status', 'Verification email sent to new email address.');
         }
