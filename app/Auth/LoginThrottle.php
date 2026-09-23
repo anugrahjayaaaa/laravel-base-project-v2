@@ -23,11 +23,11 @@ class LoginThrottle
 {
     /**
      * Build a namespaced, human-readable rate-limiter key.
-     * Format: rate_limit:{feature}:{type}:{slug}:{ip}
+     * Format: rate_limit:{feature}:{type}:{identifier}:{ip}
      * Examples:
-     *   rate_limit:login:email:dXNlckBleGFtcGxlLmNvbQ:127.0.0.1
-     *   rate_limit:forgot_password:ip:127.0.0.1
-     *   rate_limit:resend_verification:user_id:42:127.0.0.1
+     *   rate_limit:login:email:user@example.com:127.0.0.1
+     *   rate_limit:login:username:jaya:127.0.0.1
+     *   rate_limit:login:user_id:42:127.0.0.1
      */
     public function key(string $feature, string $identifier, string $ip): string
     {
@@ -35,13 +35,13 @@ class LoginThrottle
 
         if (str_contains($id, '@')) {
             $type = 'email';
-            $slug = substr(base64_encode($id), 0, 10);
+            $slug = $id;
         } elseif (ctype_digit($id) && $id > 0) {
             $type = 'user_id';
             $slug = (int) $id;
         } else {
-            $type = 'ip';
-            $slug = $ip;
+            $type = 'username';
+            $slug = $id;
         }
 
         return "rate_limit:{$feature}:{$type}:{$slug}:{$ip}";
