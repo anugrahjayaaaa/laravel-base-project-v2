@@ -79,9 +79,9 @@ Route::prefix('v1')->group(function () {
         // Email change flow
         Route::post('/users/{user}/request-email-change', [UserController::class, 'requestEmailChange'])->name('api.v1.users.request-email-change');
         Route::post('/users/{user}/cancel-email-change', [UserController::class, 'cancelEmailChange'])->name('api.v1.users.cancel-email-change');
-        Route::get('/email/verify-change/{user}/{token}', [UserController::class, 'verifyEmailChange'])->name('api.v1.email.verify-change')->middleware('signed');
+        Route::get('/email/verify-change/{user}/{token}', [UserController::class, 'verifyEmailChange'])->name('api.v1.email.verify-change')->middleware(['signed', 'throttle:email-verification']);
         Route::post('/users/{user}/resend-verification', [UserController::class, 'resendVerification'])->name('api.v1.users.resend-verification')->middleware('throttle:resend-verification');
-        Route::post('/users/bulk-action', [UserController::class, 'bulkAction'])->name('api.v1.users.bulk-action');
+        Route::post('/users/bulk-action', [UserController::class, 'bulkAction'])->name('api.v1.users.bulk-action')->middleware('throttle:bulk-action');
     });
 
     // ---------------------------------------------------------------------------

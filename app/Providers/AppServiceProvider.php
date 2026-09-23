@@ -27,6 +27,12 @@ class AppServiceProvider extends ServiceProvider
 
             return Limit::perMinute(15)->by($key);
         });
+
+        RateLimiter::for('bulk-action', function ($request) {
+            $key = $request->user()?->id ?: $request->ip();
+
+            return Limit::perMinute(5)->by($key);
+        });
     }
 
     /**

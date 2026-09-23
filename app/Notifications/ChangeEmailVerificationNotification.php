@@ -26,7 +26,7 @@ class ChangeEmailVerificationNotification extends Notification implements Should
     {
         $verifyUrl = URL::temporarySignedRoute(
             'email.verify-change',
-            now()->addHours(24),
+            now()->addHours(1),
             ['user' => $notifiable->id, 'token' => $this->token],
         );
 

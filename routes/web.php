@@ -72,11 +72,11 @@ Route::middleware(['auth', 'verified', 'password.change.required', 'account.stat
     Route::bind('user', function ($id) {
         return User::withTrashed()->findOrFail($id);
     });
-    Route::post('/users/{user}/resend-verification', [UserController::class, 'resendVerification'])->name('users.resend-verification');
+    Route::post('/users/{user}/resend-verification', [UserController::class, 'resendVerification'])->name('users.resend-verification')->middleware('throttle:resend-verification');
     Route::post('/users/{user}/request-email-change', [UserController::class, 'requestEmailChange'])->name('users.request-email-change');
     Route::post('/users/{user}/cancel-email-change', [UserController::class, 'cancelEmailChange'])->name('users.cancel-email-change');
     Route::get('/email/verify-change/{user}', [UserController::class, 'verifyEmailChange'])
-        ->name('email.verify-change')->middleware('signed');
+        ->name('email.verify-change')->middleware(['signed', 'throttle:email-verification']);
     Route::post('/users/bulk-action', [UserController::class, 'bulkAction'])->name('users.bulk-action');
 
     // User state toggles (Activate / Deactivate / Lock / Unlock)
