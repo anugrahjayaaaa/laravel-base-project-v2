@@ -23,6 +23,7 @@ use App\Http\Requests\User\UserQueryRequest;
 use App\Http\Resources\Api\V1\User\UserResource;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
 use App\Models\User;
 
 class UserController extends Controller
@@ -90,6 +91,10 @@ class UserController extends Controller
     public function update(UpdateUserRequest $request, User $user): JsonResponse
     {
         $this->updateAction->run($user, $request->validated());
+
+        if ($request->has('password') && $request->filled('password')) {
+            $user->update(['password' => Hash::make($request->input('password'))]);
+        }
 
         $user->audit('user.updated', $request->user());
 

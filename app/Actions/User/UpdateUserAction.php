@@ -43,10 +43,6 @@ class UpdateUserAction
             }
         }
 
-        if (isset($data['password']) && $data['password']) {
-            $user->update(['password' => Hash::make($data['password'])]);
-        }
-
         return $user->fresh();
     }
 }
