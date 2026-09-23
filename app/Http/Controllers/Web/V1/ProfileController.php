@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers\Web\V1;
 
-use App\Actions\Auth\ChangePassword;
-use App\Actions\User\UpdateUserAction;
+use App\Actions\V1\Auth\ChangePassword;
+use App\Actions\V1\User\UpdateUserAction;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\User\ProfileUpdateRequest;
 use App\Models\SystemSetting;

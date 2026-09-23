@@ -2,10 +2,10 @@
 
 namespace App\Http\Controllers\Web\V1;
 
-use App\Actions\User\ActivateUserAction;
-use App\Actions\User\DeactivateUserAction;
-use App\Actions\User\LockUserAction;
-use App\Actions\User\UnlockUserAction;
+use App\Actions\V1\User\ActivateUserAction;
+use App\Actions\V1\User\DeactivateUserAction;
+use App\Actions\V1\User\LockUserAction;
+use App\Actions\V1\User\UnlockUserAction;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;

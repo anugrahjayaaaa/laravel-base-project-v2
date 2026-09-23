@@ -2,13 +2,13 @@
 
 namespace App\Http\Controllers\Web\V1\Auth;
 
-use App\Actions\Auth\AuthenticateUserAction;
-use App\Actions\Auth\ListUserSessionsAction;
-use App\Actions\Auth\LogoutAllDevicesAction;
-use App\Actions\Auth\ResendVerificationAction;
-use App\Actions\Auth\SendPasswordResetLinkAction;
-use App\Actions\Auth\ResetPasswordAction;
-use App\Actions\Auth\VerifyEmailAction;
+use App\Actions\V1\Auth\AuthenticateUserAction;
+use App\Actions\V1\Auth\ListUserSessionsAction;
+use App\Actions\V1\Auth\LogoutAllDevicesAction;
+use App\Actions\V1\Auth\ResendVerificationAction;
+use App\Actions\V1\Auth\SendPasswordResetLinkAction;
+use App\Actions\V1\Auth\ResetPasswordAction;
+use App\Actions\V1\Auth\VerifyEmailAction;
 use App\Models\User;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
