@@ -9,6 +9,7 @@ use App\Actions\V1\Auth\ResendVerificationAction;
 use App\Actions\V1\Auth\SendPasswordResetLinkAction;
 use App\Actions\V1\Auth\ResetPasswordAction;
 use App\Actions\V1\Auth\VerifyEmailAction;
+use App\Models\SystemSetting;
 use App\Models\User;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
@@ -177,7 +178,7 @@ class AuthController extends Controller
 
     public function verifyEmail(VerifyEmailAction $action)
     {
-        $mode = config('auth.verification.mode', 'public');
+        $mode = SystemSetting::getString('auth_verification_mode', 'public');
 
         if ($mode === 'admin' || $mode === 'disabled') {
             return redirect()->route('verification.notice')
@@ -214,7 +215,7 @@ class AuthController extends Controller
 
     public function resendVerification(ResendVerificationAction $action, ResendVerificationRequest $request)
     {
-        $mode = config('auth.verification.mode', 'public');
+        $mode = SystemSetting::getString('auth_verification_mode', 'public');
 
         if ($mode === 'admin' || $mode === 'disabled') {
             return back()->withErrors(['error' => 'Feature disabled.']);
