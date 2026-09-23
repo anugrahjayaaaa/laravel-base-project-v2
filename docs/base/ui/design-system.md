@@ -155,6 +155,21 @@ actions. Do not create separate modal implementations per feature.
 
 See [UI Architecture](./ui-architecture.md) § Confirmation Modal.
 
+#### Modal Action Format
+
+Every modal action reads from `ACTION_CONFIG` — single source of truth.
+
+| Field | Example | Rule |
+|-------|---------|------|
+| **title** | `Move to Trash` | Static, imperative, short |
+| **msg** | `Move <b>__ITEM__</b> to trash? They can be restored later.` | Template, `__ITEM__` → `<b>bold</b>` |
+| **variant** | `danger` | Must follow [Action Color Convention](#action-color-convention) |
+
+`__ITEM__` replacement: single → `data-item-name` (HTML-escaped), bulk → `N selected user(s)`.
+
+Trigger attributes: `data-action-type` (key), `data-item-name`, `data-action` (URL), `data-method`.
+Fallback: no `data-action-type` → JS uses `data-title`/`data-message` (legacy).
+
 ### Navigation
 
 | Element | Token |
