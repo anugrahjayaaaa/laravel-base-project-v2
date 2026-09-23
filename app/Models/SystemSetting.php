@@ -21,6 +21,12 @@ class SystemSetting extends Model
         return $val === null ? $default : (int) $val;
     }
 
+    public static function getString(string $key, string $default = ''): string
+    {
+        $val = static::where('key', $key)->value('value');
+        return $val === null ? $default : $val;
+    }
+
     public static function set(string $key, string $value): self
     {
         return static::updateOrCreate(['key' => $key], ['value' => $value]);
