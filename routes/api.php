@@ -1,14 +1,16 @@
 <?php
 
 use App\Http\Controllers\Api\V1\Auth\LoginController;
-use App\Http\Controllers\Api\V1\Auth\LogoutController;
 use App\Http\Controllers\Api\V1\Auth\LogoutAllController;
+use App\Http\Controllers\Api\V1\Auth\LogoutController;
 use App\Http\Controllers\Api\V1\Auth\PasswordChangeController as ApiPasswordChangeController;
 use App\Http\Controllers\Api\V1\Auth\PasswordForgotController;
 use App\Http\Controllers\Api\V1\Auth\PasswordResetController;
 use App\Http\Controllers\Api\V1\Auth\VerifyEmailController;
 use App\Http\Controllers\Api\V1\Auth\ResendVerificationController;
 use App\Http\Controllers\Api\V1\ProfileController;
+use App\Http\Controllers\Api\V1\SessionController;
+use App\Http\Controllers\Api\V1\SystemSettingController;
 use App\Http\Controllers\Api\V1\User\UserController;
 use App\Http\Controllers\Api\V1\User\UserStateController;
 use App\Http\Controllers\Api\V1\HealthCheck\HealthCheckController;
@@ -48,6 +50,17 @@ Route::prefix('v1')->group(function () {
         Route::controller(ProfileController::class)->group(function () {
             Route::get('/profile', 'show')->name('api.v1.profile.show');
             Route::put('/profile', 'update')->name('api.v1.profile.update');
+        });
+
+        // Sessions
+        Route::controller(SessionController::class)->group(function () {
+            Route::get('/sessions', 'index')->name('api.v1.sessions');
+        });
+
+        // System Settings
+        Route::controller(SystemSettingController::class)->group(function () {
+            Route::get('/settings', 'index')->name('api.v1.settings.index');
+            Route::put('/settings', 'update')->name('api.v1.settings.update');
         });
 
         // User state management (Activate / Deactivate / Lock / Unlock)

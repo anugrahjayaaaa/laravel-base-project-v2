@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Web\V1\Auth;
 
 use App\Actions\Auth\AuthenticateUserAction;
+use App\Actions\Auth\ListUserSessionsAction;
 use App\Actions\Auth\LogoutAllDevicesAction;
 use App\Actions\Auth\ResendVerificationAction;
 use App\Actions\Auth\SendPasswordResetLinkAction;
@@ -21,6 +22,10 @@ use Illuminate\Support\Facades\Password;
 
 class WebAuthController extends Controller
 {
+    public function __construct(
+        private readonly ListUserSessionsAction $listSessionsAction,
+    ) {}
+
     // === VIEW: Login ===
 
     public function showLogin()
@@ -236,7 +241,7 @@ class WebAuthController extends Controller
 
     public function showSessions(Request $request)
     {
-        $tokens = $request->user()->tokens()->orderByDesc('last_used_at')->get();
+        $tokens = $this->listSessionsAction->run($request->user());
 
         return response()->view('pages.sessions', [
             'title' => 'Active Sessions',
