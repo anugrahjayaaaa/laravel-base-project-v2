@@ -39,7 +39,7 @@
                     </div>
                     <div class="card-body p-4">
                         <div class="row g-3">
-                            <div class="col-md-3">
+                            <div class="col-6 col-md-3">
                                 <label for="auth_login_max_attempts" class="form-label">
                                     Max Attempts
                                     <i class="bi bi-info-circle text-muted fs-6 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Maximum number of failed login attempts allowed before an account is automatically locked."></i>
@@ -54,7 +54,7 @@
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
                             </div>
-                            <div class="col-md-3">
+                            <div class="col-6 col-md-3">
                                 <label for="auth_lockout_base_minutes" class="form-label">
                                     Lockout Duration
                                     <i class="bi bi-info-circle text-muted fs-6 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="The initial lockout duration applied when the failed login threshold is reached."></i>
@@ -69,7 +69,7 @@
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
                             </div>
-                            <div class="col-md-3">
+                            <div class="col-6 col-md-3">
                                 <label for="auth_lockout_increment_minutes" class="form-label">
                                     Lockout Penalty
                                     <i class="bi bi-info-circle text-muted fs-6 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Additional penalty duration added for each subsequent failed login attempt."></i>
@@ -84,7 +84,7 @@
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
                             </div>
-                            <div class="col-md-3">
+                            <div class="col-6 col-md-3">
                                 <label for="auth_login_rate_limit_per_minute" class="form-label">
                                     Login Rate Limit
                                     <i class="bi bi-info-circle text-muted fs-6 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Maximum number of total login requests allowed per minute per IP address."></i>
@@ -291,7 +291,7 @@
             </div>
 
             {{-- Sidebar Area --}}
-            <div class="col-lg-4">
+            <div class="col-12 col-lg-4">
 
                 {{-- Card 4: Identity & Account Policies --}}
                 <div class="card border-0 shadow-sm mb-4" id="section-change">
