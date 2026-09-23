@@ -181,6 +181,20 @@ Shared nav-pills conventions for index page status filters:
 - Counter badge passive: `badge rounded-pill bg-secondary-subtle text-secondary`
 - Counter badge active: `badge rounded-pill bg-primary text-white`
 
+### Action Color Convention
+
+Semantic color mapping for confirmation modal variants — MUST be consistent across single and bulk actions:
+
+| Variant | Color | Actions |
+|---------|-------|---------|
+| `success` | hijau | activate, unlock, restore |
+| `warning` | orange | deactivate, lock |
+| `danger` | merah | delete, permanent delete |
+
+Single action buttons: `data-variant` MUST match semantic mapping. Button class: `btn-outline-*` for outline style.
+
+Bulk action: `variant` in `actionOptions`/`actionLabels` MUST match semantic mapping.
+
 ## Consistency Rules
 
 - Use the same token set across all UI implementations (Blade, Vue, React).
