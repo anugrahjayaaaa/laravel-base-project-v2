@@ -2,7 +2,6 @@
 
 namespace App\Actions\User;
 
-use App\Enums\UserStatusEnum;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 

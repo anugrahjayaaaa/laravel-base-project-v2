@@ -5,7 +5,6 @@ namespace App\Actions\User;
 use App\Enums\UserStatusEnum;
 use App\Models\User;
 use App\Notifications\ChangeEmailVerificationNotification;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Str;
 
