@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
+use App\Models\SystemSetting;
 
 /**
  * Tracks failed login attempts and progressive lockout state per
@@ -48,8 +49,8 @@ class FailedLoginAttempt extends Model
      */
     public function nextLockoutMinutes(): int
     {
-        $base = (int) config('rate_limits.login.lockout_base_minutes', 5);
-        $increment = (int) config('rate_limits.login.lockout_increment_minutes', 10);
+        $base = SystemSetting::getInt('auth_lockout_base_minutes', 5);
+        $increment = SystemSetting::getInt('auth_lockout_increment_minutes', 10);
 
         return $base + ($this->lock_count * $increment);
     }
