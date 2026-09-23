@@ -61,6 +61,24 @@ See [Application Components](../architecture/application-components.md) for
 the component responsibility model and [Application Boundaries](../architecture/application-boundaries.md)
 for transaction/after-commit rules.
 
+## Model Audit (Auditable Trait)
+
+User model carries an `Auditable` trait (`App\Models\Concerns\Auditable`)
+that wraps spatie/activitylog. Controllers call `$user->audit()` directly:
+
+```php
+// In controller (thin, after action runs):
+$user->audit('user.locked', $request->user(), ['reason' => 'security']);
+```
+
+- `performedOn` = the model itself (`$this`)
+- `causedBy` = explicit causer argument (admin / system)
+- `event` = snake_case event name (e.g. `user.locked`, `user.deactivated`)
+- `properties` = optional context array
+
+The trait is the single model-level audit entry point. Do NOT audit inside
+observers — the caller is responsible for explicit audit logging.
+
 ## Transaction Boundaries
 
 - Audit records must be written **within the same database transaction** as

@@ -37,10 +37,11 @@
   - **OR** the logic is shared across ≥2 controllers.
 - Do NOT create an Action merely to wrap a single trivial model call
   (e.g. `$user->delete()`). Inline trivial calls in the controller.
-- **Audit is written by the controller** (using `$this->audit()`), not inside
-  the Action. The Action returns the result; the controller adds audit with
-  the correct channel (API = 'api', Web = 'web'). This keeps audit co-located
-  with the HTTP response layer where channel is determined.
+- **Audit is written by the controller** using the model's `Auditable`
+  trait (`$user->audit()`), not inside the Action. The Action returns the
+  result; the controller adds audit with the correct channel (API = 'api',
+  Web = 'web'). This keeps audit co-located with the HTTP response layer
+  where channel is determined.
 
 ### Service
 

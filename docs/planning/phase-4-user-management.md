@@ -173,7 +173,7 @@ Authorization via RBAC (Phase 6) — permission gates applied per endpoint.
 | ID | Task | Depends | Status |
 |----|------|---------|--------|
 | P4-H1 | Bulk actions: soft delete, force delete (trashed only), lock/unlock, activate/deactivate | B,C,D,F | DONE |
-| P4-H2 | Audit logging on user state changes (Auditable trait) | B,C,D,E,F,G | PLANNED |
+| P4-H2 | Audit logging on user state changes (Auditable trait) | B,C,D,E,F,G | DONE |
 | P4-H3 | Integration test: full user lifecycle flow (create → activate → lock → unlock → deactivate) | B,C,D,E,F,G | PLANNED |
 | P4-H4 | Final audit: all views use @error, no magic strings, no hardcoded routes | H2,H3 | PLANNED |
 
