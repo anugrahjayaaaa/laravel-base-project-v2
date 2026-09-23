@@ -3,7 +3,8 @@
 namespace App\Http\Controllers\Web\V1;
 
 use App\Actions\User\AdminResendVerificationAction;
-use App\Actions\User\BulkUserAction;
+use App\Actions\BulkAction\BulkActionProcessor;
+use App\Actions\User\UserBulkActionHandler;
 use App\Actions\User\CancelEmailChangeAction;
 use App\Actions\User\CreateUserAction;
 use App\Actions\User\DeleteUserAction;
@@ -36,7 +37,8 @@ class UserController extends Controller
         private readonly DeleteUserAction $deleteAction,
         private readonly RestoreUserAction $restoreAction,
         private readonly ForceDeleteUserAction $forceDeleteAction,
-        private readonly BulkUserAction $bulkAction,
+        private readonly BulkActionProcessor $processor,
+        private readonly UserBulkActionHandler $userBulkActionHandler,
         private readonly AdminResendVerificationAction $resendVerificationAction,
         private readonly RequestEmailChangeAction $requestEmailChangeAction,
         private readonly CancelEmailChangeAction $cancelEmailChangeAction,
@@ -144,10 +146,11 @@ class UserController extends Controller
 
     public function bulkAction(BulkUserRequest $request): RedirectResponse
     {
-        $result = $this->bulkAction->run(
+        $result = $this->processor->run(
             action: $request->validated('action'),
-            userIds: $request->validated('user_ids'),
+            ids: $request->validated('user_ids'),
             causer: $request->user(),
+            handler: $this->userBulkActionHandler,
         );
 
         return back()->with('status', "{$result['label']} ({$result['count']} users).");
