@@ -2,18 +2,18 @@
 
 namespace App\Http\Controllers\Api\V1\User;
 
-use App\Actions\User\AdminResendVerificationAction;
-use App\Actions\BulkAction\BulkActionProcessor;
-use App\Actions\User\UserBulkActionHandler;
-use App\Actions\User\CancelEmailChangeAction;
-use App\Actions\User\CreateUserAction;
-use App\Actions\User\DeleteUserAction;
-use App\Actions\User\ForceDeleteUserAction;
-use App\Actions\User\RequestEmailChangeAction;
-use App\Actions\User\RestoreUserAction;
-use App\Actions\User\UpdateUserAction;
-use App\Actions\User\UserIndexAction;
-use App\Actions\User\VerifyEmailChangeAction;
+use App\Actions\V1\User\AdminResendVerificationAction;
+use App\Actions\V1\BulkAction\BulkActionProcessor;
+use App\Actions\V1\User\UserBulkActionHandler;
+use App\Actions\V1\User\CancelEmailChangeAction;
+use App\Actions\V1\User\CreateUserAction;
+use App\Actions\V1\User\DeleteUserAction;
+use App\Actions\V1\User\ForceDeleteUserAction;
+use App\Actions\V1\User\RequestEmailChangeAction;
+use App\Actions\V1\User\RestoreUserAction;
+use App\Actions\V1\User\UpdateUserAction;
+use App\Actions\V1\User\UserIndexAction;
+use App\Actions\V1\User\VerifyEmailChangeAction;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\User\BulkUserRequest;
 use App\Http\Requests\User\CreateUserRequest;

@@ -2,10 +2,10 @@
 
 namespace App\Http\Controllers\Api\V1\User;
 
-use App\Actions\User\ActivateUserAction;
-use App\Actions\User\DeactivateUserAction;
-use App\Actions\User\LockUserAction;
-use App\Actions\User\UnlockUserAction;
+use App\Actions\V1\User\ActivateUserAction;
+use App\Actions\V1\User\DeactivateUserAction;
+use App\Actions\V1\User\LockUserAction;
+use App\Actions\V1\User\UnlockUserAction;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;

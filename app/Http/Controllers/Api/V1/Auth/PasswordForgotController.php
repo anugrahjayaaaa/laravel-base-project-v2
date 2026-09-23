@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1\Auth;
 
-use App\Actions\Auth\SendPasswordResetLinkAction;
+use App\Actions\V1\Auth\SendPasswordResetLinkAction;
 use App\Auth\LoginThrottle;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\PasswordForgotRequest;

@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1\Auth;
 
-use App\Actions\Auth\ResendVerificationAction;
+use App\Actions\V1\Auth\ResendVerificationAction;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\ResendVerificationRequest;
 use App\Models\User;
