@@ -31,12 +31,6 @@
             : '<i class="fas fa-sort-down text-primary ml-1"></i>';
     };
 
-    $badgeClass = $badgeClass;
-
-    $tabClass = function (string $tab) use ($currentStatus) {
-        return $currentStatus === $tab ? 'active' : '';
-    };
-
     $tabUrl = function (string $tab) use ($currentSearch, $currentSort, $currentDir) {
         $params = array_filter(
             [
@@ -144,27 +138,32 @@
         <div class="card-header bg-transparent border-bottom py-2">
             <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
                 <div class="d-flex flex-nowrap overflow-auto pe-2" style="scrollbar-width: none;">
-                    <ul class="nav nav-pills flex-nowrap overflow-auto pb-2 gap-2" style="-webkit-overflow-scrolling: touch; scrollbar-width: none;">
+                    <ul class="nav nav-pills flex-nowrap overflow-auto pb-2 gap-2"
+                        style="-webkit-overflow-scrolling: touch; scrollbar-width: none;">
                         <li class="nav-item">
-                            <a class="nav-link {{ $currentStatus === 'active' ? 'active fw-semibold' : 'text-secondary fw-medium' }} px-3 py-2 d-flex align-items-center gap-2 border-0 bg-transparent" href="{{ $tabUrl('active') }}">
+                            <a class="nav-link {{ $currentStatus === 'active' ? 'active fw-semibold border-bottom border-primary border-2' : 'text-secondary fw-medium' }} px-3 py-2 d-flex align-items-center gap-2 border-0 bg-transparent"
+                                href="{{ $tabUrl('active') }}">
                                 Active Users <span
                                     class="badge rounded-pill {{ $currentStatus === 'active' ? 'bg-primary text-white' : 'bg-secondary-subtle text-secondary' }}">{{ $counts['active'] }}</span>
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link {{ $currentStatus === 'inactive' ? 'active fw-semibold' : 'text-secondary fw-medium' }} px-3 py-2 d-flex align-items-center gap-2 border-0 bg-transparent" href="{{ $tabUrl('inactive') }}">
+                            <a class="nav-link {{ $currentStatus === 'inactive' ? 'active fw-semibold border-bottom border-primary border-2' : 'text-secondary fw-medium' }} px-3 py-2 d-flex align-items-center gap-2 border-0 bg-transparent"
+                                href="{{ $tabUrl('inactive') }}">
                                 Inactive <span
                                     class="badge rounded-pill {{ $currentStatus === 'inactive' ? 'bg-primary text-white' : 'bg-secondary-subtle text-secondary' }}">{{ $counts['inactive'] }}</span>
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link {{ $currentStatus === 'locked' ? 'active fw-semibold' : 'text-secondary fw-medium' }} px-3 py-2 d-flex align-items-center gap-2 border-0 bg-transparent" href="{{ $tabUrl('locked') }}">
+                            <a class="nav-link {{ $currentStatus === 'locked' ? 'active fw-semibold border-bottom border-primary border-2' : 'text-secondary fw-medium' }} px-3 py-2 d-flex align-items-center gap-2 border-0 bg-transparent"
+                                href="{{ $tabUrl('locked') }}">
                                 Locked <span
                                     class="badge rounded-pill {{ $currentStatus === 'locked' ? 'bg-primary text-white' : 'bg-secondary-subtle text-secondary' }}">{{ $counts['locked'] }}</span>
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link {{ $currentStatus === 'trashed' ? 'active fw-semibold' : 'text-secondary fw-medium' }} px-3 py-2 d-flex align-items-center gap-2 border-0 bg-transparent" href="{{ $tabUrl('trashed') }}">
+                            <a class="nav-link {{ $currentStatus === 'trashed' ? 'active fw-semibold border-bottom border-primary border-2' : 'text-secondary fw-medium' }} px-3 py-2 d-flex align-items-center gap-2 border-0 bg-transparent"
+                                href="{{ $tabUrl('trashed') }}">
                                 Trash <span
                                     class="badge rounded-pill {{ $currentStatus === 'trashed' ? 'bg-primary text-white' : 'bg-secondary-subtle text-secondary' }}">{{ $counts['trashed'] }}</span>
                             </a>
@@ -192,7 +191,8 @@
                         <i class="fas fa-times"></i> Clear
                     </a>
                 @endif
-                <div id="bulkBar" class="d-none align-items-center gap-2 flex-wrap ms-auto" data-bulk-route="{{ route('users.bulk-action') }}">
+                <div id="bulkBar" class="d-none align-items-center gap-2 flex-wrap ms-auto"
+                    data-bulk-route="{{ route('users.bulk-action') }}">
                     <span class="text-muted fs-7">Selected: <strong id="bulkCount">0</strong></span>
                     <select id="bulkAction" class="form-select form-select-sm d-inline-block" style="width:auto">
                         <option value="">-- Action --</option>
@@ -211,69 +211,72 @@
 
             {{-- Table --}}
             <div class="table-responsive">
-                        <table class="table table-hover mb-0">
-                            <thead>
-                                <tr>
-                                    <th style="width: 36px" class="align-middle">
-                                        <input type="checkbox" id="bulkSelectAll" aria-label="Select all users">
-                                    </th>
-                                    <th style="width: 50px" class="align-middle">#</th>
-                                    <th style="cursor:pointer" class="align-middle"
-                                        onclick="window.location.href='{{ $sortUrl('name') }}'">
-                                        Name{!! $sortIcon('name') !!}
-                                    </th>
-                                    <th style="cursor:pointer" class="align-middle"
-                                        onclick="window.location.href='{{ $sortUrl('email') }}'">
-                                        Email{!! $sortIcon('email') !!}
-                                    </th>
-                                    <th class="align-middle">Status</th>
-                                    <th style="cursor:pointer" class="align-middle"
-                                        onclick="window.location.href='{{ $sortUrl('created_at') }}'">
-                                        Created At{!! $sortIcon('created_at') !!}
-                                    </th>
-                                    <th style="width: 100px" class="align-middle">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @forelse ($users as $user)
-                                    <tr
-                                        @if ($user->trashed()) style="background-color: color-mix(in srgb, var(--lbp-danger, #ef4444) 8%, transparent); " @endif>
-                                        <td>
-                                            <input type="checkbox" class="bulk-check" value="{{ $user->id }}" data-status="{{ $user->trashed() ? 'trashed' : $user->getStatus()->value }}" data-bs-toggle="tooltip" title="Select for bulk action">
-                                        </td>
-                                        <td>{{ ($users->currentPage() - 1) * $users->perPage() + $loop->iteration }}</td>
-                                        <td>
-                                            {{ $user->name }}
-                                            @if ($user->trashed())
-                                                <span class="badge bg-danger text-white ms-1">DELETED</span>
-                                            @endif
-                                        </td>
-                                        <td>{{ $user->email }}</td>
-                                        <td>
-                                            @php $status = $user->getStatus(); @endphp
-                                            <span
-                                                class="badge {{ $badgeClass($status, $user->trashed()) }}">{{ $status->label() }}</span>
-                                        </td>
-                                        <td>{{ $user->created_at->format('Y-m-d') }}</td>
-                                        <td>
-                                            <div class="d-flex gap-1">
-                                                {!! $editBtn($user) !!}
-                                                {!! $stateBtn($user) !!}
-                                                {!! $deleteBtn($user) !!}
-                                            </div>
-                                        </td>
-                                    </tr>
-                                @empty
-                                    <tr>
-                                        <td colspan="7" class="text-center text-muted py-4">
-                                            <i class="fas fa-inbox fa-2x text-muted mb-2 d-block"></i>
-                                            No users found.
-                                        </td>
-                                    </tr>
-                                @endforelse
-                            </tbody>
-                        </table>
-                    </div>
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th style="width: 36px" class="align-middle">
+                                <input type="checkbox" id="bulkSelectAll" aria-label="Select all users">
+                            </th>
+                            <th style="width: 50px" class="align-middle">#</th>
+                            <th style="cursor:pointer" class="align-middle"
+                                onclick="window.location.href='{{ $sortUrl('name') }}'">
+                                Name{!! $sortIcon('name') !!}
+                            </th>
+                            <th style="cursor:pointer" class="align-middle"
+                                onclick="window.location.href='{{ $sortUrl('email') }}'">
+                                Email{!! $sortIcon('email') !!}
+                            </th>
+                            <th class="align-middle">Status</th>
+                            <th style="cursor:pointer" class="align-middle"
+                                onclick="window.location.href='{{ $sortUrl('created_at') }}'">
+                                Created At{!! $sortIcon('created_at') !!}
+                            </th>
+                            <th class="align-middle text-end">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @forelse ($users as $user)
+                            <tr
+                                @if ($user->trashed()) style="background-color: color-mix(in srgb, var(--lbp-danger, #ef4444) 8%, transparent); " @endif>
+                                <td>
+                                    <input type="checkbox" class="bulk-check" value="{{ $user->id }}"
+                                        data-status="{{ $user->trashed() ? 'trashed' : $user->getStatus()->value }}"
+                                        data-bs-toggle="tooltip" title="Select for bulk action">
+                                </td>
+                                <td>{{ ($users->currentPage() - 1) * $users->perPage() + $loop->iteration }}</td>
+                                <td>
+                                    {{ $user->name }}
+                                    @if ($user->trashed())
+                                        <span class="badge bg-danger text-white ms-1">DELETED</span>
+                                    @endif
+                                </td>
+                                <td>{{ $user->email }}</td>
+                                <td>
+                                    @php $status = $user->getStatus(); @endphp
+                                    <span
+                                        class="badge {{ $badgeClass($status, $user->trashed()) }}">{{ $status->label() }}</span>
+                                </td>
+                                <td>{{ $user->created_at->format('Y-m-d') }}</td>
+                                <td>
+                                    <div
+                                        class="d-flex align-items-center justify-content-end gap-1 flex-wrap flex-md-nowrap">
+                                        {!! $editBtn($user) !!}
+                                        {!! $stateBtn($user) !!}
+                                        {!! $deleteBtn($user) !!}
+                                    </div>
+                                </td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="7" class="text-center text-muted py-4">
+                                    <i class="fas fa-inbox fa-2x text-muted mb-2 d-block"></i>
+                                    No users found.
+                                </td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
 
             {{-- Pagination --}}
             <div class="d-flex justify-content-between align-items-center mt-3 flex-wrap gap-2">
