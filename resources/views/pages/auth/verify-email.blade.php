@@ -26,7 +26,7 @@
                 </div>
             @endif
 
-            @php($mode = config('auth.verification.mode', 'public'))
+            @php($mode = \App\Models\SystemSetting::getString('auth_verification_mode', 'public'))
 
             @if ($mode === 'admin')
                 <div class="alert bg-info-subtle mb-3" role="alert">
