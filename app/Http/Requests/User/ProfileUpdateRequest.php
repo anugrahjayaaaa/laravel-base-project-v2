@@ -8,13 +8,24 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
+/**
+ * Validates authenticated user profile updates.
+ */
 class ProfileUpdateRequest extends FormRequest
 {
+    /**
+     * Guest route — token-based authorization via route param.
+     */
     public function authorize(): bool
     {
         return true;
     }
 
+    /**
+     * Define validation rules with conditional checks for username/email change permissions.
+     *
+     * @return array
+     */
     public function rules(): array
     {
         $user = $this->user();
@@ -34,6 +45,11 @@ class ProfileUpdateRequest extends FormRequest
         ];
     }
 
+    /**
+     * Custom validation: check username/email change permissions and current password.
+     *
+     * @param  \Illuminate\Contracts\Validation\Validator  $validator
+     */
     public function withValidator($validator): void
     {
         $user = $this->user();

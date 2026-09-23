@@ -8,8 +8,18 @@ use App\Notifications\ChangeEmailVerificationNotification;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Str;
 
+/**
+ * Update a user's profile fields with email change flow.
+ */
 class UpdateUserAction
 {
+    /**
+     * Update user fields. Handles email change via verification flow if email changes.
+     *
+     * @param  User   $user
+     * @param  array  $data  Keys: name, status, username, email (optional)
+     * @return User
+     */
     public function run(User $user, array $data): User
     {
         $user->update([
@@ -35,7 +45,7 @@ class UpdateUserAction
                     'email_change_token' => $token,
                     'email_change_token_expires_at' => now()->addHours(24),
                 ]);
-                
+
                 Notification::send($user->fresh(), new ChangeEmailVerificationNotification($data['email'], $token));
             } else {
                 $user->update(['email' => $data['email']]);

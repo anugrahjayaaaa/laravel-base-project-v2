@@ -7,8 +7,20 @@ use App\Models\User;
 use App\Auth\LoginThrottle;
 use Illuminate\Support\Facades\Hash;
 
+/**
+ * Authenticate a user by email/username and password with throttle and state checks.
+ */
 class AuthenticateUserAction
 {
+    /**
+     * Attempt to authenticate a user.
+     *
+     * @param  string        $identifier  Email or username.
+     * @param  string        $password
+     * @param  string        $ip
+     * @param  LoginThrottle $throttle
+     * @return array       ['user' => User] or ['error' => array, 'lockedSeconds' => int]
+     */
     public function run(
         string $identifier,
         string $password,
@@ -44,6 +56,14 @@ class AuthenticateUserAction
         return ['user' => $user];
     }
 
+    /**
+     * Check if the login is currently throttled/locked.
+     *
+     * @param  string        $identifier
+     * @param  string        $ip
+     * @param  LoginThrottle $throttle
+     * @return array|null    Error array or null.
+     */
     protected function checkThrottle(string $identifier, string $ip, LoginThrottle $throttle): ?array
     {
         if ($throttle->isLocked($identifier, $ip)) {
@@ -56,6 +76,13 @@ class AuthenticateUserAction
         return null;
     }
 
+    /**
+     * Find a user by email or username and verify the password.
+     *
+     * @param  string  $identifier
+     * @param  string  $password
+     * @return User|null
+     */
     protected function findUser(string $identifier, string $password): ?User
     {
         $user = User::where('email', $identifier)
@@ -69,6 +96,12 @@ class AuthenticateUserAction
         return $user;
     }
 
+    /**
+     * Check account state (active, locked).
+     *
+     * @param  User   $user
+     * @return array|null  Error array or null.
+     */
     protected function checkAccountState(User $user): ?array
     {
         if (! $user->is_active) {
@@ -82,6 +115,12 @@ class AuthenticateUserAction
         return null;
     }
 
+    /**
+     * Check if email verification is required and pending.
+     *
+     * @param  User   $user
+     * @return array|null  Error array or null.
+     */
     protected function checkEmailVerification(User $user): ?array
     {
         if (SystemSetting::getString('auth_verification_mode', 'public') === 'disabled') {

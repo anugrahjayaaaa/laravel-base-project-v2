@@ -10,8 +10,17 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\URL;
 
+/**
+ * Create a new user with temp password and send verification notification.
+ */
 class CreateUserAction
 {
+    /**
+     * Create a user and notify them with a temporary password.
+     *
+     * @param  array  $data  Keys: name, email, username, roles (optional)
+     * @return User
+     */
     public function run(array $data): User
     {
         $tempPassword = $this->generateTempPassword();
@@ -43,7 +52,7 @@ class CreateUserAction
                 now()->addMinutes(SystemSetting::getInt('auth_verification_expire_minutes', 60)),
                 ['id' => $user->getKey(), 'hash' => sha1($user->getEmailForVerification())]
             );
-            
+
             Notification::send($user, new UserCreatedNotification($tempPassword, $user->username, $verificationUrl));
 
             return $user;

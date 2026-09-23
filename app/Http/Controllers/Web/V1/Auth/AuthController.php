@@ -21,14 +21,25 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Password;
 
+/**
+ * Web auth controller — login, logout, password reset, email verification.
+ */
 class AuthController extends Controller
 {
+    /**
+     * @param  ListUserSessionsAction  $listSessionsAction
+     */
     public function __construct(
         private readonly ListUserSessionsAction $listSessionsAction,
     ) {}
 
     // === VIEW: Login ===
 
+    /**
+     * Show the login page.
+     *
+     * @return \Illuminate\Http\Response
+     */
     public function showLogin()
     {
         return response()->view('pages.auth.login', ['title' => 'Login']);
@@ -36,6 +47,14 @@ class AuthController extends Controller
 
     // === LOGIC: Login ===
 
+    /**
+     * Handle user login.
+     *
+     * @param  LoginRequest  $request
+     * @param  LoginThrottle  $throttle
+     * @param  AuthenticateUserAction  $action
+     * @return \Illuminate\Http\RedirectResponse
+     */
     public function login(LoginRequest $request, LoginThrottle $throttle, AuthenticateUserAction $action)
     {
         $data = $request->validated();
@@ -96,6 +115,11 @@ class AuthController extends Controller
 
     // === VIEW: Forgot Password ===
 
+    /**
+     * Show the forgot password page.
+     *
+     * @return \Illuminate\Http\Response
+     */
     public function showForgotPassword()
     {
         return response()->view('pages.auth.forgot-password', ['title' => 'Forgot Password']);
@@ -103,6 +127,14 @@ class AuthController extends Controller
 
     // === LOGIC: Send Password Reset Link ===
 
+    /**
+     * Send a password reset link to the given email.
+     *
+     * @param  PasswordForgotRequest  $request
+     * @param  LoginThrottle  $throttle
+     * @param  SendPasswordResetLinkAction  $action
+     * @return \Illuminate\Http\RedirectResponse
+     */
     public function sendPasswordResetLink(PasswordForgotRequest $request, LoginThrottle $throttle, SendPasswordResetLinkAction $action)
     {
         $data = $request->validated();
@@ -134,6 +166,11 @@ class AuthController extends Controller
 
     // === VIEW: Reset Password ===
 
+    /**
+     * Show the reset password page.
+     *
+     * @return \Illuminate\Http\Response
+     */
     public function showResetPassword()
     {
         return response()->view('pages.auth.reset-password', ['title' => 'Reset Password']);
@@ -141,6 +178,14 @@ class AuthController extends Controller
 
     // === LOGIC: Reset User Password ===
 
+    /**
+     * Reset the user's password.
+     *
+     * @param  PasswordResetRequest  $request
+     * @param  LoginThrottle  $throttle
+     * @param  ResetPasswordAction  $action
+     * @return \Illuminate\Http\RedirectResponse
+     */
     public function resetUserPassword(PasswordResetRequest $request, LoginThrottle $throttle, ResetPasswordAction $action)
     {
         $data = $request->validated();
@@ -171,11 +216,22 @@ class AuthController extends Controller
 
     // === VIEW: Verify Email ===
 
+    /**
+     * Show the verify email page.
+     *
+     * @return \Illuminate\Http\Response
+     */
     public function showVerifyEmail()
     {
         return response()->view('pages.auth.verify-email', ['title' => 'Verify Email']);
     }
 
+    /**
+     * Verify the user's email address.
+     *
+     * @param  VerifyEmailAction  $action
+     * @return \Illuminate\Http\RedirectResponse
+     */
     public function verifyEmail(VerifyEmailAction $action)
     {
         $mode = SystemSetting::getString('auth_verification_mode', 'public');
@@ -213,6 +269,13 @@ class AuthController extends Controller
             ->with('success', 'Email verified successfully.');
     }
 
+    /**
+     * Resend a verification email to the user.
+     *
+     * @param  ResendVerificationAction  $action
+     * @param  ResendVerificationRequest  $request
+     * @return \Illuminate\Http\RedirectResponse
+     */
     public function resendVerification(ResendVerificationAction $action, ResendVerificationRequest $request)
     {
         $mode = SystemSetting::getString('auth_verification_mode', 'public');
@@ -240,6 +303,12 @@ class AuthController extends Controller
 
     // === VIEW: Sessions ===
 
+    /**
+     * Show the active sessions page.
+     *
+     * @param  Request  $request
+     * @return \Illuminate\Http\Response
+     */
     public function showSessions(Request $request)
     {
         $tokens = $this->listSessionsAction->run($request->user());
@@ -252,6 +321,13 @@ class AuthController extends Controller
 
     // === LOGIC: Logout All Devices ===
 
+    /**
+     * Log out all devices for the current user.
+     *
+     * @param  Request  $request
+     * @param  LogoutAllDevicesAction  $action
+     * @return \Illuminate\Http\RedirectResponse
+     */
     public function logoutAllDevices(Request $request, LogoutAllDevicesAction $action)
     {
         $user = $request->user();
@@ -266,6 +342,12 @@ class AuthController extends Controller
 
     // === LOGIC (no view) ===
 
+    /**
+     * Log out the current session.
+     *
+     * @param  Request  $request
+     * @return \Illuminate\Http\RedirectResponse
+     */
     public function logout(Request $request)
     {
         $user = $request->user();

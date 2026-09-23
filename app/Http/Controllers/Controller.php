@@ -7,8 +7,19 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 
+/**
+ * Base API controller with JSON response helper and activity audit.
+ */
 abstract class Controller
 {
+    /**
+     * Return a standardized JSON response.
+     *
+     * @param  string  $message
+     * @param  int  $status
+     * @param  array  $data
+     * @return JsonResponse
+     */
     protected function respond(
         string $message,
         int $status = 200,
@@ -23,6 +34,15 @@ abstract class Controller
         ], $status);
     }
 
+    /**
+     * Log an activity audit event via spatie activitylog.
+     *
+     * @param  string  $event
+     * @param  Model|null  $subject
+     * @param  User|null  $causer
+     * @param  array  $properties
+     * @return void
+     */
     protected function audit(
         string $event,
         ?Model $subject = null,
@@ -46,6 +66,15 @@ abstract class Controller
         $activity->log($event);
     }
 
+    /**
+     * Bulk-insert activity log records for multiple subjects.
+     *
+     * @param  string  $event
+     * @param  array  $records
+     * @param  User|null  $causer
+     * @param  string  $type
+     * @return void
+     */
     protected function bulkAudit(string $event, array $records, ?User $causer = null, string $type = 'web'): void
     {
         if (empty($records)) {

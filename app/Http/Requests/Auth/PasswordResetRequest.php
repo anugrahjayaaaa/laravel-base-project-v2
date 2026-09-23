@@ -14,6 +14,9 @@ class PasswordResetRequest extends FormRequest
 {
     use FormatsApiErrors;
 
+    /**
+     * Authorize: guest route, uses one-time token from URL.
+     */
     public function authorize(): bool
     {
         return true; // Guest route — uses a one-time token from the URL.
@@ -53,16 +56,31 @@ class PasswordResetRequest extends FormRequest
         return $rule;
     }
 
+    /**
+     * Get the user's email from the request.
+     *
+     * @return string
+     */
     public function email(): string
     {
         return $this->input('email', '');
     }
 
+    /**
+     * Get the user's new password from the request.
+     *
+     * @return string
+     */
     public function password(): string
     {
         return $this->input('password', '');
     }
 
+    /**
+     * Get the reset token from the request or route parameter.
+     *
+     * @return string
+     */
     public function token(): string
     {
         return $this->input('token', $this->route('token', ''));

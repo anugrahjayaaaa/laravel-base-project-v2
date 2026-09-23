@@ -7,8 +7,18 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
 
+/**
+ * Soft-delete a user with session invalidation.
+ */
 class DeleteUserAction
 {
+    /**
+     * Soft-delete the user.
+     *
+     * @param  User   $user
+     * @param  User   $causer
+     * @return array  ['user' => User]
+     */
     public function run(User $user, User $causer): array
     {
         $this->validate($user, $causer);
@@ -30,6 +40,12 @@ class DeleteUserAction
         $user->tokens()->delete();
     }
 
+    /**
+     * Validate that the user can be deleted.
+     *
+     * @param  User  $user
+     * @param  User  $causer
+     */
     protected function validate(User $user, User $causer): void
     {
         if ($user->id === $causer->id) {

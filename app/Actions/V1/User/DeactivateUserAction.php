@@ -8,8 +8,19 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
 
+/**
+ * Deactivate a user account with optional session invalidation.
+ */
 class DeactivateUserAction
 {
+    /**
+     * Deactivate the user.
+     *
+     * @param  User   $user
+     * @param  User   $causer
+     * @param  bool   $invalidateSessions
+     * @return array  ['user' => User]
+     */
     public function run(User $user, User $causer, bool $invalidateSessions = true): array
     {
         $this->validate($user, $causer);
@@ -30,6 +41,12 @@ class DeactivateUserAction
         $user->tokens()->delete();
     }
 
+    /**
+     * Validate that the user can be deactivated.
+     *
+     * @param  User  $user
+     * @param  User  $causer
+     */
     protected function validate(User $user, User $causer): void
     {
         if ($user->id === $causer->id) {

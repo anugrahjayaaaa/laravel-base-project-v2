@@ -26,8 +26,25 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use App\Models\User;
 
+/**
+ * API user controller — CRUD, bulk actions, email verification.
+ */
 class UserController extends Controller
 {
+    /**
+     * @param  CreateUserAction  $createAction
+     * @param  UserIndexAction  $indexAction
+     * @param  UpdateUserAction  $updateAction
+     * @param  DeleteUserAction  $deleteAction
+     * @param  RestoreUserAction  $restoreAction
+     * @param  ForceDeleteUserAction  $forceDeleteAction
+     * @param  BulkActionProcessor  $processor
+     * @param  UserBulkActionHandler  $userBulkActionHandler
+     * @param  RequestEmailChangeAction  $requestEmailChangeAction
+     * @param  CancelEmailChangeAction  $cancelEmailChangeAction
+     * @param  VerifyEmailChangeAction  $verifyEmailChangeAction
+     * @param  AdminResendVerificationAction  $resendVerificationAction
+     */
     public function __construct(
         private readonly CreateUserAction $createAction,
         private readonly UserIndexAction $indexAction,
@@ -43,6 +60,12 @@ class UserController extends Controller
         private readonly AdminResendVerificationAction $resendVerificationAction,
     ) {}
 
+    /**
+     * List users with search, filtering, and pagination.
+     *
+     * @param  UserQueryRequest  $request
+     * @return JsonResponse
+     */
     public function index(UserQueryRequest $request): JsonResponse
     {
         $status = $request->validated('status') ?? 'active';
@@ -66,6 +89,12 @@ class UserController extends Controller
         ]);
     }
 
+    /**
+     * Create a new user.
+     *
+     * @param  CreateUserRequest  $request
+     * @return JsonResponse
+     */
     public function store(CreateUserRequest $request): JsonResponse
     {
         $user = $this->createAction->run($request->validated());
@@ -81,6 +110,12 @@ class UserController extends Controller
         ], 201);
     }
 
+    /**
+     * Get a single user by ID.
+     *
+     * @param  User  $user
+     * @return JsonResponse
+     */
     public function show(User $user): JsonResponse
     {
         return $this->respond('', 200, [
@@ -88,6 +123,13 @@ class UserController extends Controller
         ]);
     }
 
+    /**
+     * Update an existing user.
+     *
+     * @param  UpdateUserRequest  $request
+     * @param  User  $user
+     * @return JsonResponse
+     */
     public function update(UpdateUserRequest $request, User $user): JsonResponse
     {
         $this->updateAction->run($user, $request->validated());
@@ -104,6 +146,12 @@ class UserController extends Controller
         ]);
     }
 
+    /**
+     * Execute bulk user actions (delete, restore, lock, unlock, activate, deactivate).
+     *
+     * @param  BulkUserRequest  $request
+     * @return JsonResponse
+     */
     public function bulkAction(BulkUserRequest $request): JsonResponse
     {
         $result = $this->processor->run(
@@ -116,6 +164,13 @@ class UserController extends Controller
         return $this->respond("{$result['label']} ({$result['count']} users).", 200);
     }
 
+    /**
+     * Soft-delete a user (moves to trash).
+     *
+     * @param  Request  $request
+     * @param  User  $user
+     * @return JsonResponse
+     */
     public function destroy(Request $request, User $user): JsonResponse
     {
         $this->deleteAction->run($user, $request->user());
@@ -125,6 +180,13 @@ class UserController extends Controller
         return $this->respond('User deleted successfully.', 200);
     }
 
+    /**
+     * Permanently delete a user from database.
+     *
+     * @param  Request  $request
+     * @param  User  $user
+     * @return JsonResponse
+     */
     public function forceDelete(Request $request, User $user): JsonResponse
     {
         $this->forceDeleteAction->run($user, $request->user());
@@ -134,6 +196,13 @@ class UserController extends Controller
         return $this->respond('User permanently deleted.', 200);
     }
 
+    /**
+     * Restore a trashed user.
+     *
+     * @param  Request  $request
+     * @param  User  $user
+     * @return JsonResponse
+     */
     public function restore(Request $request, User $user): JsonResponse
     {
         $this->restoreAction->run($user);
@@ -146,6 +215,13 @@ class UserController extends Controller
         ]);
     }
 
+    /**
+     * Request an email change for a user.
+     *
+     * @param  EmailChangeRequest  $request
+     * @param  User  $user
+     * @return JsonResponse
+     */
     public function requestEmailChange(EmailChangeRequest $request, User $user): JsonResponse
     {
         $this->requestEmailChangeAction->run($user, $request->validated('email'));
@@ -155,6 +231,13 @@ class UserController extends Controller
         return $this->respond('Verification email sent to new email address.', 200);
     }
 
+    /**
+     * Cancel a pending email change.
+     *
+     * @param  Request  $request
+     * @param  User  $user
+     * @return JsonResponse
+     */
     public function cancelEmailChange(Request $request, User $user): JsonResponse
     {
         $this->cancelEmailChangeAction->run($user);
@@ -164,6 +247,13 @@ class UserController extends Controller
         return $this->respond('Email change cancelled.', 200);
     }
 
+    /**
+     * Verify and complete an email change.
+     *
+     * @param  Request  $request
+     * @param  User  $user
+     * @return JsonResponse
+     */
     public function verifyEmailChange(Request $request, User $user): JsonResponse
     {
         $token = $request->route('token');
@@ -183,6 +273,13 @@ class UserController extends Controller
         return $this->respond('Email changed successfully. Please login with your new email.', 200);
     }
 
+    /**
+     * Resend verification email to a user.
+     *
+     * @param  Request  $request
+     * @param  User  $user
+     * @return JsonResponse
+     */
     public function resendVerification(Request $request, User $user): JsonResponse
     {
         $result = $this->resendVerificationAction->run($user, $request->ip());

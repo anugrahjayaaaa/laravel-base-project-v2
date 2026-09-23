@@ -7,8 +7,18 @@ use App\Services\HealthCheck\HealthCheckService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 
+/**
+ * Health check controller — returns system health status.
+ */
 class HealthCheckController
 {
+    /**
+     * Run health checks and return results.
+     *
+     * @param  Request  $request
+     * @param  HealthCheckService  $healthCheck
+     * @return JsonResponse
+     */
     public function __invoke(
         Request $request,
         HealthCheckService $healthCheck

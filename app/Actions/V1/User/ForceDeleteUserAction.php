@@ -7,8 +7,18 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
 
+/**
+ * Permanently delete a trashed user (hard delete).
+ */
 class ForceDeleteUserAction
 {
+    /**
+     * Force-delete the user.
+     *
+     * @param  User   $user
+     * @param  User   $causer
+     * @return array  ['user' => User]
+     */
     public function run(User $user, User $causer): array
     {
         $this->validate($user, $causer);
@@ -20,6 +30,12 @@ class ForceDeleteUserAction
         return ['user' => $user];
     }
 
+    /**
+     * Validate that the user can be force-deleted.
+     *
+     * @param  User  $user
+     * @param  User  $causer
+     */
     protected function validate(User $user, User $causer): void
     {
         if ($user->id === $causer->id) {

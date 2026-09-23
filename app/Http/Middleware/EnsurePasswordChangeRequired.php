@@ -29,6 +29,16 @@ class EnsurePasswordChangeRequired
         'logout',
     ];
 
+    /**
+     * Enforce that users with expired passwords or forced-change flags
+     * cannot access normal application routes until they change their password.
+     *
+     * Checks: must_change_password = true OR password_expires_at in the past.
+     *
+     * @param Request $request
+     * @param Closure $next
+     * @return Response
+     */
     public function handle(Request $request, Closure $next): Response
     {
         /** @var \App\Models\User|null $user */
@@ -63,6 +73,9 @@ class EnsurePasswordChangeRequired
 
     /**
      * Determine if the user must change their password before proceeding.
+     *
+     * @param User $user
+     * @return bool
      */
     protected function shouldForceChange($user): bool
     {

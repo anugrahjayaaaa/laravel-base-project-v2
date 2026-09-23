@@ -8,8 +8,18 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
 
+/**
+ * Lock a user account with optional session invalidation.
+ */
 class LockUserAction
 {
+    /**
+     * Lock the user.
+     *
+     * @param  User   $user
+     * @param  bool   $invalidateSessions
+     * @return array  ['user' => User]
+     */
     public function run(User $user, bool $invalidateSessions = true): array
     {
         $this->validate($user);
@@ -30,6 +40,11 @@ class LockUserAction
         $user->tokens()->delete();
     }
 
+    /**
+     * Validate that the user can be locked.
+     *
+     * @param  User  $user
+     */
     protected function validate(User $user): void
     {
         if (! $user->is_active) {

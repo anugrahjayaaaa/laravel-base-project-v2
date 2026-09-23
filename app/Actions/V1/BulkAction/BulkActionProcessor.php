@@ -6,8 +6,20 @@ use App\Models\User;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
+/**
+ * Orchestrates a bulk action: validates items, executes, audits, invalidates cache.
+ */
 class BulkActionProcessor
 {
+    /**
+     * Run a bulk action through the given handler.
+     *
+     * @param  string            $action
+     * @param  array<int>        $ids
+     * @param  User              $causer
+     * @param  BulkActionHandler $handler
+     * @return array             ['count' => int, 'label' => string]
+     */
     public function run(
         string $action,
         array $ids,

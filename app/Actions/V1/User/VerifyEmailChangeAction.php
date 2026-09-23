@@ -5,8 +5,18 @@ namespace App\Actions\V1\User;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 
+/**
+ * Verify and apply a pending email change using the token.
+ */
 class VerifyEmailChangeAction
 {
+    /**
+     * Verify the email change token and apply the new email.
+     *
+     * @param  User   $user
+     * @param  string $token
+     * @return bool   True if verified and applied.
+     */
     public function run(User $user, string $token): bool
     {
         if ($user->email_change_token !== $token) {

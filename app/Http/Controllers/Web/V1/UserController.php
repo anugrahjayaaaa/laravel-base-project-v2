@@ -49,6 +49,11 @@ class UserController extends Controller
         private readonly VerifyEmailChangeAction $verifyEmailChangeAction,
     ) {}
 
+    /**
+     * Show the create user page.
+     *
+     * @return \Illuminate\Contracts\View\View
+     */
     public function create()
     {
         return view('pages.users.create', [
@@ -57,6 +62,12 @@ class UserController extends Controller
         ]);
     }
 
+    /**
+     * Create a new user.
+     *
+     * @param  CreateUserRequest  $request
+     * @return RedirectResponse
+     */
     public function store(CreateUserRequest $request)
     {
         $user = $this->createAction->run($request->validated());
@@ -67,6 +78,12 @@ class UserController extends Controller
             ->with('status', 'User created successfully.');
     }
 
+    /**
+     * List users with search, filtering, and pagination.
+     *
+     * @param  UserQueryRequest  $request
+     * @return \Illuminate\Contracts\View\View
+     */
     public function index(UserQueryRequest $request)
     {
         $status = $request->validated('status') ?? 'active';
@@ -106,6 +123,12 @@ class UserController extends Controller
         ]);
     }
 
+    /**
+     * Show the user detail page.
+     *
+     * @param  User  $user
+     * @return \Illuminate\Contracts\View\View
+     */
     public function show(User $user)
     {
         $initials = str($user->name)->substr(0, 2)->upper();
@@ -123,6 +146,12 @@ class UserController extends Controller
         ]);
     }
 
+    /**
+     * Show the edit user page.
+     *
+     * @param  User  $user
+     * @return \Illuminate\Contracts\View\View
+     */
     public function edit(User $user)
     {
         $initials = str($user->name)->substr(0, 2)->upper();
@@ -140,6 +169,13 @@ class UserController extends Controller
         ]);
     }
 
+    /**
+     * Update an existing user. Optionally changes password.
+     *
+     * @param  UpdateUserRequest  $request
+     * @param  User  $user
+     * @return RedirectResponse
+     */
     public function update(UpdateUserRequest $request, User $user)
     {
         $this->updateAction->run($user, $request->validated());
@@ -229,6 +265,13 @@ class UserController extends Controller
         return redirect()->route('users.index')->with('status', "User '{$user->name}' has been permanently deleted.");
     }
 
+    /**
+     * Resend verification email to a user.
+     *
+     * @param  Request  $request
+     * @param  User  $user
+     * @return RedirectResponse
+     */
     public function resendVerification(Request $request, User $user)
     {
         $result = $this->resendVerificationAction->run($user, $request->ip());
@@ -242,6 +285,13 @@ class UserController extends Controller
         return back()->with('status', 'Verification email successfully sent to user.');
     }
 
+    /**
+     * Request an email change for a user.
+     *
+     * @param  EmailChangeRequest  $request
+     * @param  User  $user
+     * @return RedirectResponse
+     */
     public function requestEmailChange(EmailChangeRequest $request, User $user)
     {
         $this->requestEmailChangeAction->run($user, $request->validated('email'));
@@ -251,6 +301,12 @@ class UserController extends Controller
         return back()->with('status', 'Verification email sent to new email address.');
     }
 
+    /**
+     * Cancel a pending email change.
+     *
+     * @param  User  $user
+     * @return RedirectResponse
+     */
     public function cancelEmailChange(User $user)
     {
         $this->cancelEmailChangeAction->run($user);
@@ -260,6 +316,13 @@ class UserController extends Controller
         return back()->with('status', 'Email change cancelled.');
     }
 
+    /**
+     * Verify and complete an email change.
+     *
+     * @param  Request  $request
+     * @param  User  $user
+     * @return RedirectResponse
+     */
     public function verifyEmailChange(Request $request, User $user)
     {
         $token = $request->query('token') ?? $request->route('token');

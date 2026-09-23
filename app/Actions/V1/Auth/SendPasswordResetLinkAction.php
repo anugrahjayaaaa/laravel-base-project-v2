@@ -8,8 +8,20 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Password;
 
+/**
+ * Send a password reset link email to the user.
+ */
 class SendPasswordResetLinkAction
 {
+    /**
+     * Send the password reset link via Laravel's Password broker.
+     *
+     * @param  string        $email
+     * @param  string        $ip
+     * @param  Request       $request
+     * @param  LoginThrottle $throttle
+     * @return array         ['user' => User] or ['error' => array]
+     */
     public function run(
         string $email,
         string $ip,

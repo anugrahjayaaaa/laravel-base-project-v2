@@ -4,8 +4,14 @@ namespace App\Http\Requests\User;
 
 use Illuminate\Foundation\Http\FormRequest;
 
+/**
+ * Validates user list query parameters.
+ */
 class UserQueryRequest extends FormRequest
 {
+    /**
+     * Guest route — always authorized.
+     */
     public function authorize(): bool
     {
         return true;

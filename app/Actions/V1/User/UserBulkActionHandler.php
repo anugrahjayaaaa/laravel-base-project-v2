@@ -8,8 +8,18 @@ use App\Actions\V1\BulkAction\BulkActionHandler;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
 
+/**
+ * Bulk action handler for User model operations.
+ */
 class UserBulkActionHandler implements BulkActionHandler
 {
+    /**
+     * Filter IDs to valid users for the given action.
+     *
+     * @param  array<int>  $ids
+     * @param  string      $action
+     * @return Collection
+     */
     public function getValidItems(array $ids, string $action): Collection
     {
         $users = User::withTrashed()->whereIn('id', $ids)->get();
@@ -28,6 +38,12 @@ class UserBulkActionHandler implements BulkActionHandler
         });
     }
 
+    /**
+     * Execute the bulk operation on valid user IDs.
+     *
+     * @param  string  $action
+     * @param  array<int>  $ids
+     */
     public function executeBulk(string $action, array $ids): void
     {
         match ($action) {
@@ -41,11 +57,23 @@ class UserBulkActionHandler implements BulkActionHandler
         };
     }
 
+    /**
+     * Get the technical audit event name.
+     *
+     * @param  string  $action
+     * @return string
+     */
     public function getAuditEvent(string $action): string
     {
         return "user.{$action}";
     }
 
+    /**
+     * Get the human-readable label for the action result.
+     *
+     * @param  string  $action
+     * @return string
+     */
     public function getAuditLabel(string $action): string
     {
         return match ($action) {
@@ -60,11 +88,21 @@ class UserBulkActionHandler implements BulkActionHandler
         };
     }
 
+    /**
+     * Get cache keys to invalidate after the bulk operation.
+     *
+     * @return string[]
+     */
     public function getCacheKeys(): array
     {
         return ['user_index_counts'];
     }
 
+    /**
+     * Batch invalidate sessions/tokens for the given user IDs.
+     *
+     * @param  array<int>  $ids
+     */
     public function batchInvalidateSessions(array $ids): void
     {
         DB::table('sessions')->whereIn('user_id', $ids)->delete();
@@ -74,6 +112,11 @@ class UserBulkActionHandler implements BulkActionHandler
             ->delete();
     }
 
+    /**
+     * Get the list of actions that require session invalidation.
+     *
+     * @return string[]
+     */
     public function getSessionInvalidationActions(): array
     {
         return ['lock', 'deactivate', 'delete'];

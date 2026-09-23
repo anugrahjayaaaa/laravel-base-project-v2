@@ -15,6 +15,9 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
 
+/**
+ * Authentication service provider.
+ */
 class AuthServiceProvider extends ServiceProvider
 {
     /**

@@ -4,13 +4,24 @@ namespace App\Http\Requests\System;
 
 use Illuminate\Foundation\Http\FormRequest;
 
+/**
+ * Validates system setting update payloads.
+ */
 class SystemSettingRequest extends FormRequest
 {
+    /**
+     * Guest route — always authorized.
+     */
     public function authorize(): bool
     {
         return true;
     }
 
+    /**
+     * Define validation rules for all system settings with min/max bounds.
+     *
+     * @return array
+     */
     public function rules(): array
     {
         return [
@@ -51,6 +62,9 @@ class SystemSettingRequest extends FormRequest
         ];
     }
 
+    /**
+     * Cast boolean settings from string input to actual booleans before validation.
+     */
     protected function prepareForValidation(): void
     {
         foreach (['auth_password_mixed_case', 'auth_password_numbers', 'auth_password_symbols', 'auth_password_uncompromised', 'allow_username_change', 'allow_email_change'] as $key) {

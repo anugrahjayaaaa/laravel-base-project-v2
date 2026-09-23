@@ -7,8 +7,18 @@ use App\Actions\V1\Auth\ChangePassword;
 use App\Http\Requests\Auth\PasswordChangeRequest;
 use Illuminate\Http\JsonResponse;
 
+/**
+ * API auth controller — change password.
+ */
 class PasswordChangeController extends Controller
 {
+    /**
+     * Change the authenticated user's password.
+     *
+     * @param  PasswordChangeRequest  $request
+     * @param  ChangePassword  $action
+     * @return JsonResponse
+     */
     public function __invoke(
         PasswordChangeRequest $request,
         ChangePassword $action,

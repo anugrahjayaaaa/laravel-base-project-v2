@@ -9,8 +9,16 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
+/**
+ * User index listing with search, filter, sort, and counts.
+ */
 class UserIndexAction
 {
+    /**
+     * Get cached counts by user status.
+     *
+     * @return array{active: int, inactive: int, locked: int, trashed: int}
+     */
     public function counts(): array
     {
         return Cache::rememberForever('user_index_counts', function () {
@@ -32,6 +40,16 @@ class UserIndexAction
         });
     }
 
+    /**
+     * Get a paginated list of users with optional search, status filter, and sort.
+     *
+     * @param  string|null       $search
+     * @param  string|null       $status
+     * @param  string            $sort
+     * @param  string            $direction
+     * @param  int               $perPage
+     * @return LengthAwarePaginator
+     */
     public function run(
         ?string $search = null,
         ?string $status = 'active',
@@ -51,6 +69,12 @@ class UserIndexAction
         return $query->paginate($perPage)->withQueryString();
     }
 
+    /**
+     * Apply a name/email search filter.
+     *
+     * @param  Builder       $query
+     * @param  string|null   $search
+     */
     protected function applySearch(Builder $query, ?string $search): void
     {
         if (! $search) {
@@ -63,6 +87,12 @@ class UserIndexAction
         });
     }
 
+    /**
+     * Apply a status filter to the query.
+     *
+     * @param  Builder       $query
+     * @param  string|null   $status
+     */
     protected function applyStatusFilter(Builder $query, ?string $status): void
     {
         if (! $status) {
@@ -79,6 +109,13 @@ class UserIndexAction
         };
     }
 
+    /**
+     * Apply sort order to the query.
+     *
+     * @param  Builder  $query
+     * @param  string   $sort
+     * @param  string   $direction
+     */
     protected function applySort(Builder $query, string $sort, string $direction): void
     {
         $allowed = ['created_at', 'name', 'email', 'is_active'];

@@ -9,8 +9,19 @@ use App\Http\Requests\Auth\PasswordResetRequest;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Password;
 
+/**
+ * API auth controller — reset password.
+ */
 class PasswordResetController extends Controller
 {
+    /**
+     * Reset password using a token.
+     *
+     * @param  PasswordResetRequest  $request
+     * @param  LoginThrottle  $throttle
+     * @param  ResetPasswordAction  $action
+     * @return JsonResponse
+     */
     public function __invoke(
         PasswordResetRequest $request,
         LoginThrottle $throttle,

@@ -7,13 +7,27 @@ use App\Http\Requests\System\SystemSettingRequest;
 use App\Models\SystemSetting;
 use Illuminate\Http\JsonResponse;
 
+/**
+ * API system settings controller — get and update settings.
+ */
 class SystemSettingController extends Controller
 {
+    /**
+     * Get all system settings.
+     *
+     * @return JsonResponse
+     */
     public function index(): JsonResponse
     {
         return $this->respond('', 200, SystemSetting::getAll());
     }
 
+    /**
+     * Update system settings.
+     *
+     * @param  SystemSettingRequest  $request
+     * @return JsonResponse
+     */
     public function update(SystemSettingRequest $request): JsonResponse
     {
         $data = $request->validated();

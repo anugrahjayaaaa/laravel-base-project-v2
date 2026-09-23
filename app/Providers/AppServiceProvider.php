@@ -11,8 +11,16 @@ use Illuminate\Pagination\Paginator;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\RateLimiter;
 
+/**
+ * Application service provider.
+ */
 class AppServiceProvider extends ServiceProvider
 {
+    /**
+     * Bootstrap any application services.
+     *
+     * @return void
+     */
     public function boot(): void
     {
         Paginator::useBootstrap();

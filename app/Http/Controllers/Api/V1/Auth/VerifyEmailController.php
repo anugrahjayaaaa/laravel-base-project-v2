@@ -9,8 +9,18 @@ use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
+/**
+ * API auth controller — verify email.
+ */
 class VerifyEmailController extends Controller
 {
+    /**
+     * Verify the user's email address.
+     *
+     * @param  Request  $request
+     * @param  VerifyEmailAction  $action
+     * @return JsonResponse
+     */
     public function __invoke(Request $request, VerifyEmailAction $action): JsonResponse
     {
         $mode = SystemSetting::getString('auth_verification_mode', 'public');

@@ -8,8 +8,18 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 
+/**
+ * Resend email verification notification with rate limiting.
+ */
 class ResendVerificationAction
 {
+    /**
+     * Send a new verification email if the user hasn't verified yet.
+     *
+     * @param  string  $email
+     * @param  string  $ip
+     * @return array
+     */
     public function run(string $email, string $ip): array
     {
         $user = User::where('email', $email)->first();
@@ -47,6 +57,13 @@ class ResendVerificationAction
         return ['success' => true];
     }
 
+    /**
+     * Generate a rate-limit key for the email/IP pair.
+     *
+     * @param  string  $email
+     * @param  string  $ip
+     * @return string
+     */
     protected function key(string $email, string $ip): string
     {
         return sha1(Str::lower(trim($email)) . '|' . $ip);

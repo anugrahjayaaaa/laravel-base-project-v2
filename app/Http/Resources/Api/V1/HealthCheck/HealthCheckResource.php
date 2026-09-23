@@ -12,7 +12,10 @@ class HealthCheckResource extends JsonResource
     public static $wrap = null;
 
     /**
+     * Transform the resource into an array.
+     *
      * @param  \Illuminate\Http\Request  $request
+     * @return array<string, mixed>
      */
     public function toArray($request): array
     {

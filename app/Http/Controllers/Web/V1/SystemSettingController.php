@@ -7,8 +7,16 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\System\SystemSettingRequest;
 use Illuminate\Http\RedirectResponse;
 
+/**
+ * System settings controller — view and update platform settings.
+ */
 class SystemSettingController extends Controller
 {
+    /**
+     * Show the settings page.
+     *
+     * @return \Illuminate\Contracts\View\View
+     */
     public function index()
     {
         $settings = SystemSetting::getAll();
@@ -16,6 +24,12 @@ class SystemSettingController extends Controller
         return view('pages.settings.index', compact('settings'));
     }
 
+    /**
+     * Update system settings.
+     *
+     * @param  SystemSettingRequest  $request
+     * @return RedirectResponse
+     */
     public function update(SystemSettingRequest $request): RedirectResponse
     {
         $data = $request->validated();

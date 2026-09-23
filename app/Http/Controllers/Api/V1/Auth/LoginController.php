@@ -9,8 +9,19 @@ use App\Http\Requests\Auth\LoginRequest;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 
+/**
+ * API auth controller — login, returns JSON responses.
+ */
 class LoginController extends Controller
 {
+    /**
+     * Authenticate user and return access token.
+     *
+     * @param  LoginRequest  $request
+     * @param  LoginThrottle  $throttle
+     * @param  AuthenticateUserAction  $action
+     * @return JsonResponse
+     */
     public function __invoke(
         LoginRequest $request,
         LoginThrottle $throttle,

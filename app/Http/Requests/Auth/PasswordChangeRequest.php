@@ -14,6 +14,9 @@ class PasswordChangeRequest extends FormRequest
 {
     use FormatsApiErrors;
 
+    /**
+     * Must be authenticated to change own password.
+     */
     public function authorize(): bool
     {
         return auth()->check(); // Must be authenticated.
@@ -52,11 +55,21 @@ class PasswordChangeRequest extends FormRequest
         return $rule;
     }
 
+    /**
+     * Get the current password from the request.
+     *
+     * @return string
+     */
     public function currentPassword(): string
     {
         return $this->input('current_password', '');
     }
 
+    /**
+     * Get the new password from the request.
+     *
+     * @return string
+     */
     public function password(): string
     {
         return $this->input('password', '');

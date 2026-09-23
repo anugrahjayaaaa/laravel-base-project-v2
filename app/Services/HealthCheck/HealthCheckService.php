@@ -27,11 +27,21 @@ class HealthCheckService
         return $checks;
     }
 
+    /**
+     * Check if all checks passed (no failures).
+     *
+     * @return bool
+     */
     public function isHealthy(array $checks): bool
     {
         return !in_array('fail', $checks, true);
     }
 
+    /**
+     * Check database connectivity via PDO.
+     *
+     * @return string 'ok' or 'fail'
+     */
     protected function checkDatabase(): string
     {
         try {
@@ -48,6 +58,11 @@ class HealthCheckService
         }
     }
 
+    /**
+     * Check cache read/write via a test key.
+     *
+     * @return string 'ok' or 'fail'
+     */
     protected function checkCache(): string
     {
         try {
@@ -64,6 +79,11 @@ class HealthCheckService
         }
     }
 
+    /**
+     * Check queue connectivity.
+     *
+     * @return string 'ok' or 'fail'
+     */
     protected function checkQueue(): string
     {
         try {
@@ -80,6 +100,11 @@ class HealthCheckService
         }
     }
 
+    /**
+     * Check storage read/write via a test file.
+     *
+     * @return string 'ok' or 'fail'
+     */
     protected function checkStorage(): string
     {
         try {

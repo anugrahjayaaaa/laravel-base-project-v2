@@ -9,8 +9,18 @@ use App\Models\SystemSetting;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 
+/**
+ * API auth controller — resend email verification.
+ */
 class ResendVerificationController extends Controller
 {
+    /**
+     * Resend a verification email to the user.
+     *
+     * @param  ResendVerificationRequest  $request
+     * @param  ResendVerificationAction  $action
+     * @return JsonResponse
+     */
     public function __invoke(ResendVerificationRequest $request, ResendVerificationAction $action): JsonResponse
     {
         $mode = SystemSetting::getString('auth_verification_mode', 'public');
