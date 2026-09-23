@@ -86,15 +86,15 @@ observers for audit. See `docs/base/architecture/application-components.md` §Ac
 
 || ID | Task | Phase | Priority | Depends On | Status |
 ||----|------|-------|----------|-----------|--------|
-|| USER-001 | Create user management module | 4 | P1 | AUTH-003 | PLANNED |
-|| USER-002 | Implement user list/detail API | 4 | P1 | USER-001 | PLANNED |
-|| USER-003 | Implement create user (admin) | 4 | P1 | AUTH-001 | PLANNED |
-|| USER-004 | Implement update user | 4 | P1 | USER-002 | PLANNED |
-|| USER-005 | Implement soft delete user | 4 | P2 | USER-001 | PLANNED |
-|| USER-006 | Implement activate/deactivate | 4 | P1 | USER-003 | PLANNED |
-|| USER-007 | Implement lock/unlock | 4 | P1 | USER-001 | PLANNED |
-|| USER-008 | Implement force password change | 4 | P1 | AUTH-014 | PLANNED |
-|| USER-009 | Implement admin reset password | 4 | P1 | AUTH-013 | PLANNED |
+|| USER-001 | Create user management module | 4 | P1 | AUTH-003 | DONE |
+|| USER-002 | Implement user list/detail API | 4 | P1 | USER-001 | DONE |
+|| USER-003 | Implement create user (admin) | 4 | P1 | AUTH-001 | DONE |
+|| USER-004 | Implement update user | 4 | P1 | USER-002 | DONE |
+|| USER-005 | Implement soft delete user | 4 | P2 | USER-001 | DONE |
+|| USER-006 | Implement activate/deactivate | 4 | P1 | USER-003 | DONE |
+|| USER-007 | Implement lock/unlock | 4 | P1 | USER-001 | DONE |
+|| USER-008 | Implement force password change | 4 | P1 | AUTH-014 | DONE |
+|| USER-009 | Implement admin reset password | 4 | P1 | AUTH-013 | DONE |
 
 *(Task list truncated for phases 2-17. See full list in the JSON version below.)*
 
@@ -333,7 +333,7 @@ observers for audit. See `docs/base/architecture/application-components.md` §Ac
     "depends_on": [
       "AUTH-003"
     ],
-    "status": "PLANNED"
+    "status": "DONE"
   },
   {
     "id": "USER-002",
@@ -343,7 +343,7 @@ observers for audit. See `docs/base/architecture/application-components.md` §Ac
     "depends_on": [
       "USER-001"
     ],
-    "status": "PLANNED"
+    "status": "DONE"
   },
   {
     "id": "USER-003",
@@ -353,7 +353,7 @@ observers for audit. See `docs/base/architecture/application-components.md` §Ac
     "depends_on": [
       "AUTH-001"
     ],
-    "status": "PLANNED"
+    "status": "DONE"
   },
   {
     "id": "USER-004",
@@ -363,7 +363,7 @@ observers for audit. See `docs/base/architecture/application-components.md` §Ac
     "depends_on": [
       "USER-002"
     ],
-    "status": "PLANNED"
+    "status": "DONE"
   },
   {
     "id": "USER-005",
@@ -373,7 +373,7 @@ observers for audit. See `docs/base/architecture/application-components.md` §Ac
     "depends_on": [
       "USER-001"
     ],
-    "status": "PLANNED"
+    "status": "DONE"
   },
   {
     "id": "USER-006",
@@ -383,7 +383,7 @@ observers for audit. See `docs/base/architecture/application-components.md` §Ac
     "depends_on": [
       "USER-003"
     ],
-    "status": "PLANNED"
+    "status": "DONE"
   },
   {
     "id": "USER-007",
@@ -393,7 +393,7 @@ observers for audit. See `docs/base/architecture/application-components.md` §Ac
     "depends_on": [
       "USER-001"
     ],
-    "status": "PLANNED"
+    "status": "DONE"
   },
   {
     "id": "USER-008",
@@ -403,7 +403,7 @@ observers for audit. See `docs/base/architecture/application-components.md` §Ac
     "depends_on": [
       "AUTH-014"
     ],
-    "status": "PLANNED"
+    "status": "DONE"
   },
   {
     "id": "USER-009",
@@ -413,7 +413,7 @@ observers for audit. See `docs/base/architecture/application-components.md` §Ac
     "depends_on": [
       "AUTH-013"
     ],
-    "status": "PLANNED"
+    "status": "DONE"
   },
   {
     "id": "PWD-001",
@@ -463,7 +463,7 @@ observers for audit. See `docs/base/architecture/application-components.md` §Ac
     "depends_on": [
       "AUTH-013"
     ],
-    "status": "PLANNED"
+    "status": "DONE"
   },
   {
     "id": "PWD-006",
@@ -473,7 +473,7 @@ observers for audit. See `docs/base/architecture/application-components.md` §Ac
     "depends_on": [
       "USER-003"
     ],
-    "status": "PLANNED"
+    "status": "DONE"
   },
   {
     "id": "RBAC-001",
