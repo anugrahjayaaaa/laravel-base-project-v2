@@ -2,7 +2,6 @@
 
 namespace App\Http\Requests\User;
 
-use App\Enums\UserStatusEnum;
 use Illuminate\Foundation\Http\FormRequest;
 
 class UserQueryRequest extends FormRequest
