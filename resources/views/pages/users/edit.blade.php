@@ -185,15 +185,14 @@
                             @error('username')
                                 <div class="invalid-feedback d-block">{{ $message }}</div>
                             @enderror
-                            @if (!$allowUsernameChange)
-                                <small class="text-muted"><i class="bi bi-slash-circle me-1"></i>Username changes are
-                                    currently disabled.</small>
-                            @elseif (!$user->canChangeUsername())
-                                <small class="text-muted"><i class="bi bi-clock-history me-1"></i>Username can be
-                                    changed again on
-                                    {{ $user->username_changed_at->copy()->addDays((int) $usernameCooldownDays)->format('Y-m-d') }}.</small>
-                            @else
-                                <small class="form-text text-muted">Username can be changed.</small>
+                            @if ($allowUsernameChange)
+                                @if (!$user->canChangeUsername())
+                                    <small class="text-muted"><i class="bi bi-clock-history me-1"></i>Username can be
+                                        changed again on
+                                        {{ $user->username_changed_at?->copy()->addDays((int) $usernameCooldownDays)->format('Y-m-d') }}.</small>
+                                @else
+                                    <small class="form-text text-muted">Username can be changed.</small>
+                                @endif
                             @endif
                         </div>
 
@@ -221,15 +220,14 @@
                                         {{ $user->pending_email }}</span>
                                 @endif
                             </div>
-                            @if (!$allowEmailChange)
-                                <small class="text-muted"><i class="bi bi-slash-circle me-1"></i>Email changes are
-                                    currently disabled.</small>
-                            @elseif (!$user->canChangeEmail())
-                                <small class="text-muted"><i class="bi bi-clock-history me-1"></i>Email can be
-                                    changed again on
-                                    {{ $user->email_changed_at->copy()->addDays((int) $emailCooldownDays)->format('Y-m-d') }}.</small>
-                            @else
-                                <small class="form-text text-muted">Email can be changed.</small>
+                            @if ($allowEmailChange)
+                                @if (!$user->canChangeEmail())
+                                    <small class="text-muted"><i class="bi bi-clock-history me-1"></i>Email can be
+                                        changed again on
+                                        {{ $user->email_changed_at?->copy()->addDays((int) $emailCooldownDays)->format('Y-m-d') }}.</small>
+                                @else
+                                    <small class="form-text text-muted">Email can be changed.</small>
+                                @endif
                             @endif
                         </div>
 

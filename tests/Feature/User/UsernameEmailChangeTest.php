@@ -109,7 +109,8 @@ class UsernameEmailChangeTest extends TestCase
             'status' => 'active',
         ]);
 
-        $response->assertSessionHasErrors('username');
+        $response->assertRedirect();
+        $this->assertDatabaseHas('users', ['username' => 'oldname']);
     }
 
     public function test_login_works_with_username(): void
