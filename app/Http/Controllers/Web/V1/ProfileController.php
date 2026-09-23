@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Web\V1;
 
 use App\Actions\Auth\ChangePassword;
 use App\Actions\User\UpdateUserAction;
-use App\Enums\UserStatusEnum;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\User\ProfileUpdateRequest;
 use App\Models\SystemSetting;
