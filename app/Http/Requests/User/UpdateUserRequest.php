@@ -9,13 +9,24 @@ use Illuminate\Validation\Rule;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Validation\ValidationException;
 
+/**
+ * Validates admin user update data (status, username, email, password).
+ */
 class UpdateUserRequest extends FormRequest
 {
+    /**
+     * Guest route — always authorized.
+     */
     public function authorize(): bool
     {
         return true;
     }
 
+    /**
+     * Define validation rules with conditional fields based on system settings.
+     *
+     * @return array
+     */
     public function rules(): array
     {
         $user = $this->route('user');
@@ -40,6 +51,11 @@ class UpdateUserRequest extends FormRequest
         return $rules;
     }
 
+    /**
+     * Custom validation: check username/email change cooldowns and permissions.
+     *
+     * @param  \Illuminate\Contracts\Validation\Validator  $validator
+     */
     public function withValidator($validator): void
     {
         $user = $this->route('user');

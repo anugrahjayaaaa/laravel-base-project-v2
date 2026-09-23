@@ -3,10 +3,10 @@
 namespace App\Auth;
 
 use App\Models\FailedLoginAttempt;
+use App\Models\SystemSetting;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\RateLimiter;
-use Illuminate\Support\Str;
 
 /**
  * Shared login throttle + progressive lockout logic.
@@ -23,11 +23,11 @@ class LoginThrottle
 {
     /**
      * Build a namespaced, human-readable rate-limiter key.
-     * Format: rate_limit:{feature}:{type}:{slug}:{ip}
+     * Format: rate_limit:{feature}:{type}:{identifier}:{ip}
      * Examples:
-     *   rate_limit:login:email:dXNlckBleGFtcGxlLmNvbQ:127.0.0.1
-     *   rate_limit:forgot_password:ip:127.0.0.1
-     *   rate_limit:resend_verification:user_id:42:127.0.0.1
+     *   rate_limit:login:email:user@example.com:127.0.0.1
+     *   rate_limit:login:username:jaya:127.0.0.1
+     *   rate_limit:login:user_id:42:127.0.0.1
      */
     public function key(string $feature, string $identifier, string $ip): string
     {
@@ -35,13 +35,13 @@ class LoginThrottle
 
         if (str_contains($id, '@')) {
             $type = 'email';
-            $slug = substr(base64_encode($id), 0, 10);
+            $slug = $id;
         } elseif (ctype_digit($id) && $id > 0) {
             $type = 'user_id';
             $slug = (int) $id;
         } else {
-            $type = 'ip';
-            $slug = $ip;
+            $type = 'username';
+            $slug = $id;
         }
 
         return "rate_limit:{$feature}:{$type}:{$slug}:{$ip}";
@@ -61,7 +61,7 @@ class LoginThrottle
             return true;
         }
 
-        $max = (int) config('rate_limits.login.max_attempts', 5);
+        $max = SystemSetting::getInt('auth_login_max_attempts', 5);
 
         return RateLimiter::tooManyAttempts($this->key('login', $identifier, $ip), $max);
     }
@@ -99,7 +99,7 @@ class LoginThrottle
     public function recordFailed(string $identifier, string $ip, ?User $user = null): int
     {
         $key = $this->key('login', $identifier, $ip);
-        $maxAttempts = (int) config('rate_limits.login.max_attempts', 5);
+        $maxAttempts = SystemSetting::getInt('auth_login_max_attempts', 5);
 
         // Hit the rate limiter (cache-backed transport throttle).
         RateLimiter::hit($key, 60);

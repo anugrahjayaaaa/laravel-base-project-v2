@@ -63,7 +63,31 @@ Vue, React, or a mobile app only changes the UI layer.
 
 See ADR-002 for the full architectural decision.
 
-## Git Tracking
+## Asset Pipeline — Vite
+
+Vite compiles custom application assets (JS + Tailwind CSS) into
+`public/build/assets/` with content-based hashing for cache busting.
+
+### When to Rebuild
+
+**Any change to `resources/js/` or `resources/css/` requires `npm run build`**.
+Without rebuilding, the browser continues to load the old cached file
+(browser cache + Vite hash in filename).
+
+```bash
+npm run build   # generates public/build/assets/app-[hash].js
+```
+
+### What Vite Compiles
+
+- `resources/js/app.js` → imports `confirmation-modal.js`, `bulk-actions.js`
+- `resources/css/app.css` → Tailwind CSS + base styles
+
+### AdminLTE vs Vite
+
+AdminLTE assets are vendored statically (`public/vendor/adminlte/`) and
+do NOT go through Vite. Vite only handles application-specific custom
+JS/CSS.
 
 Runtime assets under `public/vendor/adminlte/` **are tracked in Git**. AdminLTE
 is a runtime static dependency — not an npm package and not restored by

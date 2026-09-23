@@ -2,22 +2,33 @@
 
 namespace App\Http\Controllers\Web\V1;
 
-use App\Actions\Auth\ChangePassword;
-use App\Actions\User\UpdateUserAction;
-use App\Enums\UserStatusEnum;
+use App\Actions\V1\Auth\ChangePassword;
+use App\Actions\V1\User\UpdateUserAction;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\User\ProfileUpdateRequest;
 use App\Models\SystemSetting;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Auth;
 
+/**
+ * Profile controller — view and update user profile, change password.
+ */
 class ProfileController extends Controller
 {
+    /**
+     * @param  UpdateUserAction  $updateAction
+     * @param  ChangePassword  $changePasswordAction
+     */
     public function __construct(
         private readonly UpdateUserAction $updateAction,
         private readonly ChangePassword $changePasswordAction,
     ) {}
 
+    /**
+     * Show the profile edit page.
+     *
+     * @return \Illuminate\Contracts\View\View
+     */
     public function show()
     {
         $user = Auth::user();
@@ -36,6 +47,13 @@ class ProfileController extends Controller
         ));
     }
 
+    /**
+     * Update user profile. Changes password if new password provided;
+     * requests email change if email was modified.
+     *
+     * @param  ProfileUpdateRequest  $request
+     * @return RedirectResponse
+     */
     public function update(ProfileUpdateRequest $request): RedirectResponse
     {
         $user = $request->user();

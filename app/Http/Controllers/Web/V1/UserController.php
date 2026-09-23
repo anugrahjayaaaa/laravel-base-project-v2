@@ -2,19 +2,19 @@
 
 namespace App\Http\Controllers\Web\V1;
 
-use App\Actions\User\AdminResendVerificationAction;
-use App\Actions\BulkAction\BulkActionProcessor;
-use App\Actions\User\UserBulkActionHandler;
-use App\Actions\User\CancelEmailChangeAction;
-use App\Actions\User\CreateUserAction;
-use App\Actions\User\DeleteUserAction;
+use App\Actions\V1\User\AdminResendVerificationAction;
+use App\Actions\V1\BulkAction\BulkActionProcessor;
+use App\Actions\V1\User\UserBulkActionHandler;
+use App\Actions\V1\User\CancelEmailChangeAction;
+use App\Actions\V1\User\CreateUserAction;
+use App\Actions\V1\User\DeleteUserAction;
 use App\Models\FailedLoginAttempt;
-use App\Actions\User\ForceDeleteUserAction;
-use App\Actions\User\RequestEmailChangeAction;
-use App\Actions\User\RestoreUserAction;
-use App\Actions\User\UpdateUserAction;
-use App\Actions\User\UserIndexAction;
-use App\Actions\User\VerifyEmailChangeAction;
+use App\Actions\V1\User\ForceDeleteUserAction;
+use App\Actions\V1\User\RequestEmailChangeAction;
+use App\Actions\V1\User\RestoreUserAction;
+use App\Actions\V1\User\UpdateUserAction;
+use App\Actions\V1\User\UserIndexAction;
+use App\Actions\V1\User\VerifyEmailChangeAction;
 use App\Enums\UserStatusEnum;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\User\BulkUserRequest;
@@ -26,8 +26,12 @@ use App\Models\SystemSetting;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Facades\Hash;
 use Spatie\Permission\Models\Role;
 
+/**
+ * User management controller — CRUD, bulk actions, email verification flow.
+ */
 class UserController extends Controller
 {
     public function __construct(
@@ -45,6 +49,11 @@ class UserController extends Controller
         private readonly VerifyEmailChangeAction $verifyEmailChangeAction,
     ) {}
 
+    /**
+     * Show the create user page.
+     *
+     * @return \Illuminate\Contracts\View\View
+     */
     public function create()
     {
         return view('pages.users.create', [
@@ -53,6 +62,12 @@ class UserController extends Controller
         ]);
     }
 
+    /**
+     * Create a new user.
+     *
+     * @param  CreateUserRequest  $request
+     * @return RedirectResponse
+     */
     public function store(CreateUserRequest $request)
     {
         $user = $this->createAction->run($request->validated());
@@ -63,6 +78,12 @@ class UserController extends Controller
             ->with('status', 'User created successfully.');
     }
 
+    /**
+     * List users with search, filtering, and pagination.
+     *
+     * @param  UserQueryRequest  $request
+     * @return \Illuminate\Contracts\View\View
+     */
     public function index(UserQueryRequest $request)
     {
         $status = $request->validated('status') ?? 'active';
@@ -77,6 +98,7 @@ class UserController extends Controller
 
         $counts = $this->indexAction->counts();
 
+        // Badge CSS class based on user status and trashed state.
         $badgeClass = function (UserStatusEnum $s, bool $trashed) {
             if ($trashed) {
                 return 'bg-danger text-white';
@@ -84,10 +106,10 @@ class UserController extends Controller
             return match ($s->value) {
                 UserStatusEnum::ACTIVE->value => 'bg-success-subtle text-success border border-success-subtle',
                 UserStatusEnum::INACTIVE->value
-                    => 'bg-secondary-subtle text-secondary border border-secondary-subtle',
+                => 'bg-secondary-subtle text-secondary border border-secondary-subtle',
                 UserStatusEnum::LOCKED->value => 'bg-warning-subtle text-warning border border-warning-subtle',
                 UserStatusEnum::PENDING_VERIFICATION->value
-                    => 'bg-warning-subtle text-dark border border-warning-subtle',
+                => 'bg-warning-subtle text-dark border border-warning-subtle',
             };
         };
 
@@ -101,6 +123,12 @@ class UserController extends Controller
         ]);
     }
 
+    /**
+     * Show the user detail page.
+     *
+     * @param  User  $user
+     * @return \Illuminate\Contracts\View\View
+     */
     public function show(User $user)
     {
         $initials = str($user->name)->substr(0, 2)->upper();
@@ -118,6 +146,12 @@ class UserController extends Controller
         ]);
     }
 
+    /**
+     * Show the edit user page.
+     *
+     * @param  User  $user
+     * @return \Illuminate\Contracts\View\View
+     */
     public function edit(User $user)
     {
         $initials = str($user->name)->substr(0, 2)->upper();
@@ -135,15 +169,32 @@ class UserController extends Controller
         ]);
     }
 
+    /**
+     * Update an existing user. Optionally changes password.
+     *
+     * @param  UpdateUserRequest  $request
+     * @param  User  $user
+     * @return RedirectResponse
+     */
     public function update(UpdateUserRequest $request, User $user)
     {
         $this->updateAction->run($user, $request->validated());
+
+        if ($request->has('password') && $request->filled('password')) {
+            $user->update(['password' => Hash::make($request->input('password'))]);
+        }
 
         $user->audit('user.updated', $request->user());
 
         return back()->with('status', 'User updated successfully.');
     }
 
+    /**
+     * Execute bulk user actions (delete, restore, lock, unlock, activate, deactivate).
+     *
+     * @param  BulkUserRequest  $request
+     * @return RedirectResponse
+     */
     public function bulkAction(BulkUserRequest $request): RedirectResponse
     {
         $result = $this->processor->run(
@@ -153,36 +204,74 @@ class UserController extends Controller
             handler: $this->userBulkActionHandler,
         );
 
-        return back()->with('status', "{$result['label']} ({$result['count']} users).");
+        $label = match ($request->validated('action')) {
+            'deactivate' => 'deactivated',
+            'activate' => 'activated',
+            'lock' => 'locked',
+            'unlock' => 'unlocked',
+            'restore' => 'restored',
+            'delete' => 'deleted',
+            'force_delete' => 'permanently deleted',
+            default => 'processed',
+        };
+
+        return back()->with('status', "{$result['count']} selected users have been successfully {$label}.");
     }
 
+    /**
+     * Soft-delete a user (moves to trash).
+     *
+     * @param  Request  $request
+     * @param  User  $user
+     * @return RedirectResponse
+     */
     public function destroy(Request $request, User $user)
     {
         $this->deleteAction->run($user, $request->user());
 
         $user->audit('user.deleted', $request->user());
 
-        return back()->with('status', 'User deleted successfully.');
+        return back()->with('status', "User '{$user->name}' has been successfully deleted.");
     }
 
+    /**
+     * Restore a trashed user.
+     *
+     * @param  User  $user
+     * @return RedirectResponse
+     */
     public function restore(User $user)
     {
         $this->restoreAction->run($user);
 
         $user->audit('user.restored', auth()->user());
 
-        return back()->with('status', 'User restored successfully.');
+        return back()->with('status', "User '{$user->name}' has been successfully restored.");
     }
 
+    /**
+     * Permanently delete a user from database.
+     *
+     * @param  Request  $request
+     * @param  User  $user
+     * @return RedirectResponse
+     */
     public function forceDelete(Request $request, User $user)
     {
         $this->forceDeleteAction->run($user, $request->user());
 
         $user->audit('user.force_deleted', $request->user());
 
-        return redirect()->route('users.index')->with('status', 'User permanently deleted.');
+        return redirect()->route('users.index')->with('status', "User '{$user->name}' has been permanently deleted.");
     }
 
+    /**
+     * Resend verification email to a user.
+     *
+     * @param  Request  $request
+     * @param  User  $user
+     * @return RedirectResponse
+     */
     public function resendVerification(Request $request, User $user)
     {
         $result = $this->resendVerificationAction->run($user, $request->ip());
@@ -196,6 +285,13 @@ class UserController extends Controller
         return back()->with('status', 'Verification email successfully sent to user.');
     }
 
+    /**
+     * Request an email change for a user.
+     *
+     * @param  EmailChangeRequest  $request
+     * @param  User  $user
+     * @return RedirectResponse
+     */
     public function requestEmailChange(EmailChangeRequest $request, User $user)
     {
         $this->requestEmailChangeAction->run($user, $request->validated('email'));
@@ -205,6 +301,12 @@ class UserController extends Controller
         return back()->with('status', 'Verification email sent to new email address.');
     }
 
+    /**
+     * Cancel a pending email change.
+     *
+     * @param  User  $user
+     * @return RedirectResponse
+     */
     public function cancelEmailChange(User $user)
     {
         $this->cancelEmailChangeAction->run($user);
@@ -214,6 +316,13 @@ class UserController extends Controller
         return back()->with('status', 'Email change cancelled.');
     }
 
+    /**
+     * Verify and complete an email change.
+     *
+     * @param  Request  $request
+     * @param  User  $user
+     * @return RedirectResponse
+     */
     public function verifyEmailChange(Request $request, User $user)
     {
         $token = $request->query('token') ?? $request->route('token');
@@ -233,6 +342,13 @@ class UserController extends Controller
         return $this->verifyRedirect('Email changed successfully. Please login with your new email.', true);
     }
 
+    /**
+     * Redirect after email verification flow.
+     *
+     * @param  string  $message
+     * @param  bool  $success
+     * @return RedirectResponse
+     */
     protected function verifyRedirect(string $message, bool $success)
     {
         $route = auth()->check() ? 'dashboard' : 'login';

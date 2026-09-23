@@ -2,17 +2,28 @@
 
 namespace App\Http\Controllers\Api\V1;
 
-use App\Actions\Auth\ListUserSessionsAction;
+use App\Actions\V1\Auth\ListUserSessionsAction;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
 
+/**
+ * API session controller — list active tokens.
+ */
 class SessionController extends Controller
 {
+    /**
+     * @param  ListUserSessionsAction  $listSessionsAction
+     */
     public function __construct(
         private readonly ListUserSessionsAction $listSessionsAction,
     ) {}
 
+    /**
+     * List the authenticated user's active sessions.
+     *
+     * @return JsonResponse
+     */
     public function index(): JsonResponse
     {
         $tokens = $this->listSessionsAction->run(Auth::user())->map(function ($token) {

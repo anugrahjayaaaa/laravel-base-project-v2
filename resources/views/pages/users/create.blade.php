@@ -25,7 +25,7 @@
         </div>
     @endif
 
-    <div class="callout callout-info mb-4">
+    <div class="alert alert-info mb-4">
         <div class="d-flex align-items-center gap-2 mb-1">
             <i class="bi bi-info-circle-fill text-info fs-5"></i>
             <h6 class="mb-0 fw-semibold">Temporary Password Policy</h6>

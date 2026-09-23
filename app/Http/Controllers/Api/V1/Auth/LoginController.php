@@ -2,15 +2,26 @@
 
 namespace App\Http\Controllers\Api\V1\Auth;
 
-use App\Actions\Auth\AuthenticateUserAction;
+use App\Actions\V1\Auth\AuthenticateUserAction;
 use App\Auth\LoginThrottle;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 
+/**
+ * API auth controller — login, returns JSON responses.
+ */
 class LoginController extends Controller
 {
+    /**
+     * Authenticate user and return access token.
+     *
+     * @param  LoginRequest  $request
+     * @param  LoginThrottle  $throttle
+     * @param  AuthenticateUserAction  $action
+     * @return JsonResponse
+     */
     public function __invoke(
         LoginRequest $request,
         LoginThrottle $throttle,

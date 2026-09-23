@@ -2,14 +2,25 @@
 
 namespace App\Http\Controllers\Api\V1\Auth;
 
-use App\Actions\Auth\SendPasswordResetLinkAction;
+use App\Actions\V1\Auth\SendPasswordResetLinkAction;
 use App\Auth\LoginThrottle;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\PasswordForgotRequest;
 use Illuminate\Http\JsonResponse;
 
+/**
+ * API auth controller — send password reset link.
+ */
 class PasswordForgotController extends Controller
 {
+    /**
+     * Send a password reset link to the given email.
+     *
+     * @param  PasswordForgotRequest  $request
+     * @param  LoginThrottle  $throttle
+     * @param  SendPasswordResetLinkAction  $action
+     * @return JsonResponse
+     */
     public function __invoke(
         PasswordForgotRequest $request,
         LoginThrottle $throttle,

@@ -16,66 +16,54 @@
         'data-action="' .
         route('users.destroy', $user) .
         '" data-method="DELETE" ' .
-        'data-title="Delete User?" ' .
-        'data-message="Move ' .
-        e($user->name) .
-        ' to trash? They can be restored later." ' .
-        'data-variant="danger" data-label="Delete"';
+        'data-action-type="delete" ' .
+        'data-item-name="' . e($user->name) . '" ' .
+        'data-label="Delete"';
 
     $restoreModal =
         'data-bs-toggle="modal" data-bs-target="#confirmModal" ' .
         'data-action="' .
         route('users.restore', $user) .
         '" data-method="POST" ' .
-        'data-title="Restore User?" ' .
-        'data-message="Restore ' .
-        e($user->name) .
-        '? They will be reactivated." ' .
-        'data-variant="info" data-label="Restore"';
+        'data-action-type="restore" ' .
+        'data-item-name="' . e($user->name) . '" ' .
+        'data-label="Restore"';
 
     $forceDeleteModal =
         'data-bs-toggle="modal" data-bs-target="#confirmModal" ' .
         'data-action="' .
         route('users.force-delete', $user) .
         '" data-method="DELETE" ' .
-        'data-title="Permanently Delete?" ' .
-        'data-message="This cannot be undone. ' .
-        e($user->name) .
-        ' will be permanently removed." ' .
-        'data-variant="danger" data-icon="bi-trash3" data-label="Permanent Delete"';
+        'data-action-type="force_delete" ' .
+        'data-item-name="' . e($user->name) . '" ' .
+        'data-label="Permanent Delete"';
 
     $activateModal =
         'data-bs-toggle="modal" data-bs-target="#confirmModal" ' .
         'data-action="' .
         route('users.activate', $user) .
         '" data-method="POST" ' .
-        'data-title="Activate User Account?" ' .
-        'data-message="Are you sure you want to activate ' .
-        e($user->name) .
-        '? This will restore the user login access to the system." ' .
-        'data-variant="success" data-label="Activate"';
+        'data-action-type="activate" ' .
+        'data-item-name="' . e($user->name) . '" ' .
+        'data-label="Activate"';
 
     $deactivateModal =
         'data-bs-toggle="modal" data-bs-target="#confirmModal" ' .
         'data-action="' .
         route('users.deactivate', $user) .
         '" data-method="POST" ' .
-        'data-title="Deactivate User Account?" ' .
-        'data-message="Are you sure you want to deactivate ' .
-        e($user->name) .
-        '? This user will be immediately logged out and unable to access the system until reactivated." ' .
-        'data-variant="warning" data-label="Deactivate"';
+        'data-action-type="deactivate" ' .
+        'data-item-name="' . e($user->name) . '" ' .
+        'data-label="Deactivate"';
 
     $lockModal =
         'data-bs-toggle="modal" data-bs-target="#confirmModal" ' .
         'data-action="' .
         route('users.lock', $user) .
         '" data-method="POST" ' .
-        'data-title="Lock User Account?" ' .
-        'data-message="Are you sure you want to lock ' .
-        e($user->name) .
-        '? The account will be forcefully locked and all active sessions will be revoked." ' .
-        'data-variant="danger" data-label="Lock"';
+        'data-action-type="lock" ' .
+        'data-item-name="' . e($user->name) . '" ' .
+        'data-label="Lock"';
 
     $unlockModal =
         'data-bs-toggle="modal" data-bs-target="#confirmModal" ' .
@@ -124,7 +112,7 @@
 
     <div class="row g-4">
         {{-- Main Content --}}
-        <div class="col-lg-8">
+        <div class="col-lg-8 col-12">
             <div class="card border-0 shadow-sm mb-4">
                 <div class="card-header bg-transparent border-bottom py-3">
                     <div class="d-flex align-items-center gap-3">

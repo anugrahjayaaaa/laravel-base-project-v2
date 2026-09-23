@@ -102,6 +102,13 @@ Shared table conventions:
 - Pagination follows shared convention
 - Search/filter controls follow shared UI convention
 
+### Table Actions Column
+
+Action buttons in tables:
+- Wrapper: `d-flex align-items-center justify-content-end gap-1 flex-wrap flex-md-nowrap`
+- Button size: `btn-sm` or `px-2 py-1` for compact fit
+- Wrap to vertical stack on mobile (`flex-wrap`), horizontal on desktop (`flex-md-nowrap`)
+
 ### Badges
 
 | Variant | Token |
@@ -148,6 +155,21 @@ actions. Do not create separate modal implementations per feature.
 
 See [UI Architecture](./ui-architecture.md) § Confirmation Modal.
 
+#### Modal Action Format
+
+Every modal action reads from `ACTION_CONFIG` — single source of truth.
+
+| Field | Example | Rule |
+|-------|---------|------|
+| **title** | `Move to Trash` | Static, imperative, short |
+| **msg** | `Move <b>__ITEM__</b> to trash? They can be restored later.` | Template, `__ITEM__` → `<b>bold</b>` |
+| **variant** | `danger` | Must follow [Action Color Convention](#action-color-convention) |
+
+`__ITEM__` replacement: single → `data-item-name` (HTML-escaped), bulk → `N selected user(s)`.
+
+Trigger attributes: `data-action-type` (key), `data-item-name`, `data-action` (URL), `data-method`.
+Fallback: no `data-action-type` → JS uses `data-title`/`data-message` (legacy).
+
 ### Navigation
 
 | Element | Token |
@@ -159,11 +181,34 @@ See [UI Architecture](./ui-architecture.md) § Confirmation Modal.
 
 ### Pagination
 
-| Element | Token |
-|---------|-------|
-| Active page | `primary` |
-| Hover page | `surface-alt` |
-| Border | `border` |
+|| Element | Token |
+||---------|-------|
+|| Active page | `primary` |
+|| Hover page | `surface-alt` |
+|| Border | `border` |
+
+### Navigation Tabs (Status Filter)
+
+Shared nav-pills conventions for index page status filters:
+- Container: `nav nav-pills flex-nowrap overflow-auto` — horizontal scroll on mobile
+- Link passive: `nav-link text-secondary fw-medium px-3 py-2 d-flex align-items-center gap-2 border-0 bg-transparent`
+- Link active: `nav-link active fw-semibold text-primary px-3 py-2 d-flex align-items-center gap-2 border-0 border-bottom border-primary border-2 bg-transparent`
+- Counter badge passive: `badge rounded-pill bg-secondary-subtle text-secondary`
+- Counter badge active: `badge rounded-pill bg-primary text-white`
+
+### Action Color Convention
+
+Semantic color mapping for confirmation modal variants — MUST be consistent across single and bulk actions:
+
+| Variant | Color | Actions |
+|---------|-------|---------|
+| `success` | hijau | activate, unlock, restore |
+| `warning` | orange | deactivate, lock |
+| `danger` | merah | delete, permanent delete |
+
+Single action buttons: `data-variant` MUST match semantic mapping. Button class: `btn-outline-*` for outline style.
+
+Bulk action: `variant` in `actionOptions`/`actionLabels` MUST match semantic mapping.
 
 ## Consistency Rules
 

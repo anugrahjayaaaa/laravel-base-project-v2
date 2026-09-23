@@ -40,7 +40,7 @@
 **Implementation:**
 - `LogoutController` → delete current Sanctum token + audit `auth.logout`
 - `LogoutAllController` → delete all tokens + audit `auth.logout_all`
-- Web logout via `WebAuthController@logout` → `Auth::logout()` + session invalidate + audit
+- Web logout via `AuthControllergout` → `Auth::logout()` + session invalidate + audit
 - **Belum:** AdminLTE view untuk logout-all (admin pilih device logout)
 
 ---
@@ -56,9 +56,9 @@
 - `AuthenticateUserAction::checkEmailVerification()` — single source of truth; blocks all modes except `disabled`; returns `UNVERIFIED_EMAIL` error
 - `VerifyEmailAction` — `markEmailAsVerified()` + check already verified
 - `ResendVerificationAction` — rate limited (3600s window), generic success, user enumeration safe
-- `WebAuthController@login` — catch UNVERIFIED_EMAIL → redirect verify-email page
-- `WebAuthController@verifyEmail` — verify email via signed link → redirect verify-email page + flash
-- `WebAuthController@resendVerification` — resend via form email input → action send email
+- `AuthControllergin` — catch UNVERIFIED_EMAIL → redirect verify-email page
+- `AuthControllerrifyEmail` — verify email via signed link → redirect verify-email page + flash
+- `AuthControllersendVerification` — resend via form email input → action send email
 - `Api/V1/Auth/LoginController` — catch UNVERIFIED_EMAIL → JSON 403
 - `verified` middleware on protected routes (web + API)
 - `AUTH_EMAIL_VERIFICATION_MODE=public|admin|disabled` in `.env.example`
@@ -90,16 +90,16 @@
 ||| `app/Http/Controllers/Api/V1/Auth/UnlockController.php` | Admin unlock → UnlockUserAction | (Phase 4/5 overlap) |
 ||| `app/Http/Controllers/Api/V1/Auth/LogoutController.php` | API logout: delete current token + audit | AUTH-009 |
 ||| `app/Http/Controllers/Api/V1/Auth/LogoutAllController.php` | API logout-all: delete all tokens + audit | AUTH-010 |
-||| `app/Http/Controllers/Web/V1/Auth/WebAuthController.php` | Web auth: view rendering + login/logout logic + forgot/reset password + audit trail | UI-AUTH-002 |
+||| `app/Http/Controllers/Web/V1/Auth/AuthControllerp` | Web auth: view rendering + login/logout logic + forgot/reset password + audit trail | UI-AUTH-002 |
 ||| `app/Http/Requests/Auth/LoginRequest.php` | Login form request: identifier + password validation | AUTH-004 |
 ||| `resources/views/layouts/auth.blade.php` | Auth layout: centered card, no sidebar/header | UI-AUTH-001 |
 | `resources/views/pages/auth/*.blade.php` | Auth views: login, forgot-password, reset-password, verify-email | UI-AUTH-001,003,005,007 |
-||| `routes/web.php` | Web routes: auth views via Route::controller(WebAuthController::class) | UI-AUTH-008 |
+||| `routes/web.php` | Web routes: auth views via Route::controller(AuthControllerlass) | UI-AUTH-008 |
 ||| Traits removed: AuthenticatesUsers, HandlesUserLookup, HandlesLockCheck, HandlesPasswordResetFlow | Logic moved to Actions | — |
 
 ### Route registrations — all controllers now exist
 
-All API controllers implemented. View rendering handled by WebAuthController (not inline web.php closures).
+All API controllers implemented. View rendering handled by AuthControllerot inline web.php closures).
 
 | Route | Controller | Status |
 |-------|----------|--------|
@@ -108,16 +108,16 @@ All API controllers implemented. View rendering handled by WebAuthController (no
 | `POST /api/v1/auth/logout-all` | `App\Http\Controllers\Api\V1\Auth\LogoutAllController` | **DONE** |
 | `GET /api/v1/auth/email/verify/{id}/{hash}` | `App\Http\Controllers\Api\V1\Auth\VerifyEmailController` | **DONE** |
 | `POST /api/v1/auth/email/resend` | `App\Http\Controllers\Api\V1\Auth\ResendVerificationController` | **DONE** |
-||| `GET /login` | `App\Http\Controllers\Web\V1\Auth\WebAuthController@showLogin` | **DONE** |
-||| `POST /login` | `App\Http\Controllers\Web\V1\Auth\WebAuthController@login` | **DONE** |
-||| `GET /forgot-password` | `App\Http\Controllers\Web\V1\Auth\WebAuthController@showForgotPassword` | **DONE** |
-||| `POST /forgot-password` | `App\Http\Controllers\Web\V1\Auth\WebAuthController@sendPasswordResetLink` | **DONE** |
-||| `GET /reset-password` | `App\Http\Controllers\Web\V1\Auth\WebAuthController@showResetPassword` | **DONE** |
-||| `POST /reset-password` | `App\Http\Controllers\Web\V1\Auth\WebAuthController@resetUserPassword` | **DONE** |
-| `GET /verify-email` | `App\Http\Controllers\Web\V1\Auth\WebAuthController@showVerifyEmail` | **DONE** |
-| `GET /email/verify/{id}/{hash}` | `App\Http\Controllers\Web\V1\Auth\WebAuthController@verifyEmail` | **DONE** |
-| `POST /email/resend` | `App\Http\Controllers\Web\V1\Auth\WebAuthController@resendVerification` | **DONE** |
-||| `POST /logout` | `App\Http\Controllers\Web\V1\Auth\WebAuthController@logout` | **DONE** |
+||| `GET /login` | `App\Http\Controllers\Web\V1\Auth\AuthControllerowLogin` | **DONE** |
+||| `POST /login` | `App\Http\Controllers\Web\V1\Auth\AuthControllergin` | **DONE** |
+||| `GET /forgot-password` | `App\Http\Controllers\Web\V1\Auth\AuthControllerowForgotPassword` | **DONE** |
+||| `POST /forgot-password` | `App\Http\Controllers\Web\V1\Auth\AuthControllerndPasswordResetLink` | **DONE** |
+||| `GET /reset-password` | `App\Http\Controllers\Web\V1\Auth\AuthControllerowResetPassword` | **DONE** |
+||| `POST /reset-password` | `App\Http\Controllers\Web\V1\Auth\AuthControllersetUserPassword` | **DONE** |
+| `GET /verify-email` | `App\Http\Controllers\Web\V1\Auth\AuthControllerowVerifyEmail` | **DONE** |
+| `GET /email/verify/{id}/{hash}` | `App\Http\Controllers\Web\V1\Auth\AuthControllerrifyEmail` | **DONE** |
+| `POST /email/resend` | `App\Http\Controllers\Web\V1\Auth\AuthControllersendVerification` | **DONE** |
+||| `POST /logout` | `App\Http\Controllers\Web\V1\Auth\AuthControllergout` | **DONE** |
 
 ### Remaining (not yet implemented)
 
@@ -137,13 +137,13 @@ All API controllers implemented. View rendering handled by WebAuthController (no
 
 | Event | API | Web |
 |-------|-----|-----|
-| `auth.login` | LoginController ✅ | WebAuthController ✅ (channel=web) |
-| `auth.logout` | LogoutController ✅ | WebAuthController ✅ |
-| `auth.logout_all` | LogoutAllController ✅ | WebAuthController ✅ |
-| `auth.password_reset_requested` | PasswordForgotController ✅ | WebAuthController ✅ |
-| `auth.password_reset_completed` | PasswordResetController ✅ | WebAuthController ✅ |
-| `auth.email_verified` | VerifyEmailController ✅ | WebAuthController@verifyEmail ✅ |
-| `auth.verification_resent` | ResendVerificationController ✅ | WebAuthController@resendVerification ✅ (channel=web) |
+| `auth.login` | LoginController ✅ | AuthController(channel=web) |
+| `auth.logout` | LogoutController ✅ | AuthController|
+| `auth.logout_all` | LogoutAllController ✅ | AuthController|
+| `auth.password_reset_requested` | PasswordForgotController ✅ | AuthController|
+| `auth.password_reset_completed` | PasswordResetController ✅ | AuthController|
+| `auth.email_verified` | VerifyEmailController ✅ | AuthControllerrifyEmail ✅ |
+| `auth.verification_resent` | ResendVerificationController ✅ | AuthControllersendVerification ✅ (channel=web) |
 
 Both channels log audit at the mutation site per the audit pattern
 (Controller logs directly for thin operations, no model observers).
@@ -277,7 +277,7 @@ Phase 3 splits into 5 groups. Each group is a self-contained batch that can be i
 || ID | Task | Depends On | Est. | Status | Notes |
 ||----|------|-----------|------|--------|-------|
 ||| UI-AUTH-001 | **Login page** — `resources/views/pages/auth/login.blade.php` | UI-001 (done) | **COMPLIANT** | AdminLTE auth layout, @csrf, old(), @error, flash messages, double-click prevention |
-||| UI-AUTH-002 | **WebAuthController** — `App\Http\Controllers\Web\V1\Auth\WebAuthController` | UI-AUTH-001 | **COMPLIANT** | Thin controller, delegates to Actions, audit trail |
+||| UI-AUTH-002 | **AuthController— `App\Http\Controllers\Web\V1\Auth\AutAuthController-AUTH-001 | **COMPLIANT** | Thin controller, delegates to Actions, audit trail |
 ||| UI-AUTH-003 | **Forgot password page** — `resources/views/pages/auth/forgot-password.blade.php` | UI-AUTH-001 | **COMPLIANT** | @csrf, old(email), @error, flash success |
 ||| UI-AUTH-004 | **Web ForgotPasswordController** — POST `/forgot-password` | UI-AUTH-003 | **COMPLIANT** | SendPasswordResetLinkAction, try-catch mail failure |
 ||| UI-AUTH-005 | **Reset password page** — `resources/views/pages/auth/reset-password.blade.php` | UI-AUTH-001 | **COMPLIANT** | @csrf, old(email), @error password |
@@ -365,7 +365,7 @@ Items needing status updates in `docs/planning/task-tracker.md`:
 
 ```
 |--- UI FIRST (views + controllers) ---
-1. UI-A-001..004  Auth views (login, forgot, reset, verify) + WebAuthController + web routes
+1. UI-A-001..004  Auth views (login, forgot, reset, verify) + AuthControllerweb routes
 --- UI COMPLETE; connect to API logic ---
 2. UI-A-005  Wire forms to API endpoints (AdminLTE form POST → controller redirect)
 --- API AUTH ---

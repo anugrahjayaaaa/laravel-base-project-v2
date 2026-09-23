@@ -3,10 +3,15 @@
 namespace App\Http\Requests\User;
 
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rule;
 
+/**
+ * Validates new user creation data.
+ */
 class CreateUserRequest extends FormRequest
 {
+    /**
+     * Guest route — always authorized.
+     */
     public function authorize(): bool
     {
         return true;

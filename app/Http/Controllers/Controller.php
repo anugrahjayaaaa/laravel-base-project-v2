@@ -4,19 +4,21 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
-use Spatie\Activitylog\Facades\Activity;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 
+/**
+ * Base API controller with JSON response helper and activity audit.
+ */
 abstract class Controller
 {
     /**
-     * Return a consistent JSON envelope for simple responses.
+     * Return a standardized JSON response.
      *
-     * Use this instead of creating a JSON Resource class when the response
-     * does not require field transformation, conditional inclusion, or
-     * relationship serialization. See docs/base/api/response-contract.md.
+     * @param  string  $message
+     * @param  int  $status
+     * @param  array  $data
+     * @return JsonResponse
      */
     protected function respond(
         string $message,
@@ -33,17 +35,13 @@ abstract class Controller
     }
 
     /**
-     * Log audit events via the spatie/activitylog facade.
+     * Log an activity audit event via spatie activitylog.
      *
-     * - Actions that perform mutations log audit within the action itself.
-     * - Controllers log audit directly for thin operations.
-     * - Never use model observers for audit. See docs/base/architecture/
-     *   application-components.md §Action/Service.
-     *
-     * @param string $event        Snake_case event name (e.g. 'auth.login').
-     * @param Model|null $subject  Model this action was performed on (optional).
-     * @param User|null $causer    User who caused the action (null for system).
-     * @param array $properties    Additional context (IP, user_agent, etc.).
+     * @param  string  $event
+     * @param  Model|null  $subject
+     * @param  User|null  $causer
+     * @param  array  $properties
+     * @return void
      */
     protected function audit(
         string $event,
@@ -51,6 +49,8 @@ abstract class Controller
         ?User $causer = null,
         array $properties = []
     ): void {
+        $source = request()->is('api/*') ? 'api' : 'web';
+
         $activity = activity();
 
         if ($subject !== null) {
@@ -61,22 +61,21 @@ abstract class Controller
             $activity->causedBy($causer);
         }
 
-        if (!empty($properties)) {
-            $activity->withProperties($properties);
-        }
+        $activity->withProperties(array_merge(['source' => $source], $properties));
 
         $activity->log($event);
     }
 
     /**
-     * Bulk log audit events via direct DB insert (bypass spatie facade).
-     * Used for bulk operations where per-user facade calls are too slow.
+     * Bulk-insert activity log records for multiple subjects.
      *
-     * @param string $event    Snake_case event name.
-     * @param array $records   [['subject_id' => int, 'properties' => []], ...]
-     * @param User|null $causer User who caused the action.
+     * @param  string  $event
+     * @param  array  $records
+     * @param  User|null  $causer
+     * @param  string  $type
+     * @return void
      */
-    protected function bulkAudit(string $event, array $records, ?User $causer = null): void
+    protected function bulkAudit(string $event, array $records, ?User $causer = null, string $type = 'web'): void
     {
         if (empty($records)) {
             return;
@@ -86,7 +85,11 @@ abstract class Controller
         $causerId = $causer?->id;
         $now = now()->toDateTimeString();
 
-        $rows = array_map(function ($record) use ($event, $causerType, $causerId, $now) {
+        $rows = array_map(function ($record) use ($event, $causerType, $causerId, $type, $now) {
+            $props = isset($record['properties']) && $record['properties']
+                ? array_merge(['source' => $type], $record['properties'])
+                : ['source' => $type];
+
             return [
                 'log_name' => 'default',
                 'description' => $event,
@@ -94,7 +97,7 @@ abstract class Controller
                 'subject_id' => $record['subject_id'],
                 'causer_type' => $causerType,
                 'causer_id' => $causerId,
-                'properties' => isset($record['properties']) && $record['properties'] ? json_encode($record['properties']) : null,
+                'properties' => json_encode($props),
                 'created_at' => $now,
                 'updated_at' => $now,
             ];

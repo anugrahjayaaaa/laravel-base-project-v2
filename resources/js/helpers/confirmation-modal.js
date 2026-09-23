@@ -1,3 +1,5 @@
+import { ACTION_CONFIG, escHtml } from './action-config.js';
+
 /**
  * Global Confirmation Modal — JS driver
  * Replaces inline script in confirmation.blade.php.
@@ -19,22 +21,16 @@
             headerMix: 'var(--lbp-success, #198754)'
         },
         warning: {
-            icon: 'bi bi-person-x',
+            icon: 'bi bi-person-slash',
             iconColor: 'text-warning',
             btnClass: 'btn-warning',
             headerMix: 'var(--lbp-warning, #f59e0b)'
         },
         danger: {
-            icon: 'bi bi-shield-lock',
+            icon: 'bi bi-trash',
             iconColor: 'text-danger',
             btnClass: 'btn-danger',
             headerMix: 'var(--lbp-danger, #ef4444)'
-        },
-        info: {
-            icon: 'bi bi-shield-check',
-            iconColor: 'text-info',
-            btnClass: 'btn-info',
-            headerMix: 'var(--lbp-info, #0ea5e9)'
         }
     };
 
@@ -71,21 +67,29 @@
 
         e.preventDefault();
 
-        var action   = trigger.getAttribute('data-action') || '#';
-        var method   = trigger.getAttribute('data-method') || 'POST';
-        var variant  = trigger.getAttribute('data-variant') || 'danger';
-        var titleTxt = trigger.getAttribute('data-title') || 'Confirm';
-        var msgTxt   = trigger.getAttribute('data-message') || 'Are you sure?';
-        var label    = trigger.getAttribute('data-label')
-                    || trigger.getAttribute('data-action-label')
-                    || 'Confirm';
-        var iconOverride = trigger.getAttribute('data-icon');
+        var actionUrl = trigger.getAttribute('data-action') || '#';
+        var method = trigger.getAttribute('data-method') || 'POST';
+        var actionType = trigger.getAttribute('data-action-type');
+        var itemName = trigger.getAttribute('data-item-name') || '';
+        var label = trigger.getAttribute('data-label') || trigger.getAttribute('data-action-label') || 'Confirm';
 
-        modal._ctx = { action, method, variant, trigger };
+        var cfg;
+        if (actionType && ACTION_CONFIG[actionType]) {
+            cfg = ACTION_CONFIG[actionType];
+        } else {
+            cfg = {
+                title: trigger.getAttribute('data-title') || 'Confirm',
+                msg: (trigger.getAttribute('data-message') || 'Are you sure?').replace(/__BOLD__/g, '<b>' + escHtml(itemName) + '</b>'),
+                variant: trigger.getAttribute('data-variant') || 'danger',
+                icon: trigger.getAttribute('data-icon') || 'bi bi-question-circle',
+            };
+        }
 
-        title.textContent = titleTxt;
-        message.textContent = msgTxt;
-        applyVariant(variant, iconOverride);
+        modal._ctx = { action: actionUrl, method, variant: cfg.variant, trigger };
+
+        title.textContent = cfg.title;
+        message.innerHTML = cfg.msg.replace(/__ITEM__/g, '<b>' + escHtml(itemName) + '</b>');
+        applyVariant(cfg.variant, cfg.icon);
         submitBtn.textContent = label;
         submitBtn.disabled = false;
 
@@ -113,7 +117,7 @@
         var icon = iconOverride || meta.icon;
 
         // Icon
-        iconEl.className = icon + ' fs-1 ' + meta.iconColor;
+        iconEl.className = icon + ' fs-3 ' + meta.iconColor;
 
         // Header background
         header.style.background = 'color-mix(in srgb, ' + meta.headerMix + ' 12%, transparent)';

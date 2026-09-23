@@ -188,7 +188,7 @@ operation that does not need decoupled side effects may skip the Event.
 
 ### Web Controllers (`app/Http/Controllers/Web/V1/*`)
 
-- Grouped by module/domain (e.g. `WebAuthController` for all auth views).
+- Grouped by module/domain (e.g. `AuthControlleror all auth views).
 - Ordering Convention: Pair each view display method with its processing
   logic method sequentially:
   `showViewA`, `processLogicA`, `showViewB`, `processLogicB`, etc.

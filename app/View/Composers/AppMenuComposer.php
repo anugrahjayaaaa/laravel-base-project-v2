@@ -4,6 +4,9 @@ namespace App\View\Composers;
 
 use Illuminate\View\View;
 
+/**
+ * Populates the AdminLTE sidebar menu groups into views.
+ */
 class AppMenuComposer
 {
     /**

@@ -1,6 +1,6 @@
 <?php
 
-use App\Http\Controllers\Web\V1\Auth\WebAuthController;
+use App\Http\Controllers\Web\V1\Auth\AuthController;
 use App\Http\Controllers\Web\V1\DashboardController;
 use App\Http\Controllers\Web\V1\ProfileController;
 use App\Http\Controllers\Web\V1\SystemSettingController;
@@ -19,7 +19,7 @@ Route::get('/', function () {
 // ---------------------------------------------------------------------------
 // Auth routes — login, password reset, email verification
 // ---------------------------------------------------------------------------
-Route::controller(WebAuthController::class)->group(function () {
+Route::controller(AuthController::class)->group(function () {
     Route::get('/login', 'showLogin')->name('login');
     Route::post('/login', 'login')
         ->name('login.submit')
@@ -48,7 +48,7 @@ Route::controller(WebAuthController::class)->group(function () {
 Route::middleware(['auth', 'verified', 'password.change.required', 'account.state'])->group(function () {
 
     // Auth management
-    Route::controller(WebAuthController::class)->group(function () {
+    Route::controller(AuthController::class)->group(function () {
         Route::post('/logout', 'logout')->name('logout');
         Route::get('/sessions', 'showSessions')->name('sessions');
         Route::post('/sessions/logout-all', 'logoutAllDevices')->name('sessions.logout-all');

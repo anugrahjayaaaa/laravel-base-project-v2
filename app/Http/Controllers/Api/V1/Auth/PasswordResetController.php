@@ -2,15 +2,26 @@
 
 namespace App\Http\Controllers\Api\V1\Auth;
 
-use App\Actions\Auth\ResetPasswordAction;
+use App\Actions\V1\Auth\ResetPasswordAction;
 use App\Auth\LoginThrottle;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\PasswordResetRequest;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Password;
 
+/**
+ * API auth controller — reset password.
+ */
 class PasswordResetController extends Controller
 {
+    /**
+     * Reset password using a token.
+     *
+     * @param  PasswordResetRequest  $request
+     * @param  LoginThrottle  $throttle
+     * @param  ResetPasswordAction  $action
+     * @return JsonResponse
+     */
     public function __invoke(
         PasswordResetRequest $request,
         LoginThrottle $throttle,

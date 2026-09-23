@@ -63,7 +63,7 @@
                     <div class="card-body p-4">
                         {{-- Pending Email Callout --}}
                         @if ($user->pending_email)
-                            <div class="callout callout-warning mb-3 d-flex align-items-center justify-content-between p-3">
+                            <div class="alert alert-warning d-flex align-items-center justify-content-between mb-3">
                                 <div>
                                     <i class="bi bi-envelope-arrow-up me-2"></i>
                                     <strong>Pending email change:</strong> {{ $user->pending_email }}
@@ -224,7 +224,7 @@
             </div>
 
             {{-- Security Info Widget --}}
-            <div class="callout callout-info mb-0">
+            <div class="alert alert-info mb-0">
                 <div class="d-flex align-items-start gap-2">
                     <i class="fas fa-circle-info text-primary mt-1"></i>
                     <div>

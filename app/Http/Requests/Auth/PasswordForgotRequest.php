@@ -12,6 +12,9 @@ class PasswordForgotRequest extends FormRequest
 {
     use FormatsApiErrors;
 
+    /**
+     * Guest route — always authorized.
+     */
     public function authorize(): bool
     {
         return true; // Guest route.
@@ -24,6 +27,11 @@ class PasswordForgotRequest extends FormRequest
         ];
     }
 
+    /**
+     * Get the email address for the password reset link.
+     *
+     * @return string
+     */
     public function email(): string
     {
         return $this->input('email', '');

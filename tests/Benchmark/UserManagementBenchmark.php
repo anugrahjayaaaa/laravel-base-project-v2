@@ -2,13 +2,13 @@
 
 namespace Tests\Benchmark;
 
-use App\Actions\User\ActivateUserAction;
-use App\Actions\User\DeactivateUserAction;
-use App\Actions\User\DeleteUserAction;
-use App\Actions\User\LockUserAction;
-use App\Actions\User\RestoreUserAction;
-use App\Actions\User\UnlockUserAction;
-use App\Actions\User\UserIndexAction;
+use App\Actions\V1\User\ActivateUserAction;
+use App\Actions\V1\User\DeactivateUserAction;
+use App\Actions\V1\User\DeleteUserAction;
+use App\Actions\V1\User\LockUserAction;
+use App\Actions\V1\User\RestoreUserAction;
+use App\Actions\V1\User\UnlockUserAction;
+use App\Actions\V1\User\UserIndexAction;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;

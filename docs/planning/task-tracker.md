@@ -280,7 +280,7 @@ observers for audit. See `docs/base/architecture/application-components.md` §Ac
       "UI-A-004"
     ],
     "status": "DONE",
-    "note": "Web forms wired via controller redirects (not JS fetch). POST /login, /forgot-password, /reset-password, /email/resend → WebAuthController → redirect."
+    "note": "Web forms wired via controller redirects (not JS fetch). POST /login, /forgot-password, /reset-password, /email/resend → AuthControllerredirect."
   },
   {
     "id": "AUTH-012",

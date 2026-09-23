@@ -25,6 +25,16 @@ class CheckAccountState
         'email.resend',
     ];
 
+    /**
+     * Block inactive or locked users from accessing the application.
+     *
+     * Revokes sessions/tokens and rejects with 401 (API) or
+     * redirect to login (web) for deactivated/locked/trashed users.
+     *
+     * @param Request $request
+     * @param Closure $next
+     * @return Response
+     */
     public function handle(Request $request, Closure $next): Response
     {
         $user = $request->user();

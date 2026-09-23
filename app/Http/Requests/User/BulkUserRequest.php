@@ -5,8 +5,14 @@ namespace App\Http\Requests\User;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
+/**
+ * Validates bulk user action requests.
+ */
 class BulkUserRequest extends FormRequest
 {
+    /**
+     * Guest route — always authorized.
+     */
     public function authorize(): bool
     {
         return true;

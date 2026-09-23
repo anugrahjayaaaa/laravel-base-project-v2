@@ -4,6 +4,9 @@ namespace App\Http\Requests\Auth;
 
 use Illuminate\Foundation\Http\FormRequest;
 
+/**
+ * Validates login credentials (email/username + password).
+ */
 class LoginRequest extends FormRequest
 {
     /**

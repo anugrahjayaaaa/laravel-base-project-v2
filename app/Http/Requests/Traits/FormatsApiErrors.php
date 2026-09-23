@@ -15,6 +15,14 @@ use Illuminate\Http\Exceptions\HttpResponseException;
  */
 trait FormatsApiErrors
 {
+    /**
+     * Handle a failed validation attempt.
+     *
+     * API requests: throws JSON response with errors, code, meta.
+     * Web requests: redirects back with errors and old input.
+     *
+     * @param  \Illuminate\Contracts\Validation\Validator  $validator
+     */
     protected function failedValidation(Validator $validator): void
     {
         if (request()->expectsJson() || request()->is('api/*')) {

@@ -2,17 +2,28 @@
 
 namespace App\Http\Controllers\Api\V1\Auth;
 
-use App\Actions\Auth\ResendVerificationAction;
+use App\Actions\V1\Auth\ResendVerificationAction;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\ResendVerificationRequest;
+use App\Models\SystemSetting;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 
+/**
+ * API auth controller — resend email verification.
+ */
 class ResendVerificationController extends Controller
 {
+    /**
+     * Resend a verification email to the user.
+     *
+     * @param  ResendVerificationRequest  $request
+     * @param  ResendVerificationAction  $action
+     * @return JsonResponse
+     */
     public function __invoke(ResendVerificationRequest $request, ResendVerificationAction $action): JsonResponse
     {
-        $mode = config('auth.verification.mode', 'public');
+        $mode = SystemSetting::getString('auth_verification_mode', 'public');
 
         if ($mode === 'admin' || $mode === 'disabled') {
             return $this->respond('Feature disabled.', 403);
