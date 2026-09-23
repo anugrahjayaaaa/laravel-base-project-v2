@@ -2,7 +2,6 @@
 
 namespace Tests\Feature\User;
 
-use App\Enums\UserStatusEnum;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;

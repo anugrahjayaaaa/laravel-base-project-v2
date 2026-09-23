@@ -8,7 +8,6 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\URL;
-use Mockery;
 use Tests\TestCase;
 
 class AuthControllerTest extends TestCase
