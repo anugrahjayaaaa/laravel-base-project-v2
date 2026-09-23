@@ -9,18 +9,13 @@ trait Auditable
 {
     public function audit(string $event, ?Model $causer = null, array $properties = []): void
     {
-        $activity = activity()
+        $source = request()->is('api/*') ? 'api' : 'web';
+
+        activity()
             ->on($this)
-            ->event($event);
-
-        if ($causer !== null) {
-            $activity->causedBy($causer);
-        }
-
-        if (!empty($properties)) {
-            $activity->withProperties($properties);
-        }
-
-        $activity->log($event);
+            ->event($event)
+            ->causedBy($causer)
+            ->withProperties(array_merge(['source' => $source], $properties))
+            ->log($event);
     }
 }
