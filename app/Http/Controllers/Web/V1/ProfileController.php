@@ -9,6 +9,7 @@ use App\Http\Requests\User\ProfileUpdateRequest;
 use App\Models\SystemSetting;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Profile controller — view and update user profile, change password.
@@ -45,6 +46,32 @@ class ProfileController extends Controller
             'emailCooldownDays',
             'usernameCooldownDays',
         ));
+    }
+
+    /**
+     * Change password for users who must change on first login.
+     */
+    public function changePassword(ProfileUpdateRequest $request): RedirectResponse
+    {
+        $user = $request->user();
+        $data = $request->validated();
+
+        if (! $request->filled('password')) {
+            throw ValidationException::withMessages([
+                'password' => ['The new password field is required.'],
+            ]);
+        }
+
+        ($this->changePasswordAction)->run(
+            user: $user,
+            currentPassword: $data['current_password'],
+            newPassword: $data['password'],
+        );
+
+        $this->audit('auth.password_changed', $user, $user);
+
+        return redirect()->route('profile.show')
+            ->with('status', 'Password changed successfully.');
     }
 
     /**
