@@ -1,6 +1,6 @@
 # Password Security
 
-> Last updated: 2026-09-24 | Phase 5 Group A ✅ DONE, Group B/C PLANNED
+> Last updated: 2026-09-24 | Phase 5 Group A ✅ DONE, Group B ✅ DONE, Group C PLANNED
 
 ## Implementation Status (Phase 5)
 
@@ -10,6 +10,33 @@
 |-----------|----------|--------|
 | Policy definition | `app/Support/PasswordPolicy.php` | ✅ |
 | Validation rule | `app/Rules/PasswordStrengthRule.php` | ✅ |
+
+### Group B — Password History Enforcement ✅ DONE
+
+| Component | Location | Status |
+|-----------|----------|--------|
+| History table | `database/migrations/0001_01_01_000003_create_password_histories_table.php` | ✅ |
+| Model | `app/Models/PasswordHistory.php` | ✅ |
+| Record action | `app/Actions/V1/Auth/RecordPasswordHistoryAction.php` | ✅ |
+| ChangePasswordAction integration | `app/Actions/V1/Auth/ChangePasswordAction.php` | ✅ |
+| ResetPasswordAction integration | `app/Actions/V1/Auth/ResetPasswordAction.php` | ✅ |
+| CreateUserAction integration | `app/Actions/V1/User/CreateUserAction.php` | ✅ |
+| View: reset-password hint | `resources/views/pages/auth/reset-password.blade.php` | ✅ |
+| View: profile hint | `resources/views/pages/profile/edit.blade.php` | ✅ |
+| View: settings fields | `resources/views/pages/settings/index.blade.php` | ✅ |
+| Tests | `tests/Feature/PasswordHistoryTest.php` | ✅ |
+
+### Settings
+
+- `password_history_enabled` (boolean, default: true) — toggle enforcement
+- `password_history_count` (integer, default: 5, min: 0, max: 24) — retention limit
+
+### Enforcement
+
+- New password hash checked against last N entries in `password_histories`
+- Validation error: "You cannot reuse one of your last N passwords."
+- Entries beyond limit pruned automatically
+- Bypass if `password_history_enabled` = false
 | Real-time strength JS | `resources/js/helpers/password-strength.js` | ✅ |
 | Strength indicator partial | `resources/views/layouts/partials/password-strength.blade.php` | ✅ |
 | Settings integration | `database/seeders/SystemSettingSeeder.php` | ✅ |
@@ -33,9 +60,6 @@
 - `PasswordChangeRequest`
 - `PasswordResetRequest`
 - `ProfileUpdateRequest`
-
-### Group B — Password History Enforcement
-PLANNED — see `docs/planning/phase-5-password-security.md`
 
 ### Group C — Password Expiration & Inactivity Lock
 PLANNED — see `docs/planning/phase-5-password-security.md`

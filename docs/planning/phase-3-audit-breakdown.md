@@ -82,7 +82,7 @@
 ||| `app/Actions/Auth/ResetPasswordAction.php` | Reset password: lock check + Password::reset + audit | AUTH-013 |
 ||| `app/Actions/Auth/VerifyEmailAction.php` | Email verification: mark verified + check already verified | AUTH-011a |
 ||| `app/Actions/Auth/UnlockUserAction.php` | Admin unlock: is_locked=false + throttle reset | (Phase 4/5 overlap) |
-||| `app/Actions/Auth/ChangePassword.php` | Shared password-change logic: validate current, history check, hash, expiration, revoke tokens, activity log | PWD-002/AUTH-014 |
+||| `app/Actions/Auth/ChangePasswordAction.php` | Shared password-change logic: validate current, history check, hash, expiration, revoke tokens, activity log | PWD-002/AUTH-014 |
 ||| `app/Http/Controllers/Api/V1/Auth/LoginController.php` | API login → AuthenticateUserAction, JSON response | AUTH-005 |
 ||| `app/Http/Controllers/Api/V1/Auth/PasswordForgotController.php` | Forgot-password → SendPasswordResetLinkAction | AUTH-012 |
 ||| `app/Http/Controllers/Api/V1/Auth/PasswordResetController.php` | Reset-password → ResetPasswordAction | AUTH-013 |
@@ -195,14 +195,14 @@ Web audit uses `$this->audit()` from base Controller (same as API).
 
 **`app/Actions/` — single-operation classes**
 - One public method (`run()` or `__invoke()`)
-- Naming: `VerbNoun` (e.g. `ChangePassword`, `SendResetLink`, `RevokeUserTokens`)
+- Naming: `VerbNoun` (e.g. `ChangePasswordAction`, `SendResetLink`, `RevokeUserTokens`)
 - Extract when **either** the operation is non-trivial (>~10 lines of logic beyond
   simple delegation) **OR** the logic is shared across ≥2 controllers.
 - Do NOT wrap a single trivial model call in an Action — inline it in the controller.
 - Mutations that perform writes log audit within the action itself (the action has
   full context: causer, subject, properties). This keeps audit co-located with the
   mutation.
-- Already has: `ChangePassword`
+- Already has: `ChangePasswordAction`
 
 **`app/Services/` — cohesive domain objects + external integrations**
 - Naming: `NounService` (e.g. `HealthCheckService`, `AuditService`, `EmailService`)
@@ -231,7 +231,7 @@ Web audit uses `$this->audit()` from base Controller (same as API).
 || Login (authenticate + issue token + update last_activity) | **AuthenticateUserAction** | Unified action: throttle + findUser + accountState + emailVerification (UNVERIFIED_EMAIL for all modes except disabled). Strict — no Sanctum token or session for unverified users. |
 || Verify email | **VerifyEmailAction** — Web + API delegate | Shared action: markEmailAsVerified; controller adds mode check + audit. |
 || Resend verification | **ResendVerificationAction** — Web + API delegate | Shared action: rate limit + send notification; controller adds mode check + audit. |
-|| Password change | **Action** (`ChangePassword`) — already done | Complex: history check, revocation, audit. Shared pattern. |
+|| Password change | **Action** (`ChangePasswordAction`) — already done | Complex: history check, revocation, audit. Shared pattern. |
 || Forgot/reset password | **Controller directly** — already done | Uses Laravel `Password` facade; thin wrapper. |
 || Unlock user | **Controller directly** — already done | Uses `LoginThrottle` dependency. |
 
@@ -355,7 +355,7 @@ Items needing status updates in `docs/planning/task-tracker.md`:
 | AUTH-011 | PLANNED | **DONE** (split into 011a/011b) | VerifyEmailAction + ResendVerificationAction shared; controllers add mode check + audit | **COMPLIANT** |
 | AUTH-012 | PLANNED | **DONE** (code exists) | PasswordForgotController exists |
 | AUTH-013 | PLANNED | **DONE** (code exists) | PasswordResetController exists |
-| AUTH-014 | PLANNED (Phase 5) | **DONE** (Phase 5 code exists, Phase 3 middleware done) | ChangePassword action + ApiPasswordChangeController exist; phase 5 password policy tasks still pending |
+| AUTH-014 | PLANNED (Phase 5) | **DONE** (Phase 5 code exists, Phase 3 middleware done) | ChangePasswordAction action + ApiPasswordChangeController exist; phase 5 password policy tasks still pending |
 | RATE-001 | PLANNED (Phase 5) | **DONE** (Phase 3) | RateLimiter defined in AuthServiceProvider — 4 limiters: login (5/min), forgot-password (3/min), reset-password (3/min), resend-verification (5/hour) |
 | RATE-002 | PLANNED (Phase 5) | **DONE** (Phase 3) | Rate limit tests — HTTP 429 verified: login (5), forgot (3), reset (3), resend web (6), resend API (6) |
 
@@ -399,7 +399,7 @@ Each numbered group above is a natural commit boundary. Groups 1-10 = API auth. 
 
 | Item | Deferred To | Reason |
 |------|------------|--------|
-| Password history enforcement (PWD-003) | Phase 5 | ChangePassword action has the check wired but `password_histories` table + policy config still needed |
+| Password history enforcement (PWD-003) | Phase 5 | ChangePasswordAction action has the check wired but `password_histories` table + policy config still needed |
 | Password expiration enforcement (PWD-004) | Phase 5 | `password_expires_at` field exists; middleware checks it; full policy + expiration job deferred |
 | Inactivity lock (INACT-001) | Phase 5 | `last_activity_at` field exists; tracking + lock job deferred |
 | Admin user creation (USER-003) | Phase 4 | Depends on user management module |

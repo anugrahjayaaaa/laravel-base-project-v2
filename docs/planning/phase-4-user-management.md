@@ -14,7 +14,7 @@
 - Action class pattern: `App\Actions\Auth\*` + `App\Actions\User\*`
 - Form Request pattern: `App\Http\Requests\Auth\*` + `App\Http\Requests\User\*`
 - `UnlockUserAction` + `UnlockUserRequest` exist (API only)
-- `ChangePassword` action exists — reuse for user password updates
+- `ChangePasswordAction` action exists — reuse for user password updates
 - `EnsurePasswordChangeRequired` middleware — enforces `must_change_password`
 - No Filament — pure Blade + AdminLTE
 - Base database roles/user traits initialized in Phase 2/3 only

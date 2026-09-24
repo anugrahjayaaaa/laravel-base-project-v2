@@ -11,7 +11,7 @@
 || 2 | Database foundation | DONE |
 || 3 | Authentication foundation | IN PROGRESS |
 || 4 | User lifecycle & user management | DONE |
-|| 5 | Password/security lifecycle | PLANNED → Group A DONE |
+|| 5 | Password/security lifecycle | PLANNED → Group A ✅ DONE, Group B ✅ DONE |
 | 6 | RBAC & authorization | PLANNED |
 | 7 | Feature availability / feature flags | PLANNED |
 | 8 | Settings | PLANNED |

@@ -313,7 +313,7 @@ observers for audit. See `docs/base/architecture/application-components.md` §Ac
       "PWD-002"
     ],
     "status": "DONE",
-    "note": "API-side DONE: ChangePassword action + ApiPasswordChangeController exist. Phase 5 password policy/history/expiry tasks still pending."
+    "note": "API-side DONE: ChangePasswordAction action + ApiPasswordChangeController exist. Phase 5 password policy/history/expiry tasks still pending."
   },
   {
     "id": "AUTH-015",
@@ -435,7 +435,7 @@ observers for audit. See `docs/base/architecture/application-components.md` §Ac
       "PWD-001"
     ],
     "status": "DONE",
-    "note": "Group A complete: PasswordStrengthRule wired into ChangePassword, ResetPassword, ProfileUpdate requests."
+    "note": "Group A complete: PasswordStrengthRule wired into ChangePasswordAction, ResetPassword, ProfileUpdate requests."
   },
   {
     "id": "PWD-003",
