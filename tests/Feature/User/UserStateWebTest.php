@@ -13,6 +13,7 @@ class UserStateWebTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        $this->withoutMiddleware(\App\Http\Middleware\VerifyCsrfToken::class);
         $this->admin = User::factory()->create([
             'name' => 'Admin',
             'email' => 'admin@example.com',

@@ -14,6 +14,12 @@ class AuthControllerTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->withoutMiddleware(\App\Http\Middleware\VerifyCsrfToken::class);
+    }
+
     // === Existing tests ===
 
     public function test_web_login_renders_form(): void

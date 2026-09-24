@@ -12,6 +12,12 @@ class SystemSettingUpdateTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->withoutMiddleware(\App\Http\Middleware\VerifyCsrfToken::class);
+    }
+
     public function test_update_settings_persists_to_database(): void
     {
         $user = User::factory()->create();

@@ -16,6 +16,7 @@ class UsernameEmailChangeTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        $this->withoutMiddleware(\App\Http\Middleware\VerifyCsrfToken::class);
         SystemSetting::set('allow_username_change', 'true');
         SystemSetting::set('allow_email_change', 'true');
         SystemSetting::set('username_change_cooldown_days', '30');
