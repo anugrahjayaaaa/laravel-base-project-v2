@@ -44,7 +44,7 @@ class ResetPasswordAction
         $status = Password::reset(
             $request->only('email', 'password', 'password_confirmation', 'token'),
             function ($user, string $password) {
-                $days = SystemSetting::getInt('auth_password_expiration_days', 90);
+                $days = SystemSetting::getInt('password_expiration_days', 90);
 
                 $user->forceFill([
                     'password' => Hash::make($password),

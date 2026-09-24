@@ -54,7 +54,7 @@ class CreateUserAction
 
             $verificationUrl = URL::temporarySignedRoute(
                 'verification.verify',
-                now()->addMinutes(SystemSetting::getInt('auth_verification_expire_minutes', 60)),
+                now()->addMinutes(SystemSetting::getInt('email_verification_expire_minutes', 60)),
                 ['id' => $user->getKey(), 'hash' => sha1($user->getEmailForVerification())]
             );
 
