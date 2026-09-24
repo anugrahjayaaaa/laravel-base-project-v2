@@ -28,8 +28,8 @@ class ProfileUpdateTest extends TestCase
         $response = $this->actingAs($user)
             ->put(route('profile.update'), [
                 'current_password' => 'password',
-                'password' => 'newpassword123',
-                'password_confirmation' => 'newpassword123',
+                'password' => 'NewPassw0rd!99',
+                'password_confirmation' => 'NewPassw0rd!99',
             ]);
 
         $response->assertRedirect();
