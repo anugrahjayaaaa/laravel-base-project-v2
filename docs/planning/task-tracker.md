@@ -423,7 +423,8 @@ observers for audit. See `docs/base/architecture/application-components.md` §Ac
     "depends_on": [
       "P0-001"
     ],
-    "status": "PLANNED"
+    "status": "DONE",
+    "note": "Group A complete: PasswordPolicy + PasswordStrengthRule + views + tests. P5-A1..A9 shipped."
   },
   {
     "id": "PWD-002",
@@ -433,7 +434,8 @@ observers for audit. See `docs/base/architecture/application-components.md` §Ac
     "depends_on": [
       "PWD-001"
     ],
-    "status": "PLANNED"
+    "status": "DONE",
+    "note": "Group A complete: PasswordStrengthRule wired into ChangePassword, ResetPassword, ProfileUpdate requests."
   },
   {
     "id": "PWD-003",

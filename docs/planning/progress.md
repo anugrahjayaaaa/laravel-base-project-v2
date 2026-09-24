@@ -11,7 +11,7 @@
 || 2 | Database foundation | DONE |
 || 3 | Authentication foundation | IN PROGRESS |
 || 4 | User lifecycle & user management | DONE |
-| 5 | Password/security lifecycle | PLANNED |
+|| 5 | Password/security lifecycle | PLANNED → Group A DONE |
 | 6 | RBAC & authorization | PLANNED |
 | 7 | Feature availability / feature flags | PLANNED |
 | 8 | Settings | PLANNED |
@@ -35,9 +35,9 @@ Phase 4F Group F (P4-F1 through P4-F13) — Username/Email Change + System Setti
 Phase 4G Group G (P4-G1) — Self-Service Profile Page: DONE
 Phase 4H Group H (P4-H1 through P4-H4) — Bulk Actions + Audit Close-out: DONE
 
-## Next Phase
+## Next Task
 
-Phase 5 — Password/security lifecycle (PLANNED)
+Phase 5 — Password/security lifecycle (Group A: DONE, Group B/C: PLANNED)
 
 ## Completed Tasks
 
@@ -96,6 +96,17 @@ Phase 4E Group E (P4-E1 through P4-E7) — API User CRUD: DONE
 Phase 4F Group F (P4-F1 through P4-F13) — Username/Email Change + System Settings: DONE
 Phase 4G Group G (P4-G1) — Self-Service Profile Page: DONE
 Phase 4H Group H (P4-H1 through P4-H4) — Bulk Actions + Audit Close-out: DONE
+
+Phase 5 Group A (P5-A1 through P5-A9) — Password Policy & Validation UI: ✅ DONE
+- `app/Support/PasswordPolicy.php` — validate() + strength() + 5 IM8 rules
+- `app/Rules/PasswordStrengthRule.php` — Laravel ValidationRule
+- `resources/views/layouts/partials/password-strength.blade.php` — shared indicator
+- `resources/js/helpers/password-strength.js` — vanilla JS bar + checklist
+- 2 views updated: `auth/reset-password`, `profile/edit` (P5-A5 skipped — no password field)
+- SystemSettingSeeder: 6 new keys (`password_min_length=12`, `password_require_*=true`)
+- Tests: 13 unit + 8 feature = 21 new tests, 223 total pass
+- Pentest: clean (1 LOW — homoglyph bypass, documented)
+- Bonus: eye icon positioning fix (6 buttons), `bi-eye` icon class, auth layout vite fix
 
 - UserIndexAction, UserQueryRequest, thin UserController, index + edit views
 - 8 routes (users.index through users.resend-verification)

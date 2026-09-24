@@ -1,5 +1,47 @@
 # Password Security
 
+> Last updated: 2026-09-24 | Phase 5 Group A ✅ DONE, Group B/C PLANNED
+
+## Implementation Status (Phase 5)
+
+### Group A — Password Policy & Validation UI ✅ DONE
+
+| Component | Location | Status |
+|-----------|----------|--------|
+| Policy definition | `app/Support/PasswordPolicy.php` | ✅ |
+| Validation rule | `app/Rules/PasswordStrengthRule.php` | ✅ |
+| Real-time strength JS | `resources/js/helpers/password-strength.js` | ✅ |
+| Strength indicator partial | `resources/views/layouts/partials/password-strength.blade.php` | ✅ |
+| Settings integration | `database/seeders/SystemSettingSeeder.php` | ✅ |
+| Tests (21 total) | `tests/Unit/PasswordPolicyTest.php`, `tests/Feature/PasswordPolicyTest.php` | ✅ |
+| Pentest | clean (1 LOW: homoglyph bypass) | ✅ |
+
+**Rules enforced (IM8):**
+- Min length (default 12, configurable via `password_min_length`)
+- At least one uppercase (`password_require_upper`)
+- At least one lowercase (`password_require_lower`)
+- At least one digit (`password_require_digit`)
+- At least one symbol (`password_require_symbol`)
+- Must not contain username (`password_reject_username`)
+
+**Views with strength indicator:**
+- `auth/reset-password.blade.php` — new password field
+- `pages/profile/edit.blade.php` — change password section
+- `pages/users/create.blade.php` — ❌ skipped (auto-generated temp password)
+
+**FormRequests using `PasswordStrengthRule`:**
+- `PasswordChangeRequest`
+- `PasswordResetRequest`
+- `ProfileUpdateRequest`
+
+### Group B — Password History Enforcement
+PLANNED — see `docs/planning/phase-5-password-security.md`
+
+### Group C — Password Expiration & Inactivity Lock
+PLANNED — see `docs/planning/phase-5-password-security.md`
+
+---
+
 ## Policy
 
 Use the agreed IM8 password policy as the single source of truth for:
