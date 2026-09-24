@@ -79,7 +79,7 @@ Route::middleware(['auth:web,sanctum', 'verified', 'password.change.required', '
     Route::post('/users/{user}/cancel-email-change', [UserController::class, 'cancelEmailChange'])->name('users.cancel-email-change');
     Route::get('/email/verify-change/{user}', [UserController::class, 'verifyEmailChange'])
         ->name('email.verify-change')->middleware(['signed', 'throttle:email-verification']);
-    Route::post('/users/bulk-action', [UserController::class, 'bulkAction'])->name('users.bulk-action');
+    Route::post('/users/bulk-action', [UserController::class, 'bulkAction'])->name('users.bulk-action')->middleware('throttle:bulk-action');
 
     // User state toggles (Activate / Deactivate / Lock / Unlock)
     Route::middleware(['throttle:user-state-actions'])->group(function () {

@@ -42,6 +42,7 @@ class ResetPasswordAction
 
             function ($user, string $password) {
                 $days = SystemSetting::getInt('auth_password_expiration_days', 90);
+
                 $user->forceFill([
                     'password' => Hash::make($password),
                     'must_change_password' => false,
@@ -54,9 +55,17 @@ class ResetPasswordAction
         );
 
         if ($status === Password::PASSWORD_RESET) {
-            return ['user' => $user, 'status' => $status];
+            $user?->tokens()->delete();
+
+            return [
+                'user' => $user,
+                'status' => $status
+            ];
         }
 
-        return ['error' => ['message' => 'Invalid or expired token.', 'status' => 400], 'user' => $user];
+        return [
+            'error' => ['message' => 'Invalid or expired token.', 'status' => 400],
+            'user' => $user
+        ];
     }
 }
