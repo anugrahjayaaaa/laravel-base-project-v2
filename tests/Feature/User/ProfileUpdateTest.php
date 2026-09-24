@@ -37,6 +37,21 @@ class ProfileUpdateTest extends TestCase
         $this->assertDatabaseHas('users', ['email' => $user->email]);
     }
 
+    public function test_wrong_current_password_shows_error_on_field(): void
+    {
+        $user = User::factory()->create();
+
+        $response = $this->actingAs($user)
+            ->put(route('password.change.update'), [
+                'current_password' => 'wrongpassword',
+                'password' => 'newpassword123',
+                'password_confirmation' => 'newpassword123',
+            ]);
+
+        $response->assertRedirect();
+        $response->assertSessionHasErrors('current_password');
+    }
+
     public function test_email_change_shows_pending_message(): void
     {
         $user = User::factory()->create();
