@@ -153,23 +153,6 @@ class UserController extends Controller
      * @param  User  $user
      * @return \Illuminate\Contracts\View\View
      */
-    public function edit(User $user)
-    {
-        $initials = str($user->name)->substr(0, 2)->upper();
-
-        return view('pages.users.edit', [
-            'title' => 'Edit User',
-            'user' => $user,
-            'initials' => $initials,
-            'statuses' => UserStatusEnum::cases(),
-            'allowUsernameChange' => SystemSetting::getBool('allow_username_change', true),
-            'allowEmailChange' => SystemSetting::getBool('allow_email_change', true),
-            'usernameCooldownDays' => SystemSetting::getInt('username_change_cooldown_days', 30),
-            'emailCooldownDays' => SystemSetting::getInt('email_change_cooldown_days', 30),
-            'failedLoginCount' => FailedLoginAttempt::where('user_id', $user->id)->sum('attempts'),
-        ]);
-    }
-
     /**
      * Update an existing user. Optionally changes password.
      *
@@ -205,18 +188,11 @@ class UserController extends Controller
             handler: $this->userBulkActionHandler,
         );
 
-        $label = match ($request->validated('action')) {
-            'deactivate' => 'deactivated',
-            'activate' => 'activated',
-            'lock' => 'locked',
-            'unlock' => 'unlocked',
-            'restore' => 'restored',
-            'delete' => 'deleted',
-            'force_delete' => 'permanently deleted',
-            default => 'processed',
-        };
+        if (!empty($result['auditRecords']) && $result['auditEvent']) {
+            $this->bulkAudit($result['auditEvent'], $result['auditRecords'], $request->user());
+        }
 
-        return back()->with('status', "{$result['count']} selected users have been successfully {$label}.");
+        return back()->with('status', "{$result['count']} selected users have been successfully {$result['label']}.");
     }
 
     /**

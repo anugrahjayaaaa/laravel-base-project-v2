@@ -161,6 +161,10 @@ class UserController extends Controller
             handler: $this->userBulkActionHandler,
         );
 
+        if (!empty($result['auditRecords']) && $result['auditEvent']) {
+            $this->bulkAudit($result['auditEvent'], $result['auditRecords'], $request->user());
+        }
+
         return $this->respond("{$result['label']} ({$result['count']} users).", 200);
     }
 

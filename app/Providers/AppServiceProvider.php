@@ -31,7 +31,6 @@ class AppServiceProvider extends ServiceProvider
         view()->composer('layouts.partials.sidebar', AppMenuComposer::class);
 
         User::observe(UserObserver::class);
-        SystemSetting::observe(SystemSettingObserver::class);
 
         RateLimiter::for('user-state-actions', function ($request) {
             $key = $request->user()?->id ?: $request->ip();
