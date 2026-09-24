@@ -34,6 +34,34 @@
 
 15. **Never weaken security** to make a test pass. If auth breaks, fix the auth, not the test.
 
+## Performance & Pentest Fix Safety Rules
+
+> **MANDATORY for any performance optimization or penetration-test remediation.** Previous incidents have broken working features (e.g., Single Action) while fixing unrelated concerns. These rules prevent recurrence.
+
+16. **Trace the FULL call chain BEFORE touching any code.** For every function/route you intend to modify:
+    - Find ALL callers/controllers that invoke it (grep the method name, route name, or service class).
+    - Identify ALL features/flows that depend on its current behavior.
+    - Map side effects: does anything observe the return value, timing, DB state, or event dispatch?
+
+17. **Performance fixes MUST preserve exact behavioral contracts.** When refactoring for speed:
+    - Same inputs → same outputs (HTTP status codes, JSON structure, redirect targets, flash messages).
+    - Same transaction boundaries (don't move a query out of a transaction and break atomicity).
+    - Same event/audit firing (don't skip `dispatch()` or audit writes to "save time").
+    - Same authorization checks (don't bypass Policy/Gate to reduce DB calls).
+
+18. **Pentest fixes MUST preserve business logic.** When patching security findings:
+    - Add validation — don't replace existing validation.
+    - Tighten access — don't break legitimate access paths.
+    - Add rate limiting — don't block legitimate batch operations.
+    - Fix injection — don't change query semantics that other features depend on.
+
+19. **Verify ALL affected features AFTER the fix — not just the feature being fixed.** After a performance/pentest change:
+    - Run the FULL test suite for every feature that shares the modified code path.
+    - Manually verify UI flows that touch the changed code (curl tests miss client-side state).
+    - Check the QA tracker (`docs/planning/qa-tracker.md`) for related manual-test items.
+
+20. **When in doubt, ASK before changing.** If a performance/pentest fix would alter behavior in any caller you didn't author, STOP and confirm with the user before proceeding.
+
 16. **Never introduce a package** without documenting its purpose. Add it to `docs/planning/changelog.md` with: name, purpose, why not build custom, security considerations.
 
 17. **Avoid duplicate business logic.** Search for existing implementations first.
