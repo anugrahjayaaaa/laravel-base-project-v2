@@ -56,6 +56,7 @@
                             <i class="bi bi-eye"></i>
                         </button>
                     </div>
+                    <small class="text-muted d-block mt-1">Your new password cannot be one of your recent passwords.</small>
                     @include('layouts.partials.password-strength')
                     @error('password')
                         <div class="invalid-feedback d-block">{{ $message }}</div>

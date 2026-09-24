@@ -110,6 +110,7 @@
                     </div>
                     <div class="card-body p-4">
                         <div class="row g-3">
+                            {{-- Min Password --}}
                             <div class="col-md-4">
                                 <label for="auth_password_min_length" class="form-label">
                                     Min Password Length
@@ -125,21 +126,7 @@
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
                             </div>
-                            <div class="col-md-4">
-                                <label for="auth_password_history_count" class="form-label">
-                                    Password History
-                                    <i class="bi bi-info-circle text-muted fs-6 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Number of previous passwords remembered to prevent password reuse."></i>
-                                </label>
-                                <div class="input-group">
-                                    <input type="number" name="auth_password_history_count" id="auth_password_history_count"
-                                           class="form-control form-control-sm @error('auth_password_history_count') is-invalid @enderror"
-                                           value="{{ old('auth_password_history_count', $settings['auth_password_history_count'] ?? 5) }}" min="0" max="24">
-                                    <span class="input-group-text bg-body-tertiary">passwords</span>
-                                </div>
-                                @error('auth_password_history_count')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
+                            {{-- Password Exp --}}
                             <div class="col-md-4">
                                 <label for="auth_password_expiration_days" class="form-label">
                                     Password Expiration
@@ -154,6 +141,33 @@
                                 @error('auth_password_expiration_days')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
+                            </div>
+                            {{-- Password History --}}
+                            <div class="col-md-4">
+                                <label for="password_history_count" class="form-label">
+                                    Password History
+                                    <i class="bi bi-info-circle text-muted fs-6 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Number of previous passwords remembered to prevent password reuse."></i>
+                                </label>
+                                <div class="input-group">
+                                    <input type="number" name="password_history_count" id="password_history_count"
+                                           class="form-control form-control-sm @error('password_history_count') is-invalid @enderror"
+                                           value="{{ old('password_history_count', $settings['password_history_count'] ?? 5) }}" min="0" max="24">
+                                    <span class="input-group-text bg-body-tertiary">passwords</span>
+                                </div>
+                                @error('password_history_count')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+                            {{-- Password History toggle --}}
+                            <div class="col-md-4">
+                                <div class="form-check form-switch mt-4 pt-2">
+                                    <input class="form-check-input" type="checkbox" name="password_history_enabled" id="password_history_enabled"
+                                        {{ filter_var($settings['password_history_enabled'] ?? 'true', FILTER_VALIDATE_BOOLEAN) ? 'checked' : '' }}>
+                                    <label for="password_history_enabled" class="form-check-label">
+                                        History Enforcement
+                                        <i class="bi bi-info-circle text-muted fs-6 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Enforces password history check on change/reset — prevents reuse of recent passwords."></i>
+                                    </label>
+                                </div>
                             </div>
                         </div>
                         <hr class="my-3">

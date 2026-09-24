@@ -207,6 +207,7 @@
                             @error('password')
                                 <div class="invalid-feedback d-block">{{ $message }}</div>
                             @enderror
+                            <small class="text-muted d-block mt-1">Your new password cannot be one of your recent passwords.</small>
                             @include('layouts.partials.password-strength')
                         </div>
                         <div class="mb-3">
