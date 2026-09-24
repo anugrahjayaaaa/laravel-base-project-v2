@@ -5,11 +5,18 @@ namespace Tests\Feature;
 use App\Models\SystemSetting;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 use Tests\TestCase;
 
 class SystemSettingUpdateTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->withoutMiddleware(\App\Http\Middleware\VerifyCsrfToken::class);
+    }
 
     public function test_update_settings_persists_to_database(): void
     {
@@ -48,5 +55,41 @@ class SystemSettingUpdateTest extends TestCase
         $this->assertFalse(SystemSetting::getBool('allow_email_change'));
         $this->assertEquals(30, SystemSetting::getInt('username_change_cooldown_days'));
         $this->assertEquals(30, SystemSetting::getInt('email_change_cooldown_days'));
+    }
+
+    public function test_cache_is_invalidated_on_update(): void
+    {
+        // Warm the cache with initial values
+        SystemSetting::set('allow_username_change', 'true');
+        SystemSetting::set('allow_email_change', 'false');
+
+        // Cache is now populated — verify cached reads return initial values
+        $this->assertTrue(SystemSetting::getBool('allow_username_change'));
+        $this->assertFalse(SystemSetting::getBool('allow_email_change'));
+
+        $user = User::factory()->create();
+        $this->actingAs($user, 'web');
+
+        // Update via UI POST
+        $response = $this->from('/settings')->post(route('settings.update'), [
+            'allow_username_change' => 'on',
+            'allow_email_change' => 'on',
+            'username_change_cooldown_days' => 15,
+            'email_change_cooldown_days' => 10,
+        ]);
+
+        $response->assertRedirect();
+
+        // Assert cache key is invalidated (fresh read from DB)
+        $this->assertTrue(SystemSetting::getBool('allow_username_change'));
+        $this->assertTrue(SystemSetting::getBool('allow_email_change'));
+        $this->assertEquals(15, SystemSetting::getInt('username_change_cooldown_days'));
+        $this->assertEquals(10, SystemSetting::getInt('email_change_cooldown_days'));
+
+        // Assert DB reflects the updated values directly
+        $this->assertEquals('true', SystemSetting::where('key', 'allow_username_change')->value('value'));
+        $this->assertEquals('true', SystemSetting::where('key', 'allow_email_change')->value('value'));
+        $this->assertEquals('15', SystemSetting::where('key', 'username_change_cooldown_days')->value('value'));
+        $this->assertEquals('10', SystemSetting::where('key', 'email_change_cooldown_days')->value('value'));
     }
 }

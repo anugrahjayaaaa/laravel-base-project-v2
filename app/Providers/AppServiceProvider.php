@@ -3,7 +3,9 @@
 namespace App\Providers;
 
 use App\Models\User;
+use App\Models\SystemSetting;
 use App\Observers\UserObserver;
+use App\Observers\SystemSettingObserver;
 use App\View\Composers\AppMenuComposer;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Support\ServiceProvider;

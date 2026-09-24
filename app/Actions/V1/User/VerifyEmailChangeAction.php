@@ -37,6 +37,9 @@ class VerifyEmailChangeAction
             ]);
         });
 
+        // Revoke active Sanctum tokens — user must re-auth with new email.
+        $user->tokens()->delete();
+
         return true;
     }
 }

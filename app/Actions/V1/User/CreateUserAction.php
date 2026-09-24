@@ -27,7 +27,7 @@ class CreateUserAction
 
         return DB::transaction(function () use ($data, $tempPassword) {
             $user = User::create([
-                'name' => $data['name'],
+                'name' => strip_tags($data['name']),
                 'email' => $data['email'],
                 'username' => $data['username'],
                 'password' => Hash::make($tempPassword),

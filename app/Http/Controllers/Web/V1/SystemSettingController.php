@@ -75,6 +75,8 @@ class SystemSettingController extends Controller
             SystemSetting::set($key, $value);
         }
 
+        SystemSetting::bustCache();
+
         $this->audit('system_setting.updated', null, $request->user(), $data);
 
         return back()->with('status', 'Settings updated successfully.');

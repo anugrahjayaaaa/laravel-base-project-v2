@@ -56,6 +56,7 @@ class ProfileController extends Controller
                 currentPassword: $data['current_password'],
                 newPassword: $data['password'],
             );
+
             $this->audit('auth.password_changed', $user, $user);
         }
 

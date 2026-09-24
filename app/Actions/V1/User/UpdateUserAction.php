@@ -23,7 +23,7 @@ class UpdateUserAction
     public function run(User $user, array $data): User
     {
         $user->update([
-            'name' => $data['name'] ?? $user->name,
+            'name' => strip_tags($data['name'] ?? $user->name),
             'is_active' => isset($data['status'])
                 ? $data['status'] === UserStatusEnum::ACTIVE->value
                 : $user->is_active,

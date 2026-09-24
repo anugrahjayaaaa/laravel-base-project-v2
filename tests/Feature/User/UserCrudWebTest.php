@@ -14,6 +14,7 @@ class UserCrudWebTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        $this->withoutMiddleware(\App\Http\Middleware\VerifyCsrfToken::class);
         $this->user = User::factory()->create([
             'name' => 'Admin User',
             'email' => 'admin@example.com',

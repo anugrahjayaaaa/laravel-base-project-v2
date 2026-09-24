@@ -16,6 +16,7 @@ class UsernameEmailChangeTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        $this->withoutMiddleware(\App\Http\Middleware\VerifyCsrfToken::class);
         SystemSetting::set('allow_username_change', 'true');
         SystemSetting::set('allow_email_change', 'true');
         SystemSetting::set('username_change_cooldown_days', '30');
@@ -91,7 +92,8 @@ class UsernameEmailChangeTest extends TestCase
 
         $this->assertDatabaseHas('users', ['email' => 'new@example.com', 'pending_email' => null]);
         $this->assertNotNull(User::find($user->id)->email_changed_at);
-        $response->assertRedirect(route('dashboard'));
+        $response->assertRedirect(route('login'));
+        $response->assertSessionHas('success', 'Email changed successfully. Please login with your new email.');
     }
 
     public function test_username_change_blocked_when_feature_disabled(): void

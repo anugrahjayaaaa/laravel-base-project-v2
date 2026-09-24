@@ -20,6 +20,7 @@ class UserStateTest extends TestCase
             'is_active' => true,
         ]);
         Sanctum::actingAs($this->admin, ['*']);
+        $this->withoutMiddleware(\App\Http\Middleware\VerifyCsrfToken::class);
     }
 
     // -- Activate --

@@ -45,7 +45,7 @@ Route::controller(AuthController::class)->group(function () {
 // ---------------------------------------------------------------------------
 // Authenticated + verified + valid account state
 // ---------------------------------------------------------------------------
-Route::middleware(['auth', 'verified', 'password.change.required', 'account.state'])->group(function () {
+Route::middleware(['auth:web,sanctum', 'verified', 'password.change.required', 'account.state'])->group(function () {
 
     // Auth management
     Route::controller(AuthController::class)->group(function () {
@@ -63,6 +63,8 @@ Route::middleware(['auth', 'verified', 'password.change.required', 'account.stat
     Route::controller(ProfileController::class)->group(function () {
         Route::get('/profile', 'show')->name('profile.show');
         Route::put('/profile', 'update')->name('profile.update');
+        Route::get('/password/change', 'show')->name('password.change');
+        Route::put('/password/change', 'changePassword')->name('password.change.update');
     });
 
     // Users
@@ -77,7 +79,7 @@ Route::middleware(['auth', 'verified', 'password.change.required', 'account.stat
     Route::post('/users/{user}/cancel-email-change', [UserController::class, 'cancelEmailChange'])->name('users.cancel-email-change');
     Route::get('/email/verify-change/{user}', [UserController::class, 'verifyEmailChange'])
         ->name('email.verify-change')->middleware(['signed', 'throttle:email-verification']);
-    Route::post('/users/bulk-action', [UserController::class, 'bulkAction'])->name('users.bulk-action');
+    Route::post('/users/bulk-action', [UserController::class, 'bulkAction'])->name('users.bulk-action')->middleware('throttle:bulk-action');
 
     // User state toggles (Activate / Deactivate / Lock / Unlock)
     Route::middleware(['throttle:user-state-actions'])->group(function () {

@@ -29,6 +29,14 @@
         </div>
     @endif
 
+    @if (auth()->user()->must_change_password)
+        <div class="alert alert-warning alert-dismissible fade show mb-3" role="alert">
+            <i class="fas fa-triangle-exclamation me-1"></i>
+            You must change your password before accessing this resource.
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    @endif
+
     @if ($errors->any())
         <div class="alert alert-danger alert-dismissible fade show mb-3" role="alert">
             <i class="fas fa-circle-exclamation me-1"></i>
@@ -58,25 +66,24 @@
                         </div>
                     </div>
                 </div>
+                {{-- Pending Email Callout — placed outside the profile form: nested <form> tags are discarded by browsers, making the Cancel button submit the profile form instead of the cancel route. --}}
+                @if ($user->pending_email)
+                    <div class="alert alert-warning d-flex align-items-center justify-content-between mb-3">
+                        <div>
+                            <i class="bi bi-envelope-arrow-up me-2"></i>
+                            <strong>Pending email change:</strong> {{ $user->pending_email }}
+                        </div>
+                        <form method="POST" action="{{ route('users.cancel-email-change', $user) }}" class="d-inline">
+                            @csrf
+                            <button type="submit" class="btn btn-outline-secondary btn-sm">Cancel
+                                Request</button>
+                        </form>
+                    </div>
+                @endif
+
                 <form method="POST" action="{{ route('profile.update') }}">
                     @csrf @method('PUT')
                     <div class="card-body p-4">
-                        {{-- Pending Email Callout --}}
-                        @if ($user->pending_email)
-                            <div class="alert alert-warning d-flex align-items-center justify-content-between mb-3">
-                                <div>
-                                    <i class="bi bi-envelope-arrow-up me-2"></i>
-                                    <strong>Pending email change:</strong> {{ $user->pending_email }}
-                                </div>
-                                <form method="POST" action="{{ route('users.cancel-email-change', $user) }}"
-                                    class="d-inline">
-                                    @csrf
-                                    <button type="submit" class="btn btn-outline-secondary btn-sm">Cancel
-                                        Request</button>
-                                </form>
-                            </div>
-                        @endif
-
                         {{-- Name --}}
                         <div class="mb-3">
                             <label for="name" class="form-label">Name</label>
@@ -164,7 +171,7 @@
                 <div class="card-header bg-transparent border-bottom py-3">
                     <h5 class="card-title mb-0 fw-semibold"><i class="bi bi-shield-lock me-2"></i>Change Password</h5>
                 </div>
-                <form method="POST" action="{{ route('profile.update') }}">
+                <form method="POST" action="{{ route('password.change.update') }}">
                     @csrf @method('PUT')
                     <div class="card-body p-4">
                         <div class="mb-3">
@@ -179,10 +186,10 @@
                                     tabindex="-1">
                                     <i class="fas fa-eye"></i>
                                 </button>
+                                @error('current_password')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
                             </div>
-                            @error('current_password')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
                         </div>
                         <div class="mb-3">
                             <label for="password" class="form-label">New Password</label>
@@ -196,22 +203,26 @@
                                     tabindex="-1">
                                     <i class="fas fa-eye"></i>
                                 </button>
+                                @error('password')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
                             </div>
-                            @error('password')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
                         </div>
                         <div class="mb-3">
                             <label for="password_confirmation" class="form-label">Confirm New Password</label>
                             <div class="position-relative">
                                 <input type="password" name="password_confirmation" id="password_confirmation"
-                                    class="form-control form-control-sm pe-5" autocomplete="new-password">
+                                    class="form-control form-control-sm pe-5 @error('password_confirmation') is-invalid @enderror"
+                                    autocomplete="new-password">
                                 <button type="button"
                                     class="btn btn-sm position-absolute top-50 end-0 translate-middle-y me-2 text-muted"
                                     data-password-toggle="password_confirmation" aria-label="Toggle password visibility"
                                     tabindex="-1">
                                     <i class="fas fa-eye"></i>
                                 </button>
+                                @error('password_confirmation')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
                             </div>
                         </div>
                     </div>
@@ -228,8 +239,7 @@
                 <div class="d-flex align-items-start gap-2">
                     <i class="fas fa-circle-info text-primary mt-1"></i>
                     <div>
-                        <small class="text-muted">Use at least 8 characters with a mix of letters, numbers, and
-                            symbols. Avoid reusing recent passwords.</small>
+                        <small class="text-muted">{{ $passwordPolicyHint }}</small>
                     </div>
                 </div>
             </div>

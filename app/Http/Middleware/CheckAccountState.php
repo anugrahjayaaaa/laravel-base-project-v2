@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\User;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -51,12 +52,16 @@ class CheckAccountState
             }
         }
 
-        if (! $user->is_active || $user->is_locked || $user->trashed()) {
-            // Revoke all sessions + tokens immediately
-            $user->tokens()->delete();
-            DB::table('sessions')
-                ->where('user_id', $user->id)
-                ->delete();
+        // Re-fetch from DB to avoid stale cache / race condition
+        $freshUser = User::find($user->id);
+
+        if (! $freshUser || ! $freshUser->is_active || $freshUser->is_locked || $freshUser->trashed()) {
+            if ($freshUser) {
+                $freshUser->tokens()->delete();
+                DB::table('sessions')
+                    ->where('user_id', $freshUser->id)
+                    ->delete();
+            }
 
             if ($request->expectsJson() || $request->is('api/*')) {
                 return response()->json([

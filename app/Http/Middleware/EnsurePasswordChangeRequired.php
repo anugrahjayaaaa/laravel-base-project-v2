@@ -24,6 +24,7 @@ class EnsurePasswordChangeRequired
      */
     protected const EXEMPT_SUBSTRINGS = [
         'password.change',
+        'password.change.update',
         'verification',
         'email.resend',
         'logout',

@@ -38,8 +38,7 @@ class PasswordForgotController extends Controller
 
             return response()->json([
                 'message' => 'If the email exists, a reset link has been sent.',
-                'code' => 'ACCOUNT_LOCKED',
-            ], 403);
+            ], 200);
         }
 
         if ($result['user']) {
