@@ -27,6 +27,7 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Auth;
 use Spatie\Permission\Models\Role;
 
 /**
@@ -337,9 +338,17 @@ class UserController extends Controller
             return $this->verifyRedirect('Invalid or expired verification link.', false);
         }
 
-        $user->audit('user.email_changed', auth()->user() ?? $user, ['new_email' => $user->fresh()->email]);
+        // Log out the user so they must login with the new email.
+        $actor = auth()->user();
+        if (auth()->check()) {
+            Auth::logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+        }
 
-        return $this->verifyRedirect('Email changed successfully. Please login with your new email.', true);
+        $user->audit('user.email_changed', $actor ?? $user, ['new_email' => $user->fresh()->email]);
+
+        return redirect()->route('login')->with('success', 'Email changed successfully. Please login with your new email.');
     }
 
     /**

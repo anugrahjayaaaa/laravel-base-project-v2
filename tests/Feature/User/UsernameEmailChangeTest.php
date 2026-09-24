@@ -92,7 +92,8 @@ class UsernameEmailChangeTest extends TestCase
 
         $this->assertDatabaseHas('users', ['email' => 'new@example.com', 'pending_email' => null]);
         $this->assertNotNull(User::find($user->id)->email_changed_at);
-        $response->assertRedirect(route('dashboard'));
+        $response->assertRedirect(route('login'));
+        $response->assertSessionHas('success', 'Email changed successfully. Please login with your new email.');
     }
 
     public function test_username_change_blocked_when_feature_disabled(): void

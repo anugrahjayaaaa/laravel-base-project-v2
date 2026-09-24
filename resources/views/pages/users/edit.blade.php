@@ -134,24 +134,23 @@
                         @endif
                     </div>
                 </div>
+                {{-- Pending Email Callout — placed outside the user form: nested <form> tags are discarded by browsers, making the Cancel button submit the user form instead of the cancel route. --}}
+                @if ($user->pending_email)
+                    <div class="callout callout-warning mb-3 d-flex align-items-center justify-content-between p-3">
+                        <div>
+                            <i class="bi bi-envelope-arrow-up me-2"></i>
+                            <strong>Pending email change:</strong> {{ $user->pending_email }}
+                        </div>
+                        <form method="POST" action="{{ route('users.cancel-email-change', $user) }}" class="d-inline">
+                            @csrf
+                            <button type="submit" class="btn btn-outline-secondary btn-sm">Cancel
+                                Request</button>
+                        </form>
+                    </div>
+                @endif
                 <form method="POST" action="{{ route('users.update', $user) }}">
                     @csrf @method('PUT')
                     <div class="card-body p-4">
-                        {{-- Pending Email Callout --}}
-                        @if ($user->pending_email)
-                            <div class="callout callout-warning mb-3 d-flex align-items-center justify-content-between p-3">
-                                <div>
-                                    <i class="bi bi-envelope-arrow-up me-2"></i>
-                                    <strong>Pending email change:</strong> {{ $user->pending_email }}
-                                </div>
-                                <form method="POST" action="{{ route('users.cancel-email-change', $user) }}"
-                                    class="d-inline">
-                                    @csrf
-                                    <button type="submit" class="btn btn-outline-secondary btn-sm">Cancel
-                                        Request</button>
-                                </form>
-                            </div>
-                        @endif
                         {{-- Name --}}
                         <div class="mb-3">
                             <label for="name" class="form-label">Name</label>
