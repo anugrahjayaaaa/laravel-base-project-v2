@@ -33,4 +33,13 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*') || $request->expectsJson(),
         );
+
+        $exceptions->renderable(function (Throwable $e, Request $request) {
+                    if ($request->is('api/*') && ! config('app.debug')) {
+                        return response()->json([
+                            'message' => 'Server Error.',
+                            'code' => 'SERVER_ERROR',
+                        ], 500);
+                    }
+                });
     })->create();
