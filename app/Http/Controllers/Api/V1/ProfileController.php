@@ -11,17 +11,17 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
 
 /**
- * API profile controller — get and update authenticated user profile.
+ * API profile controller, get and update authenticated user profile.
  */
 class ProfileController extends Controller
 {
     /**
      * @param  UpdateUserAction  $updateAction
-     * @param  ChangePasswordAction  $ChangePasswordActionAction
+     * @param  ChangePasswordAction  $ChangePasswordAction
      */
     public function __construct(
         private readonly UpdateUserAction $updateAction,
-        private readonly ChangePasswordAction $ChangePasswordActionAction,
+        private readonly ChangePasswordAction $ChangePasswordAction,
     ) {}
 
     /**
@@ -51,7 +51,7 @@ class ProfileController extends Controller
         ($this->updateAction)->run($user, $data);
 
         if ($request->filled('password')) {
-            ($this->ChangePasswordActionAction)->run(
+            ($this->ChangePasswordAction)->run(
                 user: $user,
                 currentPassword: $data['current_password'],
                 newPassword: $data['password'],

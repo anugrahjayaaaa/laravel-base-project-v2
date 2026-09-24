@@ -12,7 +12,7 @@ class RoleSeeder extends Seeder
      */
     public function run(): void
     {
-        // System roles — seeded with no permissions yet; permissions are
+        // System roles,seeded with no permissions yet; permissions are
         // assigned in RBAC-004 (Phase 6) once the permission set is defined.
         // See docs/base/features/roles-permissions.md §Seeded Roles.
         Role::create(['name' => 'superadmin', 'guard_name' => 'api']);

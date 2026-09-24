@@ -12,7 +12,7 @@ use Illuminate\Http\JsonResponse;
 use App\Models\User;
 
 /**
- * API user state controller — activate, deactivate, lock, unlock users.
+ * API user state controller, activate, deactivate, lock, unlock users.
  */
 class UserStateController extends Controller
 {

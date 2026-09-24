@@ -32,7 +32,7 @@ class SystemSettingSeeder extends Seeder
         SystemSetting::set('email_verification_rate_limit', '5');
         SystemSetting::set('email_verification_token_expire_minutes', '60');
 
-        // Password policy (IM8 — admin-editable via /settings)
+        // Password policy (IM8,admin-editable via /settings)
         SystemSetting::set('password_min_length', '12');
         SystemSetting::set('password_require_upper', 'true');
         SystemSetting::set('password_require_lower', 'true');

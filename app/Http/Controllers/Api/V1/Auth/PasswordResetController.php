@@ -10,7 +10,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Password;
 
 /**
- * API auth controller — reset password.
+ * API auth controller, reset password.
  */
 class PasswordResetController extends Controller
 {

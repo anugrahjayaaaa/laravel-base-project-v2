@@ -27,7 +27,7 @@ use Illuminate\Support\Facades\Hash;
 use App\Models\User;
 
 /**
- * API user controller — CRUD, bulk actions, email verification.
+ * API user controller, CRUD, bulk actions, email verification.
  */
 class UserController extends Controller
 {

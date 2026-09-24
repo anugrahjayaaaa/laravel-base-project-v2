@@ -22,7 +22,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Password;
 
 /**
- * Web auth controller — login, logout, password reset, email verification.
+ * Web auth controller,login, logout, password reset, email verification.
  */
 class AuthController extends Controller
 {

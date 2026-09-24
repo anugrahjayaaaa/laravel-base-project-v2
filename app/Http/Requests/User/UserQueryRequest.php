@@ -10,7 +10,7 @@ use Illuminate\Foundation\Http\FormRequest;
 class UserQueryRequest extends FormRequest
 {
     /**
-     * Guest route — always authorized.
+     * Guest route,always authorized.
      */
     public function authorize(): bool
     {

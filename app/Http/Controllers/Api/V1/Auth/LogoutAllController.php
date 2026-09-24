@@ -8,7 +8,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 /**
- * API auth controller — logout all devices.
+ * API auth controller, logout all devices.
  */
 class LogoutAllController extends Controller
 {

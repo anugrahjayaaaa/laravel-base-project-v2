@@ -8,7 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 
 /**
- * Health check controller — returns system health status.
+ * Health check controller, returns system health status.
  */
 class HealthCheckController
 {

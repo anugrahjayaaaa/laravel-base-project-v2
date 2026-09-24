@@ -8,7 +8,7 @@ use App\Http\Requests\System\SystemSettingRequest;
 use Illuminate\Http\RedirectResponse;
 
 /**
- * System settings controller — view and update platform settings.
+ * System settings controller,view and update platform settings.
  */
 class SystemSettingController extends Controller
 {

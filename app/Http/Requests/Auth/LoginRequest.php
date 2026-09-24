@@ -11,7 +11,7 @@ class LoginRequest extends FormRequest
 {
     /**
      * Determine if the user is authorized to make this request.
-     * Login is a guest endpoint — always authorized.
+     * Login is a guest endpoint,always authorized.
      */
     public function authorize(): bool
     {

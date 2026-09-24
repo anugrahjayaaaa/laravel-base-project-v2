@@ -20,7 +20,7 @@ class PasswordResetRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        return true; // Guest route — uses a one-time token from the URL.
+        return true; // Guest route,uses a one-time token from the URL.
     }
 
     public function rules(): array

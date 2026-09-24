@@ -7,7 +7,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 /**
- * API auth controller — logout current token.
+ * API auth controller, logout current token.
  */
 class LogoutController extends Controller
 {

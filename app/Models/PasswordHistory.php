@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * PasswordHistory — records previous password hashes for reuse prevention.
+ * PasswordHistory,records previous password hashes for reuse prevention.
  *
  * @property int $id
  * @property int $user_id

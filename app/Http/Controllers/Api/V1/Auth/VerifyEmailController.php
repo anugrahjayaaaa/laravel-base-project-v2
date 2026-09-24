@@ -10,7 +10,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 /**
- * API auth controller — verify email.
+ * API auth controller, verify email.
  */
 class VerifyEmailController extends Controller
 {

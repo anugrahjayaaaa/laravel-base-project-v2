@@ -8,7 +8,7 @@ use App\Models\SystemSetting;
 use Illuminate\Http\JsonResponse;
 
 /**
- * API system settings controller — get and update settings.
+ * API system settings controller, get and update settings.
  */
 class SystemSettingController extends Controller
 {

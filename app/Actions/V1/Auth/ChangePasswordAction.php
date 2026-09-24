@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 
 /**
- * Shared password-change logic — used by both Web and API controllers.
+ * Shared password-change logic, used by both Web and API controllers.
  *
  * Validates the current password, enforces the IM8 policy, checks password
  * history (if enabled), hashes the new password, updates expiration, clears
@@ -50,7 +50,7 @@ class ChangePasswordAction
         }
 
         return DB::transaction(function () use ($user, $newPassword) {
-            // 'hashed' cast on User model auto-hashes — assign plain password.
+            // 'hashed' cast on User model auto-hashes, assign plain password.
             $user->password = $newPassword;
             $user->must_change_password = false;
             $user->password_expires_at = $this->calculateExpiration();

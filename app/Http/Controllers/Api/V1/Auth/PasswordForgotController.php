@@ -9,7 +9,7 @@ use App\Http\Requests\Auth\PasswordForgotRequest;
 use Illuminate\Http\JsonResponse;
 
 /**
- * API auth controller — send password reset link.
+ * API auth controller, send password reset link.
  */
 class PasswordForgotController extends Controller
 {

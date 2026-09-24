@@ -15,7 +15,7 @@ use Illuminate\Validation\ValidationException;
 class ProfileUpdateRequest extends FormRequest
 {
     /**
-     * Guest route — token-based authorization via route param.
+     * Guest route,token-based authorization via route param.
      */
     public function authorize(): bool
     {

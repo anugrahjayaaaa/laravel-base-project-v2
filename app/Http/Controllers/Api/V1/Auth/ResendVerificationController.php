@@ -10,7 +10,7 @@ use App\Models\User;
 use Illuminate\Http\JsonResponse;
 
 /**
- * API auth controller — resend email verification.
+ * API auth controller, resend email verification.
  */
 class ResendVerificationController extends Controller
 {

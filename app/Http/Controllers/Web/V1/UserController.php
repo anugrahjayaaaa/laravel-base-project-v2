@@ -31,7 +31,7 @@ use Illuminate\Support\Facades\Auth;
 use Spatie\Permission\Models\Role;
 
 /**
- * User management controller — CRUD, bulk actions, email verification flow.
+ * User management controller,CRUD, bulk actions, email verification flow.
  */
 class UserController extends Controller
 {

@@ -5,7 +5,7 @@ namespace App\Support;
 use App\Models\SystemSetting;
 
 /**
- * IM8 password policy — single source of truth for password rules.
+ * IM8 password policy,single source of truth for password rules.
  *
  * Reads policy configuration from SystemSetting (admin-editable via /settings).
  * Provides validation and strength calculation for UI feedback.

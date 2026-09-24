@@ -165,7 +165,7 @@
                                         {{ filter_var($settings['password_history_enabled'] ?? 'true', FILTER_VALIDATE_BOOLEAN) ? 'checked' : '' }}>
                                     <label for="password_history_enabled" class="form-check-label">
                                         History Enforcement
-                                        <i class="bi bi-info-circle text-muted fs-6 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Enforces password history check on change/reset — prevents reuse of recent passwords."></i>
+                                        <i class="bi bi-info-circle text-muted fs-6 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Enforces password history check on change/reset, prevents reuse of recent passwords."></i>
                                     </label>
                                 </div>
                             </div>

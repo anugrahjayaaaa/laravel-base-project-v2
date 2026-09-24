@@ -7,7 +7,7 @@ use App\Models\User;
 use Illuminate\Support\Facades\DB;
 
 /**
- * RecordPasswordHistoryAction — store password hash + prune old entries beyond limit.
+ * RecordPasswordHistoryAction, store password hash + prune old entries beyond limit.
  *
  * Called by ChangePasswordAction, ResetPasswordAction, and CreateUserAction after
  * a successful password mutation. Reads password_history_count from

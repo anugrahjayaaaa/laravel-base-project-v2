@@ -10,7 +10,7 @@ use Illuminate\Foundation\Http\FormRequest;
 class ResendVerificationRequest extends FormRequest
 {
     /**
-     * Guest route — always authorized.
+     * Guest route,always authorized.
      */
     public function authorize(): bool
     {

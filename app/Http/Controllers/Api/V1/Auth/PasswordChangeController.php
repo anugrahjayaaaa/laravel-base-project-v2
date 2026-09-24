@@ -8,7 +8,7 @@ use App\Http\Requests\Auth\PasswordChangeRequest;
 use Illuminate\Http\JsonResponse;
 
 /**
- * API auth controller — change password.
+ * API auth controller, change password.
  */
 class PasswordChangeController extends Controller
 {

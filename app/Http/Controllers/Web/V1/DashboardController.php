@@ -6,7 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 
 /**
- * Dashboard controller — renders the main dashboard view.
+ * Dashboard controller, renders the main dashboard view.
  */
 class DashboardController extends Controller
 {
