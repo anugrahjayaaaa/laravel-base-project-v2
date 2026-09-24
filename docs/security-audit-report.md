@@ -148,7 +148,7 @@ public function validated($key = null, $default = null): array
 public function recordFailed(string $identifier, string $ip, ?User $user = null): int
 {
     $key = $this->key('login', $identifier, $ip);
-    $maxAttempts = SystemSetting::getInt('auth_login_max_attempts', 5);
+    $maxAttempts = SystemSetting::getInt('login_max_attempts', 5);
 
     // Check if already at limit BEFORE hitting
     if (RateLimiter::tooManyAttempts($key, $maxAttempts)) {

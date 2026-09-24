@@ -61,7 +61,6 @@
 - `AuthControllersendVerification` — resend via form email input → action send email
 - `Api/V1/Auth/LoginController` — catch UNVERIFIED_EMAIL → JSON 403
 - `verified` middleware on protected routes (web + API)
-- `AUTH_EMAIL_VERIFICATION_MODE=public|admin|disabled` in `.env.example`
 
 ---
 
