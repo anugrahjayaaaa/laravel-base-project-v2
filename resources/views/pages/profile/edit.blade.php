@@ -239,8 +239,7 @@
                 <div class="d-flex align-items-start gap-2">
                     <i class="fas fa-circle-info text-primary mt-1"></i>
                     <div>
-                        <small class="text-muted">Use at least 8 characters with a mix of letters, numbers, and
-                            symbols. Avoid reusing recent passwords.</small>
+                        <small class="text-muted">{{ $passwordPolicyHint }}</small>
                     </div>
                 </div>
             </div>
