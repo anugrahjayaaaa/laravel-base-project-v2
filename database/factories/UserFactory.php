@@ -61,7 +61,7 @@ class UserFactory extends Factory
         return $this->state(['is_locked' => true]);
     }
 
-    public function mustChangePassword(): static
+    public function mustChangePasswordAction(): static
     {
         return $this->state(['must_change_password' => true]);
     }

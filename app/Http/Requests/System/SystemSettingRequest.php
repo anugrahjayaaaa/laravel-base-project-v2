@@ -44,7 +44,8 @@ class SystemSettingRequest extends FormRequest
             'auth_password_numbers' => ['boolean'],
             'auth_password_symbols' => ['boolean'],
             'auth_password_uncompromised' => ['boolean'],
-            'auth_password_history_count' => ['integer', 'min:0', 'max:24'],
+            'password_history_enabled' => ['boolean'],
+            'password_history_count' => ['integer', 'min:0', 'max:24'],
             'auth_password_expiration_days' => ['integer', 'min:1', 'max:365'],
 
             // Email verification
@@ -67,7 +68,17 @@ class SystemSettingRequest extends FormRequest
      */
     protected function prepareForValidation(): void
     {
-        foreach (['auth_password_mixed_case', 'auth_password_numbers', 'auth_password_symbols', 'auth_password_uncompromised', 'allow_username_change', 'allow_email_change'] as $key) {
+        foreach (
+            [
+                'auth_password_mixed_case',
+                'auth_password_numbers',
+                'auth_password_symbols',
+                'auth_password_uncompromised',
+                'password_history_enabled',
+                'allow_username_change',
+                'allow_email_change'
+            ] as $key
+        ) {
             if ($this->has($key)) {
                 $this->merge([$key => $this->boolean($key)]);
             }

@@ -54,7 +54,8 @@ class SystemSettingController extends Controller
             'auth_password_numbers' => ($data['auth_password_numbers'] ?? false) ? 'true' : 'false',
             'auth_password_symbols' => ($data['auth_password_symbols'] ?? false) ? 'true' : 'false',
             'auth_password_uncompromised' => ($data['auth_password_uncompromised'] ?? false) ? 'true' : 'false',
-            'auth_password_history_count' => (string) ($data['auth_password_history_count'] ?? 5),
+            'password_history_enabled' => ($data['password_history_enabled'] ?? false) ? 'true' : 'false',
+            'password_history_count' => (string) ($data['password_history_count'] ?? 5),
             'auth_password_expiration_days' => (string) ($data['auth_password_expiration_days'] ?? 90),
 
             // Email verification

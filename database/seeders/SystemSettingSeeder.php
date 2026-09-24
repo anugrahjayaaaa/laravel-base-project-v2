@@ -41,6 +41,7 @@ class SystemSettingSeeder extends Seeder
         SystemSetting::set('password_reject_username', 'true');
 
         // Password lifecycle
+        SystemSetting::set('password_history_enabled', 'true');
         SystemSetting::set('password_history_count', '5');
         SystemSetting::set('password_expiration_days', '90');
 
