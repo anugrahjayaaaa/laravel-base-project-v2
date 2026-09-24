@@ -29,6 +29,14 @@
         </div>
     @endif
 
+    @if (auth()->user()->must_change_password)
+        <div class="alert alert-warning alert-dismissible fade show mb-3" role="alert">
+            <i class="fas fa-triangle-exclamation me-1"></i>
+            You must change your password before accessing this resource.
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    @endif
+
     @if ($errors->any())
         <div class="alert alert-danger alert-dismissible fade show mb-3" role="alert">
             <i class="fas fa-circle-exclamation me-1"></i>
@@ -164,7 +172,7 @@
                 <div class="card-header bg-transparent border-bottom py-3">
                     <h5 class="card-title mb-0 fw-semibold"><i class="bi bi-shield-lock me-2"></i>Change Password</h5>
                 </div>
-                <form method="POST" action="{{ route('profile.update') }}">
+                <form method="POST" action="{{ route('password.change.update') }}">
                     @csrf @method('PUT')
                     <div class="card-body p-4">
                         <div class="mb-3">
@@ -179,10 +187,10 @@
                                     tabindex="-1">
                                     <i class="fas fa-eye"></i>
                                 </button>
+                                @error('current_password')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
                             </div>
-                            @error('current_password')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
                         </div>
                         <div class="mb-3">
                             <label for="password" class="form-label">New Password</label>
@@ -196,22 +204,26 @@
                                     tabindex="-1">
                                     <i class="fas fa-eye"></i>
                                 </button>
+                                @error('password')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
                             </div>
-                            @error('password')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
                         </div>
                         <div class="mb-3">
                             <label for="password_confirmation" class="form-label">Confirm New Password</label>
                             <div class="position-relative">
                                 <input type="password" name="password_confirmation" id="password_confirmation"
-                                    class="form-control form-control-sm pe-5" autocomplete="new-password">
+                                    class="form-control form-control-sm pe-5 @error('password_confirmation') is-invalid @enderror"
+                                    autocomplete="new-password">
                                 <button type="button"
                                     class="btn btn-sm position-absolute top-50 end-0 translate-middle-y me-2 text-muted"
                                     data-password-toggle="password_confirmation" aria-label="Toggle password visibility"
                                     tabindex="-1">
                                     <i class="fas fa-eye"></i>
                                 </button>
+                                @error('password_confirmation')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
                             </div>
                         </div>
                     </div>
