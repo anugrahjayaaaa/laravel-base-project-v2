@@ -223,7 +223,7 @@ class AuthController extends Controller
      */
     public function showVerifyEmail()
     {
-        $mode = SystemSetting::getString('auth_verification_mode', 'public');
+        $mode = SystemSetting::getString('email_verification_mode', 'public');
 
         return response()->view('pages.auth.verify-email', ['title' => 'Verify Email', 'mode' => $mode]);
     }
@@ -236,7 +236,7 @@ class AuthController extends Controller
      */
     public function verifyEmail(VerifyEmailAction $action)
     {
-        $mode = SystemSetting::getString('auth_verification_mode', 'public');
+        $mode = SystemSetting::getString('email_verification_mode', 'public');
 
         if ($mode === 'admin' || $mode === 'disabled') {
             return redirect()->route('verification.notice')
@@ -280,7 +280,7 @@ class AuthController extends Controller
      */
     public function resendVerification(ResendVerificationAction $action, ResendVerificationRequest $request)
     {
-        $mode = SystemSetting::getString('auth_verification_mode', 'public');
+        $mode = SystemSetting::getString('email_verification_mode', 'public');
 
         if ($mode === 'admin' || $mode === 'disabled') {
             return back()->withErrors(['error' => 'Feature disabled.']);

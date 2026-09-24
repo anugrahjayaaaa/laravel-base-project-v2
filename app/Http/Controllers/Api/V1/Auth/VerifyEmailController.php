@@ -23,7 +23,7 @@ class VerifyEmailController extends Controller
      */
     public function __invoke(Request $request, VerifyEmailAction $action): JsonResponse
     {
-        $mode = SystemSetting::getString('auth_verification_mode', 'public');
+        $mode = SystemSetting::getString('email_verification_mode', 'public');
 
         if ($mode === 'admin' || $mode === 'disabled') {
             return $this->respond('Feature disabled.', 403);
