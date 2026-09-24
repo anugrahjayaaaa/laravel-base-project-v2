@@ -93,8 +93,8 @@ import { ACTION_CONFIG, escHtml } from './action-config.js';
         submitBtn.textContent = label;
         submitBtn.disabled = false;
 
-        if (action && !action.startsWith('javascript:')) {
-            form.action = action;
+        if (actionUrl && !actionUrl.startsWith('javascript:')) {
+            form.action = actionUrl;
         } else {
             form.action = '#';
         }
