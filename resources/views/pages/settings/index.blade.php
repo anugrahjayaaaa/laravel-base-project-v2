@@ -161,7 +161,7 @@
                             <div class="col-md-6">
                                 <div class="form-check form-switch">
                                     <input class="form-check-input" type="checkbox" name="auth_password_mixed_case" id="auth_password_mixed_case"
-                                        {{ ($settings['auth_password_mixed_case'] ?? true) ? 'checked' : '' }}>
+                                        {{ filter_var($settings['auth_password_mixed_case'] ?? 'true', FILTER_VALIDATE_BOOLEAN) ? 'checked' : '' }}>
                                     <label for="auth_password_mixed_case" class="form-check-label">
                                         Mixed Case
                                         <i class="bi bi-info-circle text-muted fs-6 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Enforces a combination of uppercase (A-Z) and lowercase (a-z) letters."></i>
@@ -171,7 +171,7 @@
                             <div class="col-md-6">
                                 <div class="form-check form-switch">
                                     <input class="form-check-input" type="checkbox" name="auth_password_numbers" id="auth_password_numbers"
-                                        {{ ($settings['auth_password_numbers'] ?? true) ? 'checked' : '' }}>
+                                        {{ filter_var($settings['auth_password_numbers'] ?? 'true', FILTER_VALIDATE_BOOLEAN) ? 'checked' : '' }}>
                                     <label class="form-check-label" for="auth_password_numbers">
                                         Numbers
                                         <i class="bi bi-info-circle text-muted fs-6 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Enforces inclusion of at least one numeric digit (0-9)."></i>
@@ -181,7 +181,7 @@
                             <div class="col-md-6">
                                 <div class="form-check form-switch">
                                     <input class="form-check-input" type="checkbox" name="auth_password_symbols" id="auth_password_symbols"
-                                        {{ ($settings['auth_password_symbols'] ?? true) ? 'checked' : '' }}>
+                                        {{ filter_var($settings['auth_password_symbols'] ?? 'true', FILTER_VALIDATE_BOOLEAN) ? 'checked' : '' }}>
                                     <label class="form-check-label" for="auth_password_symbols">
                                         Symbols
                                         <i class="bi bi-info-circle text-muted fs-6 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Enforces inclusion of at least one special character (e.g., @, #, $)."></i>
@@ -191,7 +191,7 @@
                             <div class="col-md-6">
                                 <div class="form-check form-switch">
                                     <input class="form-check-input" type="checkbox" name="auth_password_uncompromised" id="auth_password_uncompromised"
-                                        {{ ($settings['auth_password_uncompromised'] ?? false) ? 'checked' : '' }}>
+                                        {{ filter_var($settings['auth_password_uncompromised'] ?? 'false', FILTER_VALIDATE_BOOLEAN) ? 'checked' : '' }}>
                                     <label class="form-check-label" for="auth_password_uncompromised">
                                         Pwned Check
                                         <i class="bi bi-info-circle text-muted fs-6 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Checks whether candidate passwords have been compromised in public data breaches via HaveIBeenPwned API."></i>
@@ -301,7 +301,7 @@
                     <div class="card-body p-4">
                         <div class="form-check form-switch mb-3">
                             <input class="form-check-input" type="checkbox" name="allow_username_change" id="allow_username_change"
-                                {{ ($settings['allow_username_change'] ?? true) ? 'checked' : '' }}>
+                                {{ filter_var($settings['allow_username_change'] ?? 'true', FILTER_VALIDATE_BOOLEAN) ? 'checked' : '' }}>
                             <label class="form-check-label" for="allow_username_change">
                                 Username Change
                                 <i class="bi bi-info-circle text-muted fs-6 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Permits users to update their usernames from their profile page."></i>
@@ -324,7 +324,7 @@
                         </div>
                         <div class="form-check form-switch mb-3">
                             <input class="form-check-input" type="checkbox" name="allow_email_change" id="allow_email_change"
-                                {{ ($settings['allow_email_change'] ?? true) ? 'checked' : '' }}>
+                                {{ filter_var($settings['allow_email_change'] ?? 'true', FILTER_VALIDATE_BOOLEAN) ? 'checked' : '' }}>
                             <label class="form-check-label" for="allow_email_change">
                                 Email Change
                                 <i class="bi bi-info-circle text-muted fs-6 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Permits users to update their email addresses from their profile page."></i>
