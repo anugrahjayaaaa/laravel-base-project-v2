@@ -68,9 +68,14 @@ class AuthenticateUserAction
     {
         if ($throttle->isLocked($identifier, $ip)) {
             $lockedSeconds = $throttle->lockedFor($identifier, $ip);
+
             $minutes = (int) ceil(max($lockedSeconds, 0) / 60);
 
-            return ['message' => "Account is locked. Try again in {$minutes} minute(s).", 'status' => 403, 'lockedSeconds' => $lockedSeconds];
+            return [
+                'message' => "Account is locked. Try again in {$minutes} minute(s).",
+                'status' => 429,
+                'lockedSeconds' => $lockedSeconds
+            ];
         }
 
         return null;
@@ -105,11 +110,17 @@ class AuthenticateUserAction
     protected function checkAccountState(User $user): ?array
     {
         if (! $user->is_active) {
-            return ['message' => 'Account is inactive.', 'status' => 403];
+            return [
+                'message' => 'Account is inactive.',
+                'status' => 403
+            ];
         }
 
         if ($user->is_locked) {
-            return ['message' => 'Account is locked.', 'status' => 403];
+            return [
+                'message' => 'Account is locked.',
+                'status' => 403
+            ];
         }
 
         return null;
@@ -128,7 +139,11 @@ class AuthenticateUserAction
         }
 
         if (! $user->hasVerifiedEmail()) {
-            return ['message' => 'Email not verified', 'status' => 403, 'error_code' => 'UNVERIFIED_EMAIL'];
+            return [
+                'message' => 'Email not verified',
+                'status' => 403,
+                'error_code' => 'UNVERIFIED_EMAIL'
+            ];
         }
 
         return null;

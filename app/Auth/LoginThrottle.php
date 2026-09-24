@@ -81,7 +81,7 @@ class LoginThrottle
                 ->first();
 
             if ($record && $record->locked_until && $record->locked_until->isPast()) {
-                $this->reset('login', $identifier, $ip);
+                $this->reset($identifier, $ip);
 
                 return true;
             }
@@ -122,7 +122,7 @@ class LoginThrottle
                 $record->user_id = $user->getKey();
             }
 
-            if (! $record->isLocked() && $record->attempts >= $maxAttempts) {
+            if (! $record->isLocked() && $record->attempts > $maxAttempts) {
                 $durationMinutes = $record->nextLockoutMinutes();
                 $record->lock_count++;
                 $record->locked_until = now()->addMinutes($durationMinutes);
