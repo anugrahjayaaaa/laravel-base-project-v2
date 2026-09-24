@@ -40,62 +40,62 @@
                     <div class="card-body p-4">
                         <div class="row g-3">
                             <div class="col-6 col-md-3">
-                                <label for="auth_login_max_attempts" class="form-label">
+                                <label for="login_max_attempts" class="form-label">
                                     Max Attempts
                                     <i class="bi bi-info-circle text-muted fs-6 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Maximum number of failed login attempts allowed before an account is automatically locked."></i>
                                 </label>
                                 <div class="input-group">
-                                    <input type="number" name="auth_login_max_attempts" id="auth_login_max_attempts"
-                                           class="form-control form-control-sm @error('auth_login_max_attempts') is-invalid @enderror"
-                                           value="{{ old('auth_login_max_attempts', $settings['auth_login_max_attempts'] ?? 5) }}" min="1" max="99">
+                                    <input type="number" name="login_max_attempts" id="login_max_attempts"
+                                           class="form-control form-control-sm @error('login_max_attempts') is-invalid @enderror"
+                                           value="{{ old('login_max_attempts', $settings['login_max_attempts'] ?? 5) }}" min="1" max="99">
                                     <span class="input-group-text bg-body-tertiary">attempts</span>
                                 </div>
-                                @error('auth_login_max_attempts')
+                                @error('login_max_attempts')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
                             </div>
                             <div class="col-6 col-md-3">
-                                <label for="auth_lockout_base_minutes" class="form-label">
+                                <label for="lockout_base_minutes" class="form-label">
                                     Lockout Duration
                                     <i class="bi bi-info-circle text-muted fs-6 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="The initial lockout duration applied when the failed login threshold is reached."></i>
                                 </label>
                                 <div class="input-group">
-                                    <input type="number" name="auth_lockout_base_minutes" id="auth_lockout_base_minutes"
-                                           class="form-control form-control-sm @error('auth_lockout_base_minutes') is-invalid @enderror"
-                                           value="{{ old('auth_lockout_base_minutes', $settings['auth_lockout_base_minutes'] ?? 5) }}" min="1" max="60">
+                                    <input type="number" name="lockout_base_minutes" id="lockout_base_minutes"
+                                           class="form-control form-control-sm @error('lockout_base_minutes') is-invalid @enderror"
+                                           value="{{ old('lockout_base_minutes', $settings['lockout_base_minutes'] ?? 5) }}" min="1" max="60">
                                     <span class="input-group-text bg-body-tertiary">min</span>
                                 </div>
-                                @error('auth_lockout_base_minutes')
+                                @error('lockout_base_minutes')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
                             </div>
                             <div class="col-6 col-md-3">
-                                <label for="auth_lockout_increment_minutes" class="form-label">
+                                <label for="lockout_increment_minutes" class="form-label">
                                     Lockout Penalty
                                     <i class="bi bi-info-circle text-muted fs-6 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Additional penalty duration added for each subsequent failed login attempt."></i>
                                 </label>
                                 <div class="input-group">
-                                    <input type="number" name="auth_lockout_increment_minutes" id="auth_lockout_increment_minutes"
-                                           class="form-control form-control-sm @error('auth_lockout_increment_minutes') is-invalid @enderror"
-                                           value="{{ old('auth_lockout_increment_minutes', $settings['auth_lockout_increment_minutes'] ?? 10) }}" min="1" max="120">
+                                    <input type="number" name="lockout_increment_minutes" id="lockout_increment_minutes"
+                                           class="form-control form-control-sm @error('lockout_increment_minutes') is-invalid @enderror"
+                                           value="{{ old('lockout_increment_minutes', $settings['lockout_increment_minutes'] ?? 10) }}" min="1" max="120">
                                     <span class="input-group-text bg-body-tertiary">min</span>
                                 </div>
-                                @error('auth_lockout_increment_minutes')
+                                @error('lockout_increment_minutes')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
                             </div>
                             <div class="col-6 col-md-3">
-                                <label for="auth_login_rate_limit_per_minute" class="form-label">
+                                <label for="login_rate_limit_per_minute" class="form-label">
                                     Login Rate Limit
                                     <i class="bi bi-info-circle text-muted fs-6 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Maximum number of total login requests allowed per minute per IP address."></i>
                                 </label>
                                 <div class="input-group">
-                                    <input type="number" name="auth_login_rate_limit_per_minute" id="auth_login_rate_limit_per_minute"
-                                           class="form-control form-control-sm @error('auth_login_rate_limit_per_minute') is-invalid @enderror"
-                                           value="{{ old('auth_login_rate_limit_per_minute', $settings['auth_login_rate_limit_per_minute'] ?? 5) }}" min="1" max="120">
+                                    <input type="number" name="login_rate_limit_per_minute" id="login_rate_limit_per_minute"
+                                           class="form-control form-control-sm @error('login_rate_limit_per_minute') is-invalid @enderror"
+                                           value="{{ old('login_rate_limit_per_minute', $settings['login_rate_limit_per_minute'] ?? 5) }}" min="1" max="120">
                                     <span class="input-group-text bg-body-tertiary">/min</span>
                                 </div>
-                                @error('auth_login_rate_limit_per_minute')
+                                @error('login_rate_limit_per_minute')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
                             </div>
@@ -112,33 +112,33 @@
                         <div class="row g-3">
                             {{-- Min Password --}}
                             <div class="col-md-4">
-                                <label for="auth_password_min_length" class="form-label">
+                                <label for="password_min_length" class="form-label">
                                     Min Password Length
                                     <i class="bi bi-info-circle text-muted fs-6 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Minimum character length required when creating or updating passwords."></i>
                                 </label>
                                 <div class="input-group">
-                                    <input type="number" name="auth_password_min_length" id="auth_password_min_length"
-                                           class="form-control form-control-sm @error('auth_password_min_length') is-invalid @enderror"
-                                           value="{{ old('auth_password_min_length', $settings['auth_password_min_length'] ?? 8) }}" min="4" max="128">
+                                    <input type="number" name="password_min_length" id="password_min_length"
+                                           class="form-control form-control-sm @error('password_min_length') is-invalid @enderror"
+                                           value="{{ old('password_min_length', $settings['password_min_length'] ?? 8) }}" min="4" max="128">
                                     <span class="input-group-text bg-body-tertiary">chars</span>
                                 </div>
-                                @error('auth_password_min_length')
+                                @error('password_min_length')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
                             </div>
                             {{-- Password Exp --}}
                             <div class="col-md-4">
-                                <label for="auth_password_expiration_days" class="form-label">
+                                <label for="password_expiration_days" class="form-label">
                                     Password Expiration
                                     <i class="bi bi-info-circle text-muted fs-6 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Number of days before passwords expire and require renewal (0 to disable)."></i>
                                 </label>
                                 <div class="input-group">
-                                    <input type="number" name="auth_password_expiration_days" id="auth_password_expiration_days"
-                                           class="form-control form-control-sm @error('auth_password_expiration_days') is-invalid @enderror"
-                                           value="{{ old('auth_password_expiration_days', $settings['auth_password_expiration_days'] ?? 90) }}" min="1" max="365">
+                                    <input type="number" name="password_expiration_days" id="password_expiration_days"
+                                           class="form-control form-control-sm @error('password_expiration_days') is-invalid @enderror"
+                                           value="{{ old('password_expiration_days', $settings['password_expiration_days'] ?? 90) }}" min="1" max="365">
                                     <span class="input-group-text bg-body-tertiary">days</span>
                                 </div>
-                                @error('auth_password_expiration_days')
+                                @error('password_expiration_days')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
                             </div>
@@ -174,9 +174,9 @@
                         <div class="row g-3">
                             <div class="col-md-6">
                                 <div class="form-check form-switch">
-                                    <input class="form-check-input" type="checkbox" name="auth_password_mixed_case" id="auth_password_mixed_case"
-                                        {{ filter_var($settings['auth_password_mixed_case'] ?? 'true', FILTER_VALIDATE_BOOLEAN) ? 'checked' : '' }}>
-                                    <label for="auth_password_mixed_case" class="form-check-label">
+                                    <input class="form-check-input" type="checkbox" name="password_mixed_case" id="password_mixed_case"
+                                        {{ filter_var($settings['password_mixed_case'] ?? 'true', FILTER_VALIDATE_BOOLEAN) ? 'checked' : '' }}>
+                                    <label for="password_mixed_case" class="form-check-label">
                                         Mixed Case
                                         <i class="bi bi-info-circle text-muted fs-6 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Enforces a combination of uppercase (A-Z) and lowercase (a-z) letters."></i>
                                     </label>
@@ -184,9 +184,9 @@
                             </div>
                             <div class="col-md-6">
                                 <div class="form-check form-switch">
-                                    <input class="form-check-input" type="checkbox" name="auth_password_numbers" id="auth_password_numbers"
-                                        {{ filter_var($settings['auth_password_numbers'] ?? 'true', FILTER_VALIDATE_BOOLEAN) ? 'checked' : '' }}>
-                                    <label class="form-check-label" for="auth_password_numbers">
+                                    <input class="form-check-input" type="checkbox" name="password_numbers" id="password_numbers"
+                                        {{ filter_var($settings['password_numbers'] ?? 'true', FILTER_VALIDATE_BOOLEAN) ? 'checked' : '' }}>
+                                    <label class="form-check-label" for="password_numbers">
                                         Numbers
                                         <i class="bi bi-info-circle text-muted fs-6 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Enforces inclusion of at least one numeric digit (0-9)."></i>
                                     </label>
@@ -194,9 +194,9 @@
                             </div>
                             <div class="col-md-6">
                                 <div class="form-check form-switch">
-                                    <input class="form-check-input" type="checkbox" name="auth_password_symbols" id="auth_password_symbols"
-                                        {{ filter_var($settings['auth_password_symbols'] ?? 'true', FILTER_VALIDATE_BOOLEAN) ? 'checked' : '' }}>
-                                    <label class="form-check-label" for="auth_password_symbols">
+                                    <input class="form-check-input" type="checkbox" name="password_symbols" id="password_symbols"
+                                        {{ filter_var($settings['password_symbols'] ?? 'true', FILTER_VALIDATE_BOOLEAN) ? 'checked' : '' }}>
+                                    <label class="form-check-label" for="password_symbols">
                                         Symbols
                                         <i class="bi bi-info-circle text-muted fs-6 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Enforces inclusion of at least one special character (e.g., @, #, $)."></i>
                                     </label>
@@ -204,9 +204,9 @@
                             </div>
                             <div class="col-md-6">
                                 <div class="form-check form-switch">
-                                    <input class="form-check-input" type="checkbox" name="auth_password_uncompromised" id="auth_password_uncompromised"
-                                        {{ filter_var($settings['auth_password_uncompromised'] ?? 'false', FILTER_VALIDATE_BOOLEAN) ? 'checked' : '' }}>
-                                    <label class="form-check-label" for="auth_password_uncompromised">
+                                    <input class="form-check-input" type="checkbox" name="password_uncompromised" id="password_uncompromised"
+                                        {{ filter_var($settings['password_uncompromised'] ?? 'false', FILTER_VALIDATE_BOOLEAN) ? 'checked' : '' }}>
+                                    <label class="form-check-label" for="password_uncompromised">
                                         Pwned Check
                                         <i class="bi bi-info-circle text-muted fs-6 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Checks whether candidate passwords have been compromised in public data breaches via HaveIBeenPwned API."></i>
                                     </label>
@@ -224,77 +224,77 @@
                     <div class="card-body p-4">
                         <div class="row g-3">
                             <div class="col-md-6">
-                                <label for="auth_password_forgot_rate_limit" class="form-label">
+                                <label for="password_forgot_rate_limit" class="form-label">
                                     Forgot Password Limit
                                     <i class="bi bi-info-circle text-muted fs-6 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Maximum forgot password request submissions allowed per minute."></i>
                                 </label>
                                 <div class="input-group">
-                                    <input type="number" name="auth_password_forgot_rate_limit" id="auth_password_forgot_rate_limit"
-                                           class="form-control form-control-sm @error('auth_password_forgot_rate_limit') is-invalid @enderror"
-                                           value="{{ old('auth_password_forgot_rate_limit', $settings['auth_password_forgot_rate_limit'] ?? 3) }}" min="1" max="30">
+                                    <input type="number" name="password_forgot_rate_limit" id="password_forgot_rate_limit"
+                                           class="form-control form-control-sm @error('password_forgot_rate_limit') is-invalid @enderror"
+                                           value="{{ old('password_forgot_rate_limit', $settings['password_forgot_rate_limit'] ?? 3) }}" min="1" max="30">
                                     <span class="input-group-text bg-body-tertiary">/min</span>
                                 </div>
-                                @error('auth_password_forgot_rate_limit')
+                                @error('password_forgot_rate_limit')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
                             </div>
                             <div class="col-md-6">
-                                <label for="auth_password_reset_rate_limit" class="form-label">
+                                <label for="password_reset_rate_limit" class="form-label">
                                     Reset Submit Limit
                                     <i class="bi bi-info-circle text-muted fs-6 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Maximum password reset attempt executions allowed per minute."></i>
                                 </label>
                                 <div class="input-group">
-                                    <input type="number" name="auth_password_reset_rate_limit" id="auth_password_reset_rate_limit"
-                                           class="form-control form-control-sm @error('auth_password_reset_rate_limit') is-invalid @enderror"
-                                           value="{{ old('auth_password_reset_rate_limit', $settings['auth_password_reset_rate_limit'] ?? 3) }}" min="1" max="30">
+                                    <input type="number" name="password_reset_rate_limit" id="password_reset_rate_limit"
+                                           class="form-control form-control-sm @error('password_reset_rate_limit') is-invalid @enderror"
+                                           value="{{ old('password_reset_rate_limit', $settings['password_reset_rate_limit'] ?? 3) }}" min="1" max="30">
                                     <span class="input-group-text bg-body-tertiary">/min</span>
                                 </div>
-                                @error('auth_password_reset_rate_limit')
+                                @error('password_reset_rate_limit')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
                             </div>
                             <div class="col-md-6">
-                                <label for="auth_password_reset_token_expire_minutes" class="form-label">
+                                <label for="password_reset_token_expire_minutes" class="form-label">
                                     Reset Token Expiry
                                     <i class="bi bi-info-circle text-muted fs-6 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Lifetime duration of a password reset link before it expires."></i>
                                 </label>
                                 <div class="input-group">
-                                    <input type="number" name="auth_password_reset_token_expire_minutes" id="auth_password_reset_token_expire_minutes"
-                                           class="form-control form-control-sm @error('auth_password_reset_token_expire_minutes') is-invalid @enderror"
-                                           value="{{ old('auth_password_reset_token_expire_minutes', $settings['auth_password_reset_token_expire_minutes'] ?? 15) }}" min="1" max="1440">
+                                    <input type="number" name="password_reset_token_expire_minutes" id="password_reset_token_expire_minutes"
+                                           class="form-control form-control-sm @error('password_reset_token_expire_minutes') is-invalid @enderror"
+                                           value="{{ old('password_reset_token_expire_minutes', $settings['password_reset_token_expire_minutes'] ?? 15) }}" min="1" max="1440">
                                     <span class="input-group-text bg-body-tertiary">min</span>
                                 </div>
-                                @error('auth_password_reset_token_expire_minutes')
+                                @error('password_reset_token_expire_minutes')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
                             </div>
                             <div class="col-md-6">
-                                <label for="auth_email_verification_rate_limit" class="form-label">
+                                <label for="email_verification_rate_limit" class="form-label">
                                     Verify Request Limit
                                     <i class="bi bi-info-circle text-muted fs-6 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Maximum email verification resend requests allowed per hour."></i>
                                 </label>
                                 <div class="input-group">
-                                    <input type="number" name="auth_email_verification_rate_limit" id="auth_email_verification_rate_limit"
-                                           class="form-control form-control-sm @error('auth_email_verification_rate_limit') is-invalid @enderror"
-                                           value="{{ old('auth_email_verification_rate_limit', $settings['auth_email_verification_rate_limit'] ?? 5) }}" min="1" max="100">
+                                    <input type="number" name="email_verification_rate_limit" id="email_verification_rate_limit"
+                                           class="form-control form-control-sm @error('email_verification_rate_limit') is-invalid @enderror"
+                                           value="{{ old('email_verification_rate_limit', $settings['email_verification_rate_limit'] ?? 5) }}" min="1" max="100">
                                     <span class="input-group-text bg-body-tertiary">/hr</span>
                                 </div>
-                                @error('auth_email_verification_rate_limit')
+                                @error('email_verification_rate_limit')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
                             </div>
                             <div class="col-md-6">
-                                <label for="auth_verification_expire_minutes" class="form-label">
+                                <label for="email_verification_expire_minutes" class="form-label">
                                     Verify Link Expiry
                                     <i class="bi bi-info-circle text-muted fs-6 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Lifetime duration of an email verification link before it expires."></i>
                                 </label>
                                 <div class="input-group">
-                                    <input type="number" name="auth_verification_expire_minutes" id="auth_verification_expire_minutes"
-                                           class="form-control form-control-sm @error('auth_verification_expire_minutes') is-invalid @enderror"
-                                           value="{{ old('auth_verification_expire_minutes', $settings['auth_verification_expire_minutes'] ?? 60) }}" min="1" max="1440">
+                                    <input type="number" name="email_verification_expire_minutes" id="email_verification_expire_minutes"
+                                           class="form-control form-control-sm @error('email_verification_expire_minutes') is-invalid @enderror"
+                                           value="{{ old('email_verification_expire_minutes', $settings['email_verification_expire_minutes'] ?? 60) }}" min="1" max="1440">
                                     <span class="input-group-text bg-body-tertiary">min</span>
                                 </div>
-                                @error('auth_verification_expire_minutes')
+                                @error('email_verification_expire_minutes')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
                             </div>
@@ -360,17 +360,17 @@
                             @enderror
                         </div>
                         <div class="mb-3">
-                            <label for="auth_verification_mode" class="form-label">
+                            <label for="email_verification_mode" class="form-label">
                                 Verification Mode
                                 <i class="bi bi-info-circle text-muted fs-6 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Determines the email verification strategy (Public, Admin, or Disabled)."></i>
                             </label>
-                            <select name="auth_verification_mode" id="auth_verification_mode"
-                                    class="form-select form-select-sm @error('auth_verification_mode') is-invalid @enderror">
-                                <option value="public" {{ ($settings['auth_verification_mode'] ?? 'public') === 'public' ? 'selected' : '' }}>Public</option>
-                                <option value="admin" {{ ($settings['auth_verification_mode'] ?? 'public') === 'admin' ? 'selected' : '' }}>Admin-only</option>
-                                <option value="disabled" {{ ($settings['auth_verification_mode'] ?? 'public') === 'disabled' ? 'selected' : '' }}>Disabled</option>
+                            <select name="email_verification_mode" id="email_verification_mode"
+                                    class="form-select form-select-sm @error('email_verification_mode') is-invalid @enderror">
+                                <option value="public" {{ ($settings['email_verification_mode'] ?? 'public') === 'public' ? 'selected' : '' }}>Public</option>
+                                <option value="admin" {{ ($settings['email_verification_mode'] ?? 'public') === 'admin' ? 'selected' : '' }}>Admin-only</option>
+                                <option value="disabled" {{ ($settings['email_verification_mode'] ?? 'public') === 'disabled' ? 'selected' : '' }}>Disabled</option>
                             </select>
-                            @error('auth_verification_mode')
+                            @error('email_verification_mode')
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
                         </div>

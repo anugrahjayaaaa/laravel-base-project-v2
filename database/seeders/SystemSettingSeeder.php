@@ -20,17 +20,17 @@ class SystemSettingSeeder extends Seeder
     public function run(): void
     {
         // Login rate limiting & progressive lockout
-        SystemSetting::set('auth_login_max_attempts', '5');
-        SystemSetting::set('auth_lockout_base_minutes', '5');
-        SystemSetting::set('auth_lockout_increment_minutes', '10');
-        SystemSetting::set('auth_login_rate_limit_per_minute', '5');
+        SystemSetting::set('login_max_attempts', '5');
+        SystemSetting::set('lockout_base_minutes', '5');
+        SystemSetting::set('lockout_increment_minutes', '10');
+        SystemSetting::set('login_rate_limit_per_minute', '5');
 
         // Password reset / verification rate limits
-        SystemSetting::set('auth_password_forgot_rate_limit', '3');
-        SystemSetting::set('auth_password_reset_rate_limit', '3');
-        SystemSetting::set('auth_password_reset_token_expire_minutes', '15');
-        SystemSetting::set('auth_email_verification_rate_limit', '5');
-        SystemSetting::set('auth_email_verification_token_expire_minutes', '60');
+        SystemSetting::set('password_forgot_rate_limit', '3');
+        SystemSetting::set('password_reset_rate_limit', '3');
+        SystemSetting::set('password_reset_token_expire_minutes', '15');
+        SystemSetting::set('email_verification_rate_limit', '5');
+        SystemSetting::set('email_verification_token_expire_minutes', '60');
 
         // Password policy (IM8 — admin-editable via /settings)
         SystemSetting::set('password_min_length', '12');
@@ -46,11 +46,11 @@ class SystemSettingSeeder extends Seeder
         SystemSetting::set('password_expiration_days', '90');
 
         // Email verification
-        SystemSetting::set('auth_verification_expire_minutes', '60');
-        SystemSetting::set('auth_verification_mode', 'public');
+        SystemSetting::set('email_verification_expire_minutes', '60');
+        SystemSetting::set('email_verification_mode', 'public');
 
         // Password reset token (Laravel broker)
-        SystemSetting::set('auth_password_reset_expire_minutes', '15');
+        SystemSetting::set('password_reset_expire_minutes', '15');
 
         // Username / email change settings
         SystemSetting::set('allow_username_change', 'true');

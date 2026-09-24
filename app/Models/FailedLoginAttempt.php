@@ -49,8 +49,8 @@ class FailedLoginAttempt extends Model
      */
     public function nextLockoutMinutes(): int
     {
-        $base = SystemSetting::getInt('auth_lockout_base_minutes', 5);
-        $increment = SystemSetting::getInt('auth_lockout_increment_minutes', 10);
+        $base = SystemSetting::getInt('lockout_base_minutes', 5);
+        $increment = SystemSetting::getInt('lockout_increment_minutes', 10);
 
         return $base + ($this->lock_count * $increment);
     }

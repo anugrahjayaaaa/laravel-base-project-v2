@@ -61,7 +61,7 @@ class LoginThrottle
             return true;
         }
 
-        $max = SystemSetting::getInt('auth_login_max_attempts', 5);
+        $max = SystemSetting::getInt('login_max_attempts', 5);
 
         return RateLimiter::tooManyAttempts($this->key('login', $identifier, $ip), $max);
     }
@@ -99,7 +99,7 @@ class LoginThrottle
     public function recordFailed(string $identifier, string $ip, ?User $user = null): int
     {
         $key = $this->key('login', $identifier, $ip);
-        $maxAttempts = SystemSetting::getInt('auth_login_max_attempts', 5);
+        $maxAttempts = SystemSetting::getInt('login_max_attempts', 5);
 
         // Hit the rate limiter (cache-backed transport throttle).
         RateLimiter::hit($key, 60);
