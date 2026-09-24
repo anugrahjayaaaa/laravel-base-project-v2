@@ -45,7 +45,7 @@ Route::controller(AuthController::class)->group(function () {
 // ---------------------------------------------------------------------------
 // Authenticated + verified + valid account state
 // ---------------------------------------------------------------------------
-Route::middleware(['auth', 'verified', 'password.change.required', 'account.state'])->group(function () {
+Route::middleware(['auth:web,sanctum', 'verified', 'password.change.required', 'account.state'])->group(function () {
 
     // Auth management
     Route::controller(AuthController::class)->group(function () {
