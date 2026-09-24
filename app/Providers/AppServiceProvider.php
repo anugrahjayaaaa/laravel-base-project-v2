@@ -3,7 +3,9 @@
 namespace App\Providers;
 
 use App\Models\User;
+use App\Models\SystemSetting;
 use App\Observers\UserObserver;
+use App\Observers\SystemSettingObserver;
 use App\View\Composers\AppMenuComposer;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Support\ServiceProvider;
@@ -29,6 +31,7 @@ class AppServiceProvider extends ServiceProvider
         view()->composer('layouts.partials.sidebar', AppMenuComposer::class);
 
         User::observe(UserObserver::class);
+        SystemSetting::observe(SystemSettingObserver::class);
 
         RateLimiter::for('user-state-actions', function ($request) {
             $key = $request->user()?->id ?: $request->ip();
