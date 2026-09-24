@@ -12,10 +12,14 @@ use Illuminate\Support\Str;
 use Illuminate\Auth\Events\PasswordReset;
 
 /**
- * Reset a user's password via token with expiration enforcement.
+ * Reset a user's password via token with expiration enforcement + history recording.
  */
 class ResetPasswordAction
 {
+    public function __construct(
+        private readonly RecordPasswordHistoryAction $recordHistoryAction,
+    ) {}
+
     /**
      * Reset the user's password using Laravel's Password broker.
      *
@@ -39,7 +43,6 @@ class ResetPasswordAction
 
         $status = Password::reset(
             $request->only('email', 'password', 'password_confirmation', 'token'),
-
             function ($user, string $password) {
                 $days = SystemSetting::getInt('auth_password_expiration_days', 90);
 
@@ -57,15 +60,20 @@ class ResetPasswordAction
         if ($status === Password::PASSWORD_RESET) {
             $user?->tokens()->delete();
 
+            // Record password history after successful reset.
+            if ($user) {
+                $this->recordHistoryAction->run($user, $user->password);
+            }
+
             return [
                 'user' => $user,
-                'status' => $status
+                'status' => $status,
             ];
         }
 
         return [
             'error' => ['message' => 'Invalid or expired token.', 'status' => 400],
-            'user' => $user
+            'user' => $user,
         ];
     }
 }

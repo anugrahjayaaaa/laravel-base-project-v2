@@ -2,6 +2,7 @@
 
 namespace App\Actions\V1\User;
 
+use App\Actions\V1\Auth\RecordPasswordHistoryAction;
 use App\Models\SystemSetting;
 use App\Models\User;
 use App\Notifications\UserCreatedNotification;
@@ -15,6 +16,10 @@ use Illuminate\Support\Facades\URL;
  */
 class CreateUserAction
 {
+    public function __construct(
+        private readonly RecordPasswordHistoryAction $recordHistoryAction,
+    ) {}
+
     /**
      * Create a user and notify them with a temporary password.
      *
@@ -54,6 +59,9 @@ class CreateUserAction
             );
 
             Notification::send($user, new UserCreatedNotification($tempPassword, $user->username, $verificationUrl));
+
+            // Record initial temp password in history.
+            $this->recordHistoryAction->run($user, $user->password);
 
             return $user;
         });
