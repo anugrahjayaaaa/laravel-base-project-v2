@@ -110,8 +110,7 @@
                     </div>
                     <div class="card-body p-4">
                         <div class="row g-3">
-                            {{-- Min Password --}}
-                            <div class="col-md-4">
+                            <div class="col-md-6">
                                 <label for="password_min_length" class="form-label">
                                     Min Password Length
                                     <i class="bi bi-info-circle text-muted fs-6 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Minimum character length required when creating or updating passwords."></i>
@@ -126,8 +125,7 @@
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
                             </div>
-                            {{-- Password Exp --}}
-                            <div class="col-md-4">
+                            <div class="col-md-6">
                                 <label for="password_expiration_days" class="form-label">
                                     Password Expiration
                                     <i class="bi bi-info-circle text-muted fs-6 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Number of days before passwords expire and require renewal (0 to disable)."></i>
@@ -142,8 +140,10 @@
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
                             </div>
-                            {{-- Password History --}}
-                            <div class="col-md-4">
+                        </div>
+                        {{-- Password History --}}
+                        <div class="row g-3 mt-0">
+                            <div class="col-md-6">
                                 <label for="password_history_count" class="form-label">
                                     Password History
                                     <i class="bi bi-info-circle text-muted fs-6 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Number of previous passwords remembered to prevent password reuse."></i>
@@ -151,15 +151,16 @@
                                 <div class="input-group">
                                     <input type="number" name="password_history_count" id="password_history_count"
                                            class="form-control form-control-sm @error('password_history_count') is-invalid @enderror"
-                                           value="{{ old('password_history_count', $settings['password_history_count'] ?? 5) }}" min="0" max="24">
-                                    <span class="input-group-text bg-body-tertiary">passwords</span>
+                                           value="{{ old('password_history_count', $settings['password_history_count'] ?? 5) }}" min="0" max="24"
+                                           {{ filter_var($settings['password_history_enabled'] ?? 'true', FILTER_VALIDATE_BOOLEAN) ? '' : 'disabled' }}>
+                                    <span class="input-group-text bg-body-tertiary">counts</span>
                                 </div>
                                 @error('password_history_count')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
                             </div>
                             {{-- Password History toggle --}}
-                            <div class="col-md-4">
+                            <div class="col-md-6">
                                 <div class="form-check form-switch mt-4 pt-2">
                                     <input class="form-check-input" type="checkbox" name="password_history_enabled" id="password_history_enabled"
                                         {{ filter_var($settings['password_history_enabled'] ?? 'true', FILTER_VALIDATE_BOOLEAN) ? 'checked' : '' }}>
@@ -403,6 +404,17 @@
         document.addEventListener('DOMContentLoaded', function () {
             const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
             const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
+
+            // History Enforcement toggle → enable/disable Password History field
+            const toggle = document.getElementById('password_history_enabled');
+            const historyInput = document.getElementById('password_history_count');
+            if (toggle && historyInput) {
+                const syncHistoryField = () => {
+                    historyInput.disabled = !toggle.checked;
+                };
+                toggle.addEventListener('change', syncHistoryField);
+                syncHistoryField();
+            }
         });
     </script>
 @endsection
