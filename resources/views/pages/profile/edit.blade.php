@@ -181,32 +181,33 @@
                                     class="form-control form-control-sm pe-5 @error('current_password') is-invalid @enderror"
                                     autocomplete="current-password">
                                 <button type="button"
-                                    class="btn btn-sm position-absolute top-50 end-0 translate-middle-y me-2 text-muted"
+                                    class="btn btn-link text-muted text-decoration-none position-absolute top-50 translate-middle-y toggle-password p-0 border-0"
                                     data-password-toggle="current_password" aria-label="Toggle password visibility"
-                                    tabindex="-1">
-                                    <i class="fas fa-eye"></i>
+                                    tabindex="-1" style="right: 2rem; z-index: 5;">
+                                    <i class="bi bi-eye"></i>
                                 </button>
-                                @error('current_password')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
                             </div>
+                            @error('current_password')
+                                <div class="invalid-feedback d-block">{{ $message }}</div>
+                            @enderror
                         </div>
                         <div class="mb-3">
                             <label for="password" class="form-label">New Password</label>
                             <div class="position-relative">
                                 <input type="password" name="password" id="password"
                                     class="form-control form-control-sm pe-5 @error('password') is-invalid @enderror"
-                                    autocomplete="new-password" minlength="8">
+                                    autocomplete="new-password">
                                 <button type="button"
-                                    class="btn btn-sm position-absolute top-50 end-0 translate-middle-y me-2 text-muted"
+                                    class="btn btn-link text-muted text-decoration-none position-absolute top-50 translate-middle-y toggle-password p-0 border-0"
                                     data-password-toggle="password" aria-label="Toggle password visibility"
-                                    tabindex="-1">
-                                    <i class="fas fa-eye"></i>
+                                    tabindex="-1" style="right: 2rem; z-index: 5;">
+                                    <i class="bi bi-eye"></i>
                                 </button>
-                                @error('password')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
                             </div>
+                            @error('password')
+                                <div class="invalid-feedback d-block">{{ $message }}</div>
+                            @enderror
+                            @include('layouts.partials.password-strength')
                         </div>
                         <div class="mb-3">
                             <label for="password_confirmation" class="form-label">Confirm New Password</label>
@@ -215,15 +216,15 @@
                                     class="form-control form-control-sm pe-5 @error('password_confirmation') is-invalid @enderror"
                                     autocomplete="new-password">
                                 <button type="button"
-                                    class="btn btn-sm position-absolute top-50 end-0 translate-middle-y me-2 text-muted"
+                                    class="btn btn-link text-muted text-decoration-none position-absolute top-50 translate-middle-y toggle-password p-0 border-0"
                                     data-password-toggle="password_confirmation" aria-label="Toggle password visibility"
-                                    tabindex="-1">
-                                    <i class="fas fa-eye"></i>
+                                    tabindex="-1" style="right: 2rem; z-index: 5;">
+                                    <i class="bi bi-eye"></i>
                                 </button>
-                                @error('password_confirmation')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
                             </div>
+                            @error('password_confirmation')
+                                <div class="invalid-feedback d-block">{{ $message }}</div>
+                            @enderror
                         </div>
                     </div>
                     <div class="card-footer bg-body-tertiary border-top py-3 d-flex justify-content-end">

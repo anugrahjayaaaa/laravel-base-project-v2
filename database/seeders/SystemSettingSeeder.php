@@ -32,14 +32,17 @@ class SystemSettingSeeder extends Seeder
         SystemSetting::set('auth_email_verification_rate_limit', '5');
         SystemSetting::set('auth_email_verification_token_expire_minutes', '60');
 
-        // Password policy & lifecycle
-        SystemSetting::set('auth_password_min_length', '8');
-        SystemSetting::set('auth_password_mixed_case', 'true');
-        SystemSetting::set('auth_password_numbers', 'true');
-        SystemSetting::set('auth_password_symbols', 'true');
-        SystemSetting::set('auth_password_uncompromised', 'false');
-        SystemSetting::set('auth_password_history_count', '5');
-        SystemSetting::set('auth_password_expiration_days', '90');
+        // Password policy (IM8 — admin-editable via /settings)
+        SystemSetting::set('password_min_length', '12');
+        SystemSetting::set('password_require_upper', 'true');
+        SystemSetting::set('password_require_lower', 'true');
+        SystemSetting::set('password_require_digit', 'true');
+        SystemSetting::set('password_require_symbol', 'true');
+        SystemSetting::set('password_reject_username', 'true');
+
+        // Password lifecycle
+        SystemSetting::set('password_history_count', '5');
+        SystemSetting::set('password_expiration_days', '90');
 
         // Email verification
         SystemSetting::set('auth_verification_expire_minutes', '60');

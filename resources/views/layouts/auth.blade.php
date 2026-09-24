@@ -74,6 +74,7 @@
         @yield('content')
     </div>
     <script src="{{ asset('vendor/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
+    @vite('resources/js/app.js')
     @include('layouts.partials.scripts.password-toggle')
     @stack('scripts')
 </body>

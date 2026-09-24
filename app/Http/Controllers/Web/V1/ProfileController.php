@@ -40,29 +40,39 @@ class ProfileController extends Controller
         $usernameCooldownDays = (int) SystemSetting::getInt('username_change_cooldown_days', 30);
 
         // Password policy hint (min length + complexity toggles only; history/expiry intentionally excluded)
-        $minPasswordLength = (int) SystemSetting::getInt('auth_password_min_length', 8);
-        $passwordMixedCase = SystemSetting::getBool('auth_password_mixed_case', true);
-        $passwordNumbers = SystemSetting::getBool('auth_password_numbers', true);
-        $passwordSymbols = SystemSetting::getBool('auth_password_symbols', true);
+        $minPasswordLength = (int) SystemSetting::getInt('password_min_length', 12);
+        $passwordUpper = SystemSetting::getBool('password_require_upper', true);
+        $passwordLower = SystemSetting::getBool('password_require_lower', true);
+        $passwordDigit = SystemSetting::getBool('password_require_digit', true);
+        $passwordSymbol = SystemSetting::getBool('password_require_symbol', true);
 
         $hintParts = ["Use at least {$minPasswordLength} characters"];
+
         $reqs = [];
-        if ($passwordMixedCase) {
-            $reqs[] = 'a mix of uppercase and lowercase letters';
+        if ($passwordUpper) {
+            $reqs[] = 'an uppercase letter';
         }
-        if ($passwordNumbers) {
-            $reqs[] = 'numbers';
+
+        if ($passwordLower) {
+            $reqs[] = 'a lowercase letter';
         }
-        if ($passwordSymbols) {
-            $reqs[] = 'symbols';
+
+        if ($passwordDigit) {
+            $reqs[] = 'a number';
         }
+
+        if ($passwordSymbol) {
+            $reqs[] = 'a symbol';
+        }
+
         if ($reqs) {
             $hintParts[] = 'with ' . implode(', ', $reqs);
         }
         $passwordPolicyHint = implode(' ', $hintParts) . '.';
 
         return view('pages.profile.edit', compact(
-            'user', 'initials',
+            'user',
+            'initials',
             'allowEmailChange',
             'allowUsernameChange',
             'emailCooldownDays',

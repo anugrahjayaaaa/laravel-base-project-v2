@@ -61,6 +61,8 @@ class CreateUserAction
 
     private function generateTempPassword(): string
     {
+        $minLength = SystemSetting::getInt('password_min_length', 12);
+
         $upper = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
         $lower = 'abcdefghijklmnopqrstuvwxyz';
         $digits = '0123456789';
@@ -74,7 +76,7 @@ class CreateUserAction
         ];
 
         $all = $upper . $lower . $digits . $symbols;
-        for ($i = 4; $i < 12; $i++) {
+        for ($i = 4; $i < $minLength; $i++) {
             $password[] = $all[random_int(0, strlen($all) - 1)];
         }
 

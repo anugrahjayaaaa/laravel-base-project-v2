@@ -42,7 +42,8 @@ class ChangePassword
 
         // Password history check.
         if ($this->recentlyUsed($user, $newPassword)) {
-            $count = SystemSetting::getInt('auth_password_history_count', 5);
+            $count = SystemSetting::getInt('password_history_count', 5);
+
             throw ValidationException::withMessages([
                 'password' => ["You cannot reuse one of your last {$count} passwords."],
             ]);
@@ -69,7 +70,7 @@ class ChangePassword
      */
     protected function calculateExpiration(): ?\Illuminate\Support\Carbon
     {
-        $days = SystemSetting::getInt('auth_password_expiration_days', 90);
+        $days = SystemSetting::getInt('password_expiration_days', 90);
 
         if ($days <= 0) {
             return null;
@@ -83,7 +84,7 @@ class ChangePassword
      */
     protected function recentlyUsed(User $user, string $newPassword): bool
     {
-        $count = SystemSetting::getInt('auth_password_history_count', 5);
+        $count = SystemSetting::getInt('password_history_count', 5);
 
         $history = DB::table('password_histories')
             ->where('user_id', $user->id)
@@ -91,7 +92,7 @@ class ChangePassword
             ->limit($count)
             ->get();
 
-        return $history->contains(fn ($h) => Hash::check($newPassword, $h->password));
+        return $history->contains(fn($h) => Hash::check($newPassword, $h->password));
     }
 
     /**
