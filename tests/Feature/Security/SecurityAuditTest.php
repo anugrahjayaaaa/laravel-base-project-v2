@@ -7,6 +7,7 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Route;
+use Illuminate\Support\Facades\Cache;
 use Laravel\Sanctum\Sanctum;
 use Spatie\Permission\Models\Role;
 use PHPUnit\Framework\Attributes\Test;
@@ -34,18 +35,23 @@ class SecurityAuditTest extends TestCase
     {
         parent::setUp();
         $this->app->make(\Spatie\Permission\PermissionRegistrar::class)->forgetCachedPermissions();
+        Cache::flush();
     }
 
     protected function makeUsers(array $overrides = []): array
     {
         $adminRole = Role::create(['name' => 'admin', 'guard_name' => 'api']);
         $admin = User::factory()->create(array_merge([
-            'name' => 'Admin', 'email' => 'admin@example.com', 'is_active' => true,
+            'name' => 'Admin',
+            'email' => 'admin@example.com',
+            'is_active' => true,
         ], $overrides['admin'] ?? []));
         $admin->assignRole($adminRole);
 
         $regular = User::factory()->create(array_merge([
-            'name' => 'Regular User', 'email' => 'user@example.com', 'is_active' => true,
+            'name' => 'Regular User',
+            'email' => 'user@example.com',
+            'is_active' => true,
         ], $overrides['regular'] ?? []));
 
         return [$admin, $regular];
@@ -58,11 +64,11 @@ class SecurityAuditTest extends TestCase
 
     protected function mockRequest(User $user, string $routeName = 'api.v1.users.index'): Request
     {
-        $route = new Route('GET', '/test', fn () => response()->json([]));
+        $route = new Route('GET', '/test', fn() => response()->json([]));
         $route->name($routeName);
         $request = Request::create('/test', 'GET', [], [], [], ['HTTP_ACCEPT' => 'application/json']);
-        $request->setRouteResolver(fn () => $route);
-        $request->setUserResolver(fn () => $user);
+        $request->setRouteResolver(fn() => $route);
+        $request->setUserResolver(fn() => $user);
         return $request;
     }
 
@@ -75,13 +81,22 @@ class SecurityAuditTest extends TestCase
     {
         [$admin] = $this->makeUsers();
         for ($i = 0; $i < 5; $i++) {
-            $this->postJson(route('api.v1.auth.login'), [
-                'identifier' => $admin->email, 'password' => 'wrong',
-            ])->assertStatus(401);
+            $resp = $this->postJson(route('api.v1.auth.login'), [
+                'identifier' => $admin->email,
+                'password' => 'wrong',
+            ]);
+
+            echo "\nDEBUG Request " . ($i + 1) . ": status=" . $resp->status() . " body=" . $resp->getContent();
+            $resp->assertStatus(401);
         }
-        $this->postJson(route('api.v1.auth.login'), [
-            'identifier' => $admin->email, 'password' => 'wrong',
-        ])->assertStatus(429);
+
+        $resp = $this->postJson(route('api.v1.auth.login'), [
+            'identifier' => $admin->email,
+            'password' => 'wrong',
+        ]);
+        
+        echo "\nDEBUG Request 6: status=" . $resp->status() . " body=" . $resp->getContent();
+        $resp->assertStatus(429);
     }
 
     #[Test]
@@ -89,10 +104,12 @@ class SecurityAuditTest extends TestCase
     {
         User::factory()->create(['email' => 'existing@example.com', 'email_verified_at' => now()]);
         $exists = $this->postJson(route('api.v1.auth.login'), [
-            'identifier' => 'existing@example.com', 'password' => 'wrong',
+            'identifier' => 'existing@example.com',
+            'password' => 'wrong',
         ]);
         $notExists = $this->postJson(route('api.v1.auth.login'), [
-            'identifier' => 'nobody@example.com', 'password' => 'wrong',
+            'identifier' => 'nobody@example.com',
+            'password' => 'wrong',
         ]);
         $this->assertEquals($exists->json('data.message'), $notExists->json('data.message'));
     }
@@ -149,8 +166,11 @@ class SecurityAuditTest extends TestCase
 
         // Create user
         $this->postJson(route('api.v1.users.store'), [
-            'name' => 'Hacker', 'username' => 'hacker', 'email' => 'hacker@test.com',
-            'password' => 'Password123!', 'password_confirmation' => 'Password123!',
+            'name' => 'Hacker',
+            'username' => 'hacker',
+            'email' => 'hacker@test.com',
+            'password' => 'Password123!',
+            'password_confirmation' => 'Password123!',
         ])->assertStatus(201);
 
         // List users
@@ -159,7 +179,9 @@ class SecurityAuditTest extends TestCase
         // Update another user
         $target = User::factory()->create();
         $this->putJson(route('api.v1.users.update', $target->id), [
-            'name' => 'Hijacked', 'email' => $target->email, 'status' => 'inactive',
+            'name' => 'Hijacked',
+            'email' => $target->email,
+            'status' => 'inactive',
         ])->assertStatus(200);
 
         // Delete another user
@@ -227,12 +249,12 @@ class SecurityAuditTest extends TestCase
         $middleware = new CheckAccountState();
 
         $request = $this->mockRequest($regular, 'api.v1.users.index');
-        $this->assertEquals(200, $middleware->handle($request, fn ($req) => response()->json(['ok' => true]))->getStatusCode());
+        $this->assertEquals(200, $middleware->handle($request, fn($req) => response()->json(['ok' => true]))->getStatusCode());
 
         $regular->update(['is_active' => false]);
 
         $request = $this->mockRequest($regular, 'api.v1.users.index');
-        $this->assertEquals(403, $middleware->handle($request, fn ($req) => response()->json(['ok' => true]))->getStatusCode());
+        $this->assertEquals(403, $middleware->handle($request, fn($req) => response()->json(['ok' => true]))->getStatusCode());
     }
 
     // =====================================================================
@@ -247,7 +269,8 @@ class SecurityAuditTest extends TestCase
         $target = User::factory()->create(['email_verified_at' => null]);
 
         $this->getJson(route('api.v1.email.verify-change', [
-            'user' => $target->id, 'token' => 'fake-token-12345',
+            'user' => $target->id,
+            'token' => 'fake-token-12345',
         ]))->assertStatus(400);
     }
 
@@ -270,7 +293,8 @@ class SecurityAuditTest extends TestCase
         $target = User::factory()->create();
 
         $url = url()->signedRoute('api.v1.email.verify-change', [
-            'user' => $target->id, 'token' => 'test-token',
+            'user' => $target->id,
+            'token' => 'test-token',
         ], now()->addMinutes(60));
 
         $this->getJson($url . '&tampered=1')->assertStatus(403);
@@ -299,9 +323,14 @@ class SecurityAuditTest extends TestCase
         $this->actingAsApi($admin);
 
         $this->postJson(route('api.v1.users.store'), [
-            'name' => 'Hacker', 'username' => 'hacker', 'email' => 'hacker@test.com',
-            'password' => 'Password123!', 'password_confirmation' => 'Password123!',
-            'is_active' => false, 'is_locked' => true, 'must_change_password' => false,
+            'name' => 'Hacker',
+            'username' => 'hacker',
+            'email' => 'hacker@test.com',
+            'password' => 'Password123!',
+            'password_confirmation' => 'Password123!',
+            'is_active' => false,
+            'is_locked' => true,
+            'must_change_password' => false,
         ])->assertStatus(201);
 
         $user = User::where('email', 'hacker@test.com')->first();
@@ -323,7 +352,9 @@ class SecurityAuditTest extends TestCase
         $target = User::factory()->create();
 
         $this->putJson(route('api.v1.users.update', $target->id), [
-            'name' => $xssPayload, 'email' => $target->email, 'status' => 'active',
+            'name' => $xssPayload,
+            'email' => $target->email,
+            'status' => 'active',
         ])->assertStatus(200);
 
         $user = User::find($target->id);
@@ -352,7 +383,7 @@ class SecurityAuditTest extends TestCase
     public function test_web_state_changing_forms_require_csrf(): void
     {
         [$admin, $regular] = $this->makeUsers();
-        $this->actingAsApi($admin);
+        $this->actingAs($admin, 'web');
 
         $this->post(route('users.deactivate', $regular->id), [])
             ->assertStatus(419);
@@ -379,8 +410,11 @@ class SecurityAuditTest extends TestCase
         $target = User::factory()->create();
 
         $this->putJson(route('api.v1.users.update', $target->id), [
-            'name' => $target->name, 'email' => $target->email, 'status' => 'active',
-            'password' => 'short', 'password_confirmation' => 'short',
+            'name' => $target->name,
+            'email' => $target->email,
+            'status' => 'active',
+            'password' => 'short',
+            'password_confirmation' => 'short',
         ])->assertStatus(422);
     }
 
