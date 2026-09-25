@@ -36,6 +36,34 @@ class PasswordHistoryTest extends TestCase
         ]);
     }
 
+    public function test_password_change_revokes_all_web_sessions(): void
+    {
+        $user = User::factory()->create([
+            'password' => Hash::make('CurrentP@ss1!'),
+            'remember_token' => 'remember-me',
+        ]);
+
+        DB::table('sessions')->insert([
+            'id' => 'session-for-password-change',
+            'user_id' => $user->id,
+            'ip_address' => '127.0.0.1',
+            'user_agent' => 'test-agent',
+            'payload' => 'test-payload',
+            'last_activity' => now()->timestamp,
+        ]);
+
+        $this->actingAs($user)->put('/password/change', [
+            'current_password' => 'CurrentP@ss1!',
+            'password' => 'ChangedP@ss1!',
+            'password_confirmation' => 'ChangedP@ss1!',
+        ])->assertRedirect();
+
+        $this->assertDatabaseMissing('sessions', [
+            'id' => 'session-for-password-change',
+        ]);
+        $this->assertNull($user->fresh()->remember_token);
+    }
+
     public function test_prevents_reuse_of_recent_passwords(): void
     {
         $user = User::factory()->create([

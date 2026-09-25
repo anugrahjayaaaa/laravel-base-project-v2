@@ -20,8 +20,7 @@ class ChangePasswordAction
 {
     public function __construct(
         private readonly RecordPasswordHistoryAction $recordHistoryAction,
-    ) {
-    }
+    ) {}
 
     /**
      * Execute the password change.
@@ -52,17 +51,20 @@ class ChangePasswordAction
         }
 
         return DB::transaction(function () use ($user, $newPassword) {
-            // 'hashed' cast on User model auto-hashes, assign plain password.
+            // Password, history, sessions, and tokens must change atomically.
             $user->password = $newPassword;
             $user->must_change_password = false;
             $user->password_expires_at = $this->calculateExpiration();
+
+            $user->setRememberToken(null);
             $user->save();
 
             // Record password history.
             $this->recordHistoryAction->run($user, $user->password);
 
-            // Revoke all active Sanctum tokens for this user.
+            // Revoke all active Sanctum and web sessions.
             $user->tokens()->delete();
+            DB::table('sessions')->where('user_id', $user->id)->delete();
 
             return true;
         });
@@ -95,6 +97,6 @@ class ChangePasswordAction
             ->limit($count)
             ->get();
 
-        return $history->contains(fn ($h) => Hash::check($newPassword, $h->password));
+        return $history->contains(fn($h) => Hash::check($newPassword, $h->password));
     }
 }
