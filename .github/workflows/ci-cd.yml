@@ -1,7 +1,6 @@
 name: CI/CD
 
 on:
-  pull_request:
   push:
     branches:
       - deployment/deployment-setup
@@ -71,7 +70,7 @@ jobs:
 
   deploy:
     name: Deploy to Ubuntu VM
-    if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/deployment/deployment-setup'
+    if: github.ref == 'refs/heads/deployment/deployment-setup'
     needs: test
     runs-on: ubuntu-24.04
     environment: Laravel Base Project V2 - Google Cloud
