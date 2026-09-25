@@ -1,0 +1,143 @@
+name: CI/CD
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-cd-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Test and build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, xml, curl, zip, intl, pdo_mysql, sqlite3
+          coverage: none
+          tools: composer:v2
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install Composer dependencies
+        run: composer install --prefer-dist --no-interaction --no-progress
+
+      - name: Validate Composer
+        run: composer validate --strict
+
+      - name: Install Node dependencies
+        run: npm ci
+
+      - name: Run tests
+        run: php artisan test --no-coverage
+
+      - name: Check PHP formatting
+        run: vendor/bin/pint --test
+
+      - name: Build frontend assets
+        run: npm run build
+
+      - name: Upload frontend build
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-build
+          path: public/build
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Composer security audit
+        run: composer audit --locked
+
+      - name: NPM security audit
+        run: npm audit
+
+  deploy:
+    name: Deploy to Ubuntu VM
+    if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main'
+    needs: test
+    runs-on: ubuntu-latest
+    environment: Laravel Base Project V2 - Google Cloud
+
+    env:
+      DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+      DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+      DEPLOY_PORT: ${{ secrets.DEPLOY_PORT }}
+      DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+      DEPLOY_URL: ${{ secrets.DEPLOY_URL }}
+      DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+      DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download frontend build
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-build
+          path: public/build
+
+      - name: Configure SSH
+        run: |
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+
+      - name: Sync application files
+        run: |
+          rsync -az --delete-delay \
+            --rsh="ssh -p ${DEPLOY_PORT} -o BatchMode=yes -o IdentitiesOnly=yes" \
+            --exclude='.env' \
+            --exclude='.env.*' \
+            --exclude='.git/' \
+            --exclude='node_modules/' \
+            --exclude='vendor/' \
+            --exclude='storage/' \
+            --exclude='.env.*' \
+            ./ "${DEPLOY_USER}@${DEPLOY_HOST}:${DEPLOY_PATH}/"
+
+      - name: Deploy application
+        run: |
+          ssh -p "${DEPLOY_PORT}" \
+            -o BatchMode=yes \
+            -o IdentitiesOnly=yes \
+            "${DEPLOY_USER}@${DEPLOY_HOST}" \
+            bash -s -- "${DEPLOY_PATH}" <<'REMOTE'
+          set -Eeuo pipefail
+          APP_PATH="$1"
+          cd "$APP_PATH"
+
+          composer install --prefer-dist --no-dev --no-interaction --no-progress --optimize-autoloader
+          php artisan optimize:clear
+          php artisan migrate --force
+          php artisan config:cache
+          php artisan route:cache
+          php artisan view:cache
+          php artisan queue:restart
+          REMOTE
+
+      - name: Health check
+        run: |
+          curl --fail --silent --show-error \
+            --retry 5 --retry-delay 2 \
+            "${DEPLOY_URL}/up"
