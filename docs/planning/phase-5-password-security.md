@@ -49,7 +49,7 @@
 | P5-A6 | View: add strength to `auth/reset-password.blade.php` | ✅ DONE | Shared partial included |
 | P5-A7 | View: add strength to `profile/edit.blade.php` | ✅ DONE | Shared partial included |
 | P5-A8 | Wire `PasswordStrengthRule` into 3 FormRequests | ✅ DONE | ChangePasswordAction, ResetPassword, ProfileUpdate |
-| P5-A9 | Tests: unit + feature + view render assertions | ✅ DONE | 13 unit + 8 feature = 21 tests, all green |
+| P5-A9 | Tests: unit + feature + view render assertions | ✅ DONE — latest full regression: 274 passed, 698 assertions |
 
 **Deliverables (shipped):**
 - `app/Support/PasswordPolicy.php` — policy + `validate()` + `strength()`
@@ -66,7 +66,7 @@
 - `@error('...') is-invalid` added to password inputs — login + reset views
 - `layouts/auth.blade.php` missing `@vite('resources/js/app.js')` — fixed
 
-**Gate:** ✅ PASSED — 223 tests green, pentest clean (1 LOW finding: homoglyph bypass, documented). Proceed to Group B.
+**Gate:** ✅ PASSED — latest full regression: 274 passed, 698 assertions. Proceed to Group B.
 
 ---
 
@@ -111,12 +111,12 @@
 | P5-C2 | `PasswordExpiry` service — `app/Services/PasswordExpiry.php`: `isExpired(User)`, `daysUntilExpiry(User)`, `shouldWarn(User)` | P5-C1 | small | Pure logic, testable |
 | P5-C3 | `InactivityLock` service — `app/Services/InactivityLock.php`: `isInactive(User)`, `shouldLock(User)`, `lock(User)` | P5-C1 | small | Pure logic, testable |
 | P5-C4 | Update `EnsurePasswordChangeRequired` middleware — call `PasswordExpiry::isExpired` + `InactivityLock::shouldLock` | P5-C2,C3 | small | Redirect to password-expired screen; lock + audit on inactivity |
-| P5-C5 | View: `auth/password-expired.blade.php` — forced change screen (like verify-email layout) | P5-C4 | small | AdminLTE auth layout; form POST to `password.change` |
+| P5-C5 | View: `auth/password-expired.blade.php` — forced change screen (like verify-email layout) | P5-C4 | small | AdminLTE auth layout; shared password form uses `PUT /password/change` |
 | P5-C6 | View: expiry warning banner — `partials/password-expiry-warning.blade.php` | P5-C2 | small | Dismissible callout on authenticated layout when `shouldWarn()` true |
 | P5-C7 | View: add "Password Expiration" + "Inactivity Lock" sections to `/settings` (security tab) | P5-C1 | small | Number inputs + toggles; matches settings page pattern |
-| P5-C8 | Job: `app/Jobs/PasswordExpirySweep.php` — scheduled sweep, set `must_change_password` for expired users | P5-C2 | small | Minute scheduler checks configured sweep time and timezone |
-| P5-C9 | Job: `app/Jobs/InactivityLockSweep.php` — scheduled sweep, `is_locked = true` + session/token revocation for inactive users | P5-C3 | small | Same runtime-configured schedule; null activity uses grace policy |
-| P5-C10 | Tests: expiry logic, inactivity logic, middleware redirect, job sweep, warning banner render | P5-C2..C9 | medium | Pest feature + unit |
+| P5-C8 | Job: `app/Jobs/PasswordExpirySweep.php` — scheduled sweep, set `must_change_password` for expired users | P5-C2 | small | Minute-based scheduler checks configured sweep time and timezone; processes users in 500-row batches |
+| P5-C9 | Job: `app/Jobs/InactivityLockSweep.php` — scheduled sweep, `is_locked = true` + session/token revocation for inactive users | P5-C3 | small | Same minute-based runtime schedule; null activity uses grace policy; processes users in 500-row batches |
+| P5-C10 | Tests: expiry logic, inactivity logic, middleware redirect, job sweep, warning banner render, and password-change session revocation | P5-C2..C9 | medium | Pest feature + unit; latest full regression: 274 passed, 698 assertions |
 
 **Deliverables:**
 - `app/Services/PasswordExpiry.php`
@@ -167,7 +167,7 @@
 2. Custom Form Requests — `PasswordStrengthRule` used in all 3 password requests.
 3. Settings-driven — policy values from SystemSetting, not config files.
 4. Service layer for pure logic — `PasswordExpiry`, `InactivityLock` are testable without HTTP.
-5. Jobs for sweeps — daily scheduled, idempotent.
+5. Jobs for sweeps — minute-based scheduler with configured sweep time/timezone, overlap protection, and 500-row memory-safe batching.
 6. No new middleware unless extending existing.
 7. i18n parity — every string in both locales (deferred to final phase).
 

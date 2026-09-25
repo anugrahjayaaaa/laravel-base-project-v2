@@ -313,7 +313,7 @@ observers for audit. See `docs/base/architecture/application-components.md` §Ac
       "PWD-002"
     ],
     "status": "DONE",
-    "note": "API-side DONE: ChangePasswordAction action + ApiPasswordChangeController exist. Phase 5 password policy/history/expiry tasks still pending."
+    "note": "Web/API password change flow uses the shared action and revokes all Sanctum tokens, database sessions, and remember_token atomically."
   },
   {
     "id": "AUTH-015",
@@ -323,7 +323,8 @@ observers for audit. See `docs/base/architecture/application-components.md` §Ac
     "depends_on": [
       "RATE-001"
     ],
-    "status": "PLANNED"
+    "status": "DONE",
+    "note": "Login throttling and progressive lockout are implemented and covered by the authentication test suite."
   },
   {
     "id": "USER-001",

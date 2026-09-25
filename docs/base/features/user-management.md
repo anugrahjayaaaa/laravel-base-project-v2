@@ -24,7 +24,7 @@ Use separate concepts:
 | `email_verified_at`      ← email verification (separate from activation)
 | `must_change_password`   ← first-login / post-reset enforcement
 | `password expiration`    ← password lifecycle state
-| `last_activity_at`       ← meaningful activity timestamp
+| `last_activity_at`       ← last successful login timestamp (Login-Only Strategy)
 | `soft-deleted`           ← deleted_at (deletion lifecycle)
 
 Primary status resolution: `App\Enums\UserStatusEnum::resolve()` — precedence: PENDING_VERIFICATION → LOCKED → INACTIVE → ACTIVE.

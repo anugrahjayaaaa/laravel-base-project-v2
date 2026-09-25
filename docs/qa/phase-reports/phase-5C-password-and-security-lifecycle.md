@@ -6,8 +6,8 @@ Status: DONE
 
 ## Verification
 
-- Focused lifecycle/settings tests: 16 passed, 84 assertions.
-- Full Laravel suite: 267 passed, 674 assertions.
+- Targeted remediation/lifecycle tests: 24 passed, 54 assertions.
+- Full Laravel suite: 274 passed, 698 assertions.
 - Existing risky test: `Tests\\Feature\\Security\\DebugRateLimiterTest` performs no assertions.
 - Pint: passed.
 - PHP syntax checks: passed.
@@ -25,6 +25,9 @@ Status: DONE
 - Inactivity lock handles `last_activity_at = NULL` through `created_at`; `inactivity_lock_grace_enabled` controls whether `inactivity_lock_grace_days` is applied.
 - Middleware locks inactive users during a request, revokes sessions/tokens through the shared service, and records `auth.inactivity_lock.middleware` with `causer = SYSTEM` in properties and a null `causer_id`.
 - Sweep jobs use `$this->audit()` through `AuditsSystemActivity`; business logs contain counters/timing and no passwords or tokens.
+- Password change/reset revokes Sanctum tokens, database sessions, and `remember_token` in the same mutation transaction.
+- Sweep jobs process users in 500-row `chunkById` batches.
+- The minute-based scheduler has `withoutOverlapping()` protection.
 - Settings use the shared Web/API action and the database-backed timezone catalog.
 - Sweep schedule reads runtime `Sweep Time` and `Sweep Timezone`; scheduler and queue remain separate processes.
 
@@ -39,7 +42,6 @@ Status: DONE
 
 - Add explicit production Supervisor/systemd unit examples when deployment infrastructure is introduced.
 - Add visual browser checks for the settings layout and responsive warning banner.
-- Add scheduler overlap protection if sweep volume grows.
 - Add DST/multi-timezone scheduler tests when the deployment timezone policy is finalized.
 
 ## Phase Tracking

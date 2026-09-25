@@ -225,15 +225,15 @@ are audited.
 ## ADR-018: last_activity_at and never-logged-in policy
 
 **Status**: Accepted
-**Context**: `last_activity_at` tracks meaningful account activity. Users who
+**Context**: `last_activity_at` tracks the last successful login. Users who
 have never logged in have `last_activity_at = NULL` and must not be excluded
 from inactivity policy. Updating on every request is noisy and unnecessary.
 Unlocking an account is an administrative action, not user activity — it
 must NOT populate or change `last_activity_at`.
-**Decision**: The baseline update point for `last_activity_at` is successful
-login. Do NOT update on every HTTP request. Inactivity is configurable via
-`inactivity_lock_days`, `inactivity_lock_grace_enabled`, and
-`inactivity_lock_grace_days`.
+**Decision**: `last_activity_at` is updated **only after a successful login**
+(Login-Only Strategy). It is not updated for ordinary mutations or HTTP
+requests. Inactivity is configurable via `inactivity_lock_days`,
+`inactivity_lock_grace_enabled`, and `inactivity_lock_grace_days`.
 Never-logged-in users (`last_activity_at = NULL`) are included in the
 inactivity query; when the grace toggle is enabled, the threshold is
 `inactivity_lock_days + inactivity_lock_grace_days`, otherwise it is only

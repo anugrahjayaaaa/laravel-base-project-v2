@@ -27,15 +27,15 @@
 
 ## Current Task
 
-Phase 5C — Password Expiration & Inactivity Lock: DONE
+Phase 5C — Password Expiration & Inactivity Lock: ✅ FULLY DONE
 - Shared Web/API settings action
 - Password expiry and inactivity services
 - Middleware enforcement and password-expired screen
 - Warning banner and settings UI
-- Scheduled expiry/inactivity sweeps
+- Scheduled expiry/inactivity sweeps with minute-based configured scheduling, overlap protection, and 500-row batching
 - SYSTEM audit and operational logs
 - Timezone reference data and configurable sweep schedule
-- Full regression verification completed
+- Password change and reset revoke all database-backed Web sessions, Sanctum tokens, and `remember_token` atomically with the password mutation.
 
 Phase 3 remains IN PROGRESS independently; its implementation breakdown is documented as complete, but the phase tracker still needs reconciliation.
 
