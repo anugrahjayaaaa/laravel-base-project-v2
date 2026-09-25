@@ -131,10 +131,22 @@ jobs:
             --exclude='.env' \
             --exclude='.env.*' \
             --exclude='.git/' \
-            --exclude='node_modules/' \
+            --exclude='/node_modules/' \
             --exclude='/vendor/' \
-            --exclude='storage/' \
+            --exclude='/storage/' \
             ./ "${DEPLOY_USER}@${DEPLOY_HOST}:${DEPLOY_PATH}/"
+
+      - name: Verify synced assets
+        run: |
+          ssh -p "${DEPLOY_PORT}" \
+            -i ~/.ssh/id_ed25519 \
+            -o BatchMode=yes \
+            -o IdentitiesOnly=yes \
+            -o StrictHostKeyChecking=yes \
+            -o UserKnownHostsFile=~/.ssh/known_hosts \
+            "${DEPLOY_USER}@${DEPLOY_HOST}" \
+            'test -f "'"${DEPLOY_PATH}"'/public/vendor/theme.css" \
+             || { echo "::error::public/vendor missing after rsync — a non-anchored --exclude deleted it"; exit 1; }'
 
       - name: Deploy application
         run: |
@@ -160,6 +172,16 @@ jobs:
           php artisan route:cache
           php artisan view:cache
           php artisan queue:restart
+
+          # Opcache keeps serving the previous release's compiled views/blade
+          # until php-fpm is reloaded, which makes a successful deploy look
+          # like a no-op in the browser.
+          for svc in "php$(php -r 'echo PHP_MAJOR_VERSION.".".PHP_MINOR_VERSION;')-fpm" php-fpm php-fpm8.3; do
+            if command -v sudo >/dev/null && sudo -n systemctl cat "$svc" >/dev/null 2>&1; then
+                sudo -n systemctl reload "$svc" && echo "reloaded $svc"
+                break
+            fi
+          done
           REMOTE
 
       - name: Health check
@@ -167,3 +189,9 @@ jobs:
           curl --fail --silent --show-error \
             --retry 5 --retry-delay 2 \
             "${DEPLOY_URL}/up"
+          # The regression this guards: layout links public/vendor/theme.css,
+          # so a 404 here means the page renders unstyled even though /up is 200.
+          curl --fail --silent --show-error \
+            --retry 5 --retry-delay 2 \
+            -o /dev/null \
+            "${DEPLOY_URL}/vendor/theme.css"
