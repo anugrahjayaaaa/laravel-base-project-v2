@@ -66,10 +66,6 @@ class PasswordExpirySweep implements ShouldQueue
                         $flagged++;
 
                         $this->audit($user, 'auth.password_expiry.sweep');
-
-                        Log::info('Password expired — must_change_password set', [
-                            'user_id' => $user->id,
-                        ]);
                     }
                 }
             });

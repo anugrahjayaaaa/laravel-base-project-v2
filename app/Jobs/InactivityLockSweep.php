@@ -48,11 +48,29 @@ class InactivityLockSweep implements ShouldQueue
             return;
         }
 
+        $graceEnabled = SystemSetting::getBool('inactivity_lock_grace_enabled', true);
+        $graceDays = $graceEnabled
+            ? SystemSetting::getInt('inactivity_lock_grace_days', 30)
+            : 0;
+        $normalCutoff = now()->subDays($lockDays);
+        $graceCutoff = now()->subDays($lockDays + $graceDays);
+
         $locked = 0;
         $candidateCount = 0;
 
         User::where('is_active', true)
             ->where('is_locked', false)
+            ->where(function ($query) use ($normalCutoff, $graceCutoff): void {
+                $query
+                    ->where(function ($query) use ($normalCutoff): void {
+                        $query->whereNotNull('last_activity_at')
+                            ->where('last_activity_at', '<', $normalCutoff);
+                    })
+                    ->orWhere(function ($query) use ($graceCutoff): void {
+                        $query->whereNull('last_activity_at')
+                            ->where('created_at', '<', $graceCutoff);
+                    });
+            })
             ->chunkById(500, function ($users) use (&$locked, &$candidateCount): void {
                 $candidateCount += $users->count();
 
@@ -64,11 +82,6 @@ class InactivityLockSweep implements ShouldQueue
 
                         $this->audit($user, 'auth.inactivity_lock.sweep', [
                             'last_activity_at' => $user->last_activity_at?->toIso8601String(),
-                        ]);
-
-                        Log::info('User locked due to inactivity', [
-                            'user_id' => $user->id,
-                            'last_activity_at' => $user->last_activity_at,
                         ]);
                     }
                 }
