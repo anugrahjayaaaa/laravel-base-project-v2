@@ -167,71 +167,15 @@
 
         {{-- Right Column --}}
         <div class="col-lg-4 col-12">
-            <div class="card border-0 shadow-sm mb-4">
+            <div class="card border-0 shadow-sm mb-4" id="change-password">
                 <div class="card-header bg-transparent border-bottom py-3">
                     <h5 class="card-title mb-0 fw-semibold"><i class="bi bi-shield-lock me-2"></i>Change Password</h5>
                 </div>
-                <form method="POST" action="{{ route('password.change.update') }}">
-                    @csrf @method('PUT')
-                    <div class="card-body p-4">
-                        <div class="mb-3">
-                            <label for="current_password" class="form-label">Current Password</label>
-                            <div class="position-relative">
-                                <input type="password" name="current_password" id="current_password"
-                                    class="form-control form-control-sm pe-5 @error('current_password') is-invalid @enderror"
-                                    autocomplete="current-password">
-                                <button type="button"
-                                    class="btn btn-sm position-absolute top-50 end-0 translate-middle-y me-2 text-muted"
-                                    data-password-toggle="current_password" aria-label="Toggle password visibility"
-                                    tabindex="-1">
-                                    <i class="fas fa-eye"></i>
-                                </button>
-                                @error('current_password')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
-                        </div>
-                        <div class="mb-3">
-                            <label for="password" class="form-label">New Password</label>
-                            <div class="position-relative">
-                                <input type="password" name="password" id="password"
-                                    class="form-control form-control-sm pe-5 @error('password') is-invalid @enderror"
-                                    autocomplete="new-password" minlength="8">
-                                <button type="button"
-                                    class="btn btn-sm position-absolute top-50 end-0 translate-middle-y me-2 text-muted"
-                                    data-password-toggle="password" aria-label="Toggle password visibility"
-                                    tabindex="-1">
-                                    <i class="fas fa-eye"></i>
-                                </button>
-                                @error('password')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
-                        </div>
-                        <div class="mb-3">
-                            <label for="password_confirmation" class="form-label">Confirm New Password</label>
-                            <div class="position-relative">
-                                <input type="password" name="password_confirmation" id="password_confirmation"
-                                    class="form-control form-control-sm pe-5 @error('password_confirmation') is-invalid @enderror"
-                                    autocomplete="new-password">
-                                <button type="button"
-                                    class="btn btn-sm position-absolute top-50 end-0 translate-middle-y me-2 text-muted"
-                                    data-password-toggle="password_confirmation" aria-label="Toggle password visibility"
-                                    tabindex="-1">
-                                    <i class="fas fa-eye"></i>
-                                </button>
-                                @error('password_confirmation')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
-                        </div>
-                    </div>
-                    <div class="card-footer bg-body-tertiary border-top py-3 d-flex justify-content-end">
-                        <button type="submit" class="btn btn-primary d-inline-flex align-items-center gap-2">
-                            <i class="bi bi-key-fill"></i> Update Password
-                        </button>
-                    </div>
-                </form>
+                @include('partials.password-change-form', [
+                    'passwordChangeFieldsClass' => 'card-body p-4',
+                    'passwordChangeConfirmationClass' => 'mb-0',
+                    'passwordChangeActionsClass' => 'card-footer bg-body-tertiary border-top py-3 d-flex justify-content-end',
+                ])
             </div>
 
             {{-- Security Info Widget --}}

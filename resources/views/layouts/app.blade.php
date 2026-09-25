@@ -28,6 +28,7 @@
     <main class="app-main">
         <div class="app-content py-3">
             <div class="container-fluid">
+                @include('partials.password-expiry-warning')
                 @yield('content')
             </div>
         </div>

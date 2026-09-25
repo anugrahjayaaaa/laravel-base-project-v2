@@ -26,12 +26,11 @@ use App\Models\SystemSetting;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Auth;
 use Spatie\Permission\Models\Role;
 
 /**
- * User management controller — CRUD, bulk actions, email verification flow.
+ * User management controller,CRUD, bulk actions, email verification flow.
  */
 class UserController extends Controller
 {
@@ -48,7 +47,8 @@ class UserController extends Controller
         private readonly RequestEmailChangeAction $requestEmailChangeAction,
         private readonly CancelEmailChangeAction $cancelEmailChangeAction,
         private readonly VerifyEmailChangeAction $verifyEmailChangeAction,
-    ) {}
+    ) {
+    }
 
     /**
      * Show the create user page.
@@ -163,10 +163,6 @@ class UserController extends Controller
     public function update(UpdateUserRequest $request, User $user)
     {
         $this->updateAction->run($user, $request->validated());
-
-        if ($request->has('password') && $request->filled('password')) {
-            $user->update(['password' => Hash::make($request->input('password'))]);
-        }
 
         $user->audit('user.updated', $request->user());
 

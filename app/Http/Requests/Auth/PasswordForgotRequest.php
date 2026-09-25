@@ -13,7 +13,7 @@ class PasswordForgotRequest extends FormRequest
     use FormatsApiErrors;
 
     /**
-     * Guest route — always authorized.
+     * Guest route,always authorized.
      */
     public function authorize(): bool
     {

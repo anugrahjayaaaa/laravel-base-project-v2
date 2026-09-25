@@ -3,12 +3,12 @@
 namespace App\Http\Controllers\Api\V1\Auth;
 
 use App\Http\Controllers\Controller;
-use App\Actions\V1\Auth\ChangePassword;
+use App\Actions\V1\Auth\ChangePasswordAction;
 use App\Http\Requests\Auth\PasswordChangeRequest;
 use Illuminate\Http\JsonResponse;
 
 /**
- * API auth controller — change password.
+ * API auth controller, change password.
  */
 class PasswordChangeController extends Controller
 {
@@ -16,12 +16,12 @@ class PasswordChangeController extends Controller
      * Change the authenticated user's password.
      *
      * @param  PasswordChangeRequest  $request
-     * @param  ChangePassword  $action
+     * @param  ChangePasswordAction  $action
      * @return JsonResponse
      */
     public function __invoke(
         PasswordChangeRequest $request,
-        ChangePassword $action,
+        ChangePasswordAction $action,
     ): JsonResponse {
         $user = $request->user();
         $data = $request->validated();

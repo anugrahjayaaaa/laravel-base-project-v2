@@ -3,9 +3,8 @@
 namespace App\Providers;
 
 use App\Models\User;
-use App\Models\SystemSetting;
 use App\Observers\UserObserver;
-use App\Observers\SystemSettingObserver;
+use App\Services\PasswordExpiry;
 use App\View\Composers\AppMenuComposer;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Support\ServiceProvider;
@@ -29,6 +28,15 @@ class AppServiceProvider extends ServiceProvider
         LengthAwarePaginator::useBootstrap();
 
         view()->composer('layouts.partials.sidebar', AppMenuComposer::class);
+
+        view()->composer('layouts.app', function ($view): void {
+            $user = auth()->user();
+
+            $view->with([
+                'showPasswordExpiryWarning' => $user && PasswordExpiry::shouldWarn($user),
+                'passwordExpiryDaysRemaining' => $user ? PasswordExpiry::daysUntilExpiry($user) : 0,
+            ]);
+        });
 
         User::observe(UserObserver::class);
 

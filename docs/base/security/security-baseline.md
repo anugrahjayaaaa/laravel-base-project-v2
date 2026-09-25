@@ -65,7 +65,7 @@ Settings changes must have:
 
 ## Account Activity
 
-- `last_activity_at` represents meaningful account activity (baseline: successful login).
-- Do NOT update it on every HTTP request merely to keep a timestamp fresh.
-- `last_activity_at = NULL` (never logged-in users) is handled by the inactivity
+- `last_activity_at` is updated **only after a successful login** (Login-Only Strategy).
+- It is not updated for ordinary mutations, administrative actions, or every HTTP request.
+- `last_activity_at = NULL` (never-logged-in users) is handled by the inactivity
   policy grace/threshold configuration (see settings.md).

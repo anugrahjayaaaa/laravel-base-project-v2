@@ -58,11 +58,13 @@
                 <div class="mb-4">
                     <label for="password" class="form-label">Password</label>
                     <div class="position-relative">
-                        <input type="password" class="form-control pe-5" id="password" name="password"
+                        <input type="password" class="form-control pe-5 @error('password') is-invalid @enderror" id="password" name="password"
                                required autocomplete="current-password">
-                        <button type="button" class="btn btn-sm position-absolute top-50 end-0 translate-middle-y me-2 text-muted"
-                                data-password-toggle="password" aria-label="Toggle password visibility" tabindex="-1">
-                            <i class="fas fa-eye"></i>
+                        <button type="button"
+                            class="btn btn-link text-muted text-decoration-none position-absolute top-50 translate-middle-y toggle-password p-0 border-0"
+                            data-password-toggle="password" aria-label="Toggle password visibility"
+                            tabindex="-1" style="right: 2.25rem; z-index: 5;">
+                            <i class="bi bi-eye"></i>
                         </button>
                     </div>
                     @error('password')

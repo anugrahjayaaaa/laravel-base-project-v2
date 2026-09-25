@@ -10,7 +10,7 @@ use App\Models\User;
 use Illuminate\Http\JsonResponse;
 
 /**
- * API auth controller — resend email verification.
+ * API auth controller, resend email verification.
  */
 class ResendVerificationController extends Controller
 {
@@ -23,7 +23,7 @@ class ResendVerificationController extends Controller
      */
     public function __invoke(ResendVerificationRequest $request, ResendVerificationAction $action): JsonResponse
     {
-        $mode = SystemSetting::getString('auth_verification_mode', 'public');
+        $mode = SystemSetting::getString('email_verification_mode', 'public');
 
         if ($mode === 'admin' || $mode === 'disabled') {
             return $this->respond('Feature disabled.', 403);

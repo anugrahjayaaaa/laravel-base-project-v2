@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1;
 
-use App\Actions\V1\Auth\ChangePassword;
+use App\Actions\V1\Auth\ChangePasswordAction;
 use App\Actions\V1\User\UpdateUserAction;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\User\ProfileUpdateRequest;
@@ -11,17 +11,17 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
 
 /**
- * API profile controller — get and update authenticated user profile.
+ * API profile controller, get and update authenticated user profile.
  */
 class ProfileController extends Controller
 {
     /**
      * @param  UpdateUserAction  $updateAction
-     * @param  ChangePassword  $changePasswordAction
+     * @param  ChangePasswordAction  $ChangePasswordAction
      */
     public function __construct(
         private readonly UpdateUserAction $updateAction,
-        private readonly ChangePassword $changePasswordAction,
+        private readonly ChangePasswordAction $ChangePasswordAction,
     ) {}
 
     /**
@@ -51,7 +51,7 @@ class ProfileController extends Controller
         ($this->updateAction)->run($user, $data);
 
         if ($request->filled('password')) {
-            ($this->changePasswordAction)->run(
+            ($this->ChangePasswordAction)->run(
                 user: $user,
                 currentPassword: $data['current_password'],
                 newPassword: $data['password'],

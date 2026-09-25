@@ -68,7 +68,7 @@
 **Most auth operations in this project are Actions or inline in the controller:**
 - Login, logout, verify email, resend verification: inline in controller
   (thin, use injected dependencies like `LoginThrottle`).
-- Password change: Action (`ChangePassword`) — non-trivial (history check,
+- Password change: Action (`ChangePasswordAction`) — non-trivial (history check,
   revocation, audit) and potentially shared.
 - Health checks: Service (`HealthCheckService`) — multiple related checks,
   cohesive domain object.

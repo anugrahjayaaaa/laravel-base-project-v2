@@ -16,11 +16,12 @@ Account state is represented as independent dimensions
 - `email_verified_at` — email verification state
 - `must_change_password` — force password change on next login
 - `password_expires_at` — password expiration state
-- `last_activity_at` — timestamp of the last meaningful application activity
+- `last_activity_at` — timestamp of the last successful login (Login-Only Strategy)
 - `trashed` (soft-delete) — account is removed
 
-`last_activity_at` represents meaningful account activity.
-Do NOT update it on every HTTP request.
+`last_activity_at` is updated **only after a successful login** (Login-Only
+Strategy). It is not updated for ordinary mutations, administrative actions,
+or every HTTP request.
 
 ## Login Flow
 
@@ -82,14 +83,10 @@ A user who has never performed an activity has `last_activity_at = NULL`.
 
 - NULL is a valid, first-class state — handle it explicitly (do NOT
   substitute a default timestamp).
-- NULL users ARE included in the inactivity query via the grace_days config
-  (see ADR-018 in `decisions.md`).
-  - The inactivity check is: `last_activity_at < now() - (days + grace_days)`
-  - When `last_activity_at IS NULL`, the comparison evaluates to `true`
-    (user is past the grace window), so NULL users ARE subject to
-    inactivity lock.
-  - The `grace_days` config gives recently-created-but-never-logged-in
-    accounts a window before they are locked.
+- NULL users ARE included in the inactivity query via the `inactivity_lock_grace_enabled` and
+  `inactivity_lock_grace_days` settings (see ADR-018 in `decisions.md`).
+  - When enabled, the check is: `created_at < now() - (days + grace_days)` when `last_activity_at IS NULL`
+  - When disabled, the check is: `created_at < now() - days`.
 
 ### Unlocking Does NOT Set last_activity_at
 
@@ -98,8 +95,7 @@ Unlocking an account is an **administrative action**, not user activity.
 - Unlocking must NOT populate or change `last_activity_at`.
 - If `last_activity_at` was `NULL` (never logged in), it remains `NULL`
   after unlock.
-- After unlocking, the user must perform an actual application action
-  (successful login or meaningful mutation) before `last_activity_at`
+- After unlocking, the user must successfully log in before `last_activity_at`
   gets a timestamp.
 
 See `user-management.md` (`## Account Unlock`) and ADR-018 in

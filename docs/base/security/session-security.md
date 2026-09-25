@@ -1,11 +1,17 @@
 # Session Security
 
-## Token Strategy
+## Account Activity
 
-- Web may use Laravel session/cookie authentication where appropriate.
-- Mobile/API clients may use bearer tokens.
-- Default mobile/API token expiration: 7 days (configurable).
-- Session/token revocation must be possible independently from expiration.
+`last_activity_at` is a **Login-Only Strategy** timestamp. It is updated only
+after a successful Web or API login. It is not updated for ordinary mutations,
+administrative actions, or every HTTP request. `NULL` represents a user who
+has never logged in and is handled by the inactivity grace/threshold policy.
+
+### Revocation Semantics
+
+A successful password change or password reset revokes all Sanctum tokens,
+all database-backed Web sessions, and clears `remember_token`. This happens in
+the same database transaction as the password mutation.
 
 ## Session/Device Architecture
 

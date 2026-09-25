@@ -95,7 +95,7 @@
 
 ## ADR-018: last_activity_at and never-logged-in policy
 |- baseline update point for `last_activity_at` is successful login.
-|- `last_activity_at = NULL` (never logged in) handled by inactivity grace config (NULL users are included in the inactivity query via grace config).
+|- `last_activity_at = NULL` (never logged in) is handled by the enabled `inactivity_lock_grace_enabled` setting and `inactivity_lock_grace_days`; when disabled, only the normal inactivity threshold applies.
 |- Unlocking an account does NOT populate `last_activity_at` — NULL is preserved until the user performs an actual application action. Unlock is not user activity.
 |- Inactivity lock revokes sessions/tokens.
 

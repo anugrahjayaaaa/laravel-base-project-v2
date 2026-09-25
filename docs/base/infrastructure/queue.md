@@ -20,9 +20,19 @@ QUEUE_CONNECTION=database  # default
 # QUEUE_CONNECTION=redis  # when Redis available
 ```
 
-## Queue Jobs
+## Password Security Workers
 
-Queue candidates include:
+The expiry and inactivity jobs are dispatched by the minute scheduler only when the configured sweep time and timezone match. Run the scheduler and queue as separate processes:
+
+```bash
+bin/run-workers.sh local
+bin/run-workers.sh cron
+bin/run-workers.sh queue
+```
+
+Production `queue` should run under Supervisor/systemd. Queue lifecycle verbosity is configurable with `QUEUE_VERBOSITY`; business sweep counters are written to `storage/logs/laravel.log`.
+
+## Queue Candidates
 | Job Type | Examples |
 |----------|----------|
 | Email sending | User notifications, password reset |

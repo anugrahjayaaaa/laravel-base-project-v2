@@ -3,6 +3,7 @@
 namespace App\Http\Requests\User;
 
 use App\Models\User;
+use App\Rules\PasswordStrengthRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
@@ -14,7 +15,7 @@ use Illuminate\Validation\ValidationException;
 class ProfileUpdateRequest extends FormRequest
 {
     /**
-     * Guest route — token-based authorization via route param.
+     * Guest route,token-based authorization via route param.
      */
     public function authorize(): bool
     {
@@ -41,7 +42,11 @@ class ProfileUpdateRequest extends FormRequest
                 Rule::unique('users')->ignore($user),
             ],
             'current_password' => ['nullable', 'string'],
-            'password' => ['nullable', 'confirmed', 'min:8'],
+            'password' => [
+                'nullable',
+                'confirmed',
+                new PasswordStrengthRule(),
+            ],
         ];
     }
 

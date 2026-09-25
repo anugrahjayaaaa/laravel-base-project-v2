@@ -48,13 +48,16 @@
                 <div class="mb-3">
                     <label for="password" class="form-label">New Password</label>
                     <div class="position-relative">
-                        <input type="password" class="form-control pe-5" id="password" name="password" required>
-                        <button type="button" class="btn btn-sm position-absolute top-50 end-0 translate-middle-y me-2 text-muted"
-                                data-password-toggle="password" aria-label="Toggle password visibility" tabindex="-1">
-                            <i class="fas fa-eye"></i>
+                        <input type="password" class="form-control pe-5 @error('password') is-invalid @enderror" id="password" name="password" required>
+                        <button type="button"
+                            class="btn btn-link text-muted text-decoration-none position-absolute top-50 translate-middle-y toggle-password p-0 border-0"
+                            data-password-toggle="password" aria-label="Toggle password visibility"
+                            tabindex="-1" style="right: 2.25rem; z-index: 5;">
+                            <i class="bi bi-eye"></i>
                         </button>
                     </div>
-                    <div class="invalid-feedback" id="passwordError"></div>
+                    <small class="text-muted d-block mt-1">Your new password cannot be one of your recent passwords.</small>
+                    @include('layouts.partials.password-strength')
                     @error('password')
                         <div class="invalid-feedback d-block">{{ $message }}</div>
                     @enderror
@@ -62,12 +65,17 @@
                 <div class="mb-4">
                     <label for="password_confirmation" class="form-label">Confirm Password</label>
                     <div class="position-relative">
-                        <input type="password" class="form-control pe-5" id="password_confirmation" name="password_confirmation" required>
-                        <button type="button" class="btn btn-sm position-absolute top-50 end-0 translate-middle-y me-2 text-muted"
-                                data-password-toggle="password_confirmation" aria-label="Toggle password visibility" tabindex="-1">
-                            <i class="fas fa-eye"></i>
+                        <input type="password" class="form-control pe-5 @error('password_confirmation') is-invalid @enderror" id="password_confirmation" name="password_confirmation" required>
+                        <button type="button"
+                            class="btn btn-link text-muted text-decoration-none position-absolute top-50 translate-middle-y toggle-password p-0 border-0"
+                            data-password-toggle="password_confirmation" aria-label="Toggle password visibility"
+                            tabindex="-1" style="right: 2.25rem; z-index: 5;">
+                            <i class="bi bi-eye"></i>
                         </button>
                     </div>
+                    @error('password_confirmation')
+                        <div class="invalid-feedback d-block">{{ $message }}</div>
+                    @enderror
                 </div>
                 <div class="d-grid mb-3">
                     <button type="submit" class="btn btn-primary" id="resetBtn"

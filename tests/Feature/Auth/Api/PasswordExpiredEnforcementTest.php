@@ -45,7 +45,7 @@ class PasswordExpiredEnforcementTest extends TestCase
     /**
      * Create a user whose password must be changed.
      */
-    private function userMustChangePassword(): User
+    private function userMustChangePasswordAction(): User
     {
         $u = User::factory()->create([
             'password' => Hash::make($this->validPassword),
@@ -120,7 +120,7 @@ class PasswordExpiredEnforcementTest extends TestCase
 
     public function test_authenticated_must_change_password_blocked_from_protected_endpoint(): void
     {
-        $admin = $this->userMustChangePassword();
+        $admin = $this->userMustChangePasswordAction();
         $target = $this->lockedTarget();
 
         Sanctum::actingAs($admin);
@@ -157,7 +157,7 @@ class PasswordExpiredEnforcementTest extends TestCase
 
     public function test_must_change_password_can_access_change_endpoint(): void
     {
-        $user = $this->userMustChangePassword();
+        $user = $this->userMustChangePasswordAction();
         Sanctum::actingAs($user);
 
         $response = $this->postJson('/api/v1/auth/password/change', [
@@ -176,7 +176,7 @@ class PasswordExpiredEnforcementTest extends TestCase
 
     public function test_password_change_resets_must_change_state_and_unblocks_protected_endpoint(): void
     {
-        $user = $this->userMustChangePassword();
+        $user = $this->userMustChangePasswordAction();
         Sanctum::actingAs($user);
 
         // 1. Confirm the protected endpoint is blocked.

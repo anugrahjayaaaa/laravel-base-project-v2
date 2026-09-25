@@ -52,7 +52,7 @@ class AuthServiceProvider extends ServiceProvider
 
         RateLimiter::for('login', function (Request $request) use ($throttle) {
             $identifier = $request->input('identifier', '');
-            $limit = SystemSetting::getInt('auth_login_rate_limit_per_minute', 5);
+            $limit = SystemSetting::getInt('login_rate_limit_per_minute', 5);
 
             return Limit::perMinute($limit)
                 ->by($throttle->key('login', $identifier, $request->ip()))
@@ -73,7 +73,7 @@ class AuthServiceProvider extends ServiceProvider
 
         RateLimiter::for('forgot-password', function (Request $request) use ($throttle) {
             $identifier = $request->input('email', $request->input('username', ''));
-            $limit = SystemSetting::getInt('auth_password_forgot_rate_limit', 3);
+            $limit = SystemSetting::getInt('password_forgot_rate_limit', 3);
 
             return Limit::perMinute($limit)
                 ->by($throttle->key('forgot-password', $identifier, $request->ip()))
@@ -96,7 +96,7 @@ class AuthServiceProvider extends ServiceProvider
             $identifier = $request->user()
                 ? (string) $request->user()->getKey()
                 : $request->input('email', '');
-            $limit = SystemSetting::getInt('auth_email_verification_rate_limit', 5);
+            $limit = SystemSetting::getInt('email_verification_rate_limit', 5);
 
             return Limit::perHour($limit)
                 ->by($throttle->key('resend-verification', $identifier, $request->ip()))
@@ -117,7 +117,7 @@ class AuthServiceProvider extends ServiceProvider
 
         RateLimiter::for('reset-password', function (Request $request) use ($throttle) {
             $identifier = $request->input('email', '');
-            $limit = SystemSetting::getInt('auth_password_reset_rate_limit', 3);
+            $limit = SystemSetting::getInt('password_reset_rate_limit', 3);
 
             return Limit::perMinute($limit)
                 ->by($throttle->key('reset-password', $identifier, $request->ip()))
@@ -140,7 +140,7 @@ class AuthServiceProvider extends ServiceProvider
             $identifier = $request->user()
                 ? (string) $request->user()->getKey()
                 : $request->ip();
-            $limit = SystemSetting::getInt('auth_email_verification_rate_limit', 5);
+            $limit = SystemSetting::getInt('email_verification_rate_limit', 5);
 
             return Limit::perHour($limit)
                 ->by($throttle->key('email-verification', $identifier, $request->ip()));
@@ -163,7 +163,7 @@ class AuthServiceProvider extends ServiceProvider
                         'hash' => sha1($notifiable->getEmailForVerification()),
                     ],
                     now()->addMinutes(
-                        (int) SystemSetting::getInt('auth_verification_expire_minutes', 60)
+                        (int) SystemSetting::getInt('email_verification_expire_minutes', 60)
                     )
                 ))
                 ->line('This link will expire in 60 minutes.')

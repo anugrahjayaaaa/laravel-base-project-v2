@@ -2,6 +2,7 @@
 
 namespace App\Actions\V1\User;
 
+use App\Actions\V1\Auth\RecordPasswordHistoryAction;
 use App\Models\SystemSetting;
 use App\Models\User;
 use App\Notifications\UserCreatedNotification;
@@ -15,6 +16,10 @@ use Illuminate\Support\Facades\URL;
  */
 class CreateUserAction
 {
+    public function __construct(
+        private readonly RecordPasswordHistoryAction $recordHistoryAction,
+    ) {}
+
     /**
      * Create a user and notify them with a temporary password.
      *
@@ -49,11 +54,14 @@ class CreateUserAction
 
             $verificationUrl = URL::temporarySignedRoute(
                 'verification.verify',
-                now()->addMinutes(SystemSetting::getInt('auth_verification_expire_minutes', 60)),
+                now()->addMinutes(SystemSetting::getInt('email_verification_expire_minutes', 60)),
                 ['id' => $user->getKey(), 'hash' => sha1($user->getEmailForVerification())]
             );
 
             Notification::send($user, new UserCreatedNotification($tempPassword, $user->username, $verificationUrl));
+
+            // Record initial temp password in history.
+            $this->recordHistoryAction->run($user, $user->password);
 
             return $user;
         });
@@ -61,6 +69,8 @@ class CreateUserAction
 
     private function generateTempPassword(): string
     {
+        $minLength = SystemSetting::getInt('password_min_length', 12);
+
         $upper = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
         $lower = 'abcdefghijklmnopqrstuvwxyz';
         $digits = '0123456789';
@@ -74,7 +84,7 @@ class CreateUserAction
         ];
 
         $all = $upper . $lower . $digits . $symbols;
-        for ($i = 4; $i < 12; $i++) {
+        for ($i = 4; $i < $minLength; $i++) {
             $password[] = $all[random_int(0, strlen($all) - 1)];
         }
 

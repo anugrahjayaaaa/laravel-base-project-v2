@@ -24,7 +24,7 @@ Use separate concepts:
 | `email_verified_at`      ← email verification (separate from activation)
 | `must_change_password`   ← first-login / post-reset enforcement
 | `password expiration`    ← password lifecycle state
-| `last_activity_at`       ← meaningful activity timestamp
+| `last_activity_at`       ← last successful login timestamp (Login-Only Strategy)
 | `soft-deleted`           ← deleted_at (deletion lifecycle)
 
 Primary status resolution: `App\Enums\UserStatusEnum::resolve()` — precedence: PENDING_VERIFICATION → LOCKED → INACTIVE → ACTIVE.
@@ -77,9 +77,9 @@ Password lifecycle    →  must_change_password, expiration, history
 || Admin activation | inactive | active | `users.activate` permission |
 || Admin lock | active/unlocked | locked | `users.lock` permission; blocked if `!is_active` (must activate first) |
 || Admin unlock | locked | unlocked | `users.unlock` permission |
-|| Failed-login threshold | any | throttle lock | configurable (default: 5 attempts → 15 min); cache + DB, does NOT touch `is_locked` |
-|| Inactivity timeout | active/unlocked | locked | scheduled job; sets `is_locked` |
-|| Password expires | valid | expired | configured `security.password_expiration.days`; forces change |
+||| Inactivity timeout | active/unlocked | locked | scheduled job; sets `is_locked` |
+||| Failed-login threshold | any | throttle lock | configurable (default: 5 attempts → 15 min); cache + DB, does NOT touch `is_locked` |
+||| Password expires | valid | expired | configured `password_expiry_days`; forces change |
 ||| Admin deactivates last superadmin | — | rejected | system-role protection |
 ||| Soft delete | active/inactive | deleted | `users.delete` permission; does NOT set `is_active = false` |
 ||| Restore | deleted | active/inactive | `users.update` permission |
@@ -102,16 +102,17 @@ Password lifecycle    →  must_change_password, expiration, history
 - Do NOT update on every request — only on meaningful activity
   (successful authentication, meaningful mutations).
 - A user who has **never logged in** has `last_activity_at = NULL` and is
-  included in the inactivity query via the `security.inactivity.grace_days`
-  configuration (see [Settings](../features/settings.md) §Inactivity Policy
+  included in the inactivity query via the `inactivity_lock_grace_enabled` and
+  `inactivity_lock_grace_days` configuration (see [Settings](../features/settings.md) §Inactivity Policy
   and [Authentication](../security/authentication.md) §Last Activity /
   Never-Logged-In Policy).
 - **Unlocking does NOT set `last_activity_at`** — unlocking is an
   administrative action, not user activity. `last_activity_at` is preserved
   as-is (NULL if never active, or the prior value) until the user performs
   an actual application action.
-- Controlled by configuration: `security.inactivity.enabled`,
-  `security.inactivity.days`, `security.inactivity.grace_days`.
+- Controlled by configuration: `inactivity_lock_enabled`,
+  `inactivity_lock_days`, `inactivity_lock_grace_enabled`,
+  `inactivity_lock_grace_days`.
 - The inactivity process is implemented as a scheduled/background job.
 
 ## User Operations

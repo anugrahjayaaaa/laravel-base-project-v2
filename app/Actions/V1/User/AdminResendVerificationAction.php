@@ -26,7 +26,7 @@ class AdminResendVerificationAction
         }
 
         $key = $this->key($user->email, $ip);
-        $maxAttempts = SystemSetting::getInt('auth_email_verification_rate_limit', 5);
+        $maxAttempts = SystemSetting::getInt('email_verification_rate_limit', 5);
 
         if (RateLimiter::tooManyAttempts($key, $maxAttempts)) {
             $seconds = RateLimiter::availableIn($key);

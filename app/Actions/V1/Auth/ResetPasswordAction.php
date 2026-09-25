@@ -2,20 +2,25 @@
 
 namespace App\Actions\V1\Auth;
 
+use App\Auth\LoginThrottle;
 use App\Models\SystemSetting;
 use App\Models\User;
-use App\Auth\LoginThrottle;
+use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password;
-use Illuminate\Support\Str;
-use Illuminate\Auth\Events\PasswordReset;
 
 /**
- * Reset a user's password via token with expiration enforcement.
+ * Reset a user's password via token with expiration enforcement + history recording.
  */
 class ResetPasswordAction
 {
+    public function __construct(
+        private readonly RecordPasswordHistoryAction $recordHistoryAction,
+    ) {
+    }
+
     /**
      * Reset the user's password using Laravel's Password broker.
      *
@@ -37,35 +42,44 @@ class ResetPasswordAction
             return ['error' => ['message' => 'Account is locked.', 'status' => 403], 'user' => $user];
         }
 
-        $status = Password::reset(
-            $request->only('email', 'password', 'password_confirmation', 'token'),
+        $status = DB::transaction(function () use ($request) {
+            $status = Password::reset(
+                $request->only('email', 'password', 'password_confirmation', 'token'),
+                function ($user, string $password): void {
+                    $days = SystemSetting::getInt('password_expiry_days', 90);
 
-            function ($user, string $password) {
-                $days = SystemSetting::getInt('auth_password_expiration_days', 90);
+                    $user->forceFill([
+                        'password' => Hash::make($password),
+                        'must_change_password' => false,
+                        'password_expires_at' => $days > 0 ? now()->addDays($days) : null,
+                        'remember_token' => null,
+                    ])->save();
 
-                $user->forceFill([
-                    'password' => Hash::make($password),
-                    'must_change_password' => false,
-                    'password_expires_at' => now()->addDays($days),
-                    'remember_token' => Str::random(60),
-                ])->save();
+                    // Password reset must invalidate every web and API session.
+                    DB::table('sessions')->where('user_id', $user->id)->delete();
+                    $user->tokens()->delete();
 
-                event(new PasswordReset($user));
-            }
-        );
+                    event(new PasswordReset($user));
+                    $this->recordHistoryAction->run($user, $user->password);
+                }
+            );
+
+            return $status;
+        });
 
         if ($status === Password::PASSWORD_RESET) {
-            $user?->tokens()->delete();
-
             return [
                 'user' => $user,
-                'status' => $status
+                'status' => $status,
             ];
         }
 
         return [
-            'error' => ['message' => 'Invalid or expired token.', 'status' => 400],
-            'user' => $user
+            'error' => [
+                'message' => 'Invalid or expired token.',
+                'status' => 400
+            ],
+            'user' => $user,
         ];
     }
 }

@@ -44,8 +44,8 @@
 ||| QA-AUTH-023 | Verify unlock does NOT update last_activity_at (NULL preserved) | Security | Unlock | TODO |
 ||| QA-AUTH-024 | Verify unlock does NOT update last_activity_at (existing timestamp preserved) | Security | Unlock | TODO |
 ||| QA-AUTH-025 | Verify last_activity_at updates only on meaningful activity, not every request | Functional | last_activity_at | TODO |
-||| QA-AUTH-026 | Verify NULL last_activity_at users included in inactivity query via grace_days | Functional | Inactivity | TODO |
-||| QA-AUTH-027 | Verify password change revokes existing sessions/tokens | Security | Password change | TODO |
+|||| QA-AUTH-026 | Verify NULL last_activity_at users included in inactivity query via grace_days | Functional | Inactivity | DONE |
+|||| QA-AUTH-027 | Verify password change revokes existing sessions/tokens | Security | Password change | DONE — all Sanctum tokens, database sessions, and remember_token are cleared in the password mutation transaction |
 
 ### User Management QA
 

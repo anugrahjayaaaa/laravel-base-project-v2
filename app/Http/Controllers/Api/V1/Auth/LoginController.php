@@ -10,7 +10,7 @@ use App\Models\User;
 use Illuminate\Http\JsonResponse;
 
 /**
- * API auth controller — login, returns JSON responses.
+ * API auth controller, login, returns JSON responses.
  */
 class LoginController extends Controller
 {

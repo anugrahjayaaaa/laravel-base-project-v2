@@ -8,7 +8,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
 
 /**
- * API session controller — list active tokens.
+ * API session controller, list active tokens.
  */
 class SessionController extends Controller
 {

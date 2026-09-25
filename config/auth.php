@@ -17,8 +17,8 @@ return [
     */
 
     'defaults' => [
-        'guard' => env('AUTH_GUARD', 'web'),
-        'passwords' => env('AUTH_PASSWORD_BROKER', 'users'),
+        'guard' => env('GUARD', 'web'),
+        'passwords' => env('PASSWORD_BROKER', 'users'),
     ],
 
     /*
@@ -70,7 +70,7 @@ return [
     'providers' => [
         'users' => [
             'driver' => 'eloquent',
-            'model' => env('AUTH_MODEL', User::class),
+            'model' => env('MODEL', User::class),
         ],
     ],
 
@@ -88,8 +88,8 @@ return [
     'passwords' => [
         'users' => [
             'provider' => 'users',
-            'table' => env('AUTH_PASSWORD_RESET_TOKEN_TABLE', 'password_reset_tokens'),
-            'expire' => env('AUTH_PASSWORD_RESET_EXPIRE_MINUTES', 15),
+            'table' => env('PASSWORD_RESET_TOKEN_TABLE', 'password_reset_tokens'),
+            'expire' => env('PASSWORD_RESET_EXPIRE_MINUTES', 15),
             'throttle' => 60,
         ],
     ],
@@ -104,6 +104,6 @@ return [
     | confirmation screen. By default, the timeout lasts for three hours.
     */
 
-    'password_timeout' => env('AUTH_PASSWORD_TIMEOUT', 10800),
+    'password_timeout' => env('PASSWORD_TIMEOUT', 10800),
 
 ];

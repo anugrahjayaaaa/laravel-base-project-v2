@@ -2,15 +2,19 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\User;
+use App\Services\InactivityLock;
+use App\Services\PasswordExpiry;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * Enforce that users with expired passwords or forced-change flags
- * cannot access normal application routes until they change their password.
+ * Enforce that users with expired passwords, forced-change flags,
+ * or inactivity locks cannot access normal application routes.
  *
- * Checks: must_change_password = true OR password_expires_at in the past.
+ * Checks: must_change_password = true OR password_expires_at in the past
+ *         OR last_activity_at beyond inactivity threshold.
  *
  * Exempts auth lifecycle routes (password change, verification, logout,
  * email resend). Works for both web (302 redirect) and API (403 JSON)
@@ -25,6 +29,7 @@ class EnsurePasswordChangeRequired
     protected const EXEMPT_SUBSTRINGS = [
         'password.change',
         'password.change.update',
+        'password.expired',
         'verification',
         'email.resend',
         'logout',
@@ -34,15 +39,13 @@ class EnsurePasswordChangeRequired
      * Enforce that users with expired passwords or forced-change flags
      * cannot access normal application routes until they change their password.
      *
-     * Checks: must_change_password = true OR password_expires_at in the past.
-     *
      * @param Request $request
      * @param Closure $next
      * @return Response
      */
     public function handle(Request $request, Closure $next): Response
     {
-        /** @var \App\Models\User|null $user */
+        /** @var User|null $user */
         $user = $request->user();
 
         if (! $user) {
@@ -58,6 +61,26 @@ class EnsurePasswordChangeRequired
             }
         }
 
+        // Check inactivity lock first (highest priority — locks the account)
+        if (InactivityLock::shouldLock($user)) {
+            InactivityLock::lock($user);
+
+            $user->audit('auth.inactivity_lock.middleware', null, [
+                'causer' => 'SYSTEM',
+                'source' => 'middleware',
+                'last_activity_at' => $user->last_activity_at?->toIso8601String(),
+            ]);
+
+            if ($request->expectsJson() || $request->is('api/*')) {
+                return response()->json([
+                    'message' => 'Account locked due to inactivity. Contact your administrator.',
+                    'code' => 'ACCOUNT_LOCKED_INACTIVITY',
+                ], 403);
+            }
+
+            return redirect()->route('login')->with('error', 'Account locked due to inactivity.');
+        }
+
         if ($this->shouldForceChange($user)) {
             if ($request->expectsJson() || $request->is('api/*')) {
                 return response()->json([
@@ -66,7 +89,7 @@ class EnsurePasswordChangeRequired
                 ], 403);
             }
 
-            return redirect()->route('password.change');
+            return redirect()->route('password.expired');
         }
 
         return $next($request);
@@ -84,7 +107,6 @@ class EnsurePasswordChangeRequired
             return true;
         }
 
-        return $user->password_expires_at
-            && $user->password_expires_at->isPast();
+        return PasswordExpiry::isExpired($user);
     }
 }

@@ -313,7 +313,7 @@ observers for audit. See `docs/base/architecture/application-components.md` §Ac
       "PWD-002"
     ],
     "status": "DONE",
-    "note": "API-side DONE: ChangePassword action + ApiPasswordChangeController exist. Phase 5 password policy/history/expiry tasks still pending."
+    "note": "Web/API password change flow uses the shared action and revokes all Sanctum tokens, database sessions, and remember_token atomically."
   },
   {
     "id": "AUTH-015",
@@ -323,7 +323,8 @@ observers for audit. See `docs/base/architecture/application-components.md` §Ac
     "depends_on": [
       "RATE-001"
     ],
-    "status": "PLANNED"
+    "status": "DONE",
+    "note": "Login throttling and progressive lockout are implemented and covered by the authentication test suite."
   },
   {
     "id": "USER-001",
@@ -423,7 +424,8 @@ observers for audit. See `docs/base/architecture/application-components.md` §Ac
     "depends_on": [
       "P0-001"
     ],
-    "status": "PLANNED"
+    "status": "DONE",
+    "note": "Group A complete: PasswordPolicy + PasswordStrengthRule + views + tests. P5-A1..A9 shipped."
   },
   {
     "id": "PWD-002",
@@ -433,7 +435,8 @@ observers for audit. See `docs/base/architecture/application-components.md` §Ac
     "depends_on": [
       "PWD-001"
     ],
-    "status": "PLANNED"
+    "status": "DONE",
+    "note": "Group A complete: PasswordStrengthRule wired into ChangePasswordAction, ResetPassword, ProfileUpdate requests."
   },
   {
     "id": "PWD-003",
@@ -443,7 +446,8 @@ observers for audit. See `docs/base/architecture/application-components.md` §Ac
     "depends_on": [
       "PWD-002"
     ],
-    "status": "PLANNED"
+    "status": "DONE",
+    "note": "Phase 5 Group B complete: password history table, policy enforcement, settings UI, and tests shipped."
   },
   {
     "id": "PWD-004",
@@ -453,7 +457,8 @@ observers for audit. See `docs/base/architecture/application-components.md` §Ac
     "depends_on": [
       "PWD-002"
     ],
-    "status": "PLANNED"
+    "status": "DONE",
+    "note": "Phase 5 Group C complete: password expiry service, middleware, forced-change screen, warning banner, sweeps, settings, and tests shipped."
   },
   {
     "id": "PWD-005",
@@ -1049,7 +1054,8 @@ observers for audit. See `docs/base/architecture/application-components.md` §Ac
     "depends_on": [
       "USER-001"
     ],
-    "status": "PLANNED"
+    "status": "DONE",
+    "note": "Phase 5 Group C complete: last activity login tracking, null-user grace period, request-time lock audit, scheduled lock sweep, and tests shipped."
   },
   {
     "id": "ROUTE-001",

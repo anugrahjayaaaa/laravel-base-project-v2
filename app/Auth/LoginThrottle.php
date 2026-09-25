@@ -61,7 +61,7 @@ class LoginThrottle
             return true;
         }
 
-        $max = SystemSetting::getInt('auth_login_max_attempts', 5);
+        $max = SystemSetting::getInt('login_max_attempts', 5);
 
         return RateLimiter::tooManyAttempts($this->key('login', $identifier, $ip), $max);
     }
@@ -99,13 +99,13 @@ class LoginThrottle
     public function recordFailed(string $identifier, string $ip, ?User $user = null): int
     {
         $key = $this->key('login', $identifier, $ip);
-        $maxAttempts = SystemSetting::getInt('auth_login_max_attempts', 5);
+        $maxAttempts = SystemSetting::getInt('login_max_attempts', 5);
 
         // Hit the rate limiter (cache-backed transport throttle).
         RateLimiter::hit($key, 60);
 
         // Persist escalation state in the DB (within a transaction for
-        // race-safety — see docs/base/security/rate-limiting.md).
+        // race-safety, see docs/base/security/rate-limiting.md).
         // ponytail: SQLite lacks real row locking; relies on test-level
         // sequential execution. Production uses MySQL/PostgreSQL.
         $lockedSeconds = 0;
@@ -128,7 +128,7 @@ class LoginThrottle
                 $record->locked_until = now()->addMinutes($durationMinutes);
                 $record->save();
 
-                // Clear cache counter — DB lock governs the window now.
+                // Clear cache counter, DB lock governs the window now.
                 RateLimiter::clear($key);
 
                 $lockedSeconds = $durationMinutes * 60;

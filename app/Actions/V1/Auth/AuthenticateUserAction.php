@@ -134,7 +134,7 @@ class AuthenticateUserAction
      */
     protected function checkEmailVerification(User $user): ?array
     {
-        if (SystemSetting::getString('auth_verification_mode', 'public') === 'disabled') {
+        if (SystemSetting::getString('email_verification_mode', 'public') === 'disabled') {
             return null;
         }
 

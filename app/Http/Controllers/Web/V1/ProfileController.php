@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers\Web\V1;
 
-use App\Actions\V1\Auth\ChangePassword;
+use App\Actions\V1\Auth\ChangePasswordAction;
 use App\Actions\V1\User\UpdateUserAction;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\User\ProfileUpdateRequest;
@@ -12,18 +12,19 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
 
 /**
- * Profile controller — view and update user profile, change password.
+ * Profile controller, view and update user profile, change password.
  */
 class ProfileController extends Controller
 {
     /**
      * @param  UpdateUserAction  $updateAction
-     * @param  ChangePassword  $changePasswordAction
+     * @param  ChangePasswordAction  $ChangePasswordAction
      */
     public function __construct(
         private readonly UpdateUserAction $updateAction,
-        private readonly ChangePassword $changePasswordAction,
-    ) {}
+        private readonly ChangePasswordAction $ChangePasswordAction,
+    ) {
+    }
 
     /**
      * Show the profile edit page.
@@ -40,29 +41,39 @@ class ProfileController extends Controller
         $usernameCooldownDays = (int) SystemSetting::getInt('username_change_cooldown_days', 30);
 
         // Password policy hint (min length + complexity toggles only; history/expiry intentionally excluded)
-        $minPasswordLength = (int) SystemSetting::getInt('auth_password_min_length', 8);
-        $passwordMixedCase = SystemSetting::getBool('auth_password_mixed_case', true);
-        $passwordNumbers = SystemSetting::getBool('auth_password_numbers', true);
-        $passwordSymbols = SystemSetting::getBool('auth_password_symbols', true);
+        $minPasswordLength = (int) SystemSetting::getInt('password_min_length', 12);
+        $passwordUpper = SystemSetting::getBool('password_require_upper', true);
+        $passwordLower = SystemSetting::getBool('password_require_lower', true);
+        $passwordDigit = SystemSetting::getBool('password_require_digit', true);
+        $passwordSymbol = SystemSetting::getBool('password_require_symbol', true);
 
         $hintParts = ["Use at least {$minPasswordLength} characters"];
+
         $reqs = [];
-        if ($passwordMixedCase) {
-            $reqs[] = 'a mix of uppercase and lowercase letters';
+        if ($passwordUpper) {
+            $reqs[] = 'an uppercase letter';
         }
-        if ($passwordNumbers) {
-            $reqs[] = 'numbers';
+
+        if ($passwordLower) {
+            $reqs[] = 'a lowercase letter';
         }
-        if ($passwordSymbols) {
-            $reqs[] = 'symbols';
+
+        if ($passwordDigit) {
+            $reqs[] = 'a number';
         }
+
+        if ($passwordSymbol) {
+            $reqs[] = 'a symbol';
+        }
+
         if ($reqs) {
             $hintParts[] = 'with ' . implode(', ', $reqs);
         }
         $passwordPolicyHint = implode(' ', $hintParts) . '.';
 
         return view('pages.profile.edit', compact(
-            'user', 'initials',
+            'user',
+            'initials',
             'allowEmailChange',
             'allowUsernameChange',
             'emailCooldownDays',
@@ -72,9 +83,19 @@ class ProfileController extends Controller
     }
 
     /**
+     * Show the forced password change screen.
+     */
+    public function showExpiredPassword()
+    {
+        return response()->view('pages.auth.password-expired', [
+            'title' => 'Password Expired',
+        ]);
+    }
+
+    /**
      * Change password for users who must change on first login.
      */
-    public function changePassword(ProfileUpdateRequest $request): RedirectResponse
+    public function ChangePasswordAction(ProfileUpdateRequest $request): RedirectResponse
     {
         $user = $request->user();
         $data = $request->validated();
@@ -85,7 +106,7 @@ class ProfileController extends Controller
             ]);
         }
 
-        ($this->changePasswordAction)->run(
+        ($this->ChangePasswordAction)->run(
             user: $user,
             currentPassword: $data['current_password'],
             newPassword: $data['password'],
@@ -112,7 +133,7 @@ class ProfileController extends Controller
         ($this->updateAction)->run($user, $data);
 
         if ($request->filled('password')) {
-            ($this->changePasswordAction)->run(
+            ($this->ChangePasswordAction)->run(
                 user: $user,
                 currentPassword: $data['current_password'],
                 newPassword: $data['password'],

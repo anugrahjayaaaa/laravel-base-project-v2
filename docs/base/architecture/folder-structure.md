@@ -5,7 +5,7 @@
 ```
 app/
 ├── Actions/          # Application/business logic (use cases) — single-operation classes
-│                       # Naming: VerbNoun (e.g. ChangePassword). One public method.
+│                       # Naming: VerbNoun (e.g. ChangePasswordAction). One public method.
 │                       # Extract when non-trivial (>~10 lines) OR shared across ≥2 controllers.
 │                       # Mutations log audit within the action itself.
 ├── Http/

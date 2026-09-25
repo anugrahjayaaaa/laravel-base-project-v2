@@ -92,7 +92,8 @@ All configuration in `config/`:
 
 | Setting | Location | Manageable via UI? |
 |---------|----------|-------------------|
-| `security.inactivity.days` | Settings DB | Yes |
+| `inactivity_lock_enabled`, `inactivity_lock_days`, `inactivity_lock_grace_enabled`, `inactivity_lock_grace_days` | Settings DB | Yes |
+| `password_expiry_days` and `password_expiry_warn_days` | Settings DB | Yes |
 | `registration.enabled` | Settings DB | Yes |
 | `DB_HOST` | `.env` / config | No |
 | `QUEUE_CONNECTION` | `.env` / config | No |

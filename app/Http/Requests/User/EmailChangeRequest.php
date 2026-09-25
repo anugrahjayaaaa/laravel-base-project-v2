@@ -12,7 +12,7 @@ use Illuminate\Validation\Rule;
 class EmailChangeRequest extends FormRequest
 {
     /**
-     * Guest route — token-based authorization via route param.
+     * Guest route,token-based authorization via route param.
      */
     public function authorize(): bool
     {

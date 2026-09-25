@@ -20,33 +20,45 @@ class SystemSettingSeeder extends Seeder
     public function run(): void
     {
         // Login rate limiting & progressive lockout
-        SystemSetting::set('auth_login_max_attempts', '5');
-        SystemSetting::set('auth_lockout_base_minutes', '5');
-        SystemSetting::set('auth_lockout_increment_minutes', '10');
-        SystemSetting::set('auth_login_rate_limit_per_minute', '5');
+        SystemSetting::set('login_max_attempts', '5');
+        SystemSetting::set('lockout_base_minutes', '5');
+        SystemSetting::set('lockout_increment_minutes', '10');
+        SystemSetting::set('login_rate_limit_per_minute', '5');
 
         // Password reset / verification rate limits
-        SystemSetting::set('auth_password_forgot_rate_limit', '3');
-        SystemSetting::set('auth_password_reset_rate_limit', '3');
-        SystemSetting::set('auth_password_reset_token_expire_minutes', '15');
-        SystemSetting::set('auth_email_verification_rate_limit', '5');
-        SystemSetting::set('auth_email_verification_token_expire_minutes', '60');
+        SystemSetting::set('password_forgot_rate_limit', '3');
+        SystemSetting::set('password_reset_rate_limit', '3');
+        SystemSetting::set('password_reset_token_expire_minutes', '15');
+        SystemSetting::set('email_verification_rate_limit', '5');
+        SystemSetting::set('email_verification_token_expire_minutes', '60');
 
-        // Password policy & lifecycle
-        SystemSetting::set('auth_password_min_length', '8');
-        SystemSetting::set('auth_password_mixed_case', 'true');
-        SystemSetting::set('auth_password_numbers', 'true');
-        SystemSetting::set('auth_password_symbols', 'true');
-        SystemSetting::set('auth_password_uncompromised', 'false');
-        SystemSetting::set('auth_password_history_count', '5');
-        SystemSetting::set('auth_password_expiration_days', '90');
+        // Password policy (IM8,admin-editable via /settings)
+        SystemSetting::set('password_min_length', '12');
+        SystemSetting::set('password_require_upper', 'true');
+        SystemSetting::set('password_require_lower', 'true');
+        SystemSetting::set('password_require_digit', 'true');
+        SystemSetting::set('password_require_symbol', 'true');
+        SystemSetting::set('password_reject_username', 'true');
+
+        // Password lifecycle
+        SystemSetting::set('password_history_enabled', 'true');
+        SystemSetting::set('password_history_count', '5');
+        SystemSetting::set('password_expiry_enabled', 'true');
+        SystemSetting::set('password_expiry_days', '90');
+        SystemSetting::set('password_expiry_warn_days', '14');
+        SystemSetting::set('password_security_sweep_time', '00:00');
+        SystemSetting::set('password_security_sweep_timezone', '');
+        SystemSetting::set('inactivity_lock_enabled', 'true');
+        SystemSetting::set('inactivity_lock_days', '30');
+        SystemSetting::set('inactivity_lock_grace_enabled', 'true');
+        SystemSetting::set('inactivity_lock_grace_days', '30');
 
         // Email verification
-        SystemSetting::set('auth_verification_expire_minutes', '60');
-        SystemSetting::set('auth_verification_mode', 'public');
+        SystemSetting::set('email_verification_expire_minutes', '60');
+        SystemSetting::set('email_verification_mode', 'public');
 
         // Password reset token (Laravel broker)
-        SystemSetting::set('auth_password_reset_expire_minutes', '15');
+        SystemSetting::set('password_reset_expire_minutes', '15');
 
         // Username / email change settings
         SystemSetting::set('allow_username_change', 'true');

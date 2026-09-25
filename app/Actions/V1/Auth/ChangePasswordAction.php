@@ -4,23 +4,24 @@ namespace App\Actions\V1\Auth;
 
 use App\Models\SystemSetting;
 use App\Models\User;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 
 /**
- * Shared password-change logic — used by both Web and API controllers.
+ * Shared password-change logic, used by both Web and API controllers.
  *
  * Validates the current password, enforces the IM8 policy, checks password
- * history, hashes the new password, updates expiration, clears
- * must_change_password, revokes active sessions/tokens, and creates an
- * audit event.
- *
- * Per docs/base/security/password-security.md §Password Change Revocation,
- * password change must revoke all existing web sessions and Sanctum tokens.
+ * history (if enabled), hashes the new password, updates expiration, clears
+ * must_change_password, revokes active sessions/tokens, and records history.
  */
-class ChangePassword
+class ChangePasswordAction
 {
+    public function __construct(
+        private readonly RecordPasswordHistoryAction $recordHistoryAction,
+    ) {}
+
     /**
      * Execute the password change.
      *
@@ -40,25 +41,30 @@ class ChangePassword
             ]);
         }
 
-        // Password history check.
-        if ($this->recentlyUsed($user, $newPassword)) {
-            $count = SystemSetting::getInt('auth_password_history_count', 5);
+        // Password history check (only if enabled).
+        if (SystemSetting::getBool('password_history_enabled', true) && $this->recentlyUsed($user, $newPassword)) {
+            $count = SystemSetting::getInt('password_history_count', 5);
+
             throw ValidationException::withMessages([
                 'password' => ["You cannot reuse one of your last {$count} passwords."],
             ]);
         }
 
         return DB::transaction(function () use ($user, $newPassword) {
-            $user->password = Hash::make($newPassword);
+            // Password, history, sessions, and tokens must change atomically.
+            $user->password = $newPassword;
             $user->must_change_password = false;
             $user->password_expires_at = $this->calculateExpiration();
+
+            $user->setRememberToken(null);
             $user->save();
 
             // Record password history.
-            $this->recordHistory($user, $user->password);
+            $this->recordHistoryAction->run($user, $user->password);
 
-            // Revoke all active Sanctum tokens for this user.
+            // Revoke all active Sanctum and web sessions.
             $user->tokens()->delete();
+            DB::table('sessions')->where('user_id', $user->id)->delete();
 
             return true;
         });
@@ -67,9 +73,9 @@ class ChangePassword
     /**
      * Calculate the next password expiration timestamp.
      */
-    protected function calculateExpiration(): ?\Illuminate\Support\Carbon
+    protected function calculateExpiration(): ?Carbon
     {
-        $days = SystemSetting::getInt('auth_password_expiration_days', 90);
+        $days = SystemSetting::getInt('password_expiry_days', 90);
 
         if ($days <= 0) {
             return null;
@@ -83,7 +89,7 @@ class ChangePassword
      */
     protected function recentlyUsed(User $user, string $newPassword): bool
     {
-        $count = SystemSetting::getInt('auth_password_history_count', 5);
+        $count = SystemSetting::getInt('password_history_count', 5);
 
         $history = DB::table('password_histories')
             ->where('user_id', $user->id)
@@ -91,18 +97,6 @@ class ChangePassword
             ->limit($count)
             ->get();
 
-        return $history->contains(fn ($h) => Hash::check($newPassword, $h->password));
-    }
-
-    /**
-     * Store the password hash in history.
-     */
-    protected function recordHistory(User $user, string $hashedPassword): void
-    {
-        DB::table('password_histories')->insert([
-            'user_id' => $user->id,
-            'password' => $hashedPassword,
-            'created_at' => now(),
-        ]);
+        return $history->contains(fn($h) => Hash::check($newPassword, $h->password));
     }
 }

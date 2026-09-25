@@ -11,7 +11,7 @@ use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 
 /**
- * User state controller — activate, deactivate, lock, unlock users (web).
+ * User state controller,activate, deactivate, lock, unlock users (web).
  */
 class UserStateController extends Controller
 {
