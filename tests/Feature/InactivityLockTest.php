@@ -51,6 +51,33 @@ class InactivityLockTest extends TestCase
         $this->assertFalse(InactivityLock::isInactive($user));
     }
 
+    public function test_grace_period_enabled_uses_configured_days(): void
+    {
+        SystemSetting::set('inactivity_lock_grace_enabled', 'true');
+        SystemSetting::set('inactivity_lock_grace_days', '30');
+        SystemSetting::bustCache();
+
+        $user = User::factory()->create([
+            'last_activity_at' => null,
+            'created_at' => now()->subDays(59),
+        ]);
+
+        $this->assertFalse(InactivityLock::isInactive($user));
+    }
+
+    public function test_grace_period_can_be_disabled_for_never_logged_in_users(): void
+    {
+        SystemSetting::set('inactivity_lock_grace_enabled', 'false');
+        SystemSetting::bustCache();
+
+        $user = User::factory()->create([
+            'last_activity_at' => null,
+            'created_at' => now()->subDays(35),
+        ]);
+
+        $this->assertTrue(InactivityLock::isInactive($user));
+    }
+
     public function test_is_inactive_returns_false_when_disabled(): void
     {
         SystemSetting::set('inactivity_lock_enabled', 'false');

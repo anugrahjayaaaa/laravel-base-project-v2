@@ -88,6 +88,39 @@ class SystemSettingUpdateTest extends TestCase
         $response->assertSessionHasErrors('password_security_sweep_timezone');
     }
 
+    public function test_grace_toggle_disables_and_does_not_store_disabled_days(): void
+    {
+        SystemSetting::set('inactivity_lock_grace_enabled', 'true');
+        SystemSetting::set('inactivity_lock_grace_days', '45');
+
+        $user = User::factory()->create();
+        $this->actingAs($user, 'web');
+
+        $response = $this->from('/settings')->post(route('settings.update'), [
+            'inactivity_lock_grace_enabled' => 'off',
+            'inactivity_lock_grace_days' => 30,
+        ]);
+
+        $response->assertRedirect();
+        $this->assertFalse(SystemSetting::getBool('inactivity_lock_grace_enabled'));
+        $this->assertSame('45', SystemSetting::getString('inactivity_lock_grace_days'));
+    }
+
+    public function test_enabled_grace_toggle_stores_grace_days(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user, 'web');
+
+        $response = $this->from('/settings')->post(route('settings.update'), [
+            'inactivity_lock_grace_enabled' => '1',
+            'inactivity_lock_grace_days' => 45,
+        ]);
+
+        $response->assertRedirect();
+        $this->assertTrue(SystemSetting::getBool('inactivity_lock_grace_enabled'));
+        $this->assertSame('45', SystemSetting::getString('inactivity_lock_grace_days'));
+    }
+
     public function test_unchecked_checkboxes_store_false(): void
     {
         SystemSetting::set('allow_username_change', 'true');
@@ -106,6 +139,24 @@ class SystemSettingUpdateTest extends TestCase
         $this->assertFalse(SystemSetting::getBool('allow_email_change'));
         $this->assertEquals(30, SystemSetting::getInt('username_change_cooldown_days'));
         $this->assertEquals(30, SystemSetting::getInt('email_change_cooldown_days'));
+    }
+
+    public function test_settings_page_disables_grace_days_when_toggle_is_off(): void
+    {
+        SystemSetting::set('inactivity_lock_grace_enabled', 'false');
+        SystemSetting::bustCache();
+
+        $user = User::factory()->create();
+        $response = $this->actingAs($user, 'web')->get(route('settings.index'));
+
+        $response->assertOk()
+            ->assertSee('id="inactivity_lock_grace_enabled"', false)
+            ->assertSee('id="inactivity_lock_grace_days"', false);
+
+        $this->assertMatchesRegularExpression(
+            '/id="inactivity_lock_grace_days"[^>]*disabled/',
+            $response->getContent()
+        );
     }
 
     public function test_cache_is_invalidated_on_update(): void

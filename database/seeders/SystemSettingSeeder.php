@@ -43,7 +43,6 @@ class SystemSettingSeeder extends Seeder
         // Password lifecycle
         SystemSetting::set('password_history_enabled', 'true');
         SystemSetting::set('password_history_count', '5');
-        SystemSetting::set('password_expiration_days', '90');
         SystemSetting::set('password_expiry_enabled', 'true');
         SystemSetting::set('password_expiry_days', '90');
         SystemSetting::set('password_expiry_warn_days', '14');
@@ -51,6 +50,8 @@ class SystemSettingSeeder extends Seeder
         SystemSetting::set('password_security_sweep_timezone', '');
         SystemSetting::set('inactivity_lock_enabled', 'true');
         SystemSetting::set('inactivity_lock_days', '30');
+        SystemSetting::set('inactivity_lock_grace_enabled', 'true');
+        SystemSetting::set('inactivity_lock_grace_days', '30');
 
         // Email verification
         SystemSetting::set('email_verification_expire_minutes', '60');

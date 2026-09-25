@@ -125,21 +125,6 @@
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
                             </div>
-                            <div class="col-md-6">
-                                <label for="password_expiration_days" class="form-label">
-                                    Password Expiration
-                                    <i class="bi bi-info-circle text-muted fs-6 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Number of days before passwords expire and require renewal (0 to disable)."></i>
-                                </label>
-                                <div class="input-group">
-                                    <input type="number" name="password_expiration_days" id="password_expiration_days"
-                                           class="form-control form-control-sm @error('password_expiration_days') is-invalid @enderror"
-                                           value="{{ old('password_expiration_days', $settings['password_expiration_days'] ?? 90) }}" min="1" max="365">
-                                    <span class="input-group-text bg-body-tertiary">days</span>
-                                </div>
-                                @error('password_expiration_days')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
                         </div>
                         {{-- Password History --}}
                         <div class="row g-3 mt-0">
@@ -309,6 +294,35 @@
                                     <label for="inactivity_lock_enabled" class="form-check-label">
                                         Inactivity Lock
                                         <i class="bi bi-info-circle text-muted fs-6 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Locks accounts after the configured number of days of inactivity."></i>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row g-3 mt-0">
+                            <div class="col-md-6">
+                                <label for="inactivity_lock_grace_days" class="form-label">
+                                    Inactivity Grace Days
+                                    <i class="bi bi-info-circle text-muted fs-6 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Additional days for never-logged-in accounts before inactivity lock."></i>
+                                </label>
+                                <div class="input-group">
+                                    <input type="number" name="inactivity_lock_grace_days" id="inactivity_lock_grace_days"
+                                           class="form-control form-control-sm @error('inactivity_lock_grace_days') is-invalid @enderror"
+                                           value="{{ old('inactivity_lock_grace_days', $settings['inactivity_lock_grace_days'] ?? 30) }}" min="0" max="365"
+                                           {{ filter_var($settings['inactivity_lock_grace_enabled'] ?? 'true', FILTER_VALIDATE_BOOLEAN) ? '' : 'disabled' }}>
+                                    <span class="input-group-text bg-body-tertiary">days</span>
+                                </div>
+                                @error('inactivity_lock_grace_days')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-check form-switch mt-4 pt-2">
+                                    <input type="hidden" name="inactivity_lock_grace_enabled" value="0">
+                                    <input class="form-check-input" type="checkbox" name="inactivity_lock_grace_enabled" id="inactivity_lock_grace_enabled"
+                                        {{ filter_var($settings['inactivity_lock_grace_enabled'] ?? 'true', FILTER_VALIDATE_BOOLEAN) ? 'checked' : '' }} value="1">
+                                    <label for="inactivity_lock_grace_enabled" class="form-check-label">
+                                        Inactivity Grace Period
+                                        <i class="bi bi-info-circle text-muted fs-6 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Enables an extra grace period for accounts that have never logged in."></i>
                                     </label>
                                 </div>
                             </div>
@@ -524,6 +538,7 @@
                 ['password_history_enabled', 'password_history_count'],
                 ['password_expiry_enabled', 'password_expiry_days'],
                 ['inactivity_lock_enabled', 'inactivity_lock_days'],
+                ['inactivity_lock_grace_enabled', 'inactivity_lock_grace_days'],
             ];
 
             dependentFields.forEach(([toggleId, inputId]) => {

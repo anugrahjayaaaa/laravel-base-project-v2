@@ -45,7 +45,6 @@ class UpdateSystemSettingsAction
             'password_uncompromised' => ($data['password_uncompromised'] ?? false) ? 'true' : 'false',
             'password_history_enabled' => ($data['password_history_enabled'] ?? false) ? 'true' : 'false',
             'password_history_count' => (string) ($data['password_history_count'] ?? 5),
-            'password_expiration_days' => (string) ($data['password_expiration_days'] ?? 90),
             'password_expiry_enabled' => ($data['password_expiry_enabled'] ?? false) ? 'true' : 'false',
             'password_expiry_days' => (string) ($data['password_expiry_days'] ?? 90),
             'password_expiry_warn_days' => (string) ($data['password_expiry_warn_days'] ?? 14),
@@ -53,6 +52,11 @@ class UpdateSystemSettingsAction
             'password_security_sweep_timezone' => $data['password_security_sweep_timezone'] ?? '',
             'inactivity_lock_enabled' => ($data['inactivity_lock_enabled'] ?? false) ? 'true' : 'false',
             'inactivity_lock_days' => (string) ($data['inactivity_lock_days'] ?? 30),
+            'inactivity_lock_grace_enabled' => (
+                array_key_exists('inactivity_lock_grace_enabled', $data)
+                    ? (bool) $data['inactivity_lock_grace_enabled']
+                    : SystemSetting::getBool('inactivity_lock_grace_enabled', true)
+            ) ? 'true' : 'false',
 
             // Email verification
             'email_verification_expire_minutes' => (string) ($data['email_verification_expire_minutes'] ?? 60),
@@ -67,6 +71,12 @@ class UpdateSystemSettingsAction
             'allow_email_change' => ($data['allow_email_change'] ?? false) ? 'true' : 'false',
             'email_change_cooldown_days' => (string) ($data['email_change_cooldown_days'] ?? 30),
         ];
+
+        $graceEnabled = $updates['inactivity_lock_grace_enabled'] === 'true';
+
+        if ($graceEnabled && array_key_exists('inactivity_lock_grace_days', $data)) {
+            $updates['inactivity_lock_grace_days'] = (string) $data['inactivity_lock_grace_days'];
+        }
 
         foreach ($updates as $key => $value) {
             SystemSetting::set($key, $value);

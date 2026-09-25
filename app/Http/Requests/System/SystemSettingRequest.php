@@ -47,7 +47,6 @@ class SystemSettingRequest extends FormRequest
             'password_uncompromised' => ['boolean'],
             'password_history_enabled' => ['boolean'],
             'password_history_count' => ['integer', 'min:0', 'max:24'],
-            'password_expiration_days' => ['integer', 'min:1', 'max:365'],
             'password_expiry_enabled' => ['boolean'],
             'password_expiry_days' => ['integer', 'min:0', 'max:365'],
             'password_expiry_warn_days' => ['integer', 'min:1', 'max:90'],
@@ -60,6 +59,8 @@ class SystemSettingRequest extends FormRequest
             ],
             'inactivity_lock_enabled' => ['boolean'],
             'inactivity_lock_days' => ['integer', 'min:1', 'max:365'],
+            'inactivity_lock_grace_enabled' => ['boolean'],
+            'inactivity_lock_grace_days' => ['integer', 'min:0', 'max:365'],
 
             // Email verification
             'email_verification_expire_minutes' => ['integer', 'min:1', 'max:1440'],
@@ -90,6 +91,7 @@ class SystemSettingRequest extends FormRequest
                 'password_history_enabled',
                 'password_expiry_enabled',
                 'inactivity_lock_enabled',
+                'inactivity_lock_grace_enabled',
                 'allow_username_change',
                 'allow_email_change',
             ] as $key
