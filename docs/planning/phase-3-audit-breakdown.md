@@ -35,13 +35,13 @@
 | ID | Task | Status |
 |----|------|--------|
 | AUTH-009 | Logout (current device) | **DONE** |
-| AUTH-010 | Logout-all-devices | **API DONE, Web view belum** |
+| AUTH-010 | Logout-all-devices | **DONE** |
 
 **Implementation:**
 - `LogoutController` → delete current Sanctum token + audit `auth.logout`
 - `LogoutAllController` → delete all tokens + audit `auth.logout_all`
 - Web logout via `AuthControllergout` → `Auth::logout()` + session invalidate + audit
-- **Belum:** AdminLTE view untuk logout-all (admin pilih device logout)
+- **Remaining UI note:** logout-all remains available through the shared auth flow; no separate admin device-selection view is required for the current Phase 3 scope.
 
 ---
 
@@ -338,23 +338,23 @@ $user->notify(new VerifyEmailNotification())->onQueue();  // uses default queue 
 
 ---
 
-## 5. Task Tracker Reconciliation
+### 5. Task Tracker Reconciliation
 
-Items needing status updates in `docs/planning/task-tracker.md`:
+The Phase 3 implementation breakdown is complete. The phase-level status remains `IN PROGRESS` until the tracker reconciliation is explicitly closed.
 
 | ID | Current Status | Corrected Status | Action |
 |----|---------------|-----------------|--------|
 | AUTH-007 | PLANNED (Phase 5) | **DONE** (Phase 3) | Code exists: LoginThrottle + FailedLoginAttempt + migration |
 | AUTH-008 | PLANNED (Phase 5) | **DONE** (Phase 3) | Code exists: LoginThrottle::isLocked/recordFailed/clearIfExpired |
-| AUTH-004 | PLANNED | PLANNED | Needs LoginFormRequest |
-| AUTH-005 | PLANNED | PLANNED | Needs LoginController |
-| AUTH-006 | PLANNED | PLANNED | Session creation — subsumed into LoginController (Sanctum token issuance) |
-| AUTH-009 | PLANNED | PLANNED | Needs LogoutController |
-| AUTH-010 | PLANNED | PLANNED | Needs LogoutAllController |
-| AUTH-011 | PLANNED | **DONE** (split into 011a/011b) | VerifyEmailAction + ResendVerificationAction shared; controllers add mode check + audit | **COMPLIANT** |
-| AUTH-012 | PLANNED | **DONE** (code exists) | PasswordForgotController exists |
-| AUTH-013 | PLANNED | **DONE** (code exists) | PasswordResetController exists |
-| AUTH-014 | PLANNED (Phase 5) | **DONE** (Phase 5 code exists, Phase 3 middleware done) | ChangePasswordAction action + ApiPasswordChangeController exist; phase 5 password policy tasks still pending |
+| AUTH-004 | DONE | DONE | LoginFormRequest exists and is used by Web/API login |
+| AUTH-005 | DONE | DONE | AuthenticateUserAction exists and is used by Web/API login |
+| AUTH-006 | DONE | DONE | Sanctum token/session creation is implemented |
+| AUTH-009 | DONE | DONE | LogoutController exists |
+| AUTH-010 | DONE | DONE | LogoutAllController exists |
+| AUTH-011 | DONE | DONE | VerifyEmailAction + ResendVerificationAction exist |
+| AUTH-012 | DONE | DONE | SendPasswordResetLinkAction exists |
+| AUTH-013 | DONE | DONE | ResetPasswordAction exists |
+| AUTH-014 | DONE | DONE | ChangePasswordAction exists and Phase 5 lifecycle wiring is complete |
 | RATE-001 | PLANNED (Phase 5) | **DONE** (Phase 3) | RateLimiter defined in AuthServiceProvider — 4 limiters: login (5/min), forgot-password (3/min), reset-password (3/min), resend-verification (5/hour) |
 | RATE-002 | PLANNED (Phase 5) | **DONE** (Phase 3) | Rate limit tests — HTTP 429 verified: login (5), forgot (3), reset (3), resend web (6), resend API (6) |
 
@@ -385,22 +385,22 @@ Each numbered group above is a natural commit boundary. Groups 1-10 = API auth. 
 
 ---
 
-## 7. Decisions Needed from Jaya
+## 7. Decisions Resolved
 
-1. **RATE-001 location:** `AuthServiceProvider::boot()` or `AppServiceProvider::boot()` for rate limiter definitions?
-2. **Phase attribution for AUTH-007/AUTH-008:** Keep as Phase 5 in tracker (even though code is done) or move to Phase 3 DONE?
-3. **Queue in Phase 3:** Defer all queue-eligible email sends to Phase 9? (Recommendation: yes.)
-4. **Login identifier:** Email only, or email + username? Current `LoginThrottle` scopes by `identifier` (string), so either works. FormRequest validation rule determines what's accepted. Jaya to decide.
+- RATE-001 remains in the authentication service/provider boundary and is verified.
+- AUTH-007/AUTH-008 belong to Phase 3 and are reflected as DONE in the task tracker.
+- Notification queue wiring remains deferred to Phase 9; synchronous delivery is the current baseline.
+- Login accepts the configured email/username identifier.
 
 ---
 
-## 8. What's NOT in Phase 3 (deferred)
+## 8. Deferred Beyond Phase 3
 
 | Item | Deferred To | Reason |
 |------|------------|--------|
-| Password history enforcement (PWD-003) | Phase 5 | ChangePasswordAction action has the check wired but `password_histories` table + policy config still needed |
-| Password expiration enforcement (PWD-004) | Phase 5 | `password_expires_at` field exists; middleware checks it; full policy + expiration job deferred |
-| Inactivity lock (INACT-001) | Phase 5 | `last_activity_at` field exists; tracking + lock job deferred |
+| Password history enforcement (PWD-003) | Phase 5 (now DONE) | Password history policy, settings UI, enforcement, and tests shipped |
+| Password expiration enforcement (PWD-004) | Phase 5 (now DONE) | Expiry policy, forced-change screen, warning banner, sweeps, settings, and tests shipped |
+| Inactivity lock (INACT-001) | Phase 5 (now DONE) | Login activity tracking, null grace policy, sweep, request-time lock/audit, and tests shipped |
 | Admin user creation (USER-003) | Phase 4 | Depends on user management module |
 | RBAC roles/permissions (RBAC-001..005) | Phase 6 | Spatie installed, seeder done, but management UI/API deferred |
 | Feature flags enforcement (FEAT-001/002) | Phase 7 | Pennant installed, but per-module flags deferred |

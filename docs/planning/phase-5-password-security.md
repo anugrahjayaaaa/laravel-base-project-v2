@@ -26,10 +26,10 @@
 |-----|--------|-------|
 | PWD-001 IM8 password policy | DONE (Group A) | `PasswordPolicy` shipped |
 | PWD-002 Password validation rule | DONE (Group A) | `PasswordStrengthRule` shipped |
-| PWD-003 Password history enforcement | PLANNED (Group B) | Table exists, needs toggle + UI |
-| PWD-004 Password expiration | PLANNED (Group C) | Column exists, needs SystemSetting + UI |
-| AUTH-015 Login rate limiting | PLANNED | Already DONE in Phase 3 — just needs tracker reconciliation |
-| INACT-001 Inactivity tracking | PLANNED (Group C) | Column exists, needs job + enforcement |
+| PWD-003 Password history enforcement | DONE | Password history table, enforcement, settings UI, and tests implemented |
+| PWD-004 Password expiration | DONE | Password expiry service, enforcement, sweeps, UI, and tests implemented |
+| AUTH-015 Login rate limiting | DONE | Already implemented in Phase 3 |
+| INACT-001 Inactivity tracking | DONE | Last activity tracking, null-user grace policy, lock job, enforcement, and tests implemented |
 
 ---
 
@@ -107,15 +107,15 @@
 
 | ID | Task | Depends | Est. | Notes |
 |----|------|---------|------|-------|
-| P5-C1 | SystemSetting keys: `password_expiry_days` (default 90), `password_expiry_enabled` (bool), `password_expiry_warn_days` (default 14), `inactivity_lock_days` (default 30), `inactivity_lock_enabled` (bool) | P5-B1 | small | Add to seeder |
+| P5-C1 | SystemSetting keys: `password_expiry_days` (default 90), `password_expiry_enabled` (bool), `password_expiry_warn_days` (default 14), `inactivity_lock_days` (default 30), `inactivity_lock_enabled` (bool), `inactivity_lock_grace_enabled` (bool, default true), `inactivity_lock_grace_days` (default 30), `password_security_sweep_time` (default `00:00`), `password_security_sweep_timezone` (default application timezone) | P5-B1 | small | Grace toggle controls whether the never-logged-in grace threshold is applied; add to seeder, settings action/request, and timezone reference table |
 | P5-C2 | `PasswordExpiry` service — `app/Services/PasswordExpiry.php`: `isExpired(User)`, `daysUntilExpiry(User)`, `shouldWarn(User)` | P5-C1 | small | Pure logic, testable |
 | P5-C3 | `InactivityLock` service — `app/Services/InactivityLock.php`: `isInactive(User)`, `shouldLock(User)`, `lock(User)` | P5-C1 | small | Pure logic, testable |
-| P5-C4 | Update `EnsurePasswordChangeRequired` middleware — call `PasswordExpiry::isExpired` + `InactivityLock::isInactive` | P5-C2,C3 | small | Already exists; extend to cover both |
+| P5-C4 | Update `EnsurePasswordChangeRequired` middleware — call `PasswordExpiry::isExpired` + `InactivityLock::shouldLock` | P5-C2,C3 | small | Redirect to password-expired screen; lock + audit on inactivity |
 | P5-C5 | View: `auth/password-expired.blade.php` — forced change screen (like verify-email layout) | P5-C4 | small | AdminLTE auth layout; form POST to `password.change` |
-| P5-C6 | View: expiry warning banner — `partials/password-expiry-warning.blade.php` | P5-C2 | small | Dismissible callout on dashboard when `shouldWarn()` true |
+| P5-C6 | View: expiry warning banner — `partials/password-expiry-warning.blade.php` | P5-C2 | small | Dismissible callout on authenticated layout when `shouldWarn()` true |
 | P5-C7 | View: add "Password Expiration" + "Inactivity Lock" sections to `/settings` (security tab) | P5-C1 | small | Number inputs + toggles; matches settings page pattern |
-| P5-C8 | Job: `app/Jobs/PasswordExpirySweep.php` — daily sweep, set `must_change_password` for expired users | P5-C2 | small | Scheduled via `routes/console.php` or `app/Console/Kernel` |
-| P5-C9 | Job: `app/Jobs/InactivityLockSweep.php` — daily sweep, `is_locked = true` + session revocation for inactive users | P5-C3 | small | Same scheduling |
+| P5-C8 | Job: `app/Jobs/PasswordExpirySweep.php` — scheduled sweep, set `must_change_password` for expired users | P5-C2 | small | Minute scheduler checks configured sweep time and timezone |
+| P5-C9 | Job: `app/Jobs/InactivityLockSweep.php` — scheduled sweep, `is_locked = true` + session/token revocation for inactive users | P5-C3 | small | Same runtime-configured schedule; null activity uses grace policy |
 | P5-C10 | Tests: expiry logic, inactivity logic, middleware redirect, job sweep, warning banner render | P5-C2..C9 | medium | Pest feature + unit |
 
 **Deliverables:**
@@ -126,12 +126,12 @@
 - `resources/views/pages/auth/password-expired.blade.php`
 - `resources/views/partials/password-expiry-warning.blade.php`
 - `EnsurePasswordChangeRequired` middleware updated
-- `settings/index.blade.php` — 2 new sections
-- `routes/console.php` or `app/Console/Kernel.php` — daily schedule
-- SystemSettingSeeder: 5 new keys
-- Tests: `tests/Feature/PasswordExpiryTest.php`, `tests/Feature/InactivityLockTest.php`
+- `settings/index.blade.php` — Password Expiration & Inactivity Lock section
+- `routes/console.php` — minute schedule guard; `bin/run-workers.sh` — local/cron/queue runners
+- SystemSettingSeeder: lifecycle and schedule keys
+- Tests: `tests/Feature/PasswordExpiryTest.php`, `tests/Feature/InactivityLockTest.php`, `tests/Feature/PasswordLifecycleUiTest.php`
 
-**Gate:** C verified + tested. Phase 5 complete.
+**Gate:** C verified + tested. Phase 5 complete. The canonical expiration setting is `password_expiry_days`; the legacy `password_expiration_days` key is removed by migration.
 
 ---
 

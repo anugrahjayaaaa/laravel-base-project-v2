@@ -4,20 +4,18 @@
 
 Settings are a core feature.
 
-Use structured names:
-```
-security.inactivity.enabled
-security.inactivity.days
-security.inactivity.grace_days
-security.login.failed_attempts.enabled
-security.login.failed_attempts.max_attempts
-security.login.failed_attempts.lock_duration_minutes
-security.password_history.enabled
-security.password_history.count
-security.password_expiration.enabled
-security.password_expiration.days
-registration.enabled
-registration.default_role
+The runtime settings UI currently uses these canonical keys:
+
+```text
+inactivity_lock_enabled
+inactivity_lock_days
+inactivity_lock_grace_enabled
+inactivity_lock_grace_days
+password_expiry_enabled
+password_expiry_days
+password_expiry_warn_days
+password_security_sweep_time
+password_security_sweep_timezone
 ```
 
 ## Groups
@@ -52,13 +50,18 @@ Settings changes must have:
 
 || Setting | Validation |
 ||---------|-----------|
-|| `security.inactivity.enabled` | boolean | Enable/disable inactivity enforcement |
-|| `security.inactivity.days` | integer, min:0, max:365 | Inactivity threshold before lock |
-|| `security.inactivity.grace_days` | integer, min:0, max:365 | Grace period applied to `last_activity_at` for the inactivity query, ensuring never-logged-in users (`last_activity_at = NULL`) are handled. |
-|| `security.password_history.count` | integer, min:1, max:24 |
-|| `security.password_expiration.days` | integer, min:1, max:365 |
-|| `registration.default_role` | string, exists:roles,name |
-|| `registration.enabled` | boolean |
+| `inactivity_lock_enabled` | boolean | Enable/disable inactivity enforcement |
+| `inactivity_lock_days` | integer, min:1, max:365 | Inactivity threshold before lock |
+| `inactivity_lock_grace_enabled` | boolean | Enable/disable grace period for never-logged-in users |
+| `inactivity_lock_grace_days` | integer, min:0, max:365 | Grace period for never-logged-in users (`last_activity_at = NULL`) |
+| `security.password_history.count` | integer, min:1, max:24 |
+| `password_expiry_enabled` | boolean | Enable/disable password expiry |
+| `password_expiry_days` | integer, min:0, max:365 | Expiry period; `0` disables persistence of future expiry |
+| `password_expiry_warn_days` | integer, min:1, max:90 | Warning window |
+| `password_security_sweep_time` | `H:i` | Local sweep time |
+| `password_security_sweep_timezone` | active IANA timezone | Sweep timezone; empty uses application timezone |
+| `registration.default_role` | string, exists:roles,name |
+| `registration.enabled` | boolean |
 
 ## Security
 
@@ -71,11 +74,10 @@ Settings changes must have:
 
 The inactivity policy is configurable via settings:
 
-- `security.inactivity.enabled` — enable/disable inactivity enforcement
-- `security.inactivity.days` — the inactivity threshold
-- `security.inactivity.grace_days` — grace period applied to `last_activity_at` for
-  the inactivity query, ensuring never-logged-in users (`last_activity_at = NULL`)
-  are included in the lockout query.
+- `inactivity_lock_enabled` — enable/disable inactivity enforcement
+- `inactivity_lock_days` — the inactivity threshold
+- `inactivity_lock_grace_enabled` — enable/disable the never-logged-in grace period
+- `inactivity_lock_grace_days` — grace period for users whose `last_activity_at` is null
 
 The inactivity process runs as a scheduled background task. When an account is
 locked due to inactivity, all of the user's active sessions and tokens are revoked.

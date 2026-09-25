@@ -9,9 +9,9 @@
 | 0 | Architecture & project conventions | DONE |
 ||| 1 | Laravel foundation & environment | DONE |
 || 2 | Database foundation | DONE |
-|| 3 | Authentication foundation | IN PROGRESS |
-|| 4 | User lifecycle & user management | DONE |
-||| 5 | Password/security lifecycle | PLANNED → Group A ✅ DONE, Group B ✅ DONE, Group C ✅ DONE |
+||| 3 | Authentication foundation | IN PROGRESS (implementation breakdown DONE; phase status not yet reconciled) |
+||| 4 | User lifecycle & user management | DONE |
+||| 5 | Password/security lifecycle | DONE — Groups A, B, and C verified |
 | 6 | RBAC & authorization | PLANNED |
 | 7 | Feature availability / feature flags | PLANNED |
 | 8 | Settings | PLANNED |
@@ -27,17 +27,21 @@
 
 ## Current Task
 
-Phase 4B Group B (P4-B1 through P4-B11) — User CRUD (Web UI): DONE
-Phase 4C Group C (P4-C1 through P4-C6) — Activate/Deactivate/Lock/Unlock: DONE
-Phase 4D Group D (P4-D1 through P4-D6) — Admin User Creation + Temp Password: DONE
-Phase 4E Group E (P4-E1 through P4-E7) — API User CRUD: DONE
-Phase 4F Group F (P4-F1 through P4-F13) — Username/Email Change + System Settings: DONE
-Phase 4G Group G (P4-G1) — Self-Service Profile Page: DONE
-Phase 4H Group H (P4-H1 through P4-H4) — Bulk Actions + Audit Close-out: DONE
+Phase 5C — Password Expiration & Inactivity Lock: DONE
+- Shared Web/API settings action
+- Password expiry and inactivity services
+- Middleware enforcement and password-expired screen
+- Warning banner and settings UI
+- Scheduled expiry/inactivity sweeps
+- SYSTEM audit and operational logs
+- Timezone reference data and configurable sweep schedule
+- Full regression verification completed
+
+Phase 3 remains IN PROGRESS independently; its implementation breakdown is documented as complete, but the phase tracker still needs reconciliation.
 
 ## Next Task
 
-Phase 5 — Password/security lifecycle: ALL GROUPS COMPLETE
+Reconcile the remaining Phase 3 documentation/tracker status, then continue the next unfinished phase.
 
 ## Completed Tasks
 

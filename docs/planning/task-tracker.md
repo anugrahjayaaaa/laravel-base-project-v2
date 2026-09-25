@@ -445,7 +445,8 @@ observers for audit. See `docs/base/architecture/application-components.md` §Ac
     "depends_on": [
       "PWD-002"
     ],
-    "status": "PLANNED"
+    "status": "DONE",
+    "note": "Phase 5 Group B complete: password history table, policy enforcement, settings UI, and tests shipped."
   },
   {
     "id": "PWD-004",
@@ -455,7 +456,8 @@ observers for audit. See `docs/base/architecture/application-components.md` §Ac
     "depends_on": [
       "PWD-002"
     ],
-    "status": "PLANNED"
+    "status": "DONE",
+    "note": "Phase 5 Group C complete: password expiry service, middleware, forced-change screen, warning banner, sweeps, settings, and tests shipped."
   },
   {
     "id": "PWD-005",
@@ -1051,7 +1053,8 @@ observers for audit. See `docs/base/architecture/application-components.md` §Ac
     "depends_on": [
       "USER-001"
     ],
-    "status": "PLANNED"
+    "status": "DONE",
+    "note": "Phase 5 Group C complete: last activity login tracking, null-user grace period, request-time lock audit, scheduled lock sweep, and tests shipped."
   },
   {
     "id": "ROUTE-001",

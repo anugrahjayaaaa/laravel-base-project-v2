@@ -52,18 +52,15 @@
 
 ## Settings
 
-Structured names:
-```
-security.inactivity.enabled
-security.inactivity.days
-security.login.failed_attempts.enabled
-security.login.failed_attempts.max_attempts
-security.password_history.enabled
-security.password_history.count
-security.password_expiration.enabled
-security.password_expiration.days
-registration.enabled
-registration.default_role
+Runtime SystemSetting keys:
+```text
+inactivity_lock_enabled
+inactivity_lock_days
+inactivity_lock_grace_enabled
+inactivity_lock_grace_days
+password_expiry_enabled
+password_expiry_days
+password_expiry_warn_days
 ```
 
 Group settings logically: `security`, `registration`, `mail`, `localization`, `system`.

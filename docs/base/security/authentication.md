@@ -82,14 +82,10 @@ A user who has never performed an activity has `last_activity_at = NULL`.
 
 - NULL is a valid, first-class state — handle it explicitly (do NOT
   substitute a default timestamp).
-- NULL users ARE included in the inactivity query via the grace_days config
-  (see ADR-018 in `decisions.md`).
-  - The inactivity check is: `last_activity_at < now() - (days + grace_days)`
-  - When `last_activity_at IS NULL`, the comparison evaluates to `true`
-    (user is past the grace window), so NULL users ARE subject to
-    inactivity lock.
-  - The `grace_days` config gives recently-created-but-never-logged-in
-    accounts a window before they are locked.
+- NULL users ARE included in the inactivity query via the `inactivity_lock_grace_enabled` and
+  `inactivity_lock_grace_days` settings (see ADR-018 in `decisions.md`).
+  - When enabled, the check is: `created_at < now() - (days + grace_days)` when `last_activity_at IS NULL`
+  - When disabled, the check is: `created_at < now() - days`.
 
 ### Unlocking Does NOT Set last_activity_at
 

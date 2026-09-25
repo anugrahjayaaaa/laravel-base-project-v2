@@ -40,7 +40,7 @@
 | Real-time strength JS | `resources/js/helpers/password-strength.js` | ✅ |
 | Strength indicator partial | `resources/views/layouts/partials/password-strength.blade.php` | ✅ |
 | Settings integration | `database/seeders/SystemSettingSeeder.php` | ✅ |
-| Tests (21 total) | `tests/Unit/PasswordPolicyTest.php`, `tests/Feature/PasswordPolicyTest.php` | ✅ |
+| Tests (13 unit + 8 feature) | `tests/Unit/PasswordPolicyTest.php`, `tests/Feature/PasswordPolicyTest.php` | ✅ |
 | Pentest | clean (1 LOW: homoglyph bypass) | ✅ |
 
 **Rules enforced (IM8):**
@@ -61,7 +61,9 @@
 - `PasswordResetRequest`
 - `ProfileUpdateRequest`
 
-### Group C — Password Expiration & Inactivity Lock ✅ DONE
+### Group B — Password History ✅ DONE
+
+Group C — Password Expiration & Inactivity Lock ✅ DONE
 
 | Component | Location | Status |
 |-----------|----------|--------|
@@ -73,7 +75,7 @@
 | Expired password view | `resources/views/pages/auth/password-expired.blade.php` | ✅ |
 | Warning banner partial | `resources/views/partials/password-expiry-warning.blade.php` | ✅ |
 | Settings UI | `resources/views/pages/settings/index.blade.php` | ✅ |
-| Tests (21 total) | `tests/Feature/PasswordExpiryTest.php`, `tests/Feature/InactivityLockTest.php` | ✅ |
+| Tests (26 focused) | `tests/Feature/PasswordExpiryTest.php`, `tests/Feature/InactivityLockTest.php`, `tests/Feature/PasswordLifecycleUiTest.php` | ✅ |
 
 ### Settings
 
@@ -81,14 +83,19 @@
 - `password_expiry_days` (integer, default: 90, min: 0, max: 365) — expiry period
 - `password_expiry_warn_days` (integer, default: 14, min: 1, max: 90) — warning window
 - `inactivity_lock_enabled` (boolean, default: true) — toggle enforcement
-- `inactivity_lock_days` (integer, default: 30, min: 1, max: 365) — lock threshold
+- `inactivity_lock_grace_enabled` (boolean, default: true) — toggle grace period for never-logged-in users
+- `inactivity_lock_grace_days` (integer, default: 30, min: 0, max: 365) — grace period for users with `last_activity_at = NULL`
+- `inactivity_lock_grace_enabled` controls whether `inactivity_lock_grace_days` is applied. When disabled, the field is ignored and never-logged-in users use only `inactivity_lock_days`.
+- `password_security_sweep_time` (time, default: `00:00`) — local sweep time
+- `password_security_sweep_timezone` (IANA timezone, default: application timezone) — sweep timezone
 
 ### Enforcement
 
 - Daily sweep sets `must_change_password = true` for expired accounts
-- Middleware redirects to `password.change` for expired passwords
-- Inactivity sweep locks account + revokes sessions + revokes Sanctum tokens
-- Dismissible warning banner on dashboard when within warning window
+- Middleware redirects to the password-expired screen for expired passwords
+- Inactivity sweep and request-time enforcement lock accounts + revoke sessions/tokens
+- SYSTEM audit entries are recorded for sweep and middleware-triggered locks
+- Dismissible warning banner on authenticated pages when within warning window
 - Bypass if respective `*_enabled` setting = false
 
 ---
@@ -116,13 +123,24 @@ Default conceptual behavior:
 - Once a password falls outside the configured history window, it may be reused.
 - Never store plaintext passwords. Store hashes only.
 
-## Password Expiration
+### Runtime keys
 
-Configuration:
-```
-security.password_expiration.enabled  (boolean)
-security.password_expiration.days       (number of days)
-```
+The implemented settings contract uses flat runtime keys such as
+`inactivity_lock_days`, `inactivity_lock_grace_enabled`,
+`inactivity_lock_grace_days`, `password_expiry_days`, and
+`password_expiry_warn_days`. Structured names remain an architectural option,
+not the current database contract.
+
+Runtime SystemSetting keys:
+- `password_expiry_enabled`
+- `password_expiry_days`
+- `password_expiry_warn_days`
+- `inactivity_lock_enabled`
+- `inactivity_lock_days`
+- `inactivity_lock_grace_enabled`
+- `inactivity_lock_grace_days`
+- `password_security_sweep_time`
+- `password_security_sweep_timezone`
 
 When expiration applies:
 ```

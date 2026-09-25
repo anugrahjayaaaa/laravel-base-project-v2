@@ -232,9 +232,12 @@ Unlocking an account is an administrative action, not user activity — it
 must NOT populate or change `last_activity_at`.
 **Decision**: The baseline update point for `last_activity_at` is successful
 login. Do NOT update on every HTTP request. Inactivity is configurable via
-`security.inactivity.days` and `security.inactivity.grace_days`.
+`inactivity_lock_days`, `inactivity_lock_grace_enabled`, and
+`inactivity_lock_grace_days`.
 Never-logged-in users (`last_activity_at = NULL`) are included in the
-inactivity query via the grace_days config. **Unlocking does not set
+inactivity query; when the grace toggle is enabled, the threshold is
+`inactivity_lock_days + inactivity_lock_grace_days`, otherwise it is only
+`inactivity_lock_days`. **Unlocking does not set
 `last_activity_at`** — NULL is preserved until the user performs an actual
 application action (successful login or meaningful mutation). Inactivity is
 implemented as a scheduled background process. Inactivity lock revokes
