@@ -17,11 +17,11 @@ concurrency:
 jobs:
   test:
     name: Test and build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
@@ -32,7 +32,7 @@ jobs:
           tools: composer:v2
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: '22'
           cache: npm
@@ -46,14 +46,14 @@ jobs:
       - name: Install Node dependencies
         run: npm ci
 
+      - name: Build frontend assets
+        run: npm run build
+
       - name: Run tests
         run: php artisan test --no-coverage
 
-      - name: Check PHP formatting
-        run: vendor/bin/pint --test
-
-      - name: Build frontend assets
-        run: npm run build
+      - name: Check changed PHP formatting
+        run: vendor/bin/pint --test --dirty
 
       - name: Upload frontend build
         uses: actions/upload-artifact@v4
@@ -73,7 +73,7 @@ jobs:
     name: Deploy to Ubuntu VM
     if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main'
     needs: test
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     environment: Laravel Base Project V2 - Google Cloud
 
     env:
@@ -87,7 +87,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Download frontend build
         uses: actions/download-artifact@v4
