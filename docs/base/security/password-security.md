@@ -1,6 +1,6 @@
 # Password Security
 
-> Last updated: 2026-09-24 | Phase 5 Group A ✅ DONE, Group B ✅ DONE, Group C PLANNED
+> Last updated: 2026-09-25 | Phase 5 Group A ✅ DONE, Group B ✅ DONE, Group C ✅ DONE
 
 ## Implementation Status (Phase 5)
 
@@ -61,8 +61,35 @@
 - `PasswordResetRequest`
 - `ProfileUpdateRequest`
 
-### Group C — Password Expiration & Inactivity Lock
-PLANNED — see `docs/planning/phase-5-password-security.md`
+### Group C — Password Expiration & Inactivity Lock ✅ DONE
+
+| Component | Location | Status |
+|-----------|----------|--------|
+| PasswordExpiry service | `app/Services/PasswordExpiry.php` | ✅ |
+| InactivityLock service | `app/Services/InactivityLock.php` | ✅ |
+| Expiry sweep job | `app/Jobs/PasswordExpirySweep.php` | ✅ |
+| Inactivity sweep job | `app/Jobs/InactivityLockSweep.php` | ✅ |
+| Middleware extension | `app/Http/Middleware/EnsurePasswordChangeRequired.php` | ✅ |
+| Expired password view | `resources/views/pages/auth/password-expired.blade.php` | ✅ |
+| Warning banner partial | `resources/views/partials/password-expiry-warning.blade.php` | ✅ |
+| Settings UI | `resources/views/pages/settings/index.blade.php` | ✅ |
+| Tests (21 total) | `tests/Feature/PasswordExpiryTest.php`, `tests/Feature/InactivityLockTest.php` | ✅ |
+
+### Settings
+
+- `password_expiry_enabled` (boolean, default: true) — toggle enforcement
+- `password_expiry_days` (integer, default: 90, min: 0, max: 365) — expiry period
+- `password_expiry_warn_days` (integer, default: 14, min: 1, max: 90) — warning window
+- `inactivity_lock_enabled` (boolean, default: true) — toggle enforcement
+- `inactivity_lock_days` (integer, default: 30, min: 1, max: 365) — lock threshold
+
+### Enforcement
+
+- Daily sweep sets `must_change_password = true` for expired accounts
+- Middleware redirects to `password.change` for expired passwords
+- Inactivity sweep locks account + revokes sessions + revokes Sanctum tokens
+- Dismissible warning banner on dashboard when within warning window
+- Bypass if respective `*_enabled` setting = false
 
 ---
 

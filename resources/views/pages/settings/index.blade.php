@@ -217,7 +217,121 @@
                     </div>
                 </div>
 
-                {{-- Card 3: Rate Limits & Expirations --}}
+                {{-- Card 4: Password Expiration & Inactivity Lock --}}
+                <div class="card border-0 shadow-sm mb-4" id="section-password-expiry">
+                    <div class="card-header bg-transparent border-bottom py-3">
+                        <h5 class="card-title mb-0 fw-semibold">Password Expiration &amp; Inactivity Lock</h5>
+                    </div>
+                    <div class="card-body p-4">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label for="password_security_sweep_time" class="form-label">
+                                    Sweep Time
+                                    <i class="bi bi-info-circle text-muted fs-6 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Local time when both password security sweep jobs run."></i>
+                                </label>
+                                <input type="time" name="password_security_sweep_time" id="password_security_sweep_time"
+                                       class="form-control form-control-sm @error('password_security_sweep_time') is-invalid @enderror"
+                                       value="{{ old('password_security_sweep_time', $settings['password_security_sweep_time'] ?? '00:00') }}">
+                                @error('password_security_sweep_time')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+                            <div class="col-md-6">
+                                <label for="password_security_sweep_timezone" class="form-label">
+                                    Sweep Timezone
+                                    <i class="bi bi-info-circle text-muted fs-6 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Timezone used for the sweep time. Leave on application timezone to use the server/application setting."></i>
+                                </label>
+                                <select name="password_security_sweep_timezone" id="password_security_sweep_timezone"
+                                        class="form-select form-select-sm @error('password_security_sweep_timezone') is-invalid @enderror">
+                                    <option value="" {{ old('password_security_sweep_timezone', $settings['password_security_sweep_timezone'] ?? '') === '' ? 'selected' : '' }}>
+                                        Application timezone ({{ config('app.timezone') }})
+                                    </option>
+                                    @foreach ($timezones as $timezone)
+                                        <option value="{{ $timezone->name }}" {{ old('password_security_sweep_timezone', $settings['password_security_sweep_timezone'] ?? '') === $timezone->name ? 'selected' : '' }}>
+                                            {{ $timezone->label }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                                @error('password_security_sweep_timezone')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+                        </div>
+                        <div class="row g-3 mt-0">
+                            <div class="col-md-6">
+                                <label for="password_expiry_days" class="form-label">
+                                    Expiry Days
+                                    <i class="bi bi-info-circle text-muted fs-6 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Number of days before a password expires (0 to disable)."></i>
+                                </label>
+                                <div class="input-group">
+                                    <input type="number" name="password_expiry_days" id="password_expiry_days"
+                                           class="form-control form-control-sm @error('password_expiry_days') is-invalid @enderror"
+                                           value="{{ old('password_expiry_days', $settings['password_expiry_days'] ?? 90) }}" min="0" max="365"
+                                           {{ filter_var($settings['password_expiry_enabled'] ?? 'true', FILTER_VALIDATE_BOOLEAN) ? '' : 'disabled' }}>
+                                    <span class="input-group-text bg-body-tertiary">days</span>
+                                </div>
+                                @error('password_expiry_days')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-check form-switch mt-4 pt-2">
+                                    <input class="form-check-input" type="checkbox" name="password_expiry_enabled" id="password_expiry_enabled"
+                                        {{ filter_var($settings['password_expiry_enabled'] ?? 'true', FILTER_VALIDATE_BOOLEAN) ? 'checked' : '' }}>
+                                    <label for="password_expiry_enabled" class="form-check-label">
+                                        Password Expiry
+                                        <i class="bi bi-info-circle text-muted fs-6 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Enforces password expiration after the configured number of days."></i>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row g-3 mt-0">
+                            <div class="col-md-6">
+                                <label for="inactivity_lock_days" class="form-label">
+                                    Inactivity Days
+                                    <i class="bi bi-info-circle text-muted fs-6 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Number of days of inactivity before account is locked."></i>
+                                </label>
+                                <div class="input-group">
+                                    <input type="number" name="inactivity_lock_days" id="inactivity_lock_days"
+                                           class="form-control form-control-sm @error('inactivity_lock_days') is-invalid @enderror"
+                                           value="{{ old('inactivity_lock_days', $settings['inactivity_lock_days'] ?? 30) }}" min="1" max="365"
+                                           {{ filter_var($settings['inactivity_lock_enabled'] ?? 'true', FILTER_VALIDATE_BOOLEAN) ? '' : 'disabled' }}>
+                                    <span class="input-group-text bg-body-tertiary">days</span>
+                                </div>
+                                @error('inactivity_lock_days')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-check form-switch mt-4 pt-2">
+                                    <input class="form-check-input" type="checkbox" name="inactivity_lock_enabled" id="inactivity_lock_enabled"
+                                        {{ filter_var($settings['inactivity_lock_enabled'] ?? 'true', FILTER_VALIDATE_BOOLEAN) ? 'checked' : '' }}>
+                                    <label for="inactivity_lock_enabled" class="form-check-label">
+                                        Inactivity Lock
+                                        <i class="bi bi-info-circle text-muted fs-6 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Locks accounts after the configured number of days of inactivity."></i>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row g-3 mt-0">
+                            <div class="col-md-6">
+                                <label for="password_expiry_warn_days" class="form-label">
+                                    Warning Days
+                                    <i class="bi bi-info-circle text-muted fs-6 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Number of days before expiry to show warning banner."></i>
+                                </label>
+                                <div class="input-group">
+                                    <input type="number" name="password_expiry_warn_days" id="password_expiry_warn_days"
+                                           class="form-control form-control-sm @error('password_expiry_warn_days') is-invalid @enderror"
+                                           value="{{ old('password_expiry_warn_days', $settings['password_expiry_warn_days'] ?? 14) }}" min="1" max="90">
+                                    <span class="input-group-text bg-body-tertiary">days</span>
+                                </div>
+                                @error('password_expiry_warn_days')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+                        </div>
+                    </div>
+                </div>
                 <div class="card border-0 shadow-sm mb-4" id="section-password-reset">
                     <div class="card-header bg-transparent border-bottom py-3">
                         <h5 class="card-title mb-0 fw-semibold">Rate Limits &amp; Expirations</h5>
@@ -405,16 +519,24 @@
             const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
             const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
 
-            // History Enforcement toggle → enable/disable Password History field
-            const toggle = document.getElementById('password_history_enabled');
-            const historyInput = document.getElementById('password_history_count');
-            if (toggle && historyInput) {
-                const syncHistoryField = () => {
-                    historyInput.disabled = !toggle.checked;
+            // Toggle controls keep dependent numeric fields disabled.
+            const dependentFields = [
+                ['password_history_enabled', 'password_history_count'],
+                ['password_expiry_enabled', 'password_expiry_days'],
+                ['inactivity_lock_enabled', 'inactivity_lock_days'],
+            ];
+
+            dependentFields.forEach(([toggleId, inputId]) => {
+                const toggle = document.getElementById(toggleId);
+                const input = document.getElementById(inputId);
+                if (!toggle || !input) return;
+
+                const syncField = () => {
+                    input.disabled = !toggle.checked;
                 };
-                toggle.addEventListener('change', syncHistoryField);
-                syncHistoryField();
-            }
+                toggle.addEventListener('change', syncField);
+                syncField();
+            });
         });
     </script>
 @endsection

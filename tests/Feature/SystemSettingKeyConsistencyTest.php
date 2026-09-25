@@ -4,8 +4,10 @@ namespace Tests\Feature;
 
 use App\Models\SystemSetting;
 use App\Models\User;
+use Database\Seeders\TimezoneSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
 class SystemSettingKeyConsistencyTest extends TestCase
@@ -17,6 +19,22 @@ class SystemSettingKeyConsistencyTest extends TestCase
         parent::setUp();
         $this->withoutMiddleware(\App\Http\Middleware\VerifyCsrfToken::class);
         $this->seed(\Database\Seeders\SystemSettingSeeder::class);
+        Http::fake([
+            'aisenseapi.com/*' => Http::response([
+                'timezones' => [
+                    ['timezone' => 'UTC', 'offset' => '+0000'],
+                    ['timezone' => 'Asia/Jakarta', 'offset' => '+0700'],
+                ],
+            ]),
+        ]);
+    }
+
+    public function test_timezone_reference_data_is_seeded(): void
+    {
+        $this->seed(TimezoneSeeder::class);
+
+        $this->assertGreaterThanOrEqual(2, DB::table('timezones')->count());
+        $this->assertTrue(DB::table('timezones')->where('name', 'Asia/Jakarta')->where('is_active', true)->exists());
     }
 
     public function test_all_seed_keys_are_present_in_database(): void
@@ -34,6 +52,8 @@ class SystemSettingKeyConsistencyTest extends TestCase
             'login_max_attempts',
             'login_rate_limit_per_minute',
             'password_expiration_days',
+            'password_security_sweep_time',
+            'password_security_sweep_timezone',
             'password_forgot_rate_limit',
             'password_history_count',
             'password_history_enabled',
@@ -158,6 +178,8 @@ class SystemSettingKeyConsistencyTest extends TestCase
             'password_history_enabled',
             'password_history_count',
             'password_expiration_days',
+            'password_security_sweep_time',
+            'password_security_sweep_timezone',
             'email_verification_expire_minutes',
             'email_verification_mode',
             'password_reset_expire_minutes',
@@ -196,7 +218,7 @@ class SystemSettingKeyConsistencyTest extends TestCase
     public function test_email_verification_mode_values_are_valid(): void
     {
         $modes = ['public', 'admin', 'disabled'];
-        
+
         foreach ($modes as $mode) {
             SystemSetting::set('email_verification_mode', $mode);
             SystemSetting::bustCache();

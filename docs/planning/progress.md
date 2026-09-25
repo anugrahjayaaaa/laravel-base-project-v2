@@ -11,7 +11,7 @@
 || 2 | Database foundation | DONE |
 || 3 | Authentication foundation | IN PROGRESS |
 || 4 | User lifecycle & user management | DONE |
-|| 5 | Password/security lifecycle | PLANNED → Group A ✅ DONE, Group B ✅ DONE |
+||| 5 | Password/security lifecycle | PLANNED → Group A ✅ DONE, Group B ✅ DONE, Group C ✅ DONE |
 | 6 | RBAC & authorization | PLANNED |
 | 7 | Feature availability / feature flags | PLANNED |
 | 8 | Settings | PLANNED |
@@ -37,7 +37,7 @@ Phase 4H Group H (P4-H1 through P4-H4) — Bulk Actions + Audit Close-out: DONE
 
 ## Next Task
 
-Phase 5 — Password/security lifecycle (Group A: DONE, Group B/C: PLANNED)
+Phase 5 — Password/security lifecycle: ALL GROUPS COMPLETE
 
 ## Completed Tasks
 

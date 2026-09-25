@@ -3,6 +3,7 @@
 namespace App\Http\Requests\System;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 /**
  * Validates system setting update payloads.
@@ -47,6 +48,18 @@ class SystemSettingRequest extends FormRequest
             'password_history_enabled' => ['boolean'],
             'password_history_count' => ['integer', 'min:0', 'max:24'],
             'password_expiration_days' => ['integer', 'min:1', 'max:365'],
+            'password_expiry_enabled' => ['boolean'],
+            'password_expiry_days' => ['integer', 'min:0', 'max:365'],
+            'password_expiry_warn_days' => ['integer', 'min:1', 'max:90'],
+            'password_security_sweep_time' => ['nullable', 'date_format:H:i'],
+            'password_security_sweep_timezone' => [
+                'nullable',
+                'string',
+                'timezone',
+                Rule::exists('timezones', 'name')->where('is_active', true),
+            ],
+            'inactivity_lock_enabled' => ['boolean'],
+            'inactivity_lock_days' => ['integer', 'min:1', 'max:365'],
 
             // Email verification
             'email_verification_expire_minutes' => ['integer', 'min:1', 'max:1440'],
@@ -75,8 +88,10 @@ class SystemSettingRequest extends FormRequest
                 'password_symbols',
                 'password_uncompromised',
                 'password_history_enabled',
+                'password_expiry_enabled',
+                'inactivity_lock_enabled',
                 'allow_username_change',
-                'allow_email_change'
+                'allow_email_change',
             ] as $key
         ) {
             if ($this->has($key)) {

@@ -4,8 +4,11 @@ namespace Tests\Feature;
 
 use App\Models\SystemSetting;
 use App\Models\User;
+use Database\Seeders\TimezoneSeeder;
+use Spatie\Activitylog\Models\Activity;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
 class SystemSettingUpdateTest extends TestCase
@@ -16,6 +19,14 @@ class SystemSettingUpdateTest extends TestCase
     {
         parent::setUp();
         $this->withoutMiddleware(\App\Http\Middleware\VerifyCsrfToken::class);
+        Http::fake([
+            'aisenseapi.com/*' => Http::response([
+                'timezones' => [
+                    ['timezone' => 'UTC', 'offset' => '+0000'],
+                    ['timezone' => 'Asia/Jakarta', 'offset' => '+0700'],
+                ],
+            ]),
+        ]);
     }
 
     public function test_update_settings_persists_to_database(): void
@@ -35,6 +46,46 @@ class SystemSettingUpdateTest extends TestCase
         $this->assertTrue(SystemSetting::getBool('allow_email_change'));
         $this->assertEquals(15, SystemSetting::getInt('username_change_cooldown_days'));
         $this->assertEquals(10, SystemSetting::getInt('email_change_cooldown_days'));
+        $this->assertEquals('00:00', SystemSetting::getString('password_security_sweep_time'));
+        $this->assertSame('', SystemSetting::getString('password_security_sweep_timezone'));
+
+        $activity = Activity::query()
+            ->where('description', 'system_setting.updated')
+            ->first();
+
+        $this->assertNotNull($activity);
+        $this->assertSame(SystemSetting::class, $activity->subject_type);
+        $this->assertNotNull($activity->subject_id);
+        $this->assertSame($user->id, $activity->causer_id);
+    }
+
+    public function test_sweep_schedule_settings_can_be_customized(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user, 'web');
+        $this->seed(TimezoneSeeder::class);
+
+        $response = $this->from('/settings')->post(route('settings.update'), [
+            'password_security_sweep_time' => '07:30',
+            'password_security_sweep_timezone' => 'Asia/Jakarta',
+        ]);
+
+        $response->assertRedirect();
+        $this->assertSame('07:30', SystemSetting::getString('password_security_sweep_time'));
+        $this->assertSame('Asia/Jakarta', SystemSetting::getString('password_security_sweep_timezone'));
+    }
+
+    public function test_sweep_schedule_rejects_invalid_timezone(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user, 'web');
+
+        $response = $this->from('/settings')->post(route('settings.update'), [
+            'password_security_sweep_timezone' => 'Not/A_Timezone',
+        ]);
+
+        $response->assertRedirect();
+        $response->assertSessionHasErrors('password_security_sweep_timezone');
     }
 
     public function test_unchecked_checkboxes_store_false(): void
