@@ -4,7 +4,7 @@ on:
   pull_request:
   push:
     branches:
-      - main
+      - deployment/deployment-setup
   workflow_dispatch:
 
 permissions:
@@ -71,7 +71,7 @@ jobs:
 
   deploy:
     name: Deploy to Ubuntu VM
-    if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main'
+    if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/deployment/deployment-setup'
     needs: test
     runs-on: ubuntu-24.04
     environment: Laravel Base Project V2 - Google Cloud
@@ -123,7 +123,7 @@ jobs:
             -o StrictHostKeyChecking=yes \
             -o UserKnownHostsFile=~/.ssh/known_hosts \
             "${DEPLOY_USER}@${DEPLOY_HOST}" \
-            'command -v rsync && rsync --version | head -n 1'
+            'test -f "'"${DEPLOY_PATH}"'/.env" && command -v rsync && rsync --version | head -n 1'
 
       - name: Sync application files
         run: |
