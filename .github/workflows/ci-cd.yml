@@ -132,7 +132,7 @@ jobs:
             --exclude='.env.*' \
             --exclude='.git/' \
             --exclude='node_modules/' \
-            --exclude='vendor/' \
+            --exclude='/vendor/' \
             --exclude='storage/' \
             ./ "${DEPLOY_USER}@${DEPLOY_HOST}:${DEPLOY_PATH}/"
 
