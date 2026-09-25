@@ -14,7 +14,7 @@ use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
 
 /**
- * PasswordExpirySweep — daily sweep to flag expired passwords.
+ * PasswordExpirySweep — minute-configured sweep to flag expired passwords.
  *
  * Evaluates users against PasswordExpiry::isExpired() and sets
  * must_change_password = true for expired accounts.
@@ -48,30 +48,34 @@ class PasswordExpirySweep implements ShouldQueue
             return;
         }
 
-        $expiredUsers = User::where('is_active', true)
+        $flagged = 0;
+        $candidateCount = 0;
+
+        User::where('is_active', true)
             ->where('is_locked', false)
             ->where('must_change_password', false)
             ->whereNotNull('password_expires_at')
             ->where('password_expires_at', '<', now())
-            ->get();
+            ->chunkById(500, function ($users) use (&$flagged, &$candidateCount): void {
+                $candidateCount += $users->count();
 
-        $flagged = 0;
-        foreach ($expiredUsers as $user) {
-            if (PasswordExpiry::isExpired($user)) {
-                $user->update(['must_change_password' => true]);
+                foreach ($users as $user) {
+                    if (PasswordExpiry::isExpired($user)) {
+                        $user->update(['must_change_password' => true]);
 
-                $flagged++;
+                        $flagged++;
 
-                $this->audit($user, 'auth.password_expiry.sweep');
+                        $this->audit($user, 'auth.password_expiry.sweep');
 
-                Log::info('Password expired — must_change_password set', [
-                    'user_id' => $user->id,
-                ]);
-            }
-        }
+                        Log::info('Password expired — must_change_password set', [
+                            'user_id' => $user->id,
+                        ]);
+                    }
+                }
+            });
 
         Log::info('Password expiry sweep completed', [
-            'candidate_count' => $expiredUsers->count(),
+            'candidate_count' => $candidateCount,
             'flagged_count' => $flagged,
             'duration_ms' => round((microtime(true) - $startedAt) * 1000, 2),
         ]);

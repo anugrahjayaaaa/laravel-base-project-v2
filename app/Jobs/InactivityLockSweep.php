@@ -14,7 +14,7 @@ use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
 
 /**
- * InactivityLockSweep — daily sweep to lock inactive accounts.
+ * InactivityLockSweep — minute-configured sweep to lock inactive accounts.
  *
  * Evaluates users against InactivityLock::shouldLock() and locks
  * inactive accounts + revokes sessions/tokens.
@@ -48,30 +48,34 @@ class InactivityLockSweep implements ShouldQueue
             return;
         }
 
-        $inactiveUsers = User::where('is_active', true)
-            ->where('is_locked', false)
-            ->get();
-
         $locked = 0;
-        foreach ($inactiveUsers as $user) {
-            if (InactivityLock::shouldLock($user)) {
-                InactivityLock::lock($user);
+        $candidateCount = 0;
 
-                $locked++;
+        User::where('is_active', true)
+            ->where('is_locked', false)
+            ->chunkById(500, function ($users) use (&$locked, &$candidateCount): void {
+                $candidateCount += $users->count();
 
-                $this->audit($user, 'auth.inactivity_lock.sweep', [
-                    'last_activity_at' => $user->last_activity_at?->toIso8601String(),
-                ]);
+                foreach ($users as $user) {
+                    if (InactivityLock::shouldLock($user)) {
+                        InactivityLock::lock($user);
 
-                Log::info('User locked due to inactivity', [
-                    'user_id' => $user->id,
-                    'last_activity_at' => $user->last_activity_at,
-                ]);
-            }
-        }
+                        $locked++;
+
+                        $this->audit($user, 'auth.inactivity_lock.sweep', [
+                            'last_activity_at' => $user->last_activity_at?->toIso8601String(),
+                        ]);
+
+                        Log::info('User locked due to inactivity', [
+                            'user_id' => $user->id,
+                            'last_activity_at' => $user->last_activity_at,
+                        ]);
+                    }
+                }
+            });
 
         Log::info('Inactivity lock sweep completed', [
-            'candidate_count' => $inactiveUsers->count(),
+            'candidate_count' => $candidateCount,
             'locked_count' => $locked,
             'duration_ms' => round((microtime(true) - $startedAt) * 1000, 2),
         ]);

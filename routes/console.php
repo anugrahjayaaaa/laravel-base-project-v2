@@ -23,4 +23,4 @@ Schedule::call(function (): void {
 
     PasswordExpirySweep::dispatch();
     InactivityLockSweep::dispatch();
-})->everyMinute()->name('password-security-sweeps');
+})->everyMinute()->name('password-security-sweeps')->withoutOverlapping();
