@@ -63,6 +63,7 @@ Route::middleware(['auth:web,sanctum', 'verified', 'password.change.required', '
     Route::controller(ProfileController::class)->group(function () {
         Route::get('/profile', 'show')->name('profile.show');
         Route::put('/profile', 'update')->name('profile.update');
+        Route::get('/password/expired', 'showExpiredPassword')->name('password.expired');
         Route::get('/password/change', 'show')->name('password.change');
         Route::put('/password/change', 'ChangePasswordAction')->name('password.change.update');
     });

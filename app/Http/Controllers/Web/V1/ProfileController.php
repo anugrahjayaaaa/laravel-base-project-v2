@@ -23,7 +23,8 @@ class ProfileController extends Controller
     public function __construct(
         private readonly UpdateUserAction $updateAction,
         private readonly ChangePasswordAction $ChangePasswordAction,
-    ) {}
+    ) {
+    }
 
     /**
      * Show the profile edit page.
@@ -79,6 +80,16 @@ class ProfileController extends Controller
             'usernameCooldownDays',
             'passwordPolicyHint',
         ));
+    }
+
+    /**
+     * Show the forced password change screen.
+     */
+    public function showExpiredPassword()
+    {
+        return response()->view('pages.auth.password-expired', [
+            'title' => 'Password Expired',
+        ]);
     }
 
     /**

@@ -50,7 +50,6 @@ class InactivityLockSweep implements ShouldQueue
 
         $inactiveUsers = User::where('is_active', true)
             ->where('is_locked', false)
-            ->whereNotNull('last_activity_at')
             ->get();
 
         $locked = 0;

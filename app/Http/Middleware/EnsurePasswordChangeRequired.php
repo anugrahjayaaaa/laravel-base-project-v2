@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\User;
 use App\Services\InactivityLock;
 use App\Services\PasswordExpiry;
 use Closure;
@@ -28,6 +29,7 @@ class EnsurePasswordChangeRequired
     protected const EXEMPT_SUBSTRINGS = [
         'password.change',
         'password.change.update',
+        'password.expired',
         'verification',
         'email.resend',
         'logout',
@@ -43,7 +45,7 @@ class EnsurePasswordChangeRequired
      */
     public function handle(Request $request, Closure $next): Response
     {
-        /** @var \App\Models\User|null $user */
+        /** @var User|null $user */
         $user = $request->user();
 
         if (! $user) {
@@ -60,8 +62,14 @@ class EnsurePasswordChangeRequired
         }
 
         // Check inactivity lock first (highest priority — locks the account)
-        if (InactivityLock::isInactive($user)) {
+        if (InactivityLock::shouldLock($user)) {
             InactivityLock::lock($user);
+
+            $user->audit('auth.inactivity_lock.middleware', null, [
+                'causer' => 'SYSTEM',
+                'source' => 'middleware',
+                'last_activity_at' => $user->last_activity_at?->toIso8601String(),
+            ]);
 
             if ($request->expectsJson() || $request->is('api/*')) {
                 return response()->json([
@@ -81,7 +89,7 @@ class EnsurePasswordChangeRequired
                 ], 403);
             }
 
-            return redirect()->route('password.change');
+            return redirect()->route('password.expired');
         }
 
         return $next($request);

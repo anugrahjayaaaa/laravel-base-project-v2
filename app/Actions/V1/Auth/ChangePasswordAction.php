@@ -4,6 +4,7 @@ namespace App\Actions\V1\Auth;
 
 use App\Models\SystemSetting;
 use App\Models\User;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
@@ -19,7 +20,8 @@ class ChangePasswordAction
 {
     public function __construct(
         private readonly RecordPasswordHistoryAction $recordHistoryAction,
-    ) {}
+    ) {
+    }
 
     /**
      * Execute the password change.
@@ -69,9 +71,9 @@ class ChangePasswordAction
     /**
      * Calculate the next password expiration timestamp.
      */
-    protected function calculateExpiration(): ?\Illuminate\Support\Carbon
+    protected function calculateExpiration(): ?Carbon
     {
-        $days = SystemSetting::getInt('password_expiration_days', 90);
+        $days = SystemSetting::getInt('password_expiry_days', 90);
 
         if ($days <= 0) {
             return null;
@@ -93,6 +95,6 @@ class ChangePasswordAction
             ->limit($count)
             ->get();
 
-        return $history->contains(fn($h) => Hash::check($newPassword, $h->password));
+        return $history->contains(fn ($h) => Hash::check($newPassword, $h->password));
     }
 }

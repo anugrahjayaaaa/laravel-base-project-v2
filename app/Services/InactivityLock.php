@@ -23,13 +23,21 @@ class InactivityLock
             return false;
         }
 
-        if (! $user->last_activity_at) {
-            return false;
+        $lockDays = SystemSetting::getInt('inactivity_lock_days', 30);
+        $reference = $user->last_activity_at;
+
+        if (! $reference) {
+            $reference = $user->created_at;
+            $graceDays = SystemSetting::getBool('inactivity_lock_grace_enabled', true)
+                ? SystemSetting::getInt('inactivity_lock_grace_days', 30)
+                : 0;
+
+            return $reference
+                ? $reference->copy()->addDays($lockDays + $graceDays)->isPast()
+                : false;
         }
 
-        $lockDays = SystemSetting::getInt('inactivity_lock_days', 30);
-
-        return $user->last_activity_at->copy()->addDays($lockDays)->isPast();
+        return $reference->copy()->addDays($lockDays)->isPast();
     }
 
     /**

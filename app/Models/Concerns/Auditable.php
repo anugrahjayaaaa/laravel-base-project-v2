@@ -21,10 +21,16 @@ trait Auditable
     {
         $source = request()->is('api/*') ? 'api' : 'web';
 
-        activity()
+        $activity = activity()
             ->on($this)
             ->event($event)
-            ->causedBy($causer)
+            ->causedBy($causer);
+
+        if ($causer === null) {
+            $activity->causedByAnonymous();
+        }
+
+        $activity
             ->withProperties(array_merge(['source' => $source], $properties))
             ->log($event);
     }
