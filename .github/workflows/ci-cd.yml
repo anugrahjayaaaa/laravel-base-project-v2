@@ -114,17 +114,27 @@ jobs:
             "${DEPLOY_USER}@${DEPLOY_HOST}" \
             'echo SSH_OK'
 
+      - name: Test SSH and remote prerequisites
+        run: |
+          ssh -p "${DEPLOY_PORT}" \
+            -i ~/.ssh/id_ed25519 \
+            -o BatchMode=yes \
+            -o IdentitiesOnly=yes \
+            -o StrictHostKeyChecking=yes \
+            -o UserKnownHostsFile=~/.ssh/known_hosts \
+            "${DEPLOY_USER}@${DEPLOY_HOST}" \
+            'command -v rsync && rsync --version | head -n 1'
+
       - name: Sync application files
         run: |
           rsync -az --delete-delay \
-            --rsh="ssh -p ${DEPLOY_PORT} -o BatchMode=yes -o IdentitiesOnly=yes" \
+            --rsh="ssh -p ${DEPLOY_PORT} -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile=~/.ssh/known_hosts" \
             --exclude='.env' \
             --exclude='.env.*' \
             --exclude='.git/' \
             --exclude='node_modules/' \
             --exclude='vendor/' \
             --exclude='storage/' \
-            --exclude='.env.*' \
             ./ "${DEPLOY_USER}@${DEPLOY_HOST}:${DEPLOY_PATH}/"
 
       - name: Deploy application
