@@ -34,7 +34,21 @@ class PasswordLifecycleUiTest extends TestCase
         $this->get(route('password.expired'))
             ->assertOk()
             ->assertSee('Your password has expired')
-            ->assertSee('Update Password');
+            ->assertSee('Update Password')
+            ->assertSee('action="'.route('password.change.update').'"', false)
+            ->assertSee('justify-content-center', false);
+    }
+
+    public function test_profile_page_uses_shared_password_change_form(): void
+    {
+        $user = User::factory()->create();
+
+        $this->actingAs($user)->get(route('profile.show'))
+            ->assertOk()
+            ->assertSee('id="change-password"', false)
+            ->assertSee('action="'.route('password.change.update').'"', false)
+            ->assertSee('name="current_password"', false)
+            ->assertSee('name="password_confirmation"', false);
     }
 
     public function test_warning_banner_is_rendered_for_password_expiring_soon(): void
@@ -47,7 +61,8 @@ class PasswordLifecycleUiTest extends TestCase
 
         $response->assertOk()
             ->assertSee('Password Expiry Warning')
-            ->assertSee('Your password expires in 6 days');
+            ->assertSee('Your password expires in 6 days')
+            ->assertSee(route('profile.show').'#change-password', false);
     }
 
     public function test_request_time_inactivity_lock_is_audited(): void

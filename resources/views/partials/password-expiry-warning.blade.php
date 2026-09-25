@@ -9,7 +9,7 @@
                 @else
                     Your password expires in {{ $passwordExpiryDaysRemaining ?? 0 }} days.
                 @endif
-                <a href="{{ route('password.change') }}" class="alert-link ms-1">Change now</a>
+                <a href="{{ route('profile.show') }}#change-password" class="alert-link ms-1">Change now</a>
             </div>
             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Dismiss"></button>
         </div>
