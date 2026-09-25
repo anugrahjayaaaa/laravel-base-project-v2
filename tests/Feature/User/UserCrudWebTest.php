@@ -5,6 +5,7 @@ namespace Tests\Feature\User;
 use App\Enums\UserStatusEnum;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
 
 class UserCrudWebTest extends TestCase
@@ -104,6 +105,21 @@ class UserCrudWebTest extends TestCase
             'name' => 'New Name',
             'pending_email' => 'new@example.com',
         ]);
+    }
+
+    public function test_update_does_not_change_password_from_user_management_payload(): void
+    {
+        $target = User::factory()->create(['password' => bcrypt('OriginalP@ss1!')]);
+
+        $this->put(route('users.update', $target), [
+            'name' => $target->name,
+            'email' => $target->email,
+            'status' => UserStatusEnum::ACTIVE->value,
+            'password' => 'InjectedP@ss2!',
+            'password_confirmation' => 'InjectedP@ss2!',
+        ])->assertSessionHasErrors('password');
+
+        $this->assertTrue(Hash::check('OriginalP@ss1!', $target->fresh()->password));
     }
 
     public function test_update_name_required(): void

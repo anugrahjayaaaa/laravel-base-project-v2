@@ -6,11 +6,10 @@ use App\Models\SystemSetting;
 use App\Enums\UserStatusEnum;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
-use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Validation\ValidationException;
 
 /**
- * Validates admin user update data (status, username, email, password).
+ * Validates admin user update data (status, username, email).
  */
 class UpdateUserRequest extends FormRequest
 {
@@ -44,9 +43,7 @@ class UpdateUserRequest extends FormRequest
             $rules['email'] = ['sometimes', 'email', 'max:255', Rule::unique('users')->ignore($user)];
         }
 
-        if ($this->has('password')) {
-            $rules['password'] = ['nullable', 'confirmed', 'min:8'];
-        }
+        $rules['password'] = ['prohibited'];
 
         return $rules;
     }

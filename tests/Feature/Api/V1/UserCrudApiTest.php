@@ -6,6 +6,7 @@ use App\Enums\UserStatusEnum;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Foundation\Testing\WithFaker;
+use Illuminate\Support\Facades\Hash;
 use Laravel\Sanctum\Sanctum;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
@@ -82,6 +83,21 @@ class UserCrudApiTest extends TestCase
             'id' => $user->id,
             'name' => 'New Name',
         ]);
+    }
+
+    public function test_update_does_not_change_password_from_user_management_payload(): void
+    {
+        $user = User::factory()->create(['password' => bcrypt('OriginalP@ss1!')]);
+
+        $this->putJson(route('api.v1.users.update', $user->id), [
+            'name' => $user->name,
+            'email' => $user->email,
+            'status' => UserStatusEnum::ACTIVE->value,
+            'password' => 'InjectedP@ss2!',
+            'password_confirmation' => 'InjectedP@ss2!',
+        ])->assertStatus(422);
+
+        $this->assertTrue(Hash::check('OriginalP@ss1!', $user->fresh()->password));
     }
 
     public function test_update_validates_required_fields(): void
