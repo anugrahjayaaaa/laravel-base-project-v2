@@ -140,13 +140,19 @@ jobs:
       - name: Deploy application
         run: |
           ssh -p "${DEPLOY_PORT}" \
+            -i ~/.ssh/id_ed25519 \
             -o BatchMode=yes \
             -o IdentitiesOnly=yes \
+            -o StrictHostKeyChecking=yes \
+            -o UserKnownHostsFile=~/.ssh/known_hosts \
             "${DEPLOY_USER}@${DEPLOY_HOST}" \
             bash -s -- "${DEPLOY_PATH}" <<'REMOTE'
           set -Eeuo pipefail
           APP_PATH="$1"
           cd "$APP_PATH"
+
+          mkdir -p storage/framework/cache/data storage/framework/sessions storage/framework/views bootstrap/cache
+          chmod -R u+rwX,g+rwX storage bootstrap/cache
 
           composer install --prefer-dist --no-dev --no-interaction --no-progress --optimize-autoloader
           php artisan optimize:clear
