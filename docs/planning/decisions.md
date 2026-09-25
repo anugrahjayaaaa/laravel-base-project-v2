@@ -268,3 +268,44 @@ isolated from application-specific assets in `public/assets/`. No npm/Vite
 dependency for AdminLTE is introduced. The exact version is recorded in
 `docs/base/ui/ui-adminlte-setup.md`. AdminLTE is not added to `package.json`.
 **Related**: ADR-002, UI-001
+
+## ADR-020: Telescope stays installed on production, gated off by default
+
+**Status**: Accepted
+
+**Context**: ADR-008 classifies Telescope as a technical debugging tool, not an
+audit or monitoring mechanism. The original intent was fast slow-query
+diagnosis on the production VM, but `config/telescope.php` ships
+`'enabled' => env('TELESCOPE_ENABLED', true)`, so an unset `.env` key leaves it
+recording every request. With `'driver' => 'database'` each request writes a row
+to `telescope_entries`, and nothing in the shipped config prunes that table —
+so a forgotten toggle degrades the server and grows storage without bound.
+Moving Telescope to `require-dev` does not solve it on its own: periscope
+hard-requires telescope, so composer keeps Telescope in the production set and
+`composer install --no-dev` still installs it.
+
+**Decision**: Keep telescope and periscope in `require` and make the toggle
+explicit and safe-by-default.
+
+1. `'enabled'` default becomes `false`, not `true`.
+2. `RequestWatcher` off — it persists request bodies (passwords, tokens) to
+   `telescope_entries` unencrypted.
+3. `ModelWatcher` off — the most expensive watcher, serialises every model.
+4. `QueryWatcher` on — the actual requirement behind this decision.
+5. Slow-query diagnosis does not depend on Telescope. Production uses the MySQL
+   slow log plus a `DB::listen()` threshold logger; see Phase 11 in
+   `implementation-roadmap.md` for the ordered ladder.
+
+Disabling costs nothing at runtime: `TelescopeServiceProvider::boot()` returns
+before `Telescope::start()` when `telescope.enabled` is false, so no watcher is
+registered.
+
+**Consequences**: Toggling requires three steps, not one — `config:clear`,
+`config:cache`, and an fpm reload — because cached config freezes `env()` and
+opcache otherwise keeps serving the previous value. `php artisan
+telescope:prune` is mandatory after a debugging session. `.env` is excluded from
+the rsync sync, so the toggle survives deploys; that is intentional, and is why
+the code default must be `false` rather than relying on `.env` alone. A VM that
+forgets the key records nothing, which is the intended failure mode.
+
+**Related**: ADR-008, ADR-013, Phase 11, MONITOR-001
