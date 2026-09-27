@@ -17,7 +17,7 @@ class UpdateUserAction
      * Update user fields. Handles email change via verification flow if email changes.
      *
      * @param  User   $user
-     * @param  array  $data  Keys: name, status, username, email (optional)
+     * @param  array  $data  Keys: name, status, username, email, roles (all optional except name/status)
      * @return User
      */
     public function run(User $user, array $data): User
@@ -50,6 +50,14 @@ class UpdateUserAction
             } else {
                 $user->update(['email' => $data['email']]);
             }
+        }
+
+        // Only touch roles when the key is actually present. An API caller that
+        // omits `roles` must not have the user's permissions silently revoked,
+        // and an empty array is a deliberate "remove them all" — array_key_exists
+        // tells those two apart where isset() cannot.
+        if (array_key_exists('roles', $data)) {
+            $user->syncRoles($data['roles'] ?? []);
         }
 
         return $user->fresh();
