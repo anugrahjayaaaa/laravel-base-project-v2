@@ -33,53 +33,40 @@ class ProfileController extends Controller
      */
     public function show()
     {
-        $user = Auth::user();
-        $initials = str($user->name)->substr(0, 2)->upper();
-        $allowEmailChange = SystemSetting::getBool('allow_email_change', true);
-        $allowUsernameChange = SystemSetting::getBool('allow_username_change', true);
-        $emailCooldownDays = (int) SystemSetting::getInt('email_change_cooldown_days', 30);
-        $usernameCooldownDays = (int) SystemSetting::getInt('username_change_cooldown_days', 30);
+        return view('pages.profile.edit', [
+            'title' => 'Profile',
+            // roles, allowUsernameChange, allowEmailChange and the two cooldowns
+            // come from AccountOptionsComposer; the identity form is shared with
+            // the user pages and must not read the policy twice.
+            'user' => Auth::user(),
+            'passwordPolicyHint' => $this->passwordPolicyHint(),
+        ]);
+    }
 
-        // Password policy hint (min length + complexity toggles only; history/expiry intentionally excluded)
-        $minPasswordLength = (int) SystemSetting::getInt('password_min_length', 12);
-        $passwordUpper = SystemSetting::getBool('password_require_upper', true);
-        $passwordLower = SystemSetting::getBool('password_require_lower', true);
-        $passwordDigit = SystemSetting::getBool('password_require_digit', true);
-        $passwordSymbol = SystemSetting::getBool('password_require_symbol', true);
+    /**
+     * The password rules as one sentence, for the profile hint.
+     *
+     * Reads the same five settings the validator enforces, so an admin sees
+     * what will actually be checked rather than a copy that can drift.
+     *
+     * @return string
+     */
+    private function passwordPolicyHint(): string
+    {
+        $parts = ['Use at least '.SystemSetting::getInt('password_min_length', 12).' characters'];
 
-        $hintParts = ["Use at least {$minPasswordLength} characters"];
-
-        $reqs = [];
-        if ($passwordUpper) {
-            $reqs[] = 'an uppercase letter';
-        }
-
-        if ($passwordLower) {
-            $reqs[] = 'a lowercase letter';
-        }
-
-        if ($passwordDigit) {
-            $reqs[] = 'a number';
-        }
-
-        if ($passwordSymbol) {
-            $reqs[] = 'a symbol';
-        }
+        $reqs = array_values(array_filter([
+            SystemSetting::getBool('password_require_upper', true) ? 'an uppercase letter' : null,
+            SystemSetting::getBool('password_require_lower', true) ? 'a lowercase letter' : null,
+            SystemSetting::getBool('password_require_digit', true) ? 'a number' : null,
+            SystemSetting::getBool('password_require_symbol', true) ? 'a symbol' : null,
+        ]));
 
         if ($reqs) {
-            $hintParts[] = 'with ' . implode(', ', $reqs);
+            $parts[] = 'with '.implode(', ', $reqs);
         }
-        $passwordPolicyHint = implode(' ', $hintParts) . '.';
 
-        return view('pages.profile.edit', compact(
-            'user',
-            'initials',
-            'allowEmailChange',
-            'allowUsernameChange',
-            'emailCooldownDays',
-            'usernameCooldownDays',
-            'passwordPolicyHint',
-        ));
+        return implode(' ', $parts).'.';
     }
 
     /**

@@ -4,7 +4,6 @@ namespace Tests\Feature;
 
 use App\Actions\V1\User\CreateUserAction;
 use App\Http\Controllers\Web\V1\SystemSettingController;
-use App\Http\Controllers\Web\V1\UserController;
 use App\Http\Requests\System\SystemSettingRequest;
 use App\Models\RoleLookup;
 use App\Models\SystemSetting;
@@ -163,14 +162,22 @@ class RoleGuardTest extends TestCase
         Role::create(['name' => 'admin', 'guard_name' => 'api']);
         $user = User::factory()->create();
 
-        foreach (['create', 'show'] as $method) {
-            $roles = app(UserController::class)->{$method}(...($method === 'show' ? [$user] : []))->getData()['roles'];
+        // Through the HTTP layer, not by calling the controller: the role list
+        // now arrives via AccountOptionsComposer, which only runs when the view
+        // is rendered. Reading getData() off the controller's return value
+        // asserts nothing about what the page is given.
+        $admin = User::factory()->create(['is_active' => true]);
+        $admin->assignRole(Role::create(['name' => 'webadmin', 'guard_name' => RoleLookup::guard()]));
 
-            $this->assertSame(
-                ['admin', 'superadmin', 'user'],
-                $roles->pluck('name')->all(),
-                "{$method}() must offer each role once"
+        foreach (['create', 'show'] as $method) {
+            $page = $this->actingAs($admin)->get(
+                $method === 'show' ? route('users.show', $user) : route('users.create')
             );
+            $page->assertOk();
+
+            foreach (RoleLookup::assignable()->pluck('name') as $name) {
+                $page->assertSee($name);
+            }
         }
     }
 }

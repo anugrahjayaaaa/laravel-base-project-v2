@@ -6,6 +6,7 @@ use App\Auth\LoginThrottle;
 use App\Models\User;
 use App\Observers\UserObserver;
 use App\Services\PasswordExpiry;
+use App\View\Composers\AccountOptionsComposer;
 use App\View\Composers\AppMenuComposer;
 use App\View\Composers\PasswordStrengthComposer;
 use Illuminate\Cache\RateLimiting\Limit;
@@ -31,6 +32,19 @@ class AppServiceProvider extends ServiceProvider
 
         view()->composer('layouts.partials.sidebar', AppMenuComposer::class);
         view()->composer('layouts.partials.password-strength', PasswordStrengthComposer::class);
+
+        // Roles and the identity-change policy: shared by every page that shows
+        // an identity field, so they are not threaded through one controller at
+        // a time. @include shares the parent scope, so the partials underneath
+        // are covered by their caller.
+        //
+        // /settings is not on this list: its role dropdown wants a name list,
+        // not Role models, so it keeps reading them itself.
+        view()->composer([
+            'pages.users.create',
+            'pages.users.edit',
+            'pages.profile.edit',
+        ], AccountOptionsComposer::class);
 
         view()->composer('layouts.app', function ($view): void {
             $user = auth()->user();

@@ -9,7 +9,6 @@ use App\Actions\V1\User\CancelEmailChangeAction;
 use App\Actions\V1\User\CreateUserAction;
 use App\Actions\V1\User\DeleteUserAction;
 use App\Models\FailedLoginAttempt;
-use App\Models\RoleLookup;
 use App\Actions\V1\User\ForceDeleteUserAction;
 use App\Actions\V1\User\RequestEmailChangeAction;
 use App\Actions\V1\User\RestoreUserAction;
@@ -59,7 +58,6 @@ class UserController extends Controller
     {
         return view('pages.users.create', [
             'title' => 'Create User',
-            'roles' => RoleLookup::assignable(),
         ]);
     }
 
@@ -99,28 +97,12 @@ class UserController extends Controller
 
         $counts = $this->indexAction->counts();
 
-        // Badge CSS class based on user status and trashed state.
-        $badgeClass = function (UserStatusEnum $s, bool $trashed) {
-            if ($trashed) {
-                return 'bg-danger text-white';
-            }
-            return match ($s->value) {
-                UserStatusEnum::ACTIVE->value => 'bg-success-subtle text-success border border-success-subtle',
-                UserStatusEnum::INACTIVE->value
-                => 'bg-secondary-subtle text-secondary border border-secondary-subtle',
-                UserStatusEnum::LOCKED->value => 'bg-warning-subtle text-warning border border-warning-subtle',
-                UserStatusEnum::PENDING_VERIFICATION->value
-                => 'bg-warning-subtle text-dark border border-warning-subtle',
-            };
-        };
-
         return view('pages.users.index', [
             'title' => 'Users',
             'users' => $users,
             'filters' => $request->only('search', 'status', 'sort', 'direction'),
             'counts' => $counts,
             'statuses' => UserStatusEnum::cases(),
-            'badgeClass' => $badgeClass,
         ]);
     }
 
@@ -132,18 +114,10 @@ class UserController extends Controller
      */
     public function show(User $user)
     {
-        $initials = str($user->name)->substr(0, 2)->upper();
-
         return view('pages.users.edit', [
             'title' => 'User Detail',
             'user' => $user,
-            'initials' => $initials,
             'statuses' => UserStatusEnum::cases(),
-            'roles' => RoleLookup::assignable(),
-            'allowUsernameChange' => SystemSetting::getBool('allow_username_change', true),
-            'allowEmailChange' => SystemSetting::getBool('allow_email_change', true),
-            'usernameCooldownDays' => SystemSetting::getInt('username_change_cooldown_days', 30),
-            'emailCooldownDays' => SystemSetting::getInt('email_change_cooldown_days', 30),
             'failedLoginCount' => FailedLoginAttempt::where('user_id', $user->id)->sum('attempts'),
             'canResendVerification' => SystemSetting::getString('email_verification_mode', 'public') !== 'disabled',
         ]);
