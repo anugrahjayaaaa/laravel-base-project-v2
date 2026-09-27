@@ -244,13 +244,10 @@ class AuthController extends Controller
      */
     public function verifyEmail(VerifyEmailAction $action)
     {
-        $mode = SystemSetting::getString('email_verification_mode', 'public');
-
-        if ($mode === 'admin' || $mode === 'disabled') {
-            return redirect()->route('verification.notice')
-                ->with('error', 'Feature disabled.');
-        }
-
+        // Deliberately not gated on email_verification_mode. That setting decides
+        // who may SEND a verification link, not who may use one. A link already
+        // in an inbox is a capability, and gating it stranded every account whose
+        // first link arrived before the operator switched modes.
         $user = User::findOrFail(request()->route('id'));
 
         if (! hash_equals((string) request()->route('hash'), sha1($user->getEmailForVerification()))) {

@@ -26,11 +26,22 @@
                 </div>
             @endif
 
+            {{-- The mode decides who may send a link, not who may use one. It
+                 arrives here because the link was blocked, an expired one was
+                 used, or the account is simply unverified. --}}
             @if ($mode === 'admin')
                 <div class="alert bg-info-subtle mb-3" role="alert">
                     <div class="d-flex align-items-center gap-2 justify-content-center">
                         <i class="fas fa-circle-info text-info"></i>
                         <span class="text-info flex-grow-1">Contact your admin to resend the verification email.</span>
+                    </div>
+                </div>
+            @elseif ($mode === 'disabled')
+                <div class="alert alert-warning mb-3" role="alert">
+                    <div class="d-flex align-items-center gap-2 justify-content-center">
+                        <i class="fas fa-circle-exclamation text-warning"></i>
+                        <span class="flex-grow-1">New verification emails cannot be sent. Use the link already sent to
+                            you — if it has expired, an admin has to reissue it.</span>
                     </div>
                 </div>
             @else

@@ -17,7 +17,9 @@
         route('users.destroy', $user) .
         '" data-method="DELETE" ' .
         'data-action-type="delete" ' .
-        'data-item-name="' . e($user->name) . '" ' .
+        'data-item-name="' .
+        e($user->name) .
+        '" ' .
         'data-label="Delete"';
 
     $restoreModal =
@@ -26,7 +28,9 @@
         route('users.restore', $user) .
         '" data-method="POST" ' .
         'data-action-type="restore" ' .
-        'data-item-name="' . e($user->name) . '" ' .
+        'data-item-name="' .
+        e($user->name) .
+        '" ' .
         'data-label="Restore"';
 
     $forceDeleteModal =
@@ -35,7 +39,9 @@
         route('users.force-delete', $user) .
         '" data-method="DELETE" ' .
         'data-action-type="force_delete" ' .
-        'data-item-name="' . e($user->name) . '" ' .
+        'data-item-name="' .
+        e($user->name) .
+        '" ' .
         'data-label="Permanent Delete"';
 
     $activateModal =
@@ -44,7 +50,9 @@
         route('users.activate', $user) .
         '" data-method="POST" ' .
         'data-action-type="activate" ' .
-        'data-item-name="' . e($user->name) . '" ' .
+        'data-item-name="' .
+        e($user->name) .
+        '" ' .
         'data-label="Activate"';
 
     $deactivateModal =
@@ -53,7 +61,9 @@
         route('users.deactivate', $user) .
         '" data-method="POST" ' .
         'data-action-type="deactivate" ' .
-        'data-item-name="' . e($user->name) . '" ' .
+        'data-item-name="' .
+        e($user->name) .
+        '" ' .
         'data-label="Deactivate"';
 
     $lockModal =
@@ -62,7 +72,9 @@
         route('users.lock', $user) .
         '" data-method="POST" ' .
         'data-action-type="lock" ' .
-        'data-item-name="' . e($user->name) . '" ' .
+        'data-item-name="' .
+        e($user->name) .
+        '" ' .
         'data-label="Lock"';
 
     $unlockModal =
@@ -210,12 +222,19 @@
                             <button type="button" class="btn-close ms-2" data-bs-dismiss="alert"
                                 aria-label="Close"></button>
                         </div>
-                        <form method="POST" action="{{ route('users.resend-verification', $user) }}" class="d-inline">
-                            @csrf
-                            <button type="submit" class="btn btn-outline-warning btn-sm w-100">
-                                <i class="fas fa-envelope me-1"></i> Resend Verification
-                            </button>
-                        </form>
+                        {{-- Hidden in `disabled`: nobody may send, and offering a
+                             button that is guaranteed to be refused is worse than
+                             not offering it. The warning above stays, the
+                             account is still unverified, which is a fact about
+                             the account, not an action. --}}
+                        @if ($canResendVerification)
+                            <form method="POST" action="{{ route('users.resend-verification', $user) }}" class="d-inline">
+                                @csrf
+                                <button type="submit" class="btn btn-outline-warning btn-sm w-100">
+                                    <i class="fas fa-envelope me-1"></i> Resend Verification
+                                </button>
+                            </form>
+                        @endif
                     @endif
 
                     {{-- State Toggles --}}

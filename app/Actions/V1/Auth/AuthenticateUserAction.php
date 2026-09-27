@@ -2,7 +2,6 @@
 
 namespace App\Actions\V1\Auth;
 
-use App\Models\SystemSetting;
 use App\Models\User;
 use App\Auth\LoginThrottle;
 use Illuminate\Support\Facades\Hash;
@@ -134,10 +133,11 @@ class AuthenticateUserAction
      */
     protected function checkEmailVerification(User $user): ?array
     {
-        if (SystemSetting::getString('email_verification_mode', 'public') === 'disabled') {
-            return null;
-        }
-
+        // Every mode requires a verified address, including `disabled`, that
+        // mode stops people SENDING links, it does not waive the requirement.
+        // The `verified` route middleware is Laravel's own and checks the same
+        // column unconditionally, so waiving it here only produced a user who
+        // logged in successfully and was then bounced off every page.
         if (! $user->hasVerifiedEmail()) {
             return [
                 'message' => 'Email not verified',
