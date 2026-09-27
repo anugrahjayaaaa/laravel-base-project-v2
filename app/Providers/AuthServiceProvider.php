@@ -103,6 +103,16 @@ class AuthServiceProvider extends ServiceProvider
                 ->response(function (Request $request, array $headers) {
                     $retryAfter = $headers['Retry-After'] ?? 60;
 
+                    // Same two answers every other limiter here gives: JSON for
+                    // API callers, a redirect with errors for the web form.
+                    if ($request->expectsJson()) {
+                        return response()->json([
+                            'message' => 'Too many requests. Please try again later.',
+                            'code' => 'RATE_LIMITED',
+                            'retry_after_seconds' => $retryAfter,
+                        ], 429);
+                    }
+
                     return back()->withErrors(['email' => 'Too many attempts. Please try again later.'])
                         ->withInput($request->only('name', 'username', 'email'))
                         ->with('rate_limit_seconds', $retryAfter);
