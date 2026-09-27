@@ -358,12 +358,38 @@ jobs:
           sudo -n supervisorctl restart 'laravel-v2-worker:*' || true
           sudo -n supervisorctl restart 'laravel-v2-scheduler:*' || true
 
-          status=$(sudo -n supervisorctl status 'laravel-v2-worker:*' 'laravel-v2-scheduler:*')
-          echo "$status"
-          if echo "$status" | grep -qv RUNNING; then
-              echo "::error::a worker is not RUNNING after deploy"
-              exit 1
-          fi
+          # `restart` returns as soon as supervisor has been told to start the process,
+          # not when it is up: a freshly started program is STARTING for a moment and
+          # only becomes RUNNING once queue:work has booted the framework. Checking
+          # once right after the restart reads that transient state and fails a deploy
+          # whose workers are in fact healthy.
+          #
+          # Poll until every program reports RUNNING, or give up: a program that stays
+          # in BACKOFF/FATAL/EXITED never will, and startretries=3 means supervisor has
+          # already given up trying.
+          deadline=$(( $(date +%s) + 30 ))
+          while :; do
+              # One call per group. Passing both patterns to a single status call
+              # returns only the last group, so the queue workers would never be
+              # inspected and their state would go unreported.
+              status=$( { sudo -n supervisorctl status 'laravel-v2-worker:*' || true; \
+                          sudo -n supervisorctl status 'laravel-v2-scheduler:*' || true; } )
+              if [ -z "$status" ]; then
+                  echo "::error::supervisorctl status returned nothing — the programs are not defined"
+                  exit 1
+              fi
+              if ! echo "$status" | grep -qv RUNNING; then
+                  echo "$status"
+                  echo "all supervisor programs are RUNNING"
+                  exit 0
+              fi
+              if [ "$(date +%s)" -ge "$deadline" ]; then
+                  echo "$status"
+                  echo "::error::a worker is not RUNNING after 30s"
+                  exit 1
+              fi
+              sleep 2
+          done
           REMOTE
 
       - name: Health check
