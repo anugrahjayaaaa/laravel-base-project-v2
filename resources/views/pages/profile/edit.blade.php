@@ -173,16 +173,6 @@
                     'passwordChangeActionsClass' => 'card-footer bg-body-tertiary border-top py-3 d-flex justify-content-end',
                 ])
             </div>
-
-            {{-- Security Info Widget --}}
-            <div class="alert alert-info mb-0">
-                <div class="d-flex align-items-start gap-2">
-                    <i class="fas fa-circle-info text-primary mt-1"></i>
-                    <div>
-                        <small class="text-muted">{{ $passwordPolicyHint }}</small>
-                    </div>
-                </div>
-            </div>
         </div>
     </div>
 @endsection

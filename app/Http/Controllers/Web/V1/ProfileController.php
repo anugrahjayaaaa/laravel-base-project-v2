@@ -6,7 +6,6 @@ use App\Actions\V1\Auth\ChangePasswordAction;
 use App\Actions\V1\User\UpdateUserAction;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\User\ProfileUpdateRequest;
-use App\Models\SystemSetting;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
@@ -38,35 +37,12 @@ class ProfileController extends Controller
             // roles, allowUsernameChange, allowEmailChange and the two cooldowns
             // come from AccountOptionsComposer; the identity form is shared with
             // the user pages and must not read the policy twice.
+            //
+            // No password hint here: the strength checklist under the field
+            // already lists the rules the validator enforces, and it is fed by
+            // the same settings, so a sentence beside it can only ever drift.
             'user' => Auth::user(),
-            'passwordPolicyHint' => $this->passwordPolicyHint(),
         ]);
-    }
-
-    /**
-     * The password rules as one sentence, for the profile hint.
-     *
-     * Reads the same five settings the validator enforces, so an admin sees
-     * what will actually be checked rather than a copy that can drift.
-     *
-     * @return string
-     */
-    private function passwordPolicyHint(): string
-    {
-        $parts = ['Use at least '.SystemSetting::getInt('password_min_length', 12).' characters'];
-
-        $reqs = array_values(array_filter([
-            SystemSetting::getBool('password_require_upper', true) ? 'an uppercase letter' : null,
-            SystemSetting::getBool('password_require_lower', true) ? 'a lowercase letter' : null,
-            SystemSetting::getBool('password_require_digit', true) ? 'a number' : null,
-            SystemSetting::getBool('password_require_symbol', true) ? 'a symbol' : null,
-        ]));
-
-        if ($reqs) {
-            $parts[] = 'with '.implode(', ', $reqs);
-        }
-
-        return implode(' ', $parts).'.';
     }
 
     /**
