@@ -78,6 +78,45 @@ class User extends Authenticatable implements MustVerifyEmail
     }
 
     /**
+     * The avatar initials for this user's name.
+     *
+     * One implementation, because the avatar is rendered on both the profile
+     * and the user detail page and the two used to disagree: one took the
+     * first two CHARACTERS, the other the first letter of the first two
+     * WORDS. "Jaya Pratama" rendered as "JP" on one page and "JP" on the other
+     * by luck, and "Budi" as "BU" versus "B".
+     *
+     *   Budi            -> BU   (one name, two letters)
+     *   Jane Doe        -> JD   (two names, one letter each)
+     *   John Ronald
+     *   Reuel Tolkien   -> JT   (three or more, the standard: first + last)
+     *
+     * Three or more collapses to first + last because the middle names are
+     * what run out of room first, and a two-letter "JR" for John Ronald
+     * Reuel Tolkien is less recognisable than "JT".
+     *
+     * @return string
+     */
+    public function initials(): string
+    {
+        $words = preg_split('/\s+/', trim($this->name)) ?: [];
+
+        if ($words === [] || $words === ['']) {
+            return '';
+        }
+
+        if (count($words) === 1) {
+            return strtoupper(str($words[0])->substr(0, 2));
+        }
+
+        if (count($words) === 2) {
+            return strtoupper(str($words[0])[0].$words[1][0]);
+        }
+
+        return strtoupper(str($words[0])[0].$words[count($words) - 1][0]);
+    }
+
+    /**
      * Check if the user is inactive.
      *
      * @return bool

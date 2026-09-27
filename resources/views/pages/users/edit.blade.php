@@ -1,16 +1,6 @@
 @extends('layouts.app', ['title' => 'Edit User'])
 
 @php
-    $status = $user->getStatus();
-    $badgeClass = match ($status->value) {
-        'active' => 'bg-success-subtle text-success border border-success-subtle',
-        'inactive' => 'bg-secondary-subtle text-secondary border border-secondary-subtle',
-        'locked' => 'bg-warning-subtle text-warning border border-warning-subtle',
-        'pending_verification' => 'bg-warning-subtle text-dark border border-warning-subtle',
-    };
-
-    $initials = str($user->name)->explode(' ')->take(2)->map(fn($w) => strtoupper($w[0]))->implode('');
-
     $softDeleteModal =
         'data-bs-toggle="modal" data-bs-target="#confirmModal" ' .
         'data-action="' .
@@ -130,7 +120,7 @@
                     <div class="d-flex align-items-center gap-3">
                         <div class="avatar-sm rounded-circle d-flex align-items-center justify-content-center text-white fw-bold"
                             style="background: var(--lbp-primary, #6366f1); width: 40px; height: 40px; font-size: 0.9rem;">
-                            {{ $initials }}
+                            {{ $user->initials() }}
                         </div>
                         <div>
                             <strong>{{ $user->name }}</strong>

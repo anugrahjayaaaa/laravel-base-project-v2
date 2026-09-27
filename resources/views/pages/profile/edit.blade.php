@@ -1,9 +1,5 @@
 @extends('layouts.app', ['title' => 'Edit Profile'])
 
-@php
-    $initials = str($user->name)->explode(' ')->take(2)->map(fn($w) => strtoupper($w[0]))->implode('');
-@endphp
-
 @section('content')
     <div class="content-header mb-3">
         <div class="d-flex justify-content-between align-items-start w-100">
@@ -53,7 +49,7 @@
                     <div class="d-flex align-items-center gap-3">
                         <div class="avatar-sm rounded-circle d-flex align-items-center justify-content-center text-white fw-bold"
                             style="background: var(--lbp-primary, #6366f1); width: 40px; height: 40px; font-size: 0.9rem;">
-                            {{ $initials }}
+                            {{ $user->initials() }}
                         </div>
                         <div>
                             <strong>{{ $user->name }}</strong>
