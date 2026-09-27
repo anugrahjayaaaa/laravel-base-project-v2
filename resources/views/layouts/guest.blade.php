@@ -8,7 +8,7 @@
     <link rel="stylesheet" href="{{ asset('vendor/bootstrap/css/bootstrap.min.css') }}">
     <link rel="stylesheet" href="{{ asset('vendor/adminlte/css/adminlte.min.css') }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
-    <link rel="stylesheet" href="{{ asset('vendor/theme.css') }}">
+    <link rel="stylesheet" href="{{ asset('vendor/theme.css') }}?v={{ filemtime(public_path('vendor/theme.css')) }}">
     <script>
         (function() {
             var saved = localStorage.getItem('theme');
