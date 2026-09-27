@@ -25,6 +25,14 @@
         </div>
     @endif
 
+    @if ($errors->any())
+        <div class="alert alert-danger alert-dismissible fade show mb-3" role="alert">
+            <i class="fas fa-circle-exclamation me-1"></i>
+            Please fix the errors below.
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    @endif
+
     <div class="alert alert-info mb-4">
         <div class="d-flex align-items-center gap-2 mb-1">
             <i class="bi bi-info-circle-fill text-info fs-5"></i>
@@ -35,73 +43,64 @@
         </p>
     </div>
 
-    <div class="card border-0 shadow-sm mb-4">
-        <div class="card-header bg-transparent border-bottom py-3">
-            <h5 class="card-title mb-0 fw-semibold">Account Information</h5>
-        </div>
-        <form method="POST" action="{{ route('users.store') }}" id="createUserForm">
-            @csrf
-            <div class="card-body p-4">
-                <div class="row g-3">
-                    <div class="col-md-6">
-                        <label for="name" class="form-label">Name</label>
-                        <input type="text" name="name" id="name"
-                            class="form-control form-control-sm @error('name') is-invalid @enderror"
-                            value="{{ old('name') }}" required maxlength="255" autofocus>
-                        @error('name')
-                            <div class="invalid-feedback">{{ $message }}</div>
-                        @enderror
-                    </div>
-                    <div class="col-md-6">
-                        <label for="username" class="form-label">Username</label>
-                        <div class="input-group">
-                            <span class="input-group-text">@</span>
-                            <input type="text" name="username" id="username"
-                                class="form-control form-control-sm @error('username') is-invalid @enderror"
-                                value="{{ old('username') }}" required maxlength="50" autocomplete="username">
-                        </div>
-                        @error('username')
-                            <div class="invalid-feedback d-block">{{ $message }}</div>
-                        @enderror
-                    </div>
-                    <div class="col-md-6">
-                        <label for="email" class="form-label">Email</label>
-                        <input type="email" name="email" id="email"
-                            class="form-control form-control-sm @error('email') is-invalid @enderror"
-                            value="{{ old('email') }}" required maxlength="255">
-                        @error('email')
-                            <div class="invalid-feedback">{{ $message }}</div>
-                        @enderror
-                    </div>
+    <div class="row g-4">
+        {{-- Main Content --}}
+        <div class="col-lg-8 col-12">
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-transparent border-bottom py-3">
+                    <h5 class="card-title mb-0 fw-semibold">Account Information</h5>
                 </div>
+                <form method="POST" action="{{ route('users.store') }}" id="createUserForm">
+                    @csrf
+                    <div class="card-body p-4">
+                        @include('partials.user-identity-fields', [
+                            'user' => null,
+                            'allowUsernameChange' => true,
+                            'allowEmailChange' => true,
+                        ])
 
-                <div class="mt-3">
-                    <label class="form-label">Roles</label>
-                    <div class="border rounded p-3" style="max-height: 200px; overflow-y: auto;">
-                        @foreach ($roles as $role)
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" name="roles[]"
-                                    value="{{ $role->name }}" id="role_{{ $loop->index }}"
-                                    {{ old('roles', []) && in_array($role->name, old('roles')) ? 'checked' : '' }}>
-                                <label class="form-check-label small" for="role_{{ $loop->index }}">
-                                    {{ $role->name }}
-                                </label>
-                            </div>
-                        @endforeach
+                        @include('partials.user-role-picker', [
+                            'roles' => $roles,
+                            'selectedRoles' => [],
+                        ])
                     </div>
-                    @error('roles')
-                        <div class="invalid-feedback d-block">{{ $message }}</div>
-                    @enderror
+                    <div class="card-footer bg-body-tertiary border-top py-3 d-flex justify-content-end align-items-center gap-2">
+                        <a href="{{ route('users.index') }}"
+                            class="btn btn-outline-secondary d-inline-flex align-items-center gap-2">
+                            <i class="bi bi-x-circle"></i> Cancel
+                        </a>
+                        <button type="submit" class="btn btn-primary d-inline-flex align-items-center gap-2">
+                            <i class="bi bi-person-plus-fill"></i> Create User
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        {{-- Right column --}}
+        <div class="col-lg-4 col-12">
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-transparent border-bottom py-2">
+                    <h5 class="card-title mb-0 fw-semibold">What happens next</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex align-items-start gap-2 mb-3">
+                        <i class="fas fa-key text-primary mt-1"></i>
+                        <small class="text-muted">A 12-character temporary password is generated and emailed to the
+                            address above. It is never shown on this page.</small>
+                    </div>
+                    <div class="d-flex align-items-start gap-2 mb-3">
+                        <i class="fas fa-envelope text-primary mt-1"></i>
+                        <small class="text-muted">A verification link is sent in the same message. The account stays
+                            pending until the address is verified.</small>
+                    </div>
+                    <div class="d-flex align-items-start gap-2">
+                        <i class="fas fa-user-lock text-primary mt-1"></i>
+                        <small class="text-muted">The user must change the temporary password on their first login
+                            before anything else is reachable.</small>
+                    </div>
                 </div>
             </div>
-            <div class="card-footer bg-body-tertiary border-top py-3 d-flex justify-content-end align-items-center gap-2">
-                <a href="{{ route('users.index') }}" class="btn btn-outline-secondary d-inline-flex align-items-center gap-2">
-                    <i class="bi bi-x-circle"></i> Cancel
-                </a>
-                <button type="submit" class="btn btn-primary d-inline-flex align-items-center gap-2">
-                    <i class="bi bi-person-plus-fill"></i> Create User
-                </button>
-            </div>
-        </form>
+        </div>
     </div>
 @endsection
