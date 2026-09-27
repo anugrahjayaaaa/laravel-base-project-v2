@@ -61,9 +61,11 @@ class UpdateSystemSettingsAction
 
             // Password policy & lifecycle
             'password_min_length' => (string) ($data['password_min_length'] ?? 8),
-            'password_mixed_case' => ($data['password_mixed_case'] ?? false) ? 'true' : 'false',
-            'password_numbers' => ($data['password_numbers'] ?? false) ? 'true' : 'false',
-            'password_symbols' => ($data['password_symbols'] ?? false) ? 'true' : 'false',
+            'password_require_upper' => ($data['password_require_upper'] ?? true) ? 'true' : 'false',
+            'password_require_lower' => ($data['password_require_lower'] ?? true) ? 'true' : 'false',
+            'password_require_digit' => ($data['password_require_digit'] ?? true) ? 'true' : 'false',
+            'password_require_symbol' => ($data['password_require_symbol'] ?? true) ? 'true' : 'false',
+            'password_reject_username' => ($data['password_reject_username'] ?? true) ? 'true' : 'false',
             'password_uncompromised' => ($data['password_uncompromised'] ?? false) ? 'true' : 'false',
             'password_history_enabled' => ($data['password_history_enabled'] ?? false) ? 'true' : 'false',
             'password_history_count' => (string) ($data['password_history_count'] ?? 5),

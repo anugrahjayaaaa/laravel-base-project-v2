@@ -42,9 +42,11 @@ class SystemSettingRequest extends FormRequest
 
             // Password policy & lifecycle
             'password_min_length' => ['integer', 'min:4', 'max:128'],
-            'password_mixed_case' => ['boolean'],
-            'password_numbers' => ['boolean'],
-            'password_symbols' => ['boolean'],
+            'password_require_upper' => ['boolean'],
+            'password_require_lower' => ['boolean'],
+            'password_require_digit' => ['boolean'],
+            'password_require_symbol' => ['boolean'],
+            'password_reject_username' => ['boolean'],
             'password_uncompromised' => ['boolean'],
             'password_history_enabled' => ['boolean'],
             'password_history_count' => ['integer', 'min:0', 'max:24'],
@@ -98,9 +100,11 @@ class SystemSettingRequest extends FormRequest
     {
         foreach (
             [
-                'password_mixed_case',
-                'password_numbers',
-                'password_symbols',
+                'password_require_upper',
+                'password_require_lower',
+                'password_require_digit',
+                'password_require_symbol',
+                'password_reject_username',
                 'password_uncompromised',
                 'password_history_enabled',
                 'password_expiry_enabled',

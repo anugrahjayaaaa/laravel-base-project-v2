@@ -86,16 +86,16 @@ class SettingsPersistenceTest extends TestCase
         $this->assertFalse(SystemSetting::getBool('registration_enabled', true));
 
         $action->run([
-            'password_mixed_case' => true,
-            'password_symbols' => true,
-            'password_numbers' => true,
+            'password_require_upper' => true,
+            'password_require_symbol' => true,
+            'password_require_digit' => true,
         ], partial: true);
         $action->run(['login_max_attempts' => 6], partial: true);
         SystemSetting::bustCache();
 
-        $this->assertTrue(SystemSetting::getBool('password_mixed_case', false));
-        $this->assertTrue(SystemSetting::getBool('password_symbols', false));
-        $this->assertTrue(SystemSetting::getBool('password_numbers', false));
+        $this->assertTrue(SystemSetting::getBool('password_require_upper', false));
+        $this->assertTrue(SystemSetting::getBool('password_require_symbol', false));
+        $this->assertTrue(SystemSetting::getBool('password_require_digit', false));
         $this->assertFalse(SystemSetting::getBool('password_history_enabled', true), 'a stored "false" must stay false');
     }
 }

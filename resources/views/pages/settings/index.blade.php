@@ -147,6 +147,7 @@
                             {{-- Password History toggle --}}
                             <div class="col-md-6">
                                 <div class="form-check form-switch mt-4 pt-2">
+                                    <input type="hidden" name="password_history_enabled" value="0">
                                     <input class="form-check-input" type="checkbox" name="password_history_enabled" id="password_history_enabled"
                                         {{ filter_var($settings['password_history_enabled'] ?? 'true', FILTER_VALIDATE_BOOLEAN) ? 'checked' : '' }}>
                                     <label for="password_history_enabled" class="form-check-label">
@@ -157,47 +158,36 @@
                             </div>
                         </div>
                         <hr class="my-3">
+                        {{-- One switch per key PasswordPolicy actually reads. The form used to offer
+                             "Mixed Case", "Numbers" and "Symbols" — keys nothing read — while the keys
+                             the policy consulted (password_require_upper/lower/digit/symbol) had no UI
+                             at all, so every one of those toggles was inert. PolicyKeyTest keeps this
+                             list and PasswordPolicy's in step. --}}
                         <div class="row g-3">
-                            <div class="col-md-6">
-                                <div class="form-check form-switch">
-                                    <input class="form-check-input" type="checkbox" name="password_mixed_case" id="password_mixed_case"
-                                        {{ filter_var($settings['password_mixed_case'] ?? 'true', FILTER_VALIDATE_BOOLEAN) ? 'checked' : '' }}>
-                                    <label for="password_mixed_case" class="form-check-label">
-                                        Mixed Case
-                                        <i class="bi bi-info-circle text-muted fs-6 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Enforces a combination of uppercase (A-Z) and lowercase (a-z) letters."></i>
-                                    </label>
+                            @foreach ([
+                                'password_require_upper' => ['Uppercase', 'Requires at least one uppercase letter (A-Z).'],
+                                'password_require_lower' => ['Lowercase', 'Requires at least one lowercase letter (a-z).'],
+                                'password_require_digit' => ['Numbers', 'Requires at least one numeric digit (0-9).'],
+                                'password_require_symbol' => ['Symbols', 'Requires at least one special character (e.g. @, #, $).'],
+                                'password_reject_username' => ['Reject Username', 'Refuses a password containing the account\'s own username.'],
+                                'password_uncompromised' => ['Pwned Check', 'Rejects passwords found in public data breaches, via the HaveIBeenPwned k-anonymity range API — only the first five characters of the hash are sent. If the service is unreachable this one check is skipped.'],
+                            ] as $key => [$label, $hint])
+                                <div class="col-md-6">
+                                    <div class="form-check form-switch">
+                                        {{-- Without this, an unticked box is simply absent from the
+                                             payload, and UpdateSystemSettingsAction's
+                                             `?? true` writes it back ON. Every switch here
+                                             needs the companion or it can only ever be enabled. --}}
+                                        <input type="hidden" name="{{ $key }}" value="0">
+                                        <input class="form-check-input" type="checkbox" name="{{ $key }}" id="{{ $key }}"
+                                            {{ filter_var($settings[$key] ?? 'true', FILTER_VALIDATE_BOOLEAN) ? 'checked' : '' }}>
+                                        <label for="{{ $key }}" class="form-check-label">
+                                            {{ $label }}
+                                            <i class="bi bi-info-circle text-muted fs-6 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="{{ $hint }}"></i>
+                                        </label>
+                                    </div>
                                 </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="form-check form-switch">
-                                    <input class="form-check-input" type="checkbox" name="password_numbers" id="password_numbers"
-                                        {{ filter_var($settings['password_numbers'] ?? 'true', FILTER_VALIDATE_BOOLEAN) ? 'checked' : '' }}>
-                                    <label class="form-check-label" for="password_numbers">
-                                        Numbers
-                                        <i class="bi bi-info-circle text-muted fs-6 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Enforces inclusion of at least one numeric digit (0-9)."></i>
-                                    </label>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="form-check form-switch">
-                                    <input class="form-check-input" type="checkbox" name="password_symbols" id="password_symbols"
-                                        {{ filter_var($settings['password_symbols'] ?? 'true', FILTER_VALIDATE_BOOLEAN) ? 'checked' : '' }}>
-                                    <label class="form-check-label" for="password_symbols">
-                                        Symbols
-                                        <i class="bi bi-info-circle text-muted fs-6 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Enforces inclusion of at least one special character (e.g., @, #, $)."></i>
-                                    </label>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="form-check form-switch">
-                                    <input class="form-check-input" type="checkbox" name="password_uncompromised" id="password_uncompromised"
-                                        {{ filter_var($settings['password_uncompromised'] ?? 'false', FILTER_VALIDATE_BOOLEAN) ? 'checked' : '' }}>
-                                    <label class="form-check-label" for="password_uncompromised">
-                                        Pwned Check
-                                        <i class="bi bi-info-circle text-muted fs-6 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Checks whether candidate passwords have been compromised in public data breaches via HaveIBeenPwned API."></i>
-                                    </label>
-                                </div>
-                            </div>
+                            @endforeach
                         </div>
                     </div>
                 </div>
@@ -261,6 +251,7 @@
                             </div>
                             <div class="col-md-6">
                                 <div class="form-check form-switch mt-4 pt-2">
+                                    <input type="hidden" name="password_expiry_enabled" value="0">
                                     <input class="form-check-input" type="checkbox" name="password_expiry_enabled" id="password_expiry_enabled"
                                         {{ filter_var($settings['password_expiry_enabled'] ?? 'true', FILTER_VALIDATE_BOOLEAN) ? 'checked' : '' }}>
                                     <label for="password_expiry_enabled" class="form-check-label">
@@ -289,6 +280,7 @@
                             </div>
                             <div class="col-md-6">
                                 <div class="form-check form-switch mt-4 pt-2">
+                                    <input type="hidden" name="inactivity_lock_enabled" value="0">
                                     <input class="form-check-input" type="checkbox" name="inactivity_lock_enabled" id="inactivity_lock_enabled"
                                         {{ filter_var($settings['inactivity_lock_enabled'] ?? 'true', FILTER_VALIDATE_BOOLEAN) ? 'checked' : '' }}>
                                     <label for="inactivity_lock_enabled" class="form-check-label">
@@ -443,6 +435,7 @@
                     </div>
                     <div class="card-body p-4">
                         <div class="form-check form-switch mb-3">
+                            <input type="hidden" name="allow_username_change" value="0">
                             <input class="form-check-input" type="checkbox" name="allow_username_change" id="allow_username_change"
                                 {{ filter_var($settings['allow_username_change'] ?? 'true', FILTER_VALIDATE_BOOLEAN) ? 'checked' : '' }}>
                             <label class="form-check-label" for="allow_username_change">
@@ -466,6 +459,7 @@
                             @enderror
                         </div>
                         <div class="form-check form-switch mb-3">
+                            <input type="hidden" name="allow_email_change" value="0">
                             <input class="form-check-input" type="checkbox" name="allow_email_change" id="allow_email_change"
                                 {{ filter_var($settings['allow_email_change'] ?? 'true', FILTER_VALIDATE_BOOLEAN) ? 'checked' : '' }}>
                             <label class="form-check-label" for="allow_email_change">
@@ -508,6 +502,7 @@
 
                         <h6 class="text-uppercase text-muted small fw-semibold mb-3">Self-Registration</h6>
                         <div class="form-check form-switch mb-3">
+                            <input type="hidden" name="registration_enabled" value="0">
                             <input class="form-check-input" type="checkbox" name="registration_enabled" id="registration_enabled"
                                 {{ filter_var($settings['registration_enabled'] ?? 'false', FILTER_VALIDATE_BOOLEAN) ? 'checked' : '' }}>
                             <label class="form-check-label" for="registration_enabled">

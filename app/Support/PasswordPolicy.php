@@ -3,12 +3,19 @@
 namespace App\Support;
 
 use App\Models\SystemSetting;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rules\Password;
 
 /**
  * IM8 password policy,single source of truth for password rules.
  *
  * Reads policy configuration from SystemSetting (admin-editable via /settings).
  * Provides validation and strength calculation for UI feedback.
+ *
+ * The settings keys here ARE the contract with the /settings form. A key this
+ * class reads that the form does not write is unreachable for an admin; a key
+ * the form writes that this class does not read is a toggle that does nothing.
+ * PolicyKeyTest pins the two lists together.
  */
 class PasswordPolicy
 {
@@ -58,7 +65,41 @@ class PasswordPolicy
             }
         }
 
+        // Deliberately last: it is the only rule that leaves the server, and a
+        // password failing the cheap checks above is not worth a round trip.
+        if (SystemSetting::getBool('password_uncompromised', false) && self::isPwned($password)) {
+            $errors[] = 'This password has appeared in a public data breach. Please choose another.';
+        }
+
         return $errors;
+    }
+
+    /**
+     * Has this password turned up in a public breach?
+     *
+     * Laravel's own verifier, which is the point: it uses HIBP's k-anonymity
+     * range API, so only the first five characters of the SHA-1 are sent and
+     * the password itself never leaves this server. No extra dependency for
+     * that — the rule ships with the framework.
+     *
+     * Fail-OPEN, and not by choice here: NotPwnedVerifier::search() reports
+     * the connection error and returns an empty result set, so a HIBP outage
+     * means "not pwned" rather than locking every user out of their own
+     * account. The complexity rules still apply, and only this one check is
+     * skipped.
+     *
+     * ponytail: runs inline on every validation. Cache the per-password result
+     * if the latency shows up — Hash::make-style memoisation, or check the
+     * candidate once at the form and not again on submit.
+     */
+    private static function isPwned(string $password): bool
+    {
+        // uncompromised() is an instance method, so it has to be entered
+        // through the fluent builder like every other Password rule.
+        return Validator::make(
+            ['password' => $password],
+            ['password' => [Password::min(1)->uncompromised()]]
+        )->fails();
     }
 
     /**
