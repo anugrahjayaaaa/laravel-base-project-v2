@@ -194,8 +194,17 @@ All state endpoints return JSON `{ data: { message }, meta: { request_id, timest
 ||-----|------|---------|-------------|
 || `allow_username_change` | boolean | true | Toggle username change feature |
 || `allow_email_change` | boolean | true | Toggle email change feature |
-|| `username_change_cooldown_days` | integer | 30 | Days before username can be changed again |
-|| `email_change_cooldown_days` | integer | 30 | Days before email can be changed again |
+| `username_change_cooldown_days` | integer | 30 | Days before username can be changed again |
+| `email_change_cooldown_days` | integer | 30 | Days before email can be changed again |
+| `registration_enabled` | boolean | false | Publishes the public sign-up form |
+| `registration_default_role` | string | user | Role given to self-registered accounts; empty means no role |
+| `registration_rate_limit_per_minute` | integer | 3 | Sign-up attempts per minute per IP |
+
+A setting that is seeded, validated and rendered but missing from
+`UpdateSystemSettingsAction::$updates` is never written — the save reports
+success and the value does not change. See "Adding a new setting" in
+[docs/user-management.md](../../user-management.md) for the full checklist;
+`SettingsPersistenceTest` fails the suite when the two lists diverge.
 
 ### Email Change Verification Flow
 
