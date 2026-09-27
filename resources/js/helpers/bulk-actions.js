@@ -1,4 +1,4 @@
-import { ACTION_CONFIG, escHtml } from './action-config.js';
+import { escHtml, resolveAction } from './action-config.js';
 
 /**
  * Bulk User Actions — dynamic dropdown based on selected users' states
@@ -150,7 +150,12 @@ import { ACTION_CONFIG, escHtml } from './action-config.js';
             form.appendChild(input);
         });
 
-        var cfg = ACTION_CONFIG[action] || ACTION_CONFIG.delete;
+        var cfg = resolveAction(action) || {
+            title: 'Confirm',
+            msg: 'Are you sure?',
+            variant: 'danger',
+            icon: 'bi bi-question-circle',
+        };
         var itemName = selected.length + ' selected user(s)';
         var titleEl = document.getElementById('confirmModalTitle');
         var msgEl = document.getElementById('confirmModalMessage');

@@ -7,6 +7,25 @@ export function escHtml(s) {
     return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
+/**
+ * Look up an action's copy, or null if the key is unknown.
+ *
+ * Both drivers used to fall back to ACTION_CONFIG.delete, so a typo'd or
+ * half-renamed key silently offered "Move X to trash?" on a Lock button. No
+ * log, no error — the user just reads the wrong words and clicks Confirm.
+ * Returning null instead forces the caller to decide, and the warn makes the
+ * typo visible while developing.
+ */
+export function resolveAction(key) {
+    if (key && ACTION_CONFIG[key]) return ACTION_CONFIG[key];
+
+    if (key) {
+        console.warn('[action-config] unknown action key:', key, '— known keys:', Object.keys(ACTION_CONFIG).join(', '));
+    }
+
+    return null;
+}
+
 export const ACTION_CONFIG = {
     // --- destructive ---
     delete: {
