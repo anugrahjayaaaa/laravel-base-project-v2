@@ -19,13 +19,28 @@
 # Called by .github/workflows/ci-cd.yml from the health check step when the
 # deploy turns out to be broken. Also safe to run by hand over SSH.
 #
-# Usage: bin/deploy-rollback.sh snapshot            take a release snapshot
-#        bin/deploy-rollback.sh restore [archive]   restore (default: newest)
+# Usage: bin/deploy-rollback.sh snapshot [app-path]     take a release snapshot
+#        bin/deploy-rollback.sh restore [app-path] [archive]
+#                                          restore (default: newest archive)
 #
 set -Eeuo pipefail
 
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# APP_PATH is the only way the workflow tells the script where the app is.
+# Deriving it from the script's own location pointed ROOT_DIR at /, because the
+# deploy copies this script to /tmp, and the first mkdir then tried to create
+# /storage/ on the VM's root filesystem.
+ROOT_DIR="${APP_PATH:-}"
+if [ -z "$ROOT_DIR" ]; then
+    # Run from the checkout: bin/deploy-rollback.sh from the project root.
+    ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+fi
 cd "$ROOT_DIR"
+
+# Fail loudly instead of tarring a directory that is not the app.
+if [ ! -f artisan ]; then
+    echo "::error::no artisan in $ROOT_DIR — set \$APP_PATH to the app directory" >&2
+    exit 1
+fi
 
 SNAPSHOT_DIR="storage/release-snapshots"
 PHP_BIN="${PHP_BIN:-php}"
@@ -149,6 +164,7 @@ case "${1:-}" in
 
     *)
         echo "usage: $0 snapshot | restore [archive]" >&2
+        echo "  the app path comes from \$APP_PATH, or from the checkout" >&2
         exit 2
         ;;
 esac

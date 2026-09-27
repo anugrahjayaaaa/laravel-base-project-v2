@@ -217,11 +217,12 @@ jobs:
             "${DEPLOY_USER}@${DEPLOY_HOST}" \
             bash -s -- "${DEPLOY_PATH}" <<'REMOTE'
           set -Eeuo pipefail
-          APP_PATH="$1"
+          export APP_PATH="$1"
           chmod +x /tmp/deploy-rollback.sh
           cd "$APP_PATH"
+          # The script stays in /tmp: the health check uploads its own copy, but
+          # removing this one makes the next rollback race the upload.
           /tmp/deploy-rollback.sh snapshot
-          rm -f /tmp/deploy-rollback.sh
           REMOTE
 
       - name: Sync application files
@@ -389,11 +390,10 @@ jobs:
               "${DEPLOY_USER}@${DEPLOY_HOST}" \
               bash -s -- "${DEPLOY_PATH}" <<'REMOTE'
           set -Eeuo pipefail
-          APP_PATH="$1"
+          export APP_PATH="$1"
           chmod +x /tmp/deploy-rollback.sh
           cd "$APP_PATH"
           /tmp/deploy-rollback.sh restore
-          rm -f /tmp/deploy-rollback.sh
           REMOTE
           }
 
