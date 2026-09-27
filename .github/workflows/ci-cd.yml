@@ -123,8 +123,8 @@ jobs:
     name: Deploy to Ubuntu VM
     needs: test
 
-    # if: github.ref == 'refs/heads/main'
-    if: github.ref == 'refs/heads/deployment/deployment-setup'
+    if: github.ref == 'refs/heads/main'
+    # if: github.ref == 'refs/heads/deployment/deployment-setup'
     # if: contains(fromJSON('["main", "staging"]'), github.ref_name)
     # if: github.event_name == 'workflow_dispatch'
 
