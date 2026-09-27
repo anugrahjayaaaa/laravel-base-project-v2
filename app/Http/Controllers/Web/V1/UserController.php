@@ -145,7 +145,19 @@ class UserController extends Controller
             'usernameCooldownDays' => SystemSetting::getInt('username_change_cooldown_days', 30),
             'emailCooldownDays' => SystemSetting::getInt('email_change_cooldown_days', 30),
             'failedLoginCount' => FailedLoginAttempt::where('user_id', $user->id)->sum('attempts'),
+            'canResendVerification' => SystemSetting::getString('email_verification_mode', 'public') !== 'disabled',
         ]);
+    }
+
+    /**
+     * The resource route advertises both users.show and users.edit, and both
+     * render the same view — pages.users.edit. Without this, /users/{id}/edit
+     * was a 500 with "undefined method UserController::edit()"; nothing caught
+     * it because no test or link used that URL.
+     */
+    public function edit(User $user)
+    {
+        return $this->show($user);
     }
 
     /**
