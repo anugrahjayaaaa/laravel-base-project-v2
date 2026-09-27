@@ -21,13 +21,30 @@ class UpdateSystemSettingsAction
     /**
      * Normalize and persist the settings payload.
      *
-     * Missing fields intentionally use the historical defaults, matching the
-     * settings form contract and the former controller implementation.
+     * The two callers mean different things by a missing key, and only one of
+     * them can be right:
+     *
+     * - The web form posts every field, and an unchecked checkbox simply is not
+     *   submitted. There, a missing boolean means OFF, so it falls back to the
+     *   hardcoded default. That is the historical contract.
+     * - An API client sends only the keys it means to change. There, a missing
+     *   key means LEAVE IT ALONE. Falling back to the default reset
+     *   `password_min_length` to 8 and switched `registration_enabled` off in
+     *   the same call, silently disarming the password policy and self-signup.
+     *
+     * So the API passes $partial and absent keys are backfilled from what is
+     * stored instead. The list of keys and their types stays here, in one place.
      *
      * @param array<string, mixed> $data
+     * @param bool                 $partial  True when absent means "unchanged"
+     *                                       rather than "reset to default".
      */
-    public function run(array $data): void
+    public function run(array $data, bool $partial = false): void
     {
+        if ($partial) {
+            $data = $this->backfill($data);
+        }
+
         $updates = [
             // Login rate limiting & progressive lockout
             'login_max_attempts' => (string) ($data['login_max_attempts'] ?? 5),
@@ -91,5 +108,32 @@ class UpdateSystemSettingsAction
         foreach ($updates as $key => $value) {
             SystemSetting::set($key, $value);
         }
+    }
+
+    /**
+     * Fill absent keys with what is currently stored, so a partial payload
+     * writes only what it named.
+     *
+     * Stored booleans are the strings 'true'/'false' and PHP reads 'false' as
+     * truthy, so those come back as real booleans. The validation rules already
+     * cast an incoming '0'/'1' the same way, so both sides of the merge are the
+     * same type and the normalization below is a no-op for them.
+     *
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    private function backfill(array $data): array
+    {
+        $stored = SystemSetting::getAll();
+
+        foreach ($stored as $key => $value) {
+            if (array_key_exists($key, $data)) {
+                continue;
+            }
+
+            $data[$key] = $value === 'true' ? true : ($value === 'false' ? false : $value);
+        }
+
+        return $data;
     }
 }

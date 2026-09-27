@@ -50,4 +50,52 @@ class SettingsPersistenceTest extends TestCase
         $action->run([]);
         $this->assertFalse(SystemSetting::getBool('registration_enabled', true));
     }
+
+    public function test_a_partial_payload_leaves_every_other_setting_alone(): void
+    {
+        $action = app(UpdateSystemSettingsAction::class);
+
+        $action->run([
+            'password_min_length' => 12,
+            'registration_enabled' => true,
+            'password_history_count' => 5,
+        ]);
+
+        // One key, as an API client sends it. Before the partial flag this also
+        // reset password_min_length to 8 and switched registration off, in one
+        // 200 response, with no warning.
+        $action->run(['login_max_attempts' => 7], partial: true);
+        SystemSetting::bustCache();
+
+        $this->assertSame(7, SystemSetting::getInt('login_max_attempts', 0), 'the named key must change');
+        $this->assertSame(12, SystemSetting::getInt('password_min_length', 0), 'an absent key must not reset');
+        $this->assertTrue(SystemSetting::getBool('registration_enabled', false), 'an absent boolean must not reset');
+        $this->assertSame(5, SystemSetting::getInt('password_history_count', 0), 'an absent key must not reset');
+    }
+
+    public function test_a_partial_payload_can_still_switch_a_boolean_off(): void
+    {
+        $action = app(UpdateSystemSettingsAction::class);
+        $action->run(['registration_enabled' => true]);
+
+        // Stored booleans are the strings 'true'/'false', and PHP reads
+        // 'false' as truthy — backfilling them raw would flip every setting
+        // that was off to on.
+        $action->run(['registration_enabled' => false], partial: true);
+        SystemSetting::bustCache();
+        $this->assertFalse(SystemSetting::getBool('registration_enabled', true));
+
+        $action->run([
+            'password_mixed_case' => true,
+            'password_symbols' => true,
+            'password_numbers' => true,
+        ], partial: true);
+        $action->run(['login_max_attempts' => 6], partial: true);
+        SystemSetting::bustCache();
+
+        $this->assertTrue(SystemSetting::getBool('password_mixed_case', false));
+        $this->assertTrue(SystemSetting::getBool('password_symbols', false));
+        $this->assertTrue(SystemSetting::getBool('password_numbers', false));
+        $this->assertFalse(SystemSetting::getBool('password_history_enabled', true), 'a stored "false" must stay false');
+    }
 }

@@ -23,12 +23,17 @@ class SystemSettingController extends Controller
 
     /**
      * Update system settings and record the acting user in the audit log.
+     *
+     * Partial on purpose: an API client sends the keys it wants to change, and
+     * a key it left out must survive the call. Only the web form — which posts
+     * every field, and where an unchecked checkbox is simply absent — reads a
+     * missing key as "reset to default".
      */
     public function update(SystemSettingRequest $request, UpdateSystemSettingsAction $action): JsonResponse
     {
         $data = $request->validated();
 
-        $action->run($data);
+        $action->run($data, partial: true);
 
         $this->audit('system_setting.updated', SystemSetting::query()->firstOrFail(), $request->user(), $data);
 
