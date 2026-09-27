@@ -134,9 +134,9 @@
                         @endif
                     </div>
                 </div>
-                {{-- Pending Email Callout — placed outside the user form: nested <form> tags are discarded by browsers, making the Cancel button submit the user form instead of the cancel route. --}}
+                {{-- Pending Email Callout — outside the user form: nested <form> tags are discarded by browsers, making the Cancel button submit the user form. Class matches profile/edit; .callout draws a 4px left border on gray, not this yellow. --}}
                 @if ($user->pending_email)
-                    <div class="callout callout-warning mb-3 d-flex align-items-center justify-content-between p-3">
+                    <div class="alert alert-warning d-flex align-items-center justify-content-between mb-3">
                         <div>
                             <i class="bi bi-envelope-arrow-up me-2"></i>
                             <strong>Pending email change:</strong> {{ $user->pending_email }}
