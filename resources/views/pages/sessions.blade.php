@@ -54,14 +54,19 @@
                                 <td><span class="badge bg-success-subtle text-success">Active</span></td>
                             </tr>
 
-                            {{-- API tokens (other devices) --}}
+                            {{-- API tokens (other devices).
+                                 personal_access_tokens records no IP, so this cell
+                                 can never show one. It used to print 'Never' for a
+                                 token that had not been used and '—' otherwise,
+                                 which read as an address column answering a
+                                 question it had no data for. --}}
                             @foreach ($tokens as $token)
                                 <tr>
                                     <td>
                                         <i class="fas fa-mobile-alt me-1"></i> {{ $token->name }}
                                     </td>
-                                    <td>{{ $token->last_used_at ? '—' : 'Never' }}</td>
-                                    <td>{{ $token->last_used_at?->format('Y-m-d H:i') ?? '—' }}</td>
+                                    <td>—</td>
+                                    <td>{{ $token->last_used_at?->format('Y-m-d H:i') ?? 'Never' }}</td>
                                     <td>{{ $token->created_at->format('Y-m-d H:i') }}</td>
                                     <td>
                                         <span class="badge bg-info-subtle text-info">API</span>
