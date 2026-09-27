@@ -1,12 +1,29 @@
 name: CI/CD
 
-# One workflow, two jobs. Keeping them in a single file is what makes the gate
-# reliable: `needs: test` is a job-level dependency, so a deploy cannot start
-# until the test job has finished green. As two separate files both fired on
-# push and the deploy raced the tests.
+# ─── HOW TO TURN THE DEPLOY OFF ──────────────────────────────────────────────
+# The deploy job is the block starting at `  deploy:` near the bottom.
+#   OFF  → comment out every line of that job, from `deploy:` to the end of
+#          the file, then commit. Only the `test` job is left.
+#   ON   → uncomment those same lines, then commit.
+# The `test` job is never part of this — CI keeps running either way.
+#
+# The quick way for OFF/ON is a single line, the `if:` inside the deploy job:
+#   OFF  → delete the line `if: github.ref == 'refs/heads/main'`
+#   ON   → put it back
+# Deleting it makes the job unconditional, so check the push list at the top
+# of this file first — a push to any listed branch will then deploy.
+#
+# ─── FIRST-TIME SETUP ────────────────────────────────────────────────────────
+# `main` does not have this file yet. Until the branch holding this workflow is
+# merged into main, the `main` trigger cannot fire — GitHub reads workflows
+# from the ref being pushed. Merge it once and the deploy starts working.
+#
 on:
   push:
     branches:
+      # Any branch listed here runs the `test` job. Deployment is filtered
+      # separately by the `if` on the deploy job below, not by this list.
+      - main
       - deployment/deployment-setup
   pull_request:
   workflow_dispatch:
@@ -21,7 +38,6 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  test:
   test:
     name: Test and build
     runs-on: ubuntu-24.04
@@ -58,6 +74,15 @@ jobs:
       - name: Install Node dependencies
         run: npm ci
 
+      # GitHub rejects a malformed workflow at parse time, before any job runs,
+      # so the failure lands on the Actions tab instead of in a review. A
+      # duplicated job key is the case that bites: PyYAML and most YAML linters
+      # silently keep the last one, so the file looks valid locally.
+      - name: Lint workflow files
+        uses: rhysd/actionlint-action@v1
+        with:
+          args: .github/workflows/*.yml
+
       - name: Build frontend assets
         run: npm run build
 
@@ -73,12 +98,28 @@ jobs:
       - name: NPM security audit
         run: npm audit
 
+  # ══════════════════════════════════════════════════════════════════════════
+  # DEPLOY JOB BEGINS HERE — to disable deploying, comment out every line from
+  # this marker to the end of the file and commit. The `test` job above is
+  # unaffected and keeps running on every push and pull request.
+  # ══════════════════════════════════════════════════════════════════════════
   deploy:
     name: Deploy to Ubuntu VM
     needs: test
-    # `needs: test` alone would also deploy on pull_request. Restrict to the
-    # deploy branch so a PR gets the test job and nothing else.
-    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/deployment/deployment-setup'
+
+    # ─── DEPLOY GATE ─────────────────────────────────────────────────────────
+    # `needs: test` (above) blocks the deploy until the test job is green —
+    # do not remove it. This `if` decides WHICH pushes may deploy at all.
+    #
+    #   TO DISABLE DEPLOYING   → delete the `if:` line below and commit.
+    #                             The test job keeps running on every push.
+    #   TO RE-ENABLE           → put the `if:` line back and commit.
+    #   TO DEPLOY ELSEWHERE    → change the branch name in it, and add that
+    #                            branch to the push list at the top of this file.
+    #
+    # A pull_request never matches: its ref is refs/pull/N/merge, not a branch.
+    if: github.ref == 'refs/heads/main'
+
     runs-on: ubuntu-24.04
     environment: Laravel Base Project V2 - Google Cloud
 
