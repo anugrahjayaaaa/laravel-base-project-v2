@@ -43,8 +43,13 @@
         }
         container.classList.remove('d-none');
 
+        // The minimum comes from the rendered rule so the checklist can never
+        // claim a length the server will then reject.
+        var lengthRule = container.querySelector('.rules li[data-rule="length"]');
+        var minLength = parseInt(lengthRule && lengthRule.dataset.min, 10) || 12;
+
         var rules = {
-            length: password.length >= 12,
+            length: password.length >= minLength,
             upper: /[A-Z]/.test(password),
             lower: /[a-z]/.test(password),
             digit: /[0-9]/.test(password),
