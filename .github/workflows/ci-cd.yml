@@ -1,35 +1,84 @@
-name: CD
+name: CI/CD
 
-# Triggered by CI finishing, not by the push itself. As two independent
-# workflows both fire on push, a release with failing tests can reach the VM
-# when the CD build happens to finish first. workflow_run is the trigger for
-# "run B only after A succeeded".
-#
-# Note: on workflow_run, github.sha is the commit CI tested, not the push —
-# which is the release we want. workflow_dispatch stays as the manual escape
-# hatch and deliberately bypasses CI.
+# One workflow, two jobs. Keeping them in a single file is what makes the gate
+# reliable: `needs: test` is a job-level dependency, so a deploy cannot start
+# until the test job has finished green. As two separate files both fired on
+# push and the deploy raced the tests.
 on:
-  workflow_run:
-    workflows: ["CI"]
-    types: [completed]
-    branches: [deployment/deployment-setup]
+  push:
+    branches:
+      - deployment/deployment-setup
+  pull_request:
   workflow_dispatch:
 
 permissions:
   contents: read
 
-# Never cancel a deploy mid-flight: a half-synced release is worse than a
-# superseded one, and the rsync is followed by a remote migrate.
 concurrency:
-  group: deploy-${{ github.ref }}
+  group: ci-cd-${{ github.ref }}
+  # Never cancel in flight: the deploy job's rsync is followed by a remote
+  # migrate, and a cancelled run leaves a half-synced release behind.
   cancel-in-progress: false
 
 jobs:
+  test:
+  test:
+    name: Test and build
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          # pint --dirty diffs against the merge base. With the default depth-1
+          # there is no base ref, so --dirty silently checks nothing and passes
+          # without formatting a single file.
+          fetch-depth: 0
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, xml, curl, zip, intl, pdo_mysql, sqlite3
+          coverage: none
+          tools: composer:v2
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install Composer dependencies
+        run: composer install --prefer-dist --no-interaction --no-progress
+
+      - name: Validate Composer
+        run: composer validate --strict
+
+      - name: Install Node dependencies
+        run: npm ci
+
+      - name: Build frontend assets
+        run: npm run build
+
+      - name: Run tests
+        run: php artisan test --no-coverage
+
+      - name: Check changed PHP formatting
+        run: vendor/bin/pint --test --dirty
+
+      - name: Composer security audit
+        run: composer audit --locked
+
+      - name: NPM security audit
+        run: npm audit
+
   deploy:
     name: Deploy to Ubuntu VM
-    if: >-
-      github.event_name == 'workflow_dispatch' ||
-      github.event.workflow_run.conclusion == 'success'
+    needs: test
+    # `needs: test` alone would also deploy on pull_request. Restrict to the
+    # deploy branch so a PR gets the test job and nothing else.
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/deployment/deployment-setup'
     runs-on: ubuntu-24.04
     environment: Laravel Base Project V2 - Google Cloud
 
@@ -46,9 +95,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
 
-      # Rebuilt here rather than downloaded from the CI run: cross-workflow
-      # artifact handoff needs run-id + token plumbing and breaks on expiry.
-      # The build is ~30s and deterministic from the committed lockfile.
+      # public/build is gitignored, so a checkout never contains it. Each job
+      # gets its own runner, so the test job's build is not visible here —
+      # rebuilding is ~30s and avoids upload/download plus artifact expiry.
       - name: Setup Node.js
         uses: actions/setup-node@v5
         with:
