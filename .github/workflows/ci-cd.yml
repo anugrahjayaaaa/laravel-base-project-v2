@@ -282,10 +282,14 @@ jobs:
           # and never echoed. Failure is non-fatal — Cloud SQL may not ship a
           # client, and a missing backup should not block the deploy.
           if command -v mysqldump >/dev/null 2>&1; then
-              db_env() { grep -E "^$1=" .env | head -n1 | cut -d= -f2- | tr -d '"'"'"''; }
+              db_env() { grep -E "^$1=" .env | head -n1 | cut -d= -f2- | tr -d '"'"'"; }
               mkdir -p storage/db-backups
-              # Keep the last 5 dumps; without this they accumulate forever.
-              ls -1t storage/db-backups/*.sql 2>/dev/null | tail -n +6 | xargs -r rm -f
+              # Keep the last 5 dumps; without this they accumulate forever. `ls` exits
+              # non-zero when the glob matches nothing, and under `set -o pipefail` that
+              # kills the whole script — silently, because 2>/dev/null hides the message.
+              # The first deploy on a fresh VM has no dumps at all, so this is the normal
+              # case, not an edge one. An empty find output is the success case instead.
+              find storage/db-backups -maxdepth 1 -name '*.sql' -type f | sort | tail -n +6 | xargs -r rm -f
               MYSQL_PWD="$(db_env DB_PASSWORD)" mysqldump \
                   --host="$(db_env DB_HOST)" --port="$(db_env DB_PORT)" \
                   --user="$(db_env DB_USERNAME)" \
