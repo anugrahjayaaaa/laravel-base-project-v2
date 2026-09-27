@@ -140,10 +140,74 @@ email-verification-notice, password-change pages using AdminLTE auth layout.
 - Status: PLANNED
 
 ### Phase 11: Monitoring & Observability
-- Telescope integration
+- Telescope integration (periscope companion UI) — **prod-gated, debug on demand**
+- Slow-query detection on production
 - Health check endpoint
 - System health dashboard
 - Status: PLANNED
+
+**Prod gating (decided, pending implementation).** Telescope stays installed
+on the VM but is OFF by default. `TelescopeServiceProvider::boot()` returns
+before `Telescope::start()` when `config('telescope.enabled')` is false, so
+watchers are never registered — a disabled Telescope costs nothing at runtime.
+
+| Decision | Rationale |
+|----------|-----------|
+| `enabled` default `false` | a VM whose `.env` forgets the key must not record every request |
+| `RequestWatcher` off | it stores request bodies (passwords, tokens) unencrypted in `telescope_entries` |
+| `ModelWatcher` off | most expensive watcher — serialises every Eloquent model |
+| `QueryWatcher` on | this is the actual requirement: slow-query diagnosis |
+| periscope + telescope in `require` | periscope hard-requires telescope, so moving telescope to `require-dev` alone does not remove it from `--no-dev` installs |
+
+**Slow-query diagnosis ladder for a slow production server** — run in order:
+
+1. `GET /up` — not 200 means infra, not queries
+2. `top` / `free -m` — CPU, RAM, swap before blaming the database
+3. MySQL slow log — catches queries that never reach PHP (lock wait, disk I/O):
+   ```sql
+   SET GLOBAL slow_query_log = ON;
+   SET GLOBAL long_query_time = 0.3;
+   SET GLOBAL log_output = 'TABLE';
+   ```
+   ```sql
+   SELECT start_time, LEFT(sql_text, 200), time_to_lock, rows_examined, rows_sent
+   FROM mysql.slow_log ORDER BY start_time DESC LIMIT 20;
+   ```
+   `rows_examined >> rows_sent` means a missing index — most slow queries, and
+   found without any application tooling.
+4. `DB::listen()` threshold logger (Phase 11 deliverable) — the complement to
+   step 3, covers queries that do reach PHP and measures DB time only
+5. `EXPLAIN` / `EXPLAIN ANALYZE` each query surfaced by steps 3-4
+
+Telescope is deliberately **absent** from that ladder. When it is on it adds
+write load to `telescope_entries` for every request, which slows the server
+precisely when the server is already slow — and grows that table unbounded
+(nothing in `config/telescope.php` prunes it automatically).
+
+**Runbook — toggling Telescope on the VM:**
+
+```bash
+# enable (config is cached, so config:clear and an fpm reload are both required)
+echo 'TELESCOPE_ENABLED=true' >> .env
+php artisan config:clear && php artisan config:cache
+sudo systemctl reload php8.3-fpm     # without this, opcache keeps the old config
+
+# inspect
+php artisan telescope:list
+# open /telescope (auth-gated by laravel/sentinel middleware)
+
+# disable
+echo 'TELESCOPE_ENABLED=false' >> .env
+php artisan config:clear && php artisan config:cache
+sudo systemctl reload php8.3-fpm
+
+# prune — mandatory after a debugging session, no auto-prune exists
+php artisan telescope:prune --hours=6
+```
+
+Note: `.env` is excluded from the rsync sync, so the toggle persists across
+deploys. That is the intended behaviour, and also why the code default must be
+`false` rather than relying on `.env` alone.
 
 ### Phase 12: API V1
 - Versioned API routes

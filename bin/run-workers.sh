@@ -15,6 +15,7 @@ usage() {
     cat <<'EOF'
 Usage:
   bin/run-workers.sh cron       Run one scheduler tick (use with system cron)
+  bin/run-workers.sh scheduler  Run the scheduler daemon (use with Supervisor)
   bin/run-workers.sh queue      Run one queue worker (use with Supervisor/systemd)
   bin/run-workers.sh local      Run scheduler and queue together (local development)
 
@@ -31,6 +32,12 @@ EOF
 case "${1:-}" in
     cron)
         exec "$PHP_BIN" artisan schedule:run
+        ;;
+
+    # Supervisor needs a long-running process. `cron` exits after one tick, so
+    # supervisor would restart it in a tight loop.
+    scheduler)
+        exec "$PHP_BIN" artisan schedule:work
         ;;
 
     queue)

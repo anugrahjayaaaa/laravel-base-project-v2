@@ -4,3 +4,4 @@
 /node_modules
 .phpunit.result.cache
 /public/build
+/storage/db-backups

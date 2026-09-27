@@ -1,27 +1,45 @@
 name: CI/CD
 
+# ═══════════════════════════════════════════════════════════════════════════
+# WHICH BRANCH MAY DEPLOY?
+#
+# The `test` job runs on every push and every pull request, whatever the
+# branch. Only the `deploy` job is restricted, by the `if:` inside it.
+#
+# To deploy on a different branch, edit that one `if:` line — see the comment
+# block above `deploy:` below for the exact lines to change.
+# ═══════════════════════════════════════════════════════════════════════════
 on:
-  pull_request:
+  # No `branches:` filter on purpose: test must run on every branch.
   push:
-    branches:
-      - main
+  pull_request:
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: ci-cd-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  group: ci-cd-${{ github.ref }}
+  # Never cancel in flight: the deploy job's rsync is followed by a remote
+  # migrate, and a cancelled run leaves a half-synced release behind.
+  cancel-in-progress: false
 
 jobs:
   test:
     name: Test and build
     runs-on: ubuntu-24.04
+    # Without this the default is 6 hours. A hung `npm ci` or a network stall
+    # burns a runner for the whole window instead of failing fast.
+    timeout-minutes: 20
 
     steps:
       - name: Checkout
         uses: actions/checkout@v5
+        with:
+          # pint --dirty diffs against the merge base. With the default depth-1
+          # there is no base ref, so --dirty silently checks nothing and passes
+          # without formatting a single file.
+          fetch-depth: 0
 
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
@@ -30,12 +48,16 @@ jobs:
           extensions: mbstring, xml, curl, zip, intl, pdo_mysql, sqlite3
           coverage: none
           tools: composer:v2
+          # Composer ships its own caching in setup-php, keyed on composer.lock.
+          # Skipped an explicit actions/cache step: same saving, one fewer
+          # moving part to invalidate by hand.
 
       - name: Setup Node.js
         uses: actions/setup-node@v5
         with:
           node-version: '22'
           cache: npm
+          # npm cache is already wired through package-lock.json above.
 
       - name: Install Composer dependencies
         run: composer install --prefer-dist --no-interaction --no-progress
@@ -46,6 +68,17 @@ jobs:
       - name: Install Node dependencies
         run: npm ci
 
+      # `uses: docker://…` with `args:` passes the string straight to the
+      # entrypoint, with no shell — so `*.yml` is never expanded and actionlint
+      # dies with "no such file or directory". It also rejects a directory.
+      # Running docker ourselves means the runner shell does the globbing, and
+      # any new workflow file is picked up without editing this line.
+      #
+      # There is no rhysd/actionlint-action repository — the published image is
+      # the only distribution channel.
+      - name: Lint workflow files
+        run: docker run --rm -v "$PWD:/w" -w /w rhysd/actionlint:1.7.12 .github/workflows/*.yml
+
       - name: Build frontend assets
         run: npm run build
 
@@ -55,26 +88,51 @@ jobs:
       - name: Check changed PHP formatting
         run: vendor/bin/pint --test --dirty
 
-      - name: Upload frontend build
-        uses: actions/upload-artifact@v4
-        with:
-          name: frontend-build
-          path: public/build
-          if-no-files-found: error
-          retention-days: 7
-
       - name: Composer security audit
         run: composer audit --locked
 
       - name: NPM security audit
-        run: npm audit
+        # Default is "low", which fails the build on any advisory at all — a
+        # single transitive dev dependency can block every deploy. Match the
+        # composer audit above: only high/critical stops a release.
+        run: npm audit --audit-level=high
 
+  # ══════════════════════════════════════════════════════════════════════════
+  # DEPLOY JOB BEGINS HERE
+  #
+  # TO DEPLOY ONLY ON A MERGE TO main (the default, current state):
+  #     if: github.ref == 'refs/heads/main'
+  #
+  # TO DEPLOY ONLY ON A FIXED BRANCH — e.g. to skip pull requests while
+  # working directly on a setup branch. Comment the `if:` line above and
+  # uncomment this one. The branch must exist on the remote:
+  #   # if: github.ref == 'refs/heads/deployment/deployment-setup'
+  #
+  # TO DEPLOY FROM SEVERAL BRANCHES:
+  #   # if: contains(fromJSON('["main", "staging"]'), github.ref_name)
+  #
+  # TO STOP DEPLOYING ENTIRELY — keep the test job, skip every release.
+  # GitHub rejects a constant `if: false`, so the real way to switch the
+  # deploy off is to comment out the whole deploy job: everything from
+  # `deploy:` down to the end of this file. `test` is unaffected.
+  #
+  # NEVER delete the `if:` line itself. Without it the job becomes
+  # unconditional and every push to any branch ships to the VM.
+  # ══════════════════════════════════════════════════════════════════════════
   deploy:
     name: Deploy to Ubuntu VM
-    if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main'
     needs: test
+
+    if: github.ref == 'refs/heads/main'
+    # if: github.ref == 'refs/heads/deployment/deployment-setup'
+    # if: contains(fromJSON('["main", "staging"]'), github.ref_name)
+    # if: github.event_name == 'workflow_dispatch'
+
     runs-on: ubuntu-24.04
     environment: Laravel Base Project V2 - Google Cloud
+    # Every sudo call below is `sudo -n` and fails fast, but rsync and mysqldump
+    # can still stall on a network. 45 covers a normal deploy with room to spare.
+    timeout-minutes: 45
 
     env:
       DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
@@ -89,11 +147,20 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
 
-      - name: Download frontend build
-        uses: actions/download-artifact@v4
+      # public/build is gitignored, so a checkout never contains it. Each job
+      # gets its own runner, so the test job's build is not visible here —
+      # rebuilding is ~30s and avoids upload/download plus artifact expiry.
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
         with:
-          name: frontend-build
-          path: public/build
+          node-version: '22'
+          cache: npm
+
+      - name: Install Node dependencies
+        run: npm ci
+
+      - name: Build frontend assets
+        run: npm run build
 
       - name: Configure SSH
         run: |
@@ -123,7 +190,40 @@ jobs:
             -o StrictHostKeyChecking=yes \
             -o UserKnownHostsFile=~/.ssh/known_hosts \
             "${DEPLOY_USER}@${DEPLOY_HOST}" \
-            'command -v rsync && rsync --version | head -n 1'
+            'test -f "'"${DEPLOY_PATH}"'/.env" && command -v rsync && rsync --version | head -n 1'
+
+      # .git is excluded from the deploy rsync, so the VM has no history to
+      # restore from. The snapshot has to be taken ON THE VM — the runner only
+      # has a checkout of the new code, so tar-ing there would archive the very
+      # release a rollback needs to replace.
+      #
+      # The script travels with scp rather than on stdin. Piping it into
+      # `sh -s` would make the file the script instead of the command, and
+      # splicing DEPLOY_PATH into the command with '"$VAR"' leaves an unbalanced
+      # quote — the VM replies "unexpected EOF while looking for matching `"'".
+      # scp plus a $1 argument has neither problem.
+      - name: Snapshot the current release
+        run: |
+          scp -P "${DEPLOY_PORT}" -i ~/.ssh/id_ed25519 \
+            -o BatchMode=yes -o IdentitiesOnly=yes \
+            -o StrictHostKeyChecking=yes -o UserKnownHostsFile=~/.ssh/known_hosts \
+            bin/deploy-rollback.sh "${DEPLOY_USER}@${DEPLOY_HOST}:/tmp/deploy-rollback.sh"
+          ssh -p "${DEPLOY_PORT}" \
+            -i ~/.ssh/id_ed25519 \
+            -o BatchMode=yes \
+            -o IdentitiesOnly=yes \
+            -o StrictHostKeyChecking=yes \
+            -o UserKnownHostsFile=~/.ssh/known_hosts \
+            "${DEPLOY_USER}@${DEPLOY_HOST}" \
+            bash -s -- "${DEPLOY_PATH}" <<'REMOTE'
+          set -Eeuo pipefail
+          export APP_PATH="$1"
+          chmod +x /tmp/deploy-rollback.sh
+          cd "$APP_PATH"
+          # The script stays in /tmp: the health check uploads its own copy, but
+          # removing this one makes the next rollback race the upload.
+          /tmp/deploy-rollback.sh snapshot
+          REMOTE
 
       - name: Sync application files
         run: |
@@ -132,10 +232,22 @@ jobs:
             --exclude='.env' \
             --exclude='.env.*' \
             --exclude='.git/' \
-            --exclude='node_modules/' \
-            --exclude='vendor/' \
-            --exclude='storage/' \
+            --exclude='/node_modules/' \
+            --exclude='/vendor/' \
+            --exclude='/storage/' \
             ./ "${DEPLOY_USER}@${DEPLOY_HOST}:${DEPLOY_PATH}/"
+
+      - name: Verify synced assets
+        run: |
+          ssh -p "${DEPLOY_PORT}" \
+            -i ~/.ssh/id_ed25519 \
+            -o BatchMode=yes \
+            -o IdentitiesOnly=yes \
+            -o StrictHostKeyChecking=yes \
+            -o UserKnownHostsFile=~/.ssh/known_hosts \
+            "${DEPLOY_USER}@${DEPLOY_HOST}" \
+            'test -f "'"${DEPLOY_PATH}"'/public/vendor/theme.css" \
+             || { echo "::error::public/vendor missing after rsync — a non-anchored --exclude deleted it"; exit 1; }'
 
       - name: Deploy application
         run: |
@@ -152,19 +264,178 @@ jobs:
           cd "$APP_PATH"
 
           mkdir -p storage/framework/cache/data storage/framework/sessions storage/framework/views bootstrap/cache
+          # supervisor writes to storage/logs/*.log and the backup below lands in
+          # storage/db-backups. storage/ is excluded from rsync, so on a fresh VM
+          # these directories simply do not exist and supervisor goes FATAL on a
+          # missing logfile rather than on anything to do with the app.
+          mkdir -p storage/logs storage/db-backups
+          # `command=` in the supervisor conf has no `sh` prefix, so this script is
+          # exec'd directly and a missing executable bit means permission denied.
+          chmod +x bin/run-workers.sh
           chmod -R u+rwX,g+rwX storage bootstrap/cache
 
           composer install --prefer-dist --no-dev --no-interaction --no-progress --optimize-autoloader
           php artisan optimize:clear
+
+          # Dump before migrate: a release that migrates and then turns out to
+          # be broken has no way back otherwise. Credentials are read from .env
+          # and never echoed. Failure is non-fatal — Cloud SQL may not ship a
+          # client, and a missing backup should not block the deploy.
+          if command -v mysqldump >/dev/null 2>&1; then
+              db_env() { grep -E "^$1=" .env | head -n1 | cut -d= -f2- | tr -d '"'"'"; }
+              mkdir -p storage/db-backups
+              # Keep the last 5 dumps; without this they accumulate forever. `ls` exits
+              # non-zero when the glob matches nothing, and under `set -o pipefail` that
+              # kills the whole script — silently, because 2>/dev/null hides the message.
+              # The first deploy on a fresh VM has no dumps at all, so this is the normal
+              # case, not an edge one. An empty find output is the success case instead.
+              find storage/db-backups -maxdepth 1 -name '*.sql' -type f | sort | tail -n +6 | xargs -r rm -f
+              MYSQL_PWD="$(db_env DB_PASSWORD)" mysqldump \
+                  --host="$(db_env DB_HOST)" --port="$(db_env DB_PORT)" \
+                  --user="$(db_env DB_USERNAME)" \
+                  --single-transaction --no-tablespaces \
+                  "$(db_env DB_DATABASE)" \
+                  > "storage/db-backups/$(date -u +%Y%m%d-%H%M%S).sql" \
+                  && echo "db backup written" \
+                  || echo "::warning::db backup failed, continuing"
+          else
+              echo "::warning::mysqldump not installed, skipping db backup"
+          fi
+
           php artisan migrate --force
           php artisan config:cache
           php artisan route:cache
           php artisan view:cache
           php artisan queue:restart
+
+          # Opcache keeps serving the previous release's compiled views/blade
+          # until php-fpm is reloaded, which makes a successful deploy look
+          # like a no-op in the browser.
+          for svc in "php$(php -r 'echo PHP_MAJOR_VERSION.".".PHP_MINOR_VERSION;')-fpm" php-fpm php-fpm8.3; do
+            if command -v sudo >/dev/null && sudo -n systemctl cat "$svc" >/dev/null 2>&1; then
+                sudo -n systemctl reload "$svc" && echo "reloaded $svc"
+                break
+            fi
+          done
+          REMOTE
+
+      # Runs before the health check: a deploy that leaves the workers down is
+      # not a finished deploy. Program definitions are installed from the repo
+      # so a change to them ships with the release, not via a manual VM edit.
+      - name: Install supervisor program definitions
+        run: |
+          # Same host-key options as every other step in this job. Without them
+          # this step is the one place a changed host key would slip through
+          # silently, and a deploy is exactly when that matters most.
+          ssh -p "${DEPLOY_PORT}" \
+            -i ~/.ssh/id_ed25519 \
+            -o BatchMode=yes \
+            -o IdentitiesOnly=yes \
+            -o StrictHostKeyChecking=yes \
+            -o UserKnownHostsFile=~/.ssh/known_hosts \
+            "${DEPLOY_USER}@${DEPLOY_HOST}" \
+            bash -s -- "${DEPLOY_PATH}" <<'REMOTE'
+          set -Eeuo pipefail
+          APP_PATH="$1"
+          cd "$APP_PATH"
+
+          command -v supervisorctl >/dev/null || { echo "::error::supervisorctl is not installed on the VM"; exit 1; }
+
+          sudo -n install -d -m 755 /etc/supervisor/conf.d
+          sudo -n sed -e "s#__APP_PATH__#${APP_PATH}#g" \
+                   -e "s#__PHP_BIN__#/usr/bin/php#g" \
+                   deploy/supervisor/laravel-base-project.conf \
+                   | sudo -n tee /etc/supervisor/conf.d/laravel-base-project.conf > /dev/null
+          sudo -n chmod 644 /etc/supervisor/conf.d/laravel-base-project.conf
+
+          # reread picks up new or changed program blocks; update applies them.
+          sudo -n supervisorctl reread
+          sudo -n supervisorctl update
+
+          # `queue:restart` in the previous step only signals live workers to
+          # exit. A worker that was already dead stays dead — this restart is
+          # what actually guarantees both programs are RUNNING.
+          sudo -n supervisorctl restart 'laravel-v2-worker:*' || true
+          sudo -n supervisorctl restart 'laravel-v2-scheduler:*' || true
+
+          # `restart` returns as soon as supervisor has been told to start the process,
+          # not when it is up: a freshly started program is STARTING for a moment and
+          # only becomes RUNNING once queue:work has booted the framework. Checking
+          # once right after the restart reads that transient state and fails a deploy
+          # whose workers are in fact healthy.
+          #
+          # Poll until every program reports RUNNING, or give up: a program that stays
+          # in BACKOFF/FATAL/EXITED never will, and startretries=3 means supervisor has
+          # already given up trying.
+          deadline=$(( $(date +%s) + 30 ))
+          while :; do
+              # One call per group. Passing both patterns to a single status call
+              # returns only the last group, so the queue workers would never be
+              # inspected and their state would go unreported.
+              status=$( { sudo -n supervisorctl status 'laravel-v2-worker:*' || true; \
+                          sudo -n supervisorctl status 'laravel-v2-scheduler:*' || true; } )
+              if [ -z "$status" ]; then
+                  echo "::error::supervisorctl status returned nothing — the programs are not defined"
+                  exit 1
+              fi
+              if ! echo "$status" | grep -qv RUNNING; then
+                  echo "$status"
+                  echo "all supervisor programs are RUNNING"
+                  exit 0
+              fi
+              if [ "$(date +%s)" -ge "$deadline" ]; then
+                  echo "$status"
+                  echo "::error::a worker is not RUNNING after 30s"
+                  exit 1
+              fi
+              sleep 2
+          done
           REMOTE
 
       - name: Health check
         run: |
+          # A failed health check leaves a broken release live, so the rollback
+          # runs on any failure and only then reports the failure. `exit 1` at
+          # the end keeps the workflow red even when the rollback succeeded.
+          # Runs at most once: the second curl is a symptom of the same broken
+          # release, and restoring twice would just restore the same snapshot.
+          # The script is copied over rather than piped in: on stdin it would
+          # become the script `sh -s` runs instead of the command. Same $1
+          # convention as the snapshot step, for the same quoting reason.
+          rollback() {
+            [ "$rolled_back" = "1" ] && return 0
+            rolled_back=1
+            echo "::error::health check failed, restoring the previous release"
+            scp -P "${DEPLOY_PORT}" -i ~/.ssh/id_ed25519 \
+              -o BatchMode=yes -o IdentitiesOnly=yes \
+              -o StrictHostKeyChecking=yes -o UserKnownHostsFile=~/.ssh/known_hosts \
+              bin/deploy-rollback.sh "${DEPLOY_USER}@${DEPLOY_HOST}:/tmp/deploy-rollback.sh" \
+              || { echo "::error::could not upload the rollback script, fix the VM by hand"; return 1; }
+            ssh -p "${DEPLOY_PORT}" \
+              -i ~/.ssh/id_ed25519 \
+              -o BatchMode=yes \
+              -o IdentitiesOnly=yes \
+              -o StrictHostKeyChecking=yes \
+              -o UserKnownHostsFile=~/.ssh/known_hosts \
+              "${DEPLOY_USER}@${DEPLOY_HOST}" \
+              bash -s -- "${DEPLOY_PATH}" <<'REMOTE'
+          set -Eeuo pipefail
+          export APP_PATH="$1"
+          chmod +x /tmp/deploy-rollback.sh
+          cd "$APP_PATH"
+          /tmp/deploy-rollback.sh restore
+          REMOTE
+          }
+
+          status=0
+          rolled_back=0
           curl --fail --silent --show-error \
             --retry 5 --retry-delay 2 \
-            "${DEPLOY_URL}/up"
+            "${DEPLOY_URL}/up" || { rollback; status=1; }
+          # The regression this guards: layout links public/vendor/theme.css,
+          # so a 404 here means the page renders unstyled even though /up is 200.
+          curl --fail --silent --show-error \
+            --retry 5 --retry-delay 2 \
+            -o /dev/null \
+            "${DEPLOY_URL}/vendor/theme.css" || { rollback; status=1; }
+          exit "$status"
