@@ -7,9 +7,14 @@ use App\Models\SystemSetting;
 /**
  * Persist validated system settings using the shared web/API mapping.
  *
- * The controllers remain responsible for request validation, audit logging,
+ * Controllers remain responsible for request validation, audit logging,
  * and response formatting. This action owns only setting normalization and
  * persistence so both channels cannot drift.
+ *
+ * The whitelist below is the gate every setting has to pass. A key that is
+ * validated and rendered but missing here is dropped without a warning — the
+ * form saves "successfully" and the value never changes. SystemSettingRequest
+ * must stay a subset of $updates; SettingsPersistenceTest enforces it.
  */
 class UpdateSystemSettingsAction
 {
@@ -70,6 +75,11 @@ class UpdateSystemSettingsAction
             'username_change_cooldown_days' => (string) ($data['username_change_cooldown_days'] ?? 30),
             'allow_email_change' => ($data['allow_email_change'] ?? false) ? 'true' : 'false',
             'email_change_cooldown_days' => (string) ($data['email_change_cooldown_days'] ?? 30),
+
+            // Self-registration
+            'registration_enabled' => ($data['registration_enabled'] ?? false) ? 'true' : 'false',
+            'registration_default_role' => $data['registration_default_role'] ?? 'user',
+            'registration_rate_limit_per_minute' => (string) ($data['registration_rate_limit_per_minute'] ?? 3),
         ];
 
         $graceEnabled = $updates['inactivity_lock_grace_enabled'] === 'true';
