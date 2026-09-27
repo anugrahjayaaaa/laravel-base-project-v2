@@ -197,10 +197,17 @@ jobs:
       # has a checkout of the new code, so tar-ing there would archive the very
       # release a rollback needs to replace.
       #
-      # The script is piped in rather than run from the checkout, because the
-      # release on the VM may predate it.
+      # The script travels with scp rather than on stdin. Piping it into
+      # `sh -s` would make the file the script instead of the command, and
+      # splicing DEPLOY_PATH into the command with '"$VAR"' leaves an unbalanced
+      # quote — the VM replies "unexpected EOF while looking for matching `"'".
+      # scp plus a $1 argument has neither problem.
       - name: Snapshot the current release
         run: |
+          scp -P "${DEPLOY_PORT}" -i ~/.ssh/id_ed25519 \
+            -o BatchMode=yes -o IdentitiesOnly=yes \
+            -o StrictHostKeyChecking=yes -o UserKnownHostsFile=~/.ssh/known_hosts \
+            bin/deploy-rollback.sh "${DEPLOY_USER}@${DEPLOY_HOST}:/tmp/deploy-rollback.sh"
           ssh -p "${DEPLOY_PORT}" \
             -i ~/.ssh/id_ed25519 \
             -o BatchMode=yes \
@@ -208,8 +215,14 @@ jobs:
             -o StrictHostKeyChecking=yes \
             -o UserKnownHostsFile=~/.ssh/known_hosts \
             "${DEPLOY_USER}@${DEPLOY_HOST}" \
-            'cat > /tmp/deploy-rollback.sh && chmod +x /tmp/deploy-rollback.sh && cd "'"${DEPLOY_PATH}"' && /tmp/deploy-rollback.sh snapshot && rm -f /tmp/deploy-rollback.sh' \
-            < bin/deploy-rollback.sh
+            bash -s -- "${DEPLOY_PATH}" <<'REMOTE'
+          set -Eeuo pipefail
+          APP_PATH="$1"
+          chmod +x /tmp/deploy-rollback.sh
+          cd "$APP_PATH"
+          /tmp/deploy-rollback.sh snapshot
+          rm -f /tmp/deploy-rollback.sh
+          REMOTE
 
       - name: Sync application files
         run: |
@@ -355,10 +368,18 @@ jobs:
           # the end keeps the workflow red even when the rollback succeeded.
           # Runs at most once: the second curl is a symptom of the same broken
           # release, and restoring twice would just restore the same snapshot.
+          # The script is copied over rather than piped in: on stdin it would
+          # become the script `sh -s` runs instead of the command. Same $1
+          # convention as the snapshot step, for the same quoting reason.
           rollback() {
             [ "$rolled_back" = "1" ] && return 0
             rolled_back=1
             echo "::error::health check failed, restoring the previous release"
+            scp -P "${DEPLOY_PORT}" -i ~/.ssh/id_ed25519 \
+              -o BatchMode=yes -o IdentitiesOnly=yes \
+              -o StrictHostKeyChecking=yes -o UserKnownHostsFile=~/.ssh/known_hosts \
+              bin/deploy-rollback.sh "${DEPLOY_USER}@${DEPLOY_HOST}:/tmp/deploy-rollback.sh" \
+              || { echo "::error::could not upload the rollback script, fix the VM by hand"; return 1; }
             ssh -p "${DEPLOY_PORT}" \
               -i ~/.ssh/id_ed25519 \
               -o BatchMode=yes \
@@ -366,8 +387,14 @@ jobs:
               -o StrictHostKeyChecking=yes \
               -o UserKnownHostsFile=~/.ssh/known_hosts \
               "${DEPLOY_USER}@${DEPLOY_HOST}" \
-              'cat > /tmp/deploy-rollback.sh && chmod +x /tmp/deploy-rollback.sh && cd "'"${DEPLOY_PATH}"' && /tmp/deploy-rollback.sh restore; rc=$?; rm -f /tmp/deploy-rollback.sh; exit $rc' \
-              < bin/deploy-rollback.sh || echo "::error::automatic rollback failed, fix the VM by hand"
+              bash -s -- "${DEPLOY_PATH}" <<'REMOTE'
+          set -Eeuo pipefail
+          APP_PATH="$1"
+          chmod +x /tmp/deploy-rollback.sh
+          cd "$APP_PATH"
+          /tmp/deploy-rollback.sh restore
+          rm -f /tmp/deploy-rollback.sh
+          REMOTE
           }
 
           status=0
