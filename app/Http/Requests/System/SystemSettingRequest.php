@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\System;
 
+use App\Models\RoleLookup;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -78,9 +79,15 @@ class SystemSettingRequest extends FormRequest
             // Self-registration
             'registration_enabled' => ['boolean'],
             'registration_rate_limit_per_minute' => ['integer', 'min:1', 'max:30'],
-            // Empty means "no role"; otherwise it must name a real one, or the
-            // create action would silently assign nothing.
-            'registration_default_role' => ['nullable', 'string', 'exists:roles,name'],
+            // Empty means "no role"; otherwise it must name a real one on the
+            // guard the app can actually assign, or the create action would
+            // silently assign nothing. Scoped to that guard because the table
+            // can hold the same name twice, once per guard.
+            'registration_default_role' => [
+                'nullable',
+                'string',
+                Rule::exists('roles', 'name')->where('guard_name', RoleLookup::guard()),
+            ],
         ];
     }
 

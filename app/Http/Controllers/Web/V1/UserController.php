@@ -9,6 +9,7 @@ use App\Actions\V1\User\CancelEmailChangeAction;
 use App\Actions\V1\User\CreateUserAction;
 use App\Actions\V1\User\DeleteUserAction;
 use App\Models\FailedLoginAttempt;
+use App\Models\RoleLookup;
 use App\Actions\V1\User\ForceDeleteUserAction;
 use App\Actions\V1\User\RequestEmailChangeAction;
 use App\Actions\V1\User\RestoreUserAction;
@@ -27,7 +28,6 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Auth;
-use Spatie\Permission\Models\Role;
 
 /**
  * User management controller,CRUD, bulk actions, email verification flow.
@@ -59,7 +59,7 @@ class UserController extends Controller
     {
         return view('pages.users.create', [
             'title' => 'Create User',
-            'roles' => Role::all(),
+            'roles' => RoleLookup::assignable(),
         ]);
     }
 
@@ -139,7 +139,7 @@ class UserController extends Controller
             'user' => $user,
             'initials' => $initials,
             'statuses' => UserStatusEnum::cases(),
-            'roles' => Role::all(),
+            'roles' => RoleLookup::assignable(),
             'allowUsernameChange' => SystemSetting::getBool('allow_username_change', true),
             'allowEmailChange' => SystemSetting::getBool('allow_email_change', true),
             'usernameCooldownDays' => SystemSetting::getInt('username_change_cooldown_days', 30),

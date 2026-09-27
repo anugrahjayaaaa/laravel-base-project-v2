@@ -3,6 +3,7 @@
 namespace App\Actions\V1\User;
 
 use App\Actions\V1\Auth\RecordPasswordHistoryAction;
+use App\Models\RoleLookup;
 use App\Models\SystemSetting;
 use App\Models\User;
 use App\Notifications\RegisterNotification;
@@ -11,7 +12,6 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\URL;
-use Spatie\Permission\Models\Role;
 
 /**
  * Create a new user and send them a verification link.
@@ -59,7 +59,7 @@ class CreateUserAction
             $roles = $data['roles'] ?? $this->defaultRolesForSelfRegistration();
 
             foreach ($roles as $roleName) {
-                $role = Role::where('name', $roleName)->first();
+                $role = RoleLookup::find($roleName);
 
                 if ($role) {
                     $user->assignRole($role);

@@ -5,11 +5,11 @@ namespace App\Http\Controllers\Web\V1;
 use App\Actions\V1\System\UpdateSystemSettingsAction;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\System\SystemSettingRequest;
+use App\Models\RoleLookup;
 use App\Models\SystemSetting;
 use App\Models\Timezone;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
-use Spatie\Permission\Models\Role;
 
 /**
  * System settings controller for the web settings page.
@@ -23,7 +23,7 @@ class SystemSettingController extends Controller
     {
         $settings = SystemSetting::getAll();
         $timezones = Timezone::active()->orderBy('name')->get();
-        $roles = Role::orderBy('name')->pluck('name', 'name');
+        $roles = RoleLookup::assignable()->pluck('name', 'name');
 
         return view('pages.settings.index', compact('settings', 'timezones', 'roles'));
     }
