@@ -240,7 +240,7 @@
                                 <td>
                                     @php $status = $user->getStatus(); @endphp
                                     <span
-                                        class="badge {{ $badgeClass($status, $user->trashed()) }}">{{ $status->label() }}</span>
+                                        class="badge {{ $status->badgeClass($user->trashed()) }}">{{ $status->label() }}</span>
                                 </td>
                                 <td>{{ $user->created_at->format('Y-m-d') }}</td>
                                 <td>
