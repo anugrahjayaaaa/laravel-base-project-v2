@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Observers\UserObserver;
 use App\Services\PasswordExpiry;
 use App\View\Composers\AppMenuComposer;
+use App\View\Composers\PasswordStrengthComposer;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Pagination\Paginator;
@@ -29,6 +30,7 @@ class AppServiceProvider extends ServiceProvider
         LengthAwarePaginator::useBootstrap();
 
         view()->composer('layouts.partials.sidebar', AppMenuComposer::class);
+        view()->composer('layouts.partials.password-strength', PasswordStrengthComposer::class);
 
         view()->composer('layouts.app', function ($view): void {
             $user = auth()->user();

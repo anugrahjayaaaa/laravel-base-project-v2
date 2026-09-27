@@ -48,13 +48,21 @@
         var lengthRule = container.querySelector('.rules li[data-rule="length"]');
         var minLength = parseInt(lengthRule && lengthRule.dataset.min, 10) || 12;
 
-        var rules = {
+        var all = {
             length: password.length >= minLength,
             upper: /[A-Z]/.test(password),
             lower: /[a-z]/.test(password),
             digit: /[0-9]/.test(password),
             symbol: /[^A-Za-z0-9]/.test(password),
         };
+
+        // Only the rules the policy currently enforces. The server told us which
+        // those are; scoring all five would demand a rule an admin turned off
+        // and leave the bar permanently short of full.
+        var active = (container.dataset.rules || '').split(',').filter(Boolean);
+        var rules = {};
+        active.forEach(function(rule) { if (rule in all) rules[rule] = all[rule]; });
+        if (!Object.keys(rules).length) rules = all;
 
         var passed = Object.values(rules).filter(Boolean).length;
         var total = Object.keys(rules).length;

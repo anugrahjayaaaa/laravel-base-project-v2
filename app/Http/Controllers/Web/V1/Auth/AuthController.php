@@ -321,7 +321,6 @@ class AuthController extends Controller
 
         return response()->view('pages.auth.register', [
             'title' => 'Register',
-            'passwordMinLength' => SystemSetting::getInt('password_min_length', 12),
         ]);
     }
 
