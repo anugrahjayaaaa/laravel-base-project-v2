@@ -139,6 +139,7 @@ class UserController extends Controller
             'user' => $user,
             'initials' => $initials,
             'statuses' => UserStatusEnum::cases(),
+            'roles' => Role::all(),
             'allowUsernameChange' => SystemSetting::getBool('allow_username_change', true),
             'allowEmailChange' => SystemSetting::getBool('allow_email_change', true),
             'usernameCooldownDays' => SystemSetting::getInt('username_change_cooldown_days', 30),
