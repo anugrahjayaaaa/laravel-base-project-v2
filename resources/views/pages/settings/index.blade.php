@@ -118,7 +118,7 @@
                                 <div class="input-group">
                                     <input type="number" name="password_min_length" id="password_min_length"
                                            class="form-control form-control-sm @error('password_min_length') is-invalid @enderror"
-                                           value="{{ old('password_min_length', $settings['password_min_length'] ?? 8) }}" min="4" max="128">
+                                           value="{{ old('password_min_length', $settings['password_min_length'] ?? 12) }}" min="4" max="128">
                                     <span class="input-group-text bg-body-tertiary">chars</span>
                                 </div>
                                 @error('password_min_length')

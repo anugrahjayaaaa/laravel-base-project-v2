@@ -60,7 +60,10 @@ class UpdateSystemSettingsAction
             'email_verification_token_expire_minutes' => (string) ($data['email_verification_token_expire_minutes'] ?? 60),
 
             // Password policy & lifecycle
-            'password_min_length' => (string) ($data['password_min_length'] ?? 8),
+            // 12 is the floor, not a preference: the seeder writes 12 and
+            // PasswordPolicy falls back to 12, so a form that pre-filled 8
+            // showed an admin a policy weaker than the one being enforced.
+            'password_min_length' => (string) ($data['password_min_length'] ?? 12),
             'password_require_upper' => ($data['password_require_upper'] ?? true) ? 'true' : 'false',
             'password_require_lower' => ($data['password_require_lower'] ?? true) ? 'true' : 'false',
             'password_require_digit' => ($data['password_require_digit'] ?? true) ? 'true' : 'false',
