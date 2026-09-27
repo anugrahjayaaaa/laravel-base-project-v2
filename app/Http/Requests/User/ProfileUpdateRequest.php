@@ -2,7 +2,6 @@
 
 namespace App\Http\Requests\User;
 
-use App\Models\User;
 use App\Rules\PasswordStrengthRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Hash;

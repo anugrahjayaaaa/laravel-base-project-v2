@@ -44,7 +44,7 @@ class ResendVerificationAction
         try {
             $user->sendEmailVerificationNotification();
         } catch (\Exception $e) {
-            \Log::error('Resend verification email failed', [
+            Log::error('Resend verification email failed', [
                 'email' => $email,
                 'error' => $e->getMessage(),
             ]);
