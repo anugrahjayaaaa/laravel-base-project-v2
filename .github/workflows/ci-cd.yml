@@ -28,6 +28,9 @@ jobs:
   test:
     name: Test and build
     runs-on: ubuntu-24.04
+    # Without this the default is 6 hours. A hung `npm ci` or a network stall
+    # burns a runner for the whole window instead of failing fast.
+    timeout-minutes: 20
 
     steps:
       - name: Checkout
@@ -45,12 +48,16 @@ jobs:
           extensions: mbstring, xml, curl, zip, intl, pdo_mysql, sqlite3
           coverage: none
           tools: composer:v2
+          # Composer ships its own caching in setup-php, keyed on composer.lock.
+          # Skipped an explicit actions/cache step: same saving, one fewer
+          # moving part to invalidate by hand.
 
       - name: Setup Node.js
         uses: actions/setup-node@v5
         with:
           node-version: '22'
           cache: npm
+          # npm cache is already wired through package-lock.json above.
 
       - name: Install Composer dependencies
         run: composer install --prefer-dist --no-interaction --no-progress
@@ -61,17 +68,16 @@ jobs:
       - name: Install Node dependencies
         run: npm ci
 
-      # GitHub rejects a malformed workflow at parse time, before any job runs,
-      # so the failure lands on the Actions tab instead of in a review. A
-      # duplicated job key is the case that bites: PyYAML and most YAML linters
-      # silently keep the last one, so the file looks valid locally.
+      # `uses: docker://…` with `args:` passes the string straight to the
+      # entrypoint, with no shell — so `*.yml` is never expanded and actionlint
+      # dies with "no such file or directory". It also rejects a directory.
+      # Running docker ourselves means the runner shell does the globbing, and
+      # any new workflow file is picked up without editing this line.
       #
       # There is no rhysd/actionlint-action repository — the published image is
       # the only distribution channel.
       - name: Lint workflow files
-        uses: docker://rhysd/actionlint:1.7.12
-        with:
-          args: .github/workflows/*.yml
+        run: docker run --rm -v "$PWD:/w" -w /w rhysd/actionlint:1.7.12 .github/workflows/*.yml
 
       - name: Build frontend assets
         run: npm run build
@@ -86,7 +92,10 @@ jobs:
         run: composer audit --locked
 
       - name: NPM security audit
-        run: npm audit
+        # Default is "low", which fails the build on any advisory at all — a
+        # single transitive dev dependency can block every deploy. Match the
+        # composer audit above: only high/critical stops a release.
+        run: npm audit --audit-level=high
 
   # ══════════════════════════════════════════════════════════════════════════
   # DEPLOY JOB BEGINS HERE
@@ -121,6 +130,9 @@ jobs:
 
     runs-on: ubuntu-24.04
     environment: Laravel Base Project V2 - Google Cloud
+    # Every sudo call below is `sudo -n` and fails fast, but rsync and mysqldump
+    # can still stall on a network. 45 covers a normal deploy with room to spare.
+    timeout-minutes: 45
 
     env:
       DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
@@ -180,6 +192,25 @@ jobs:
             "${DEPLOY_USER}@${DEPLOY_HOST}" \
             'test -f "'"${DEPLOY_PATH}"'/.env" && command -v rsync && rsync --version | head -n 1'
 
+      # .git is excluded from the deploy rsync, so the VM has no history to
+      # restore from. The snapshot has to be taken ON THE VM — the runner only
+      # has a checkout of the new code, so tar-ing there would archive the very
+      # release a rollback needs to replace.
+      #
+      # The script is piped in rather than run from the checkout, because the
+      # release on the VM may predate it.
+      - name: Snapshot the current release
+        run: |
+          ssh -p "${DEPLOY_PORT}" \
+            -i ~/.ssh/id_ed25519 \
+            -o BatchMode=yes \
+            -o IdentitiesOnly=yes \
+            -o StrictHostKeyChecking=yes \
+            -o UserKnownHostsFile=~/.ssh/known_hosts \
+            "${DEPLOY_USER}@${DEPLOY_HOST}" \
+            'cat > /tmp/deploy-rollback.sh && chmod +x /tmp/deploy-rollback.sh && cd "'"${DEPLOY_PATH}"' && /tmp/deploy-rollback.sh snapshot && rm -f /tmp/deploy-rollback.sh' \
+            < bin/deploy-rollback.sh
+
       - name: Sync application files
         run: |
           rsync -az --delete-delay \
@@ -219,6 +250,14 @@ jobs:
           cd "$APP_PATH"
 
           mkdir -p storage/framework/cache/data storage/framework/sessions storage/framework/views bootstrap/cache
+          # supervisor writes to storage/logs/*.log and the backup below lands in
+          # storage/db-backups. storage/ is excluded from rsync, so on a fresh VM
+          # these directories simply do not exist and supervisor goes FATAL on a
+          # missing logfile rather than on anything to do with the app.
+          mkdir -p storage/logs storage/db-backups
+          # `command=` in the supervisor conf has no `sh` prefix, so this script is
+          # exec'd directly and a missing executable bit means permission denied.
+          chmod +x bin/run-workers.sh
           chmod -R u+rwX,g+rwX storage bootstrap/cache
 
           composer install --prefer-dist --no-dev --no-interaction --no-progress --optimize-autoloader
@@ -267,9 +306,15 @@ jobs:
       # so a change to them ships with the release, not via a manual VM edit.
       - name: Install supervisor program definitions
         run: |
+          # Same host-key options as every other step in this job. Without them
+          # this step is the one place a changed host key would slip through
+          # silently, and a deploy is exactly when that matters most.
           ssh -p "${DEPLOY_PORT}" \
             -i ~/.ssh/id_ed25519 \
             -o BatchMode=yes \
+            -o IdentitiesOnly=yes \
+            -o StrictHostKeyChecking=yes \
+            -o UserKnownHostsFile=~/.ssh/known_hosts \
             "${DEPLOY_USER}@${DEPLOY_HOST}" \
             bash -s -- "${DEPLOY_PATH}" <<'REMOTE'
           set -Eeuo pipefail
@@ -278,24 +323,24 @@ jobs:
 
           command -v supervisorctl >/dev/null || { echo "::error::supervisorctl is not installed on the VM"; exit 1; }
 
-          sudo install -d -m 755 /etc/supervisor/conf.d
-          sudo sed -e "s#__APP_PATH__#${APP_PATH}#g" \
+          sudo -n install -d -m 755 /etc/supervisor/conf.d
+          sudo -n sed -e "s#__APP_PATH__#${APP_PATH}#g" \
                    -e "s#__PHP_BIN__#/usr/bin/php#g" \
                    deploy/supervisor/laravel-base-project.conf \
-                   | sudo tee /etc/supervisor/conf.d/laravel-base-project.conf > /dev/null
-          sudo chmod 644 /etc/supervisor/conf.d/laravel-base-project.conf
+                   | sudo -n tee /etc/supervisor/conf.d/laravel-base-project.conf > /dev/null
+          sudo -n chmod 644 /etc/supervisor/conf.d/laravel-base-project.conf
 
           # reread picks up new or changed program blocks; update applies them.
-          sudo supervisorctl reread
-          sudo supervisorctl update
+          sudo -n supervisorctl reread
+          sudo -n supervisorctl update
 
           # `queue:restart` in the previous step only signals live workers to
           # exit. A worker that was already dead stays dead — this restart is
           # what actually guarantees both programs are RUNNING.
-          sudo supervisorctl restart 'laravel-v2-worker:*' || true
-          sudo supervisorctl restart 'laravel-v2-scheduler:*' || true
+          sudo -n supervisorctl restart 'laravel-v2-worker:*' || true
+          sudo -n supervisorctl restart 'laravel-v2-scheduler:*' || true
 
-          status=$(sudo supervisorctl status 'laravel-v2-worker:*' 'laravel-v2-scheduler:*')
+          status=$(sudo -n supervisorctl status 'laravel-v2-worker:*' 'laravel-v2-scheduler:*')
           echo "$status"
           if echo "$status" | grep -qv RUNNING; then
               echo "::error::a worker is not RUNNING after deploy"
@@ -305,12 +350,35 @@ jobs:
 
       - name: Health check
         run: |
+          # A failed health check leaves a broken release live, so the rollback
+          # runs on any failure and only then reports the failure. `exit 1` at
+          # the end keeps the workflow red even when the rollback succeeded.
+          # Runs at most once: the second curl is a symptom of the same broken
+          # release, and restoring twice would just restore the same snapshot.
+          rollback() {
+            [ "$rolled_back" = "1" ] && return 0
+            rolled_back=1
+            echo "::error::health check failed, restoring the previous release"
+            ssh -p "${DEPLOY_PORT}" \
+              -i ~/.ssh/id_ed25519 \
+              -o BatchMode=yes \
+              -o IdentitiesOnly=yes \
+              -o StrictHostKeyChecking=yes \
+              -o UserKnownHostsFile=~/.ssh/known_hosts \
+              "${DEPLOY_USER}@${DEPLOY_HOST}" \
+              'cat > /tmp/deploy-rollback.sh && chmod +x /tmp/deploy-rollback.sh && cd "'"${DEPLOY_PATH}"' && /tmp/deploy-rollback.sh restore; rc=$?; rm -f /tmp/deploy-rollback.sh; exit $rc' \
+              < bin/deploy-rollback.sh || echo "::error::automatic rollback failed, fix the VM by hand"
+          }
+
+          status=0
+          rolled_back=0
           curl --fail --silent --show-error \
             --retry 5 --retry-delay 2 \
-            "${DEPLOY_URL}/up"
+            "${DEPLOY_URL}/up" || { rollback; status=1; }
           # The regression this guards: layout links public/vendor/theme.css,
           # so a 404 here means the page renders unstyled even though /up is 200.
           curl --fail --silent --show-error \
             --retry 5 --retry-delay 2 \
             -o /dev/null \
-            "${DEPLOY_URL}/vendor/theme.css"
+            "${DEPLOY_URL}/vendor/theme.css" || { rollback; status=1; }
+          exit "$status"
