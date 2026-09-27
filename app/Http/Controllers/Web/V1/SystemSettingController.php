@@ -9,6 +9,7 @@ use App\Models\SystemSetting;
 use App\Models\Timezone;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
+use Spatie\Permission\Models\Role;
 
 /**
  * System settings controller for the web settings page.
@@ -22,8 +23,9 @@ class SystemSettingController extends Controller
     {
         $settings = SystemSetting::getAll();
         $timezones = Timezone::active()->orderBy('name')->get();
+        $roles = Role::orderBy('name')->pluck('name', 'name');
 
-        return view('pages.settings.index', compact('settings', 'timezones'));
+        return view('pages.settings.index', compact('settings', 'timezones', 'roles'));
     }
 
     /**

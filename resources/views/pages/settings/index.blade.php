@@ -503,6 +503,49 @@
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
                         </div>
+
+                        <hr class="my-4">
+
+                        <h6 class="text-uppercase text-muted small fw-semibold mb-3">Self-Registration</h6>
+                        <div class="form-check form-switch mb-3">
+                            <input class="form-check-input" type="checkbox" name="registration_enabled" id="registration_enabled"
+                                {{ filter_var($settings['registration_enabled'] ?? 'false', FILTER_VALIDATE_BOOLEAN) ? 'checked' : '' }}>
+                            <label class="form-check-label" for="registration_enabled">
+                                Allow Self-Registration
+                                <i class="bi bi-info-circle text-muted fs-6 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Publishes a public sign-up form. New accounts still have to verify their email before they can log in."></i>
+                            </label>
+                        </div>
+                        <div class="mb-3">
+                            <label for="registration_default_role" class="form-label">
+                                Default Role
+                                <i class="bi bi-info-circle text-muted fs-6 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Role assigned to accounts that sign up on their own. An admin can change it later."></i>
+                            </label>
+                            <select name="registration_default_role" id="registration_default_role"
+                                    class="form-select form-select-sm @error('registration_default_role') is-invalid @enderror">
+                                <option value="">No role</option>
+                                @foreach ($roles as $roleName)
+                                    <option value="{{ $roleName }}" {{ ($settings['registration_default_role'] ?? 'user') === $roleName ? 'selected' : '' }}>{{ $roleName }}</option>
+                                @endforeach
+                            </select>
+                            @error('registration_default_role')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
+                        <div class="mb-3">
+                            <label for="registration_rate_limit_per_minute" class="form-label">
+                                Registration Rate Limit
+                                <i class="bi bi-info-circle text-muted fs-6 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Sign-up attempts allowed per minute per IP. Keeps the form from being used to probe which email addresses are registered."></i>
+                            </label>
+                            <div class="input-group">
+                                <input type="number" name="registration_rate_limit_per_minute" id="registration_rate_limit_per_minute"
+                                       class="form-control form-control-sm @error('registration_rate_limit_per_minute') is-invalid @enderror"
+                                       value="{{ old('registration_rate_limit_per_minute', $settings['registration_rate_limit_per_minute'] ?? 3) }}" min="1" max="30">
+                                <span class="input-group-text bg-body-tertiary">/ min</span>
+                            </div>
+                            @error('registration_rate_limit_per_minute')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
                     </div>
                 </div>
 

@@ -74,6 +74,13 @@ class SystemSettingRequest extends FormRequest
             'username_change_cooldown_days' => ['integer', 'min:0', 'max:365'],
             'allow_email_change' => ['boolean'],
             'email_change_cooldown_days' => ['integer', 'min:0', 'max:365'],
+
+            // Self-registration
+            'registration_enabled' => ['boolean'],
+            'registration_rate_limit_per_minute' => ['integer', 'min:1', 'max:30'],
+            // Empty means "no role"; otherwise it must name a real one, or the
+            // create action would silently assign nothing.
+            'registration_default_role' => ['nullable', 'string', 'exists:roles,name'],
         ];
     }
 
@@ -94,6 +101,7 @@ class SystemSettingRequest extends FormRequest
                 'inactivity_lock_grace_enabled',
                 'allow_username_change',
                 'allow_email_change',
+                'registration_enabled',
             ] as $key
         ) {
             if ($this->has($key)) {
