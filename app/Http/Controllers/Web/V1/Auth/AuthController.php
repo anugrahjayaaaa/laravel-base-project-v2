@@ -9,12 +9,14 @@ use App\Actions\V1\Auth\ResendVerificationAction;
 use App\Actions\V1\Auth\SendPasswordResetLinkAction;
 use App\Actions\V1\Auth\ResetPasswordAction;
 use App\Actions\V1\Auth\VerifyEmailAction;
+use App\Actions\V1\User\CreateUserAction;
 use App\Models\SystemSetting;
 use App\Models\User;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Http\Requests\Auth\PasswordForgotRequest;
 use App\Http\Requests\Auth\PasswordResetRequest;
+use App\Http\Requests\Auth\RegisterRequest;
 use App\Http\Requests\Auth\ResendVerificationRequest;
 use App\Auth\LoginThrottle;
 use Illuminate\Http\Request;
@@ -31,7 +33,8 @@ class AuthController extends Controller
      */
     public function __construct(
         private readonly ListUserSessionsAction $listSessionsAction,
-    ) {}
+    ) {
+    }
 
     // === VIEW: Login ===
 
@@ -42,7 +45,12 @@ class AuthController extends Controller
      */
     public function showLogin()
     {
-        return response()->view('pages.auth.login', ['title' => 'Login']);
+        return response()->view('pages.auth.login', [
+            'title' => 'Login',
+            // The register link is hidden rather than dead: a link to a route
+            // that 404s is worse than no link.
+            'registrationEnabled' => SystemSetting::getBool('registration_enabled', false),
+        ]);
     }
 
     // === LOGIC: Login ===
@@ -301,6 +309,52 @@ class AuthController extends Controller
         ]);
 
         return back()->with('success', 'If the email is registered, a verification link has been sent.');
+    }
+
+    // === VIEW: Register ===
+
+    /**
+     * Show the self-registration page.
+     *
+     * @return \Illuminate\Http\Response
+     */
+    public function showRegister()
+    {
+        abort_unless(SystemSetting::getBool('registration_enabled', false), 404);
+
+        return response()->view('pages.auth.register', [
+            'title' => 'Register',
+            'passwordMinLength' => SystemSetting::getInt('password_min_length', 12),
+        ]);
+    }
+
+    // === LOGIC: Register ===
+
+    /**
+     * Create a self-registered account and email a verification link.
+     *
+     * No session is started: the account is unverified, and letting it sign in
+     * would only lead to the `verified` middleware bouncing it straight back
+     * out with a less clear message.
+     *
+     * @param  RegisterRequest  $request
+     * @param  CreateUserAction  $action
+     * @return \Illuminate\Http\RedirectResponse
+     */
+    public function register(RegisterRequest $request, CreateUserAction $action)
+    {
+        abort_unless(SystemSetting::getBool('registration_enabled', false), 404);
+
+        $data = $request->validated();
+        $user = $action->run($data, $request->password());
+
+        $this->audit('user.registered', $user, $user, [
+            'ip' => $request->ip(),
+            'channel' => 'web',
+        ]);
+
+        return redirect()->route('login')
+            ->with('success', 'Account created. Check your email to verify it before logging in.');
     }
 
     // === VIEW: Sessions ===

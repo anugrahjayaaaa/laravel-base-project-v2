@@ -35,6 +35,13 @@ Route::controller(AuthController::class)->group(function () {
         ->name('password.update')
         ->middleware('throttle:reset-password');
 
+    // Both verbs check `registration_enabled` in the controller — a disabled
+    // feature should 404, not 403, so no `can:` gate here.
+    Route::get('/register', 'showRegister')->name('register');
+    Route::post('/register', 'register')
+        ->name('register.submit')
+        ->middleware('throttle:register');
+
     Route::get('/verify-email', 'showVerifyEmail')->name('verification.notice');
     Route::get('/email/verify/{id}/{hash}', 'verifyEmail')->name('verification.verify');
     Route::post('/email/resend', 'resendVerification')

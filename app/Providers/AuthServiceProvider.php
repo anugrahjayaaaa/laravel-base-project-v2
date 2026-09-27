@@ -11,7 +11,6 @@ use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Middleware\ThrottleRequests;
 use Illuminate\Support\Facades\RateLimiter;
-use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
 
@@ -92,6 +91,24 @@ class AuthServiceProvider extends ServiceProvider
                 });
         });
 
+        // Registration is a public write endpoint: it creates accounts and sends
+        // mail, so it is keyed per IP alone. The unique-email error on the form
+        // tells an attacker which addresses exist; this caps how fast they can
+        // collect that.
+        RateLimiter::for('register', function (Request $request) use ($throttle) {
+            $limit = SystemSetting::getInt('registration_rate_limit_per_minute', 3);
+
+            return Limit::perMinute($limit)
+                ->by($throttle->key('register', 'ip', $request->ip()))
+                ->response(function (Request $request, array $headers) {
+                    $retryAfter = $headers['Retry-After'] ?? 60;
+
+                    return back()->withErrors(['email' => 'Too many attempts. Please try again later.'])
+                        ->withInput($request->only('name', 'username', 'email'))
+                        ->with('rate_limit_seconds', $retryAfter);
+                });
+        });
+
         RateLimiter::for('resend-verification', function (Request $request) use ($throttle) {
             $identifier = $request->user()
                 ? (string) $request->user()->getKey()
@@ -153,7 +170,7 @@ class AuthServiceProvider extends ServiceProvider
     protected function configureEmailVerification(): void
     {
         VerifyEmail::toMailUsing(function ($notifiable) {
-            return (new \Illuminate\Notifications\Messages\MailMessage)
+            return (new \Illuminate\Notifications\Messages\MailMessage())
                 ->subject('Verify Email Address')
                 ->line('Please click the link below to verify your email address.')
                 ->action('Verify Email', URL::signedRoute(
