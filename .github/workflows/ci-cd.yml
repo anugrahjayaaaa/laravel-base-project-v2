@@ -1,30 +1,17 @@
 name: CI/CD
 
-# ─── HOW TO TURN THE DEPLOY OFF ──────────────────────────────────────────────
-# The deploy job is the block starting at `  deploy:` near the bottom.
-#   OFF  → comment out every line of that job, from `deploy:` to the end of
-#          the file, then commit. Only the `test` job is left.
-#   ON   → uncomment those same lines, then commit.
-# The `test` job is never part of this — CI keeps running either way.
+# ═══════════════════════════════════════════════════════════════════════════
+# WHICH BRANCH MAY DEPLOY?
 #
-# The quick way for OFF/ON is a single line, the `if:` inside the deploy job:
-#   OFF  → delete the line `if: github.ref == 'refs/heads/main'`
-#   ON   → put it back
-# Deleting it makes the job unconditional, so check the push list at the top
-# of this file first — a push to any listed branch will then deploy.
+# The `test` job runs on every push and every pull request, whatever the
+# branch. Only the `deploy` job is restricted, by the `if:` inside it.
 #
-# ─── FIRST-TIME SETUP ────────────────────────────────────────────────────────
-# `main` does not have this file yet. Until the branch holding this workflow is
-# merged into main, the `main` trigger cannot fire — GitHub reads workflows
-# from the ref being pushed. Merge it once and the deploy starts working.
-#
+# To deploy on a different branch, edit that one `if:` line — see the comment
+# block above `deploy:` below for the exact lines to change.
+# ═══════════════════════════════════════════════════════════════════════════
 on:
+  # No `branches:` filter on purpose: test must run on every branch.
   push:
-    branches:
-      # Any branch listed here runs the `test` job. Deployment is filtered
-      # separately by the `if` on the deploy job below, not by this list.
-      - main
-      - deployment/deployment-setup
   pull_request:
   workflow_dispatch:
 
@@ -78,8 +65,11 @@ jobs:
       # so the failure lands on the Actions tab instead of in a review. A
       # duplicated job key is the case that bites: PyYAML and most YAML linters
       # silently keep the last one, so the file looks valid locally.
+      #
+      # There is no rhysd/actionlint-action repository — the published image is
+      # the only distribution channel.
       - name: Lint workflow files
-        uses: rhysd/actionlint-action@v1
+        uses: docker://rhysd/actionlint:1.7.12
         with:
           args: .github/workflows/*.yml
 
@@ -99,26 +89,35 @@ jobs:
         run: npm audit
 
   # ══════════════════════════════════════════════════════════════════════════
-  # DEPLOY JOB BEGINS HERE — to disable deploying, comment out every line from
-  # this marker to the end of the file and commit. The `test` job above is
-  # unaffected and keeps running on every push and pull request.
+  # DEPLOY JOB BEGINS HERE
+  #
+  # TO DEPLOY ONLY ON A MERGE TO main (the default, current state):
+  #     if: github.ref == 'refs/heads/main'
+  #
+  # TO DEPLOY ONLY ON A FIXED BRANCH — e.g. to skip pull requests while
+  # working directly on a setup branch. Comment the `if:` line above and
+  # uncomment this one. The branch must exist on the remote:
+  #   # if: github.ref == 'refs/heads/deployment/deployment-setup'
+  #
+  # TO DEPLOY FROM SEVERAL BRANCHES:
+  #   # if: contains(fromJSON('["main", "staging"]'), github.ref_name)
+  #
+  # TO STOP DEPLOYING ENTIRELY — keep the test job, skip every release.
+  # GitHub rejects a constant `if: false`, so the real way to switch the
+  # deploy off is to comment out the whole deploy job: everything from
+  # `deploy:` down to the end of this file. `test` is unaffected.
+  #
+  # NEVER delete the `if:` line itself. Without it the job becomes
+  # unconditional and every push to any branch ships to the VM.
   # ══════════════════════════════════════════════════════════════════════════
   deploy:
     name: Deploy to Ubuntu VM
     needs: test
 
-    # ─── DEPLOY GATE ─────────────────────────────────────────────────────────
-    # `needs: test` (above) blocks the deploy until the test job is green —
-    # do not remove it. This `if` decides WHICH pushes may deploy at all.
-    #
-    #   TO DISABLE DEPLOYING   → delete the `if:` line below and commit.
-    #                             The test job keeps running on every push.
-    #   TO RE-ENABLE           → put the `if:` line back and commit.
-    #   TO DEPLOY ELSEWHERE    → change the branch name in it, and add that
-    #                            branch to the push list at the top of this file.
-    #
-    # A pull_request never matches: its ref is refs/pull/N/merge, not a branch.
     if: github.ref == 'refs/heads/main'
+    # if: github.ref == 'refs/heads/deployment/deployment-setup'
+    # if: contains(fromJSON('["main", "staging"]'), github.ref_name)
+    # if: github.event_name == 'workflow_dispatch'
 
     runs-on: ubuntu-24.04
     environment: Laravel Base Project V2 - Google Cloud
