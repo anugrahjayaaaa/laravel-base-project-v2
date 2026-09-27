@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Auth\LoginThrottle;
 use App\Models\User;
 use App\Observers\UserObserver;
 use App\Services\PasswordExpiry;
@@ -40,16 +41,23 @@ class AppServiceProvider extends ServiceProvider
 
         User::observe(UserObserver::class);
 
-        RateLimiter::for('user-state-actions', function ($request) {
+        // Both are reachable from the API, so both need the JSON branch too.
+        $throttle = app(LoginThrottle::class);
+
+        RateLimiter::for('user-state-actions', function ($request) use ($throttle) {
             $key = $request->user()?->id ?: $request->ip();
 
-            return Limit::perMinute(15)->by($key);
+            return Limit::perMinute(15)
+                ->by($key)
+                ->response($throttle->responseFor('user'));
         });
 
-        RateLimiter::for('bulk-action', function ($request) {
+        RateLimiter::for('bulk-action', function ($request) use ($throttle) {
             $key = $request->user()?->id ?: $request->ip();
 
-            return Limit::perMinute(5)->by($key);
+            return Limit::perMinute(5)
+                ->by($key)
+                ->response($throttle->responseFor('users'));
         });
     }
 

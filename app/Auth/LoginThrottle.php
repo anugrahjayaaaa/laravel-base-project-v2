@@ -5,6 +5,8 @@ namespace App\Auth;
 use App\Models\FailedLoginAttempt;
 use App\Models\SystemSetting;
 use App\Models\User;
+use Closure;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\RateLimiter;
 
@@ -151,6 +153,37 @@ class LoginThrottle
         FailedLoginAttempt::where('identifier', $identifier)
             ->where('ip_address', $ip)
             ->delete();
+    }
+
+    /**
+     * The answer a throttled request gets, in whichever shape the caller asked
+     * for.
+     *
+     * Every limiter used to inline its own copy of this. A limiter that forgot
+     * the JSON branch handed an API client an HTML 302, which most clients do
+     * not treat as a failure at all — and three of them were reachable only
+     * from the API, so nothing noticed. One method, both branches, no way to
+     * ship half of it again.
+     *
+     * @param  string  $field  form field the error is attached to on the web side
+     */
+    public function responseFor(string $field): Closure
+    {
+        return function (Request $request, array $headers) use ($field) {
+            $retryAfter = $headers['Retry-After'] ?? 60;
+
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'message' => 'Too many requests. Please try again later.',
+                    'code' => 'RATE_LIMITED',
+                    'retry_after_seconds' => $retryAfter,
+                ], 429);
+            }
+
+            return back()->withErrors([$field => 'Too many attempts. Please try again later.'])
+                ->withInput($request->only($field))
+                ->with('rate_limit_seconds', $retryAfter);
+        };
     }
 
     /**
