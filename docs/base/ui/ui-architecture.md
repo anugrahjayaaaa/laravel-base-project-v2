@@ -31,6 +31,16 @@ Domain (Models / Events)
 1. **Business logic does not live in Blade/views.** Any logic beyond simple
    presentation (conditional rendering based on permission, formatting) must
    be in the Action/Service layer and exposed via the API.
+1. **A view reads variables; it never reaches for a model, a setting or a
+   service.** Those arrive as view data, and which layer supplies them is
+   decided by scope, not by habit — see
+   [Separation of Responsibilities](../architecture/principles.md#where-view-data-comes-from).
+   In short: app-shell and shared data from a view composer, page-specific data
+   from the controller, a value derived from one record from the record itself.
+   The rule is about *where the lookup happens*, not about which file passes the
+   variable: a composer that exists to hand one view a CSS class is a controller
+   closure with a different name, and a per-page query in a broadly-registered
+   composer is a query on every admin page.
 2. **Authorization is enforced server-side.** The backend (Policy/Gate) is
    the security boundary. UI permission checks exist for UX/visibility only.
    See [UI Authorization Rule](./ui-authorization.md).

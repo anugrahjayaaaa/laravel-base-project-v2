@@ -149,11 +149,19 @@ Action buttons in tables:
 
 One reusable confirmation-modal component with configurable variants
 (danger/warning/info). Actions requiring confirmation: soft delete, permanent
-delete, restore, lock, unlock, activate/deactivate, feature flag changes,
+delete, restore, lock, unlock, activate, deactivate, feature flag changes,
 resend password, resend verification email, and other sensitive/destructive
 actions. Do not create separate modal implementations per feature.
 
 See [UI Architecture](./ui-architecture.md) § Confirmation Modal.
+
+> **Status: not yet adopted.** The `layouts/partials/modals/confirmation` modal
+> and the `x-ui.confirm-action` component exist, but no view uses `<x-` at all
+> — every page hand-writes the `data-bs-*` attribute string, and
+> `pages/users/edit.blade.php` builds seven of them as concatenated PHP. The
+> convention above is the target, not the current state. Tracked as VIEW-010 in
+> the remediation tracker. Adopt the components or delete them; leaving them
+> unused keeps a second, divergent copy of the contract in the repo.
 
 #### Modal Action Format
 

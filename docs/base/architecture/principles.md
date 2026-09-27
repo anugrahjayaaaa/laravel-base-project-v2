@@ -21,9 +21,10 @@ Replaceable UI
 | Laravel Abstraction | Responsibility | Convention |
 |---------------------|---------------|------------|
 | Form Request | Request validation and request-level authorization | Controller MUST call `$request->validated()` — never access raw input |
-| Controller | HTTP orchestration | Thin — delegate to Actions |
+| Controller | HTTP orchestration | Thin — delegate to Actions. Owns page-specific view data only |
 | Action/Service | Application/business logic | Self-audits for complex/shared logic |
-| Model | Persistence/model behavior | — |
+| View Composer | Data every page in a group needs (app shell, shared forms) | `app/View/Composers/`, registered in `AppServiceProvider`. One lookup, all callers |
+| Model | Persistence/model behavior | Owns its own derived value (`User::initials()`, `UserStatusEnum::badgeClass()`) |
 | Policy | Authorization decisions | — |
 | Resource | API serialization/presentation | — |
 | Middleware | Cross-cutting request/application boundaries | — |
@@ -32,6 +33,29 @@ Replaceable UI
 | Job | Asynchronous/background processing | — |
 | Notification | User notification abstraction | — |
 | Observer | Only where model lifecycle behavior is genuinely appropriate; never as primary business/audit source of truth | — |
+
+## Where View Data Comes From
+
+A view reads variables. It never reaches for a model, a setting or a service.
+Which layer supplies them:
+
+| Kind of data | Home | Example |
+|--------------|------|---------|
+| App shell, same for every authenticated page | View Composer | `menuGroups`, `currentUserName`, password-expiry warning |
+| Shared across a group of pages | View Composer | `roles`, the username/email change policy (`AccountOptionsComposer`) |
+| Specific to one page, derived from the request | Controller | `users`, `counts`, `failedLoginCount`, `settings` |
+| Derived from one record | The record itself | `User::initials()`, `UserStatusEnum::badgeClass()` |
+
+Two consequences worth stating:
+
+- A value the API also needs does not belong in a composer. It belongs in an
+  Action, a Service, or the model/enum, and the composer reads it from there.
+  A composer that exists only to hand one view a class string is a controller
+  closure with a different name.
+- Data that only one page reads does not belong in a composer either. A
+  composer runs for every view it is registered against, so a per-page query
+  registered broadly becomes a query on every admin page.
+
 
 ## Single Source of Truth
 
