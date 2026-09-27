@@ -25,12 +25,10 @@
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center mb-3">
                         <h5 class="card-title mb-0">Sessions</h5>
-                        <button type="button" class="btn btn-danger btn-sm" data-bs-toggle="modal"
-                            data-bs-target="#confirmModal" data-action="{{ route('sessions.logout-all') }}"
-                            data-method="POST" data-action-type="logout_all"
-                            data-label="Logout All">
+                        <x-ui.confirm-action :action="route('sessions.logout-all')" method="POST"
+                            action-type="logout_all" label="Logout All" class="btn btn-danger btn-sm">
                             <i class="fas fa-sign-out-alt me-1"></i> Logout All Devices
-                        </button>
+                        </x-ui.confirm-action>
                     </div>
                     <table class="table table-hover mb-0 sessions-table">
                         <thead>

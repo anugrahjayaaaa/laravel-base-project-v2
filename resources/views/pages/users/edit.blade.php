@@ -1,84 +1,5 @@
 @extends('layouts.app', ['title' => 'Edit User'])
 
-@php
-    $softDeleteModal =
-        'data-bs-toggle="modal" data-bs-target="#confirmModal" ' .
-        'data-action="' .
-        route('users.destroy', $user) .
-        '" data-method="DELETE" ' .
-        'data-action-type="delete" ' .
-        'data-item-name="' .
-        e($user->name) .
-        '" ' .
-        'data-label="Delete"';
-
-    $restoreModal =
-        'data-bs-toggle="modal" data-bs-target="#confirmModal" ' .
-        'data-action="' .
-        route('users.restore', $user) .
-        '" data-method="POST" ' .
-        'data-action-type="restore" ' .
-        'data-item-name="' .
-        e($user->name) .
-        '" ' .
-        'data-label="Restore"';
-
-    $forceDeleteModal =
-        'data-bs-toggle="modal" data-bs-target="#confirmModal" ' .
-        'data-action="' .
-        route('users.force-delete', $user) .
-        '" data-method="DELETE" ' .
-        'data-action-type="force_delete" ' .
-        'data-item-name="' .
-        e($user->name) .
-        '" ' .
-        'data-label="Permanent Delete"';
-
-    $activateModal =
-        'data-bs-toggle="modal" data-bs-target="#confirmModal" ' .
-        'data-action="' .
-        route('users.activate', $user) .
-        '" data-method="POST" ' .
-        'data-action-type="activate" ' .
-        'data-item-name="' .
-        e($user->name) .
-        '" ' .
-        'data-label="Activate"';
-
-    $deactivateModal =
-        'data-bs-toggle="modal" data-bs-target="#confirmModal" ' .
-        'data-action="' .
-        route('users.deactivate', $user) .
-        '" data-method="POST" ' .
-        'data-action-type="deactivate" ' .
-        'data-item-name="' .
-        e($user->name) .
-        '" ' .
-        'data-label="Deactivate"';
-
-    $lockModal =
-        'data-bs-toggle="modal" data-bs-target="#confirmModal" ' .
-        'data-action="' .
-        route('users.lock', $user) .
-        '" data-method="POST" ' .
-        'data-action-type="lock" ' .
-        'data-item-name="' .
-        e($user->name) .
-        '" ' .
-        'data-label="Lock"';
-
-    $unlockModal =
-        'data-bs-toggle="modal" data-bs-target="#confirmModal" ' .
-        'data-action="' .
-        route('users.unlock', $user) .
-        '" data-method="POST" ' .
-        'data-title="Unlock User Account?" ' .
-        'data-message="Are you sure you want to unlock ' .
-        e($user->name) .
-        '? The administrative lock will be removed, allowing normal access." ' .
-        'data-variant="success" data-icon="bi-shield-check" data-label="Unlock"';
-@endphp
-
 @section('content')
     <div class="content-header mb-3">
         <div class="d-flex justify-content-between align-items-start w-100">
@@ -231,20 +152,31 @@
                     @if (!$user->trashed())
                         @php $s = $user->getStatus(); @endphp
                         @if ($s->value === 'active')
-                            <button type="button" class="btn btn-outline-warning btn-sm w-100" {!! $deactivateModal !!}>
+                            <x-ui.confirm-action :action="route('users.deactivate', $user)" method="POST"
+                                action-type="deactivate" :item-name="$user->name" label="Deactivate"
+                                class="btn btn-outline-warning btn-sm w-100">
                                 <i class="fas fa-user-slash me-1"></i> Deactivate
-                            </button>
-                            <button type="button" class="btn btn-outline-danger btn-sm w-100" {!! $lockModal !!}>
+                            </x-ui.confirm-action>
+                            <x-ui.confirm-action :action="route('users.lock', $user)" method="POST"
+                                action-type="lock" :item-name="$user->name" label="Lock"
+                                class="btn btn-outline-danger btn-sm w-100">
                                 <i class="fas fa-lock me-1"></i> Lock
-                            </button>
+                            </x-ui.confirm-action>
                         @elseif ($s->value === 'inactive')
-                            <button type="button" class="btn btn-outline-success btn-sm w-100" {!! $activateModal !!}>
+                            <x-ui.confirm-action :action="route('users.activate', $user)" method="POST"
+                                action-type="activate" :item-name="$user->name" label="Activate"
+                                class="btn btn-outline-success btn-sm w-100">
                                 <i class="fas fa-user-check me-1"></i> Activate
-                            </button>
+                            </x-ui.confirm-action>
                         @elseif ($s->value === 'locked')
-                            <button type="button" class="btn btn-outline-success btn-sm w-100" {!! $unlockModal !!}>
+                            {{-- No action-type: this one keeps its own copy, the way it always has. --}}
+                            <x-ui.confirm-action :action="route('users.unlock', $user)" method="POST"
+                                :item-name="$user->name" label="Unlock" title="Unlock User Account?"
+                                message="Are you sure you want to unlock {{ $user->name }}? The administrative lock will be removed, allowing normal access."
+                                variant="success" icon="bi-shield-check"
+                                class="btn btn-outline-success btn-sm w-100">
                                 <i class="fas fa-lock-open me-1"></i> Unlock
-                            </button>
+                            </x-ui.confirm-action>
                         @endif
                     @endif
 
@@ -266,17 +198,23 @@
                 </div>
                 <div class="card-body d-grid gap-2">
                     @if ($user->trashed())
-                        <button type="button" class="btn btn-outline-success btn-sm w-100" {!! $restoreModal !!}>
+                        <x-ui.confirm-action :action="route('users.restore', $user)" method="POST"
+                            action-type="restore" :item-name="$user->name" label="Restore"
+                            class="btn btn-outline-success btn-sm w-100">
                             <i class="fas fa-rotate-left me-1"></i> Restore User
-                        </button>
-                        <button type="button" class="btn btn-danger btn-sm w-100" {!! $forceDeleteModal !!}>
+                        </x-ui.confirm-action>
+                        <x-ui.confirm-action :action="route('users.force-delete', $user)" method="DELETE"
+                            action-type="force_delete" :item-name="$user->name" label="Permanent Delete"
+                            class="btn btn-danger btn-sm w-100">
                             <i class="fas fa-trash me-1"></i> Permanent Delete
-                        </button>
+                        </x-ui.confirm-action>
                         <p class="text-muted small mt-1 mb-0">User is in trash. Restore or permanently delete.</p>
                     @else
-                        <button type="button" class="btn btn-outline-danger btn-sm w-100" {!! $softDeleteModal !!}>
+                        <x-ui.confirm-action :action="route('users.destroy', $user)" method="DELETE"
+                            action-type="delete" :item-name="$user->name" label="Delete"
+                            class="btn btn-outline-danger btn-sm w-100">
                             <i class="fas fa-trash me-1"></i> Delete
-                        </button>
+                        </x-ui.confirm-action>
                         <p class="text-muted small mt-1 mb-0">Temporary delete. Can be restored.</p>
                     @endif
                 </div>
