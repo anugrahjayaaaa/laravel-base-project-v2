@@ -1,9 +1,18 @@
 name: CD
 
+# Triggered by CI finishing, not by the push itself. As two independent
+# workflows both fire on push, a release with failing tests can reach the VM
+# when the CD build happens to finish first. workflow_run is the trigger for
+# "run B only after A succeeded".
+#
+# Note: on workflow_run, github.sha is the commit CI tested, not the push —
+# which is the release we want. workflow_dispatch stays as the manual escape
+# hatch and deliberately bypasses CI.
 on:
-  push:
-    branches:
-      - deployment/deployment-setup
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+    branches: [deployment/deployment-setup]
   workflow_dispatch:
 
 permissions:
@@ -18,6 +27,9 @@ concurrency:
 jobs:
   deploy:
     name: Deploy to Ubuntu VM
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-24.04
     environment: Laravel Base Project V2 - Google Cloud
 
@@ -122,6 +134,28 @@ jobs:
 
           composer install --prefer-dist --no-dev --no-interaction --no-progress --optimize-autoloader
           php artisan optimize:clear
+
+          # Dump before migrate: a release that migrates and then turns out to
+          # be broken has no way back otherwise. Credentials are read from .env
+          # and never echoed. Failure is non-fatal — Cloud SQL may not ship a
+          # client, and a missing backup should not block the deploy.
+          if command -v mysqldump >/dev/null 2>&1; then
+              db_env() { grep -E "^$1=" .env | head -n1 | cut -d= -f2- | tr -d '"'"'"''; }
+              mkdir -p storage/db-backups
+              # Keep the last 5 dumps; without this they accumulate forever.
+              ls -1t storage/db-backups/*.sql 2>/dev/null | tail -n +6 | xargs -r rm -f
+              MYSQL_PWD="$(db_env DB_PASSWORD)" mysqldump \
+                  --host="$(db_env DB_HOST)" --port="$(db_env DB_PORT)" \
+                  --user="$(db_env DB_USERNAME)" \
+                  --single-transaction --no-tablespaces \
+                  "$(db_env DB_DATABASE)" \
+                  > "storage/db-backups/$(date -u +%Y%m%d-%H%M%S).sql" \
+                  && echo "db backup written" \
+                  || echo "::warning::db backup failed, continuing"
+          else
+              echo "::warning::mysqldump not installed, skipping db backup"
+          fi
+
           php artisan migrate --force
           php artisan config:cache
           php artisan route:cache
