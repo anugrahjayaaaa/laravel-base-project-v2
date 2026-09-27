@@ -36,6 +36,7 @@ class AppServiceProvider extends ServiceProvider
             $user = auth()->user();
 
             $view->with([
+                'currentUserName' => $user?->name,
                 'showPasswordExpiryWarning' => $user && PasswordExpiry::shouldWarn($user),
                 'passwordExpiryDaysRemaining' => $user ? PasswordExpiry::daysUntilExpiry($user) : 0,
             ]);

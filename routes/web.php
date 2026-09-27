@@ -13,7 +13,10 @@ use Illuminate\Support\Facades\Route;
 // Public routes — no authentication required
 // ---------------------------------------------------------------------------
 Route::get('/', function () {
-    return view('pages.welcome', ['title' => config('app.name', 'Laravel Base Project')]);
+    return view('pages.welcome', [
+        'title' => config('app.name', 'Laravel Base Project'),
+        'laravelVersion' => app()->version(),
+    ]);
 });
 
 // ---------------------------------------------------------------------------
