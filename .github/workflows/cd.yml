@@ -139,6 +139,47 @@ jobs:
           done
           REMOTE
 
+      # Runs before the health check: a deploy that leaves the workers down is
+      # not a finished deploy. Program definitions are installed from the repo
+      # so a change to them ships with the release, not via a manual VM edit.
+      - name: Install supervisor program definitions
+        run: |
+          ssh -p "${DEPLOY_PORT}" \
+            -i ~/.ssh/id_ed25519 \
+            -o BatchMode=yes \
+            "${DEPLOY_USER}@${DEPLOY_HOST}" \
+            bash -s -- "${DEPLOY_PATH}" <<'REMOTE'
+          set -Eeuo pipefail
+          APP_PATH="$1"
+          cd "$APP_PATH"
+
+          command -v supervisorctl >/dev/null || { echo "::error::supervisorctl is not installed on the VM"; exit 1; }
+
+          sudo install -d -m 755 /etc/supervisor/conf.d
+          sudo sed -e "s#__APP_PATH__#${APP_PATH}#g" \
+                   -e "s#__PHP_BIN__#/usr/bin/php#g" \
+                   deploy/supervisor/laravel-base-project.conf \
+                   | sudo tee /etc/supervisor/conf.d/laravel-base-project.conf > /dev/null
+          sudo chmod 644 /etc/supervisor/conf.d/laravel-base-project.conf
+
+          # reread picks up new or changed program blocks; update applies them.
+          sudo supervisorctl reread
+          sudo supervisorctl update
+
+          # `queue:restart` in the previous step only signals live workers to
+          # exit. A worker that was already dead stays dead — this restart is
+          # what actually guarantees both programs are RUNNING.
+          sudo supervisorctl restart 'laravel-v2-worker:*' || true
+          sudo supervisorctl restart 'laravel-v2-scheduler:*' || true
+
+          status=$(sudo supervisorctl status 'laravel-v2-worker:*' 'laravel-v2-scheduler:*')
+          echo "$status"
+          if echo "$status" | grep -qv RUNNING; then
+              echo "::error::a worker is not RUNNING after deploy"
+              exit 1
+          fi
+          REMOTE
+
       - name: Health check
         run: |
           curl --fail --silent --show-error \
