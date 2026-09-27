@@ -62,14 +62,27 @@ Integrate with GitHub Actions (or similar CI):
 
 ## Rollback Procedure
 
+Code rollback is automated: `bin/deploy-rollback.sh` snapshots the release on
+the VM before the rsync, and the deploy job restores it when the health check
+fails. The database is deliberately left alone — see ADR-021.
+
 ```
-1. Identify last known good release tag
-2. Revert code (git checkout tag)
-3. Rollback database if needed (migrate:rollback)
-4. Restart services
-5. Verify health
-6. Notify stakeholders
+1. Deploy failed → rollback already ran automatically
+2. Recover the database by hand, only if the migration itself was the cause:
+     ls -1t storage/db-backups/*.sql | head -1     # newest pre-migrate dump
+     mysql <app> < that dump
+3. Or fix forward: write a new migration, push. Preferred over step 2.
+4. Verify health
+5. Notify stakeholders
 ```
+
+Never revert the schema automatically. The health check only probes `/up` and
+`/vendor/theme.css`, so a red check is usually an asset or worker problem, and
+`migrate --force` applies a whole batch at once — rolling back would drop
+columns that were never at fault and discard rows written since the deploy.
+
+A restored dump discards every write made after it was taken. Plan a
+maintenance window for it.
 
 ## Secrets Management
 

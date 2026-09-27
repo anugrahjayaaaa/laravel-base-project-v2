@@ -2,9 +2,19 @@
 #
 # Restore the previous release on the VM after a failed deploy.
 #
+# CODE ONLY. The database is not reverted — see ADR-021. A bad migration is
+# fixed forward with a new migration on the next push; the pre-migrate dump in
+# storage/db-backups is the manual recovery route, restored by hand because
+# it also discards every write made since it was taken.
+#
+# The health check only probes /up and /vendor/theme.css, so a red check is
+# usually an asset or worker problem rather than a schema one, and
+# `migrate --force` applies a whole batch at once — reverting the schema here
+# would drop columns that were never at fault.
+#
 # .git is excluded from the deploy rsync, so the server has no history to check
 # out from. The workaround is a tarball of the previous release, taken on the
-# runner just before the new code is synced.
+# VM just before the new code is synced.
 #
 # Called by .github/workflows/ci-cd.yml from the health check step when the
 # deploy turns out to be broken. Also safe to run by hand over SSH.

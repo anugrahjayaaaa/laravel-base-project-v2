@@ -309,3 +309,48 @@ the code default must be `false` rather than relying on `.env` alone. A VM that
 forgets the key records nothing, which is the intended failure mode.
 
 **Related**: ADR-008, ADR-013, Phase 11, MONITOR-001
+
+## ADR-021: no automated database rollback — a bad migration is fixed forward
+
+**Status**: Accepted
+
+**Context**: `bin/deploy-rollback.sh` restores the previous release's code when
+the health check fails, and the deploy takes a `mysqldump` before running
+`migrate --force`. What it deliberately does not do is revert the database.
+
+The tempting version runs `migrate:rollback` when the health check turns red.
+That is unsafe here for two reasons:
+
+1. The health check only curls `/up` and `/vendor/theme.css`. Neither touches
+   the schema. A red check is just as likely to be a missing vendored asset or
+   a worker that never reached `RUNNING` as it is a bad migration, so the
+   rollback would drop columns that were never the problem.
+2. `migrate --force` applies every pending migration in one batch. A rollback
+   reverses the whole batch, including migrations that were correct, and
+   discards whatever rows arrived between the deploy and the detection.
+
+**Decision**: No `migrate:rollback` in the deploy path. A bad migration is
+repaired with a **new forward migration** on the next push.
+
+1. Every migration ships a real `down()` regardless. It keeps `migrate:fresh`
+   and local seeding working, and it leaves the option open.
+2. The `mysqldump` taken before migrating is the recovery path, and it is
+   restored by hand, never by the pipeline. An automated dump restore would
+   silently discard live writes.
+3. Forward-fixing is also the shorter path in practice. A drop that has already
+   run needs a re-create plus a data backfill, which is one file either way —
+   and the forward version keeps the write history that arrived after the bad
+   release shipped.
+4. `bin/deploy-rollback.sh restore` stays code-only. It leaves the schema in
+   whatever state the failed deploy produced, so a mismatched release is a
+   known and deliberate outcome, not a surprise.
+
+**Consequences**: After a rollback the VM serves the previous release's code
+against the newer schema. That is acceptable here because migrations are
+additive — old code ignores columns it does not know about. A migration that
+renames or drops something the previous release still uses would break this
+assumption, and it needs a staged rollout instead of a rollback. The cost is
+that a genuinely destructive migration cannot be undone quickly; the dump is
+the only route, and it costs a maintenance window.
+
+**Related**: ADR-019, `bin/deploy-rollback.sh`, `.github/workflows/ci-cd.yml`
