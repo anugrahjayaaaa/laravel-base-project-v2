@@ -17,7 +17,7 @@
 | Routes | kebab-case for URI |
 | Policy methods | CRUD verb + model (`view`, `create`, `update`, `delete`) |
 | Imports | Short import only — no FQCN in code bodies |
-| Views | No FQCN — move to controller variables (enum cases, settings, model queries) |
+| Views | No FQCN, no model queries, no service calls in Blade — supply them as view data |
 
 ## ID Strategy
 

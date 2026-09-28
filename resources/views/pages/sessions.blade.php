@@ -25,12 +25,10 @@
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center mb-3">
                         <h5 class="card-title mb-0">Sessions</h5>
-                        <button type="button" class="btn btn-danger btn-sm" data-bs-toggle="modal"
-                            data-bs-target="#confirmModal" data-action="{{ route('sessions.logout-all') }}"
-                            data-method="POST" data-action-type="logout_all"
-                            data-label="Logout All">
+                        <x-ui.confirm-action :action="route('sessions.logout-all')" method="POST"
+                            action-type="logout_all" label="Logout All" class="btn btn-danger btn-sm">
                             <i class="fas fa-sign-out-alt me-1"></i> Logout All Devices
-                        </button>
+                        </x-ui.confirm-action>
                     </div>
                     <table class="table table-hover mb-0 sessions-table">
                         <thead>
@@ -54,14 +52,19 @@
                                 <td><span class="badge bg-success-subtle text-success">Active</span></td>
                             </tr>
 
-                            {{-- API tokens (other devices) --}}
+                            {{-- API tokens (other devices).
+                                 personal_access_tokens records no IP, so this cell
+                                 can never show one. It used to print 'Never' for a
+                                 token that had not been used and '—' otherwise,
+                                 which read as an address column answering a
+                                 question it had no data for. --}}
                             @foreach ($tokens as $token)
                                 <tr>
                                     <td>
                                         <i class="fas fa-mobile-alt me-1"></i> {{ $token->name }}
                                     </td>
-                                    <td>{{ $token->last_used_at ? '—' : 'Never' }}</td>
-                                    <td>{{ $token->last_used_at?->format('Y-m-d H:i') ?? '—' }}</td>
+                                    <td>—</td>
+                                    <td>{{ $token->last_used_at?->format('Y-m-d H:i') ?? 'Never' }}</td>
                                     <td>{{ $token->created_at->format('Y-m-d H:i') }}</td>
                                     <td>
                                         <span class="badge bg-info-subtle text-info">API</span>

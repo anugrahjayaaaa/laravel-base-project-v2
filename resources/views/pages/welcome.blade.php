@@ -101,7 +101,7 @@
     <footer class="mt-5 pt-4 pb-3 border-top" style="border-color:var(--lbp-border);">
         <div class="d-flex justify-content-between align-items-center flex-wrap gap-2" style="font-size:.8rem; color:var(--lbp-muted);">
             <span>&copy; {{ date('Y') }} {{ config('app.name', 'Laravel') }}</span>
-            <span>Laravel v{{ Illuminate\Foundation\Application::VERSION }} &bull; PHP v{{ PHP_VERSION }}</span>
+            <span>Laravel v{{ $laravelVersion }} &bull; PHP v{{ PHP_VERSION }}</span>
             <span><i class="fas fa-circle-check me-1" style="color:var(--lbp-success);"></i> System Status: Normal</span>
         </div>
     </footer>

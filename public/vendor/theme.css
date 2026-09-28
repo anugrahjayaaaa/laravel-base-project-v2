@@ -30,13 +30,17 @@
   --lbp-muted: #9ca3af;
 }
 
-/* === User index navbar — theme-adaptive === */
-.users-navbar {
-  background-color: var(--lbp-surface) !important;
-  border-bottom-color: var(--lbp-border) !important;
+/* User index status tabs — theme-adaptive.
+   AdminLTE does not hard-code a colour here; it sets
+   --bs-nav-pills-link-active-color:#fff on .nav-pills and lets
+   `.nav-pills .nav-link.active` consume it. The view forces bg-transparent on
+   these tabs, so the white lands on a white card and the label disappears.
+   Overriding the variable beats the property for the right reason: every
+   active pill in the app follows, and the consuming rule stays untouched. */
+.users-card-header .nav-pills {
+  --bs-nav-pills-link-active-color: var(--lbp-primary);
 }
-.users-navbar .nav-link:not(.active) { color: var(--lbp-muted) !important; }
-.users-navbar .nav-link.active { color: var(--lbp-primary) !important; }
+.users-card-header .nav-link:not(.active) { color: var(--lbp-muted) !important; }
 
 body {
   font-family: var(--lbp-font);
@@ -130,11 +134,14 @@ body.sidebar-collapse #sidebar-toggle-icon {
   color: var(--lbp-text);
 }
 
-/* Sidebar navigation links — use AdminLTE native border-radius (.375rem)
-   and hover/active CSS variables. Add horizontal margin for breathing room
-   so hover bg doesn't touch sidebar edges. */
+/* Sidebar navigation links — AdminLTE native border-radius (.375rem) and
+   hover/active CSS variables. No horizontal margin: an inset margin makes the
+   hover/active background stop short of the sidebar edges, so the highlight
+   reads as a floating pill rather than a full-width row. Full width in both
+   expanded and collapsed state — the collapsed rules below no longer need to
+   override a margin, because there is none to override. */
 .app-sidebar .sidebar-menu .nav-item {
-  margin: 0 8px .125rem;
+  margin: 0 0 .125rem;
 }
 
 .app-sidebar .sidebar-menu .nav-link {
@@ -150,13 +157,15 @@ body.sidebar-collapse #sidebar-toggle-icon {
   color: var(--lbp-text);
 }
 
-/* Active: subtle left accent border + weight + color — no heavy bg fill */
+/* Active: left accent + weight + color, no heavy bg fill.
+   The accent is an inset box-shadow rather than border-left: a border would
+   consume 3px of the content box, so the row would be 3px narrower than its
+   neighbours and the highlight would not line up with the hover state. */
 .app-sidebar .sidebar-menu .nav-link.active,
 .app-sidebar .sidebar-menu .nav-link.show > .nav-link {
   color: var(--lbp-primary) !important;
   font-weight: 600;
-  border-left: 3px solid var(--lbp-primary);
-  padding-left: calc(.75rem - 3px);
+  box-shadow: inset 3px 0 0 var(--lbp-primary);
 }
 
 /* Collapsed sidebar — body.sidebar-collapse (AdminLTE state).
@@ -187,12 +196,11 @@ body.sidebar-collapse .app-sidebar:not(:hover) .sidebar-brand i {
   margin: 0 !important;
 }
 
-/* Collapsed nav-links: full width, centered, no horizontal margin inset
-   (margin: 0 overrides expanded .nav-item margin) */
-body.sidebar-collapse .app-sidebar:not(:hover) .sidebar-menu .nav-item {
-  margin: 0 0 .125rem !important;
-}
-
+/* Collapsed nav-links: full width, centered icon, compact vertical spacing.
+   AdminLTE hard-codes .nav-link{width:3.6rem} while the collapsed sidebar is
+   4.6rem wide, so the highlight stopped a whole rem short of the edge. Width
+   follows the sidebar instead, and the margin override is gone because the
+   expanded rule no longer sets a horizontal margin. */
 body.sidebar-collapse .app-sidebar:not(:hover) .sidebar-menu .nav-link {
   width: 100% !important;
   max-width: 100% !important;

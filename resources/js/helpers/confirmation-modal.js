@@ -1,4 +1,4 @@
-import { ACTION_CONFIG, escHtml } from './action-config.js';
+import { escHtml, resolveAction } from './action-config.js';
 
 /**
  * Global Confirmation Modal — JS driver
@@ -73,17 +73,12 @@ import { ACTION_CONFIG, escHtml } from './action-config.js';
         var itemName = trigger.getAttribute('data-item-name') || '';
         var label = trigger.getAttribute('data-label') || trigger.getAttribute('data-action-label') || 'Confirm';
 
-        var cfg;
-        if (actionType && ACTION_CONFIG[actionType]) {
-            cfg = ACTION_CONFIG[actionType];
-        } else {
-            cfg = {
-                title: trigger.getAttribute('data-title') || 'Confirm',
-                msg: (trigger.getAttribute('data-message') || 'Are you sure?').replace(/__BOLD__/g, '<b>' + escHtml(itemName) + '</b>'),
-                variant: trigger.getAttribute('data-variant') || 'danger',
-                icon: trigger.getAttribute('data-icon') || 'bi bi-question-circle',
-            };
-        }
+        var cfg = resolveAction(actionType) || {
+            title: trigger.getAttribute('data-title') || 'Confirm',
+            msg: (trigger.getAttribute('data-message') || 'Are you sure?').replace(/__BOLD__/g, '<b>' + escHtml(itemName) + '</b>'),
+            variant: trigger.getAttribute('data-variant') || 'danger',
+            icon: trigger.getAttribute('data-icon') || 'bi bi-question-circle',
+        };
 
         modal._ctx = { action: actionUrl, method, variant: cfg.variant, trigger };
 

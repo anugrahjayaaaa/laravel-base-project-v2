@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Api\V1\Auth;
 
 use App\Actions\V1\Auth\VerifyEmailAction;
 use App\Http\Controllers\Controller;
-use App\Models\SystemSetting;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -23,12 +22,8 @@ class VerifyEmailController extends Controller
      */
     public function __invoke(Request $request, VerifyEmailAction $action): JsonResponse
     {
-        $mode = SystemSetting::getString('email_verification_mode', 'public');
-
-        if ($mode === 'admin' || $mode === 'disabled') {
-            return $this->respond('Feature disabled.', 403);
-        }
-
+        // Not gated on email_verification_mode: the mode decides who may send a
+        // link, not who may use one. See Web\V1\Auth\AuthController::verifyEmail.
         $user = User::findOrFail($request->route('id'));
 
         $result = $action->run($user);

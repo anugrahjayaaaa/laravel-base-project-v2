@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Models\RoleLookup;
 use Illuminate\Database\Seeder;
 use Spatie\Permission\Models\Role;
 
@@ -15,8 +16,19 @@ class RoleSeeder extends Seeder
         // System roles,seeded with no permissions yet; permissions are
         // assigned in RBAC-004 (Phase 6) once the permission set is defined.
         // See docs/base/features/roles-permissions.md §Seeded Roles.
-        Role::create(['name' => 'superadmin', 'guard_name' => 'api']);
-        Role::create(['name' => 'admin', 'guard_name' => 'api']);
-        Role::create(['name' => 'user', 'guard_name' => 'api']);
+        //
+        // Seeded on the guard the app actually assigns roles on, which is not
+        // simply the configured default — Spatie intersects that default with
+        // the guards a User can authenticate under. A hardcoded 'api' here
+        // produced rows no permission check ever read, and then assignRole()
+        // silently created a second, real row of the same name, leaving the
+        // role pickers showing `superadmin` twice.
+        //
+        // firstOrCreate, not create: re-seeding must not duplicate a role.
+        $guard = RoleLookup::guard();
+
+        foreach (['superadmin', 'admin', 'user'] as $name) {
+            Role::firstOrCreate(['name' => $name, 'guard_name' => $guard]);
+        }
     }
 }

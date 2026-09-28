@@ -75,8 +75,15 @@
                     <button type="submit" class="btn btn-primary" id="loginBtn"
                                  onclick="this.disabled=true;this.form.submit()">Login</button>
                 </div>
-                <div class="text-center">
+                {{-- Stacked, not side by side: a separator puts "Forgot password?"
+                     and "Create an account" on the same rank, when they are two
+                     different intents. The recovery link belongs to this page's
+                     one field; sign-up is the slower path and reads second. --}}
+                <div class="d-grid gap-2 text-center">
                     <a href="{{ route('password.request') }}" class="text-decoration-none small">Forgot password?</a>
+                    @if ($registrationEnabled)
+                        <a href="{{ route('register') }}" class="text-decoration-none small">Create an account</a>
+                    @endif
                 </div>
             </form>
         </div>

@@ -285,7 +285,10 @@ class UserController extends Controller
         $result = $this->resendVerificationAction->run($user, $request->ip());
 
         if (isset($result['error'])) {
-            return $this->respond($result['error']['message'], 400);
+            // The action already decided the status (403 disabled, 422 already
+            // verified, 429 throttled). Hardcoding 400 here threw all of that
+            // away and told the client its request was malformed.
+            return $this->respond($result['error']['message'], $result['error']['status'] ?? 400);
         }
 
         $user->audit('user.verification_resent', $request->user());

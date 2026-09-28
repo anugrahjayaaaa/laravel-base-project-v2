@@ -21,6 +21,15 @@ class AdminResendVerificationAction
      */
     public function run(User $user, string $ip): array
     {
+        // The single gate for both the web and the API caller. `disabled` means
+        // nobody may send, whoever is asking — gating only the controller left
+        // the API endpoint able to send in a mode that claims it cannot.
+        // `admin` is deliberately allowed: reissuing a link is the whole point
+        // of that mode.
+        if (SystemSetting::getString('email_verification_mode', 'public') === 'disabled') {
+            return ['error' => ['message' => 'Verification emails are disabled.', 'status' => 403]];
+        }
+
         if ($user->hasVerifiedEmail()) {
             return ['error' => ['message' => 'Email already verified.', 'status' => 422]];
         }

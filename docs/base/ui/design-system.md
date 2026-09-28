@@ -149,7 +149,7 @@ Action buttons in tables:
 
 One reusable confirmation-modal component with configurable variants
 (danger/warning/info). Actions requiring confirmation: soft delete, permanent
-delete, restore, lock, unlock, activate/deactivate, feature flag changes,
+delete, restore, lock, unlock, activate, deactivate, feature flag changes,
 resend password, resend verification email, and other sensitive/destructive
 actions. Do not create separate modal implementations per feature.
 
@@ -169,6 +169,39 @@ Every modal action reads from `ACTION_CONFIG` — single source of truth.
 
 Trigger attributes: `data-action-type` (key), `data-item-name`, `data-action` (URL), `data-method`.
 Fallback: no `data-action-type` → JS uses `data-title`/`data-message` (legacy).
+
+Write the trigger with the component, never as a hand-built attribute string:
+
+```blade
+<x-ui.confirm-action :action="route('users.destroy', $user)" method="DELETE"
+    action-type="delete" :item-name="$user->name" label="Delete" />
+```
+
+The component emits the same `<button>` either way, so a page that hand-builds
+one still works — which is why the drift is silent. A misspelled `data-*` simply
+does not match, and the modal falls back to "Confirm" in danger red with nothing
+in the log. `ConfirmActionUsageTest` fails on a hand-built trigger and on an
+`action-type` that `ACTION_CONFIG` has no key for.
+
+**Look copy up with `resolveAction()`, never `ACTION_CONFIG[key] || ...`.** A
+fallback to `ACTION_CONFIG.delete` puts "Move X to trash?" on a Lock button for
+any key the config does not have. `resolveAction()` returns `null` and warns
+with the list of known keys, so a typo is visible in the console while
+developing, and the caller picks its own generic copy. Both drivers use it.
+
+**`action-type` defaults to `null`, and that is load-bearing.** The driver reads
+`data-action-type` and looks it up in `ACTION_CONFIG`, so a component given a
+non-null default would let a trigger that omits the attribute claim somebody
+else's copy — the Unlock button on the user form would offer "Move X to trash?".
+Omitting it is the honest signal that a trigger brings its own
+`title`/`message`/`variant`/`icon` instead.
+
+> **Status: adopted.** The `layouts/partials/modals/confirmation` modal is
+> included once by the app layout, and all nine triggers across
+> `pages/users/index`, `pages/users/edit`, and `pages/sessions` go through
+> `<x-ui.confirm-action>`. The user-form Unlock keeps its own copy via the
+> legacy branch. Seven of the other eight components are still unused — see
+> VIEW-010 in the remediation tracker.
 
 ### Navigation
 

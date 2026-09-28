@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\System;
 
+use App\Models\RoleLookup;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -41,9 +42,11 @@ class SystemSettingRequest extends FormRequest
 
             // Password policy & lifecycle
             'password_min_length' => ['integer', 'min:4', 'max:128'],
-            'password_mixed_case' => ['boolean'],
-            'password_numbers' => ['boolean'],
-            'password_symbols' => ['boolean'],
+            'password_require_upper' => ['boolean'],
+            'password_require_lower' => ['boolean'],
+            'password_require_digit' => ['boolean'],
+            'password_require_symbol' => ['boolean'],
+            'password_reject_username' => ['boolean'],
             'password_uncompromised' => ['boolean'],
             'password_history_enabled' => ['boolean'],
             'password_history_count' => ['integer', 'min:0', 'max:24'],
@@ -74,6 +77,19 @@ class SystemSettingRequest extends FormRequest
             'username_change_cooldown_days' => ['integer', 'min:0', 'max:365'],
             'allow_email_change' => ['boolean'],
             'email_change_cooldown_days' => ['integer', 'min:0', 'max:365'],
+
+            // Self-registration
+            'registration_enabled' => ['boolean'],
+            'registration_rate_limit_per_minute' => ['integer', 'min:1', 'max:30'],
+            // Empty means "no role"; otherwise it must name a real one on the
+            // guard the app can actually assign, or the create action would
+            // silently assign nothing. Scoped to that guard because the table
+            // can hold the same name twice, once per guard.
+            'registration_default_role' => [
+                'nullable',
+                'string',
+                Rule::exists('roles', 'name')->where('guard_name', RoleLookup::guard()),
+            ],
         ];
     }
 
@@ -84,9 +100,11 @@ class SystemSettingRequest extends FormRequest
     {
         foreach (
             [
-                'password_mixed_case',
-                'password_numbers',
-                'password_symbols',
+                'password_require_upper',
+                'password_require_lower',
+                'password_require_digit',
+                'password_require_symbol',
+                'password_reject_username',
                 'password_uncompromised',
                 'password_history_enabled',
                 'password_expiry_enabled',
@@ -94,6 +112,7 @@ class SystemSettingRequest extends FormRequest
                 'inactivity_lock_grace_enabled',
                 'allow_username_change',
                 'allow_email_change',
+                'registration_enabled',
             ] as $key
         ) {
             if ($this->has($key)) {

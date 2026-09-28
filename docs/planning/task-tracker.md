@@ -531,6 +531,17 @@ observers for audit. See `docs/base/architecture/application-components.md` §Ac
     "status": "PLANNED"
   },
   {
+    "id": "RBAC-006",
+    "task": "Gate /users and /settings behind permissions — self-registered users can currently escalate to superadmin",
+    "phase": 6,
+    "priority": "P0",
+    "depends_on": [
+      "RBAC-004"
+    ],
+    "status": "PLANNED",
+    "note": "Found by manual browser test of self-registration, 2026-09-27. The authenticated route group in routes/web.php carries only auth+verified+password.change.required+account.state — no can:/permission gate — and UserPolicy only covers unlock/activate/deactivate/lock, none of which index/store/update/destroy call. A user created through POST /register (role `user`, zero permissions) was able to: GET /users (200, all emails); POST /settings (changed login_max_attempts); POST /users with roles[]=superadmin (201, created a superadmin); PUT /users/{id} (demoted a superadmin); DELETE /users/{id} (deleted the superadmin account); POST /users/bulk-action; POST /users/{id}/deactivate. Same on the API: POST /api/v1/settings, POST /api/v1/users, GET /api/v1/users/{id} all accepted a plain user's token. SystemSettingRequest::authorize() and RegisterRequest::authorize() both return true unconditionally, and the `user` role is seeded with no permissions. Not introduced by the register feature — it made an already-reachable escalation available to anyone on the internet. Fix belongs here, not as a patch: add can:/permission middleware per route, give the `user` role its real permission set, and make authorize() consult the caller."
+  },
+  {
     "id": "FEAT-001",
     "task": "Implement feature flags backend",
     "phase": 7,

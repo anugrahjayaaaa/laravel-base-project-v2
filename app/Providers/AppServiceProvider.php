@@ -2,10 +2,13 @@
 
 namespace App\Providers;
 
+use App\Auth\LoginThrottle;
 use App\Models\User;
 use App\Observers\UserObserver;
 use App\Services\PasswordExpiry;
+use App\View\Composers\AccountOptionsComposer;
 use App\View\Composers\AppMenuComposer;
+use App\View\Composers\PasswordStrengthComposer;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Pagination\Paginator;
@@ -28,11 +31,26 @@ class AppServiceProvider extends ServiceProvider
         LengthAwarePaginator::useBootstrap();
 
         view()->composer('layouts.partials.sidebar', AppMenuComposer::class);
+        view()->composer('layouts.partials.password-strength', PasswordStrengthComposer::class);
+
+        // Roles and the identity-change policy: shared by every page that shows
+        // an identity field, so they are not threaded through one controller at
+        // a time. @include shares the parent scope, so the partials underneath
+        // are covered by their caller.
+        //
+        // /settings is not on this list: its role dropdown wants a name list,
+        // not Role models, so it keeps reading them itself.
+        view()->composer([
+            'pages.users.create',
+            'pages.users.edit',
+            'pages.profile.edit',
+        ], AccountOptionsComposer::class);
 
         view()->composer('layouts.app', function ($view): void {
             $user = auth()->user();
 
             $view->with([
+                'currentUserName' => $user?->name,
                 'showPasswordExpiryWarning' => $user && PasswordExpiry::shouldWarn($user),
                 'passwordExpiryDaysRemaining' => $user ? PasswordExpiry::daysUntilExpiry($user) : 0,
             ]);
@@ -40,16 +58,23 @@ class AppServiceProvider extends ServiceProvider
 
         User::observe(UserObserver::class);
 
-        RateLimiter::for('user-state-actions', function ($request) {
+        // Both are reachable from the API, so both need the JSON branch too.
+        $throttle = app(LoginThrottle::class);
+
+        RateLimiter::for('user-state-actions', function ($request) use ($throttle) {
             $key = $request->user()?->id ?: $request->ip();
 
-            return Limit::perMinute(15)->by($key);
+            return Limit::perMinute(15)
+                ->by($key)
+                ->response($throttle->responseFor('user'));
         });
 
-        RateLimiter::for('bulk-action', function ($request) {
+        RateLimiter::for('bulk-action', function ($request) use ($throttle) {
             $key = $request->user()?->id ?: $request->ip();
 
-            return Limit::perMinute(5)->by($key);
+            return Limit::perMinute(5)
+                ->by($key)
+                ->response($throttle->responseFor('users'));
         });
     }
 

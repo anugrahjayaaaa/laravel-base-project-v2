@@ -65,5 +65,11 @@ class SystemSettingSeeder extends Seeder
         SystemSetting::set('username_change_cooldown_days', '30');
         SystemSetting::set('allow_email_change', 'true');
         SystemSetting::set('email_change_cooldown_days', '30');
+
+        // Self-registration. Off by default: a base project that ships with a
+        // public sign-up form has one on every install until someone notices.
+        SystemSetting::set('registration_enabled', 'false');
+        SystemSetting::set('registration_default_role', 'user');
+        SystemSetting::set('registration_rate_limit_per_minute', '3');
     }
 }

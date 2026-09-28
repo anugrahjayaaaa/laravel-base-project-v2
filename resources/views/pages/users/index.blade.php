@@ -50,52 +50,6 @@
             route('users.show', $user) .
             '" class="btn btn-sm btn-outline-primary" title="Edit"><i class="fas fa-pen"></i></a>';
     };
-
-    $stateBtn = function ($user) use ($currentStatus) {
-        if ($user->trashed()) {
-            return '';
-        }
-        $status = $user->getStatus();
-        $btns = '';
-        if ($currentStatus === 'active' && $status->value === 'active') {
-            $btns .=
-                '<button type="button" class="btn btn-sm btn-outline-warning" title="Deactivate" data-bs-toggle="modal" data-bs-target="#confirmModal" data-action="' .
-                route('users.deactivate', $user) .
-                '" data-method="POST" data-action-type="deactivate" data-item-name="' . e($user->name) . '" data-label="Deactivate"><i class="fas fa-user-slash"></i></button>';
-            $btns .=
-                '<button type="button" class="btn btn-sm btn-outline-warning" title="Lock Account" data-bs-toggle="modal" data-bs-target="#confirmModal" data-action="' .
-                route('users.lock', $user) .
-                '" data-method="POST" data-action-type="lock" data-item-name="' . e($user->name) . '" data-label="Lock"><i class="fas fa-lock"></i></button>';
-        } elseif ($currentStatus === 'inactive' && $status->value === 'inactive') {
-            $btns .=
-                '<button type="button" class="btn btn-sm btn-outline-success" title="Activate" data-bs-toggle="modal" data-bs-target="#confirmModal" data-action="' .
-                route('users.activate', $user) .
-                '" data-method="POST" data-action-type="activate" data-item-name="' . e($user->name) . '" data-label="Activate"><i class="fas fa-user-check"></i></button>';
-        } elseif ($currentStatus === 'locked' && $status->value === 'locked') {
-            $btns .=
-                '<button type="button" class="btn btn-sm btn-outline-success" title="Unlock Account" data-bs-toggle="modal" data-bs-target="#confirmModal" data-action="' .
-                route('users.unlock', $user) .
-                '" data-method="POST" data-action-type="unlock" data-item-name="' . e($user->name) . '" data-label="Unlock"><i class="fas fa-lock-open"></i></button>';
-        }
-        return $btns;
-    };
-
-    $deleteBtn = function ($user) use ($currentStatus) {
-        if ($user->trashed()) {
-            return '<button type="button" class="btn btn-sm btn-outline-success" title="Restore" data-bs-toggle="modal" data-bs-target="#confirmModal" data-action="' .
-                route('users.restore', $user) .
-                '" data-method="POST" data-action-type="restore" data-item-name="' . e($user->name) . '" data-label="Restore"><i class="fas fa-rotate-left"></i></button>' .
-                '<button type="button" class="btn btn-sm btn-danger" title="Permanent Delete" data-bs-toggle="modal" data-bs-target="#confirmModal" data-action="' .
-                route('users.force-delete', $user) .
-                '" data-method="DELETE" data-action-type="force_delete" data-item-name="' . e($user->name) . '" data-label="Permanent Delete"><i class="fas fa-trash"></i></button>';
-        }
-        if ($currentStatus !== 'trashed') {
-            return '<button type="button" class="btn btn-sm btn-outline-danger" title="Delete" data-bs-toggle="modal" data-bs-target="#confirmModal" data-action="' .
-                route('users.destroy', $user) .
-                '" data-method="DELETE" data-action-type="delete" data-item-name="' . e($user->name) . '" data-label="Delete"><i class="fas fa-trash"></i></button>';
-        }
-        return '';
-    };
 @endphp
 
 @section('content')
@@ -121,7 +75,7 @@
     @endif
 
     <div class="card border-0 shadow-sm mb-4">
-        <div class="card-header bg-transparent border-bottom py-2">
+        <div class="card-header users-card-header bg-transparent border-bottom py-2">
             <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
                 <div class="d-flex flex-nowrap overflow-auto pe-2" style="scrollbar-width: none;">
                     <ul class="nav nav-pills flex-nowrap overflow-auto pb-2 gap-2"
@@ -222,6 +176,7 @@
                     </thead>
                     <tbody>
                         @forelse ($users as $user)
+                            @php $status = $user->getStatus(); @endphp
                             <tr
                                 @if ($user->trashed()) style="background-color: color-mix(in srgb, var(--lbp-danger, #ef4444) 8%, transparent); " @endif>
                                 <td>
@@ -238,17 +193,60 @@
                                 </td>
                                 <td>{{ $user->email }}</td>
                                 <td>
-                                    @php $status = $user->getStatus(); @endphp
                                     <span
-                                        class="badge {{ $badgeClass($status, $user->trashed()) }}">{{ $status->label() }}</span>
+                                        class="badge {{ $status->badgeClass($user->trashed()) }}">{{ $status->label() }}</span>
                                 </td>
                                 <td>{{ $user->created_at->format('Y-m-d') }}</td>
                                 <td>
                                     <div
                                         class="d-flex align-items-center justify-content-end gap-1 flex-wrap flex-md-nowrap">
                                         {!! $editBtn($user) !!}
-                                        {!! $stateBtn($user) !!}
-                                        {!! $deleteBtn($user) !!}
+                                        @if ($user->trashed())
+                                            <x-ui.confirm-action :action="route('users.restore', $user)" method="POST"
+                                                action-type="restore" :item-name="$user->name" label="Restore"
+                                                title="Restore" class="btn btn-sm btn-outline-success">
+                                                <i class="fas fa-rotate-left"></i>
+                                            </x-ui.confirm-action>
+                                            <x-ui.confirm-action :action="route('users.force-delete', $user)" method="DELETE"
+                                                action-type="force_delete" :item-name="$user->name"
+                                                label="Permanent Delete" title="Permanent Delete"
+                                                class="btn btn-sm btn-danger">
+                                                <i class="fas fa-trash"></i>
+                                            </x-ui.confirm-action>
+                                        @else
+                                            @if ($currentStatus === 'active' && $status->value === 'active')
+                                                <x-ui.confirm-action :action="route('users.deactivate', $user)" method="POST"
+                                                    action-type="deactivate" :item-name="$user->name" label="Deactivate"
+                                                    title="Deactivate" class="btn btn-sm btn-outline-warning">
+                                                    <i class="fas fa-user-slash"></i>
+                                                </x-ui.confirm-action>
+                                                <x-ui.confirm-action :action="route('users.lock', $user)" method="POST"
+                                                    action-type="lock" :item-name="$user->name" label="Lock"
+                                                    title="Lock Account" class="btn btn-sm btn-outline-warning">
+                                                    <i class="fas fa-lock"></i>
+                                                </x-ui.confirm-action>
+                                            @elseif ($currentStatus === 'inactive' && $status->value === 'inactive')
+                                                <x-ui.confirm-action :action="route('users.activate', $user)" method="POST"
+                                                    action-type="activate" :item-name="$user->name" label="Activate"
+                                                    title="Activate" class="btn btn-sm btn-outline-success">
+                                                    <i class="fas fa-user-check"></i>
+                                                </x-ui.confirm-action>
+                                            @elseif ($currentStatus === 'locked' && $status->value === 'locked')
+                                                <x-ui.confirm-action :action="route('users.unlock', $user)" method="POST"
+                                                    action-type="unlock" :item-name="$user->name" label="Unlock"
+                                                    title="Unlock Account" class="btn btn-sm btn-outline-success">
+                                                    <i class="fas fa-lock-open"></i>
+                                                </x-ui.confirm-action>
+                                            @endif
+
+                                            @if ($currentStatus !== 'trashed')
+                                                <x-ui.confirm-action :action="route('users.destroy', $user)" method="DELETE"
+                                                    action-type="delete" :item-name="$user->name" label="Delete"
+                                                    title="Delete" class="btn btn-sm btn-outline-danger">
+                                                    <i class="fas fa-trash"></i>
+                                                </x-ui.confirm-action>
+                                            @endif
+                                        @endif
                                     </div>
                                 </td>
                             </tr>

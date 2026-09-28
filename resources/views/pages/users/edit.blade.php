@@ -1,82 +1,5 @@
 @extends('layouts.app', ['title' => 'Edit User'])
 
-@php
-    $status = $user->getStatus();
-    $badgeClass = match ($status->value) {
-        'active' => 'bg-success-subtle text-success border border-success-subtle',
-        'inactive' => 'bg-secondary-subtle text-secondary border border-secondary-subtle',
-        'locked' => 'bg-warning-subtle text-warning border border-warning-subtle',
-        'pending_verification' => 'bg-warning-subtle text-dark border border-warning-subtle',
-    };
-
-    $initials = str($user->name)->explode(' ')->take(2)->map(fn($w) => strtoupper($w[0]))->implode('');
-
-    $softDeleteModal =
-        'data-bs-toggle="modal" data-bs-target="#confirmModal" ' .
-        'data-action="' .
-        route('users.destroy', $user) .
-        '" data-method="DELETE" ' .
-        'data-action-type="delete" ' .
-        'data-item-name="' . e($user->name) . '" ' .
-        'data-label="Delete"';
-
-    $restoreModal =
-        'data-bs-toggle="modal" data-bs-target="#confirmModal" ' .
-        'data-action="' .
-        route('users.restore', $user) .
-        '" data-method="POST" ' .
-        'data-action-type="restore" ' .
-        'data-item-name="' . e($user->name) . '" ' .
-        'data-label="Restore"';
-
-    $forceDeleteModal =
-        'data-bs-toggle="modal" data-bs-target="#confirmModal" ' .
-        'data-action="' .
-        route('users.force-delete', $user) .
-        '" data-method="DELETE" ' .
-        'data-action-type="force_delete" ' .
-        'data-item-name="' . e($user->name) . '" ' .
-        'data-label="Permanent Delete"';
-
-    $activateModal =
-        'data-bs-toggle="modal" data-bs-target="#confirmModal" ' .
-        'data-action="' .
-        route('users.activate', $user) .
-        '" data-method="POST" ' .
-        'data-action-type="activate" ' .
-        'data-item-name="' . e($user->name) . '" ' .
-        'data-label="Activate"';
-
-    $deactivateModal =
-        'data-bs-toggle="modal" data-bs-target="#confirmModal" ' .
-        'data-action="' .
-        route('users.deactivate', $user) .
-        '" data-method="POST" ' .
-        'data-action-type="deactivate" ' .
-        'data-item-name="' . e($user->name) . '" ' .
-        'data-label="Deactivate"';
-
-    $lockModal =
-        'data-bs-toggle="modal" data-bs-target="#confirmModal" ' .
-        'data-action="' .
-        route('users.lock', $user) .
-        '" data-method="POST" ' .
-        'data-action-type="lock" ' .
-        'data-item-name="' . e($user->name) . '" ' .
-        'data-label="Lock"';
-
-    $unlockModal =
-        'data-bs-toggle="modal" data-bs-target="#confirmModal" ' .
-        'data-action="' .
-        route('users.unlock', $user) .
-        '" data-method="POST" ' .
-        'data-title="Unlock User Account?" ' .
-        'data-message="Are you sure you want to unlock ' .
-        e($user->name) .
-        '? The administrative lock will be removed, allowing normal access." ' .
-        'data-variant="success" data-icon="bi-shield-check" data-label="Unlock"';
-@endphp
-
 @section('content')
     <div class="content-header mb-3">
         <div class="d-flex justify-content-between align-items-start w-100">
@@ -118,7 +41,7 @@
                     <div class="d-flex align-items-center gap-3">
                         <div class="avatar-sm rounded-circle d-flex align-items-center justify-content-center text-white fw-bold"
                             style="background: var(--lbp-primary, #6366f1); width: 40px; height: 40px; font-size: 0.9rem;">
-                            {{ $initials }}
+                            {{ $user->initials() }}
                         </div>
                         <div>
                             <strong>{{ $user->name }}</strong>
@@ -134,9 +57,9 @@
                         @endif
                     </div>
                 </div>
-                {{-- Pending Email Callout — placed outside the user form: nested <form> tags are discarded by browsers, making the Cancel button submit the user form instead of the cancel route. --}}
+                {{-- Pending Email Callout — outside the user form: nested <form> tags are discarded by browsers, making the Cancel button submit the user form. Class matches profile/edit; .callout draws a 4px left border on gray, not this yellow. --}}
                 @if ($user->pending_email)
-                    <div class="callout callout-warning mb-3 d-flex align-items-center justify-content-between p-3">
+                    <div class="alert alert-warning d-flex align-items-center justify-content-between mb-3">
                         <div>
                             <i class="bi bi-envelope-arrow-up me-2"></i>
                             <strong>Pending email change:</strong> {{ $user->pending_email }}
@@ -151,72 +74,12 @@
                 <form method="POST" action="{{ route('users.update', $user) }}">
                     @csrf @method('PUT')
                     <div class="card-body p-4">
-                        {{-- Name --}}
-                        <div class="mb-3">
-                            <label for="name" class="form-label">Name</label>
-                            <input type="text" name="name" id="name"
-                                class="form-control form-control-sm @error('name') is-invalid @enderror"
-                                value="{{ old('name', $user->name) }}" required maxlength="255">
-                            @error('name')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
-                        </div>
-
-                        {{-- Username --}}
-                        <div class="mb-3">
-                            <label for="username" class="form-label">Username</label>
-                            <input type="text" name="username" id="username"
-                                class="form-control form-control-sm @error('username') is-invalid @enderror"
-                                value="{{ old('username', $user->username) }}" maxlength="50"
-                                {{ !$allowUsernameChange || !$user->canChangeUsername() ? 'disabled' : '' }}>
-                            @error('username')
-                                <div class="invalid-feedback d-block">{{ $message }}</div>
-                            @enderror
-                            @if ($allowUsernameChange)
-                                @if (!$user->canChangeUsername())
-                                    <small class="text-muted"><i class="bi bi-clock-history me-1"></i>Username can be
-                                        changed again on
-                                        {{ $user->username_changed_at?->copy()->addDays((int) $usernameCooldownDays)->format('Y-m-d') }}.</small>
-                                @else
-                                    <small class="form-text text-muted">Username can be changed.</small>
-                                @endif
-                            @endif
-                        </div>
-
-                        {{-- Email --}}
-                        <div class="mb-3">
-                            <label for="email" class="form-label">Email</label>
-                            <input type="email" name="email" id="email"
-                                class="form-control form-control-sm @error('email') is-invalid @enderror"
-                                value="{{ old('email', $user->email) }}" required maxlength="255"
-                                {{ !$allowEmailChange || !$user->canChangeEmail() ? 'disabled' : '' }}>
-                            @error('email')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
-                            <div class="d-flex align-items-center gap-2 mt-1 flex-wrap">
-                                @if ($user->email_verified_at)
-                                    <span class="badge bg-success-subtle text-success"><i
-                                            class="fas fa-circle-check me-1"></i>Verified</span>
-                                @else
-                                    <span class="badge bg-warning-subtle text-warning"><i
-                                            class="fas fa-circle-exclamation me-1"></i>Unverified</span>
-                                @endif
-                                @if ($user->pending_email)
-                                    <span class="badge bg-info-subtle text-info"><i
-                                            class="fas fa-envelope-circle-check me-1"></i>Pending:
-                                        {{ $user->pending_email }}</span>
-                                @endif
-                            </div>
-                            @if ($allowEmailChange)
-                                @if (!$user->canChangeEmail())
-                                    <small class="text-muted"><i class="bi bi-clock-history me-1"></i>Email can be
-                                        changed again on
-                                        {{ $user->email_changed_at?->copy()->addDays((int) $emailCooldownDays)->format('Y-m-d') }}.</small>
-                                @else
-                                    <small class="form-text text-muted">Email can be changed.</small>
-                                @endif
-                            @endif
-                        </div>
+                        {{-- Shared with pages/users/create — see partials/user-identity-fields --}}
+                        @include('partials.user-identity-fields', [
+                            'user' => $user,
+                            'allowUsernameChange' => $allowUsernameChange,
+                            'allowEmailChange' => $allowEmailChange,
+                        ])
 
                         {{-- Status --}}
                         <label for="status" class="form-label">Status</label>
@@ -232,6 +95,11 @@
                         @error('status')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
+
+                        @include('partials.user-role-picker', [
+                            'roles' => $roles,
+                            'selectedRoles' => $user->getRoleNames()->toArray(),
+                        ])
                     </div>
                     <div
                         class="card-footer bg-body-tertiary border-top py-3 d-flex justify-content-end align-items-center gap-2">
@@ -265,32 +133,50 @@
                             <button type="button" class="btn-close ms-2" data-bs-dismiss="alert"
                                 aria-label="Close"></button>
                         </div>
-                        <form method="POST" action="{{ route('users.resend-verification', $user) }}" class="d-inline">
-                            @csrf
-                            <button type="submit" class="btn btn-outline-warning btn-sm w-100">
-                                <i class="fas fa-envelope me-1"></i> Resend Verification
-                            </button>
-                        </form>
+                        {{-- Hidden in `disabled`: nobody may send, and offering a
+                             button that is guaranteed to be refused is worse than
+                             not offering it. The warning above stays, the
+                             account is still unverified, which is a fact about
+                             the account, not an action. --}}
+                        @if ($canResendVerification)
+                            <form method="POST" action="{{ route('users.resend-verification', $user) }}" class="d-inline">
+                                @csrf
+                                <button type="submit" class="btn btn-outline-warning btn-sm w-100">
+                                    <i class="fas fa-envelope me-1"></i> Resend Verification
+                                </button>
+                            </form>
+                        @endif
                     @endif
 
                     {{-- State Toggles --}}
                     @if (!$user->trashed())
                         @php $s = $user->getStatus(); @endphp
                         @if ($s->value === 'active')
-                            <button type="button" class="btn btn-outline-warning btn-sm w-100" {!! $deactivateModal !!}>
+                            <x-ui.confirm-action :action="route('users.deactivate', $user)" method="POST"
+                                action-type="deactivate" :item-name="$user->name" label="Deactivate"
+                                class="btn btn-outline-warning btn-sm w-100">
                                 <i class="fas fa-user-slash me-1"></i> Deactivate
-                            </button>
-                            <button type="button" class="btn btn-outline-danger btn-sm w-100" {!! $lockModal !!}>
+                            </x-ui.confirm-action>
+                            <x-ui.confirm-action :action="route('users.lock', $user)" method="POST"
+                                action-type="lock" :item-name="$user->name" label="Lock"
+                                class="btn btn-outline-danger btn-sm w-100">
                                 <i class="fas fa-lock me-1"></i> Lock
-                            </button>
+                            </x-ui.confirm-action>
                         @elseif ($s->value === 'inactive')
-                            <button type="button" class="btn btn-outline-success btn-sm w-100" {!! $activateModal !!}>
+                            <x-ui.confirm-action :action="route('users.activate', $user)" method="POST"
+                                action-type="activate" :item-name="$user->name" label="Activate"
+                                class="btn btn-outline-success btn-sm w-100">
                                 <i class="fas fa-user-check me-1"></i> Activate
-                            </button>
+                            </x-ui.confirm-action>
                         @elseif ($s->value === 'locked')
-                            <button type="button" class="btn btn-outline-success btn-sm w-100" {!! $unlockModal !!}>
+                            {{-- No action-type: this one keeps its own copy, the way it always has. --}}
+                            <x-ui.confirm-action :action="route('users.unlock', $user)" method="POST"
+                                :item-name="$user->name" label="Unlock" title="Unlock User Account?"
+                                message="Are you sure you want to unlock {{ $user->name }}? The administrative lock will be removed, allowing normal access."
+                                variant="success" icon="bi-shield-check"
+                                class="btn btn-outline-success btn-sm w-100">
                                 <i class="fas fa-lock-open me-1"></i> Unlock
-                            </button>
+                            </x-ui.confirm-action>
                         @endif
                     @endif
 
@@ -312,17 +198,23 @@
                 </div>
                 <div class="card-body d-grid gap-2">
                     @if ($user->trashed())
-                        <button type="button" class="btn btn-outline-success btn-sm w-100" {!! $restoreModal !!}>
+                        <x-ui.confirm-action :action="route('users.restore', $user)" method="POST"
+                            action-type="restore" :item-name="$user->name" label="Restore"
+                            class="btn btn-outline-success btn-sm w-100">
                             <i class="fas fa-rotate-left me-1"></i> Restore User
-                        </button>
-                        <button type="button" class="btn btn-danger btn-sm w-100" {!! $forceDeleteModal !!}>
+                        </x-ui.confirm-action>
+                        <x-ui.confirm-action :action="route('users.force-delete', $user)" method="DELETE"
+                            action-type="force_delete" :item-name="$user->name" label="Permanent Delete"
+                            class="btn btn-danger btn-sm w-100">
                             <i class="fas fa-trash me-1"></i> Permanent Delete
-                        </button>
+                        </x-ui.confirm-action>
                         <p class="text-muted small mt-1 mb-0">User is in trash. Restore or permanently delete.</p>
                     @else
-                        <button type="button" class="btn btn-outline-danger btn-sm w-100" {!! $softDeleteModal !!}>
+                        <x-ui.confirm-action :action="route('users.destroy', $user)" method="DELETE"
+                            action-type="delete" :item-name="$user->name" label="Delete"
+                            class="btn btn-outline-danger btn-sm w-100">
                             <i class="fas fa-trash me-1"></i> Delete
-                        </button>
+                        </x-ui.confirm-action>
                         <p class="text-muted small mt-1 mb-0">Temporary delete. Can be restored.</p>
                     @endif
                 </div>

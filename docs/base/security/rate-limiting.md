@@ -2,88 +2,90 @@
 
 ## Strategy
 
-- Use endpoint/security-sensitive rate limiting.
-- Do NOT use one global limit for everything.
+- Limit per endpoint, by how damaging abuse of that endpoint is.
+- Never one global limit for everything.
 
-## Baseline Categories
+## Current implementation
 
-| Category | Endpoints | Default Limit | Scope |
-|----------|-----------|---------------|-------|
-| Login | `auth.login` | 5 attempts/minute | per IP + identifier |
-| Registration | `auth.register` | 5/hour | per IP |
-| Forgot password | `auth.forgot-password` | 3/hour | per identifier |
-| Password reset | `auth.reset-password` | 5/hour | per IP + identifier |
-| Resend verification | `auth.resend-verification` | 3/hour | per identifier |
-| Authenticated API | all `auth:sanctum` routes | 60 requests/minute | per user |
-| Public API | all guest routes | 60 requests/minute | per IP |
-| Audit export | `audit.export` | 5/hour | per user |
-| Settings change | `settings.update` | 20/hour | per user |
+Extracted from `RateLimiter::for()` in `app/Providers/AuthServiceProvider.php`
+and `app/Providers/AppServiceProvider.php`. **This table is the source of
+truth** — if it disagrees with the code, the code is right and this table is
+stale. Re-derive it rather than editing by hand when a limiter changes.
 
-Endpoint-specific security sensitivity determines the limiter. Do not use a
-single global limit for all endpoints.
+| Limiter | Setting key (default) | Window | Keyed on | Over-limit response |
+|---------|-----------------------|--------|----------|---------------------|
+| `login` | `login_rate_limit_per_minute` (5) | per minute | identifier + IP | 302 + errors (web) / 429 JSON |
+| `register` | `registration_rate_limit_per_minute` (3) | per minute | IP | 302 + errors (web) / 429 JSON |
+| `forgot-password` | `password_forgot_rate_limit` (3) | per minute | identifier + IP | 302 + errors (web) / 429 JSON |
+| `reset-password` | `password_reset_rate_limit` (3) | per minute | identifier + IP | 302 + errors (web) / 429 JSON |
+| `resend-verification` | `email_verification_rate_limit` (5) | per hour | user id, else email | 302 + errors (web) / 429 JSON |
+| `email-verification` | `email_verification_rate_limit` (5) | per hour | identifier | 302 + errors (web) / 429 JSON |
+| `bulk-action` | — | per minute | user | 302 + errors |
+| `user-state-actions` | — | per minute | user | 302 + errors |
 
-## Configuration Precedence
+`email-verification` and `resend-verification` deliberately share one setting
+key: they are the same action, reachable by two routes.
 
-When a rate-limit value can be resolved from multiple sources, the precedence
-is:
+`register` is keyed on IP alone because there is no identifier to key on — the
+account does not exist yet. The form's unique-email error tells an attacker
+which addresses are registered, so the limit is what caps how fast they can
+collect that.
 
-1. **Endpoint-specific policy** (in code/config per endpoint category) —
-   highest precedence
-2. **Runtime database Settings** (e.g. `security.login.failed_attempts.max_attempts`)
-   — adjustable at runtime
-3. **Static application configuration** (`config/rate_limits.php`) —
-   default/fallback values
-4. **Laravel framework defaults** — lowest precedence
+**Every limiter reachable from the API must branch on
+`$request->expectsJson()`.** A limiter that only returns `back()->withErrors()`
+hands an API client an HTML 302, which most clients do not treat as a failure.
+`email-verification`, `bulk-action` and `user-state-actions` do not have the
+branch — they are web-only today, so it is not a live bug, but it becomes one
+the moment either is exposed.
 
-Use `config/rate_limits.php` for static/default policy. Use Settings for
-runtime-adjustable values where appropriate. Infrastructure configuration
-(Redis, cache driver) must NOT be exposed through Settings.
+## Roadmap
 
-## Baseline Defaults (Configurable)
+Not implemented. No numbers are stated here on purpose — an unshipped number
+written as fact is what made the previous version of this file wrong.
 
-| Setting | Default | Config Key |
-|---------|---------|------------|
-| Login max attempts | 5/minute | `security.login.failed_attempts.max_attempts` |
-| Login lock duration | 15 minutes | `security.login.failed_attempts.lock_duration_minutes` |
-| Login counter reset | on success | `security.login.failed_attempts.reset_on_success` |
-| Authenticated API | 60/minute | (endpoint-specific) |
-| Public API | 60/minute | (endpoint-specific) |
+- **Adaptive rate limiting** — tighten per identifier once a source shows a
+  pattern of abuse, instead of a flat per-IP ceiling.
+- **Captcha on public sign-up** — the only effective answer to a botnet, which
+  a per-IP limit cannot touch.
+- **Per-route budgets for the general API** — authenticated and guest API
+  routes currently rely on the framework's own throttling rather than explicit
+  per-endpoint limits.
+- **Redis counters** — the current keying is per-node if the cache backend is
+  local; Redis removes that caveat.
 
-These are Base Project defaults. They must be configurable — do not hard-code.
+## Configuration precedence
 
-## Configuration Layers
+When a limit can be resolved from more than one place:
 
-1. **Technical configuration** — belongs in config files (e.g., `config/sanctum.php`, `config/cache.php`).
-2. **Operational values** — may be exposed through Settings (e.g., max login attempts, lockout duration).
-3. **Infrastructure configuration** — must NOT be exposed through normal Settings.
+1. **Endpoint-specific policy** in `RateLimiter::for()` — highest
+2. **Runtime settings** (`system_settings`) — adjustable without a deploy
+3. **Static config** (`config/`) — fallback
+4. **Framework defaults** — lowest
 
-## Redis Compatibility
+Infrastructure concerns (Redis, cache driver) are never exposed through
+settings.
 
-- The architecture must remain Redis-compatible.
-- Rate limiting uses Laravel's `RateLimiter` facade, which works with any
-  cache backend (file, Redis, etc.).
-- Redis may be used as the high-throughput backend.
-- Database cache driver fallback for environments without Redis.
-- Business logic must NOT depend directly on Redis — use
-  `Illuminate\Cache\RateLimiter`.
+## Redis compatibility
 
-## Separation from Failed-Login Protection
+Rate limiting uses Laravel's `RateLimiter` facade, which works with any cache
+backend — file, database or Redis. Business logic must not depend on Redis
+directly; the facade is the only thing that should know.
 
-- **Rate limiting** protects the endpoint/request surface (DoS, brute-force
-  at the transport layer).
-- **Failed-login tracking** protects the account (account lockout after N
-  failed attempts).
-- These are separate mechanisms. Rate limiting does NOT replace failed-login
-  tracking, and failed-login tracking does NOT replace rate limiting.
+## Separation from failed-login protection
 
-## Concurrency / Race-Condition Handling
+- **Rate limiting** protects the endpoint surface — DoS and brute force at the
+  transport layer.
+- **Failed-login tracking** protects the account — lockout after N failures.
 
-Failed-login counter increments and lockout checks must be atomic to prevent
-concurrent login attempts from bypassing the threshold. Use database-level
-locking or atomic increment operations. A `locked_until` timestamp column
-provides a durable, race-safe lockout indicator that is checked before
-attempt processing.
+Separate mechanisms. Neither replaces the other.
 
-## ADR References
+## Concurrency / race conditions
 
-- ADR-003: Database queue with Redis compatibility
+Failed-login counter increments and lockout checks must be atomic so concurrent
+login attempts cannot bypass the threshold. A `locked_until` timestamp column
+gives a durable, race-safe indicator that is checked before attempt
+processing.
+
+## ADR references
+
+- ADR-003 — database queue with Redis compatibility

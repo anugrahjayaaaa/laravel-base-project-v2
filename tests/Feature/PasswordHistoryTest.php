@@ -21,7 +21,7 @@ class PasswordHistoryTest extends TestCase
         $this->seed(\Database\Seeders\SystemSettingSeeder::class);
     }
 
-    public function test_records_password_history_on_creation(): void
+    public function test_generated_temporary_password_is_not_recorded(): void
     {
         $action = app(CreateUserAction::class);
 
@@ -30,6 +30,24 @@ class PasswordHistoryTest extends TestCase
             'email' => 'test@example.com',
             'username' => 'testuser',
         ]);
+
+        // The user never chose this password, so reuse history has nothing to
+        // protect — recording it would only block that string from being picked
+        // later for no reason.
+        $this->assertDatabaseMissing('password_histories', [
+            'user_id' => $user->id,
+        ]);
+    }
+
+    public function test_self_chosen_password_is_recorded(): void
+    {
+        $action = app(CreateUserAction::class);
+
+        $user = $action->run([
+            'name' => 'Test User',
+            'email' => 'test@example.com',
+            'username' => 'testuser',
+        ], 'ChosenP@ss1!');
 
         $this->assertDatabaseHas('password_histories', [
             'user_id' => $user->id,
