@@ -3,15 +3,18 @@ name: CI/CD
 # ═══════════════════════════════════════════════════════════════════════════
 # WHICH BRANCH MAY DEPLOY?
 #
-# The `test` job runs on every push and every pull request, whatever the
-# branch. Only the `deploy` job is restricted, by the `if:` inside it.
+# The `test` job runs on every pull request, and again on the merged result in
+# `main`. Pushes to feature branches are filtered out: the PR run already
+# covered them, so an unfiltered `push:` only burns a second runner on an
+# identical result. Only the `deploy` job is restricted further, by the `if:`
+# inside it.
 #
 # To deploy on a different branch, edit that one `if:` line — see the comment
 # block above `deploy:` below for the exact lines to change.
 # ═══════════════════════════════════════════════════════════════════════════
 on:
-  # No `branches:` filter on purpose: test must run on every branch.
   push:
+    branches: [main]
   pull_request:
   workflow_dispatch:
 
