@@ -114,6 +114,32 @@ class PermissionSeedTest extends TestCase
     }
 
     #[Test]
+    public function a_role_removed_from_the_matrix_keeps_no_grants(): void
+    {
+        // syncPermissions only runs for roles the matrix still names, so a role
+        // dropped from the matrix is exactly the one that never gets its grants
+        // cleared. That is how superadmin came to hold all 19 permissions in a
+        // database whose seeder and docs both said it holds none: the role left
+        // the matrix and its rows stayed.
+        $stale = Permission::create([
+            'name' => 'audit.view',
+            'guard_name' => RoleLookup::guard(),
+        ]);
+
+        $superadmin = Role::where('name', SystemRole::SUPERADMIN)->firstOrFail();
+        $superadmin->givePermissionTo($stale);
+        $this->assertSame(1, $superadmin->permissions()->count(), 'Precondition: superadmin holds the row.');
+
+        $this->seed(PermissionSeeder::class);
+
+        $this->assertSame(
+            0,
+            Role::where('name', SystemRole::SUPERADMIN)->firstOrFail()->permissions()->count(),
+            'A role absent from the matrix must be synced to nothing, not skipped.'
+        );
+    }
+
+    #[Test]
     public function pruning_does_not_touch_another_guard(): void
     {
         // The prune is scoped to RoleLookup::guard(). A second guard (an API

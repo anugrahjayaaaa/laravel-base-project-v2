@@ -89,13 +89,21 @@ class PermissionSeeder extends Seeder
         // and their role mapping, and syncPermissions reads that cache.
         app(PermissionRegistrar::class)->forgetCachedPermissions();
 
-        foreach ($this->matrix() as $roleName => $permissions) {
+        $matrix = $this->matrix();
+
+        // Iterate the system roles, not the matrix: a role dropped from the
+        // matrix has to be synced to an empty set, or it keeps every grant it
+        // ever had. Iterating the matrix skips exactly the roles that need
+        // clearing — which is how superadmin ended up holding all 19
+        // permissions here after a revision removed it from the matrix, while
+        // the code and the docs both said it holds none.
+        foreach (SystemRole::names() as $roleName) {
             $role = Role::firstOrCreate(['name' => $roleName, 'guard_name' => $guard]);
 
             // syncPermissions, not givePermissionTo: a re-seed must also REMOVE
             // a permission this role no longer has, otherwise a role retired
             // from the matrix keeps granting it forever.
-            $role->syncPermissions($permissions);
+            $role->syncPermissions($matrix[$roleName] ?? []);
         }
 
         app(PermissionRegistrar::class)->forgetCachedPermissions();
