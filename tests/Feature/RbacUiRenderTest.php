@@ -84,7 +84,46 @@ class RbacUiRenderTest extends TestCase
         ])->each(function (Permission $permission, int $index): void {
             $permission->id = $index + 1;
             $permission->roles_count = 1;
+            // The permissions index renders role NAMES, so the fixture has to
+            // carry the same preloaded relation the controller eager-loads.
+            // Without it, `$permission->roles` would lazy-load on render — and
+            // the "queries nothing" assertion would fail on the fixture rather
+            // than on anything the view did wrong.
+            $role = new Role(['name' => 'admin', 'guard_name' => RoleLookup::guard()]);
+            $role->id = 1;
+            $permission->setRelation('roles', new Collection([$role]));
         });
+    }
+
+    /**
+     * The view data the permissions index needs, mirroring PermissionController.
+     */
+    private function permissionIndexData(): array
+    {
+        $permissions = $this->permissionRows();
+
+        return [
+            // A paginator, not the bare collection: the view calls
+            // currentPage()/perPage()/firstItem()/links() on it, and a fixture
+            // that skipped that would pass while the real page broke.
+            'permissions' => new LengthAwarePaginator(
+                $permissions,
+                $permissions->count(),
+                10,
+                1,
+                ['path' => url('/permissions')]
+            ),
+            'totalPermissions' => $permissions->count(),
+            'totalResources' => $permissions->pluck('name')
+                ->map(fn (string $name): string => str($name)->before('.')->value())
+                ->unique()
+                ->count(),
+            'totalRoles' => 1,
+            'unusedPermissions' => $permissions->where('roles_count', 0)->count(),
+            'search' => '',
+            'currentSort' => 'name',
+            'currentDirection' => 'asc',
+        ];
     }
 
     private function grouped(Collection $permissions): array
@@ -102,7 +141,7 @@ class RbacUiRenderTest extends TestCase
         return [
             'roles index' => ['pages.roles.index', ['roles' => 'paginator', 'search' => '', 'currentSort' => 'name', 'currentDirection' => 'asc']],
             'roles create' => ['pages.roles.create', ['permissions' => 'permissions', 'permissionGroups' => 'grouped']],
-            'permissions index' => ['pages.permissions.index', ['permissions' => 'permissions', 'permissionGroups' => 'grouped']],
+            'permissions index' => ['pages.permissions.index', ['permissions' => 'paginator', 'totalPermissions' => 'int', 'totalResources' => 'int', 'totalRoles' => 'int', 'unusedPermissions' => 'int', 'search' => '', 'currentSort' => 'name', 'currentDirection' => 'asc']],
         ];
     }
 
@@ -113,14 +152,20 @@ class RbacUiRenderTest extends TestCase
         $this->login();
 
         $permissions = $this->permissionRows();
-        $data = [
+        $shared = [
             'roles' => $this->paginator(collect([$this->roleRow('admin', true, 4, 2)])),
             'search' => '',
             'currentSort' => 'name',
             'currentDirection' => 'asc',
-            'permissions' => $permissions,
             'permissionGroups' => $this->grouped($permissions),
         ];
+
+        // `+` keeps the LEFT operand, so one merged bag cannot give the roles
+        // forms their raw Collection and the permissions index its
+        // LengthAwarePaginator. Assign per view instead.
+        $data = $view === 'pages.permissions.index'
+            ? $shared + $this->permissionIndexData()
+            : $shared + ['permissions' => $permissions];
 
         // First render warms Spatie's permission cache, which the Gate reads on
         // every @can. Measuring only that would blame the framework for the
@@ -161,10 +206,7 @@ class RbacUiRenderTest extends TestCase
                 'permissions' => $permissions,
                 'permissionGroups' => $this->grouped($permissions),
             ]),
-            'pages.permissions.index' => $this->render('pages.permissions.index', [
-                'permissions' => $permissions,
-                'permissionGroups' => $this->grouped($permissions),
-            ]),
+            'pages.permissions.index' => $this->render('pages.permissions.index', $this->permissionIndexData()),
         ];
 
         foreach ($rendered as $view => $html) {
@@ -243,16 +285,122 @@ class RbacUiRenderTest extends TestCase
     }
 
     #[Test]
+    public function the_permission_catalogue_searches(): void
+    {
+        $this->seed(\Database\Seeders\RoleSeeder::class);
+        $this->seed(\Database\Seeders\PermissionSeeder::class);
+        // superadmin, not a plain user: once P6-D1 gates this route, a user with
+        // zero permissions gets a 403 and the test stops being about search.
+        $user = User::factory()->create(['email_verified_at' => now()]);
+        $user->assignRole(\App\Support\SystemRole::SUPERADMIN);
+        $this->actingAs($user);
+
+        // A bare fragment is what gets typed; the dotted name is what is shown.
+        // `settings` is 2 rows, so page 1 holds all of them.
+        $this->get(route('permissions.index', ['search' => 'settings']))
+            ->assertOk()
+            ->assertSee('settings.view')
+            ->assertSee('settings.manage')
+            ->assertDontSee('roles.view');
+
+        $this->get(route('permissions.index', ['search' => 'nothing_matches_this']))
+            ->assertOk()
+            ->assertSee('No permission matches');
+
+        // The metrics describe the catalogue, not the filtered view — otherwise
+        // the summary renumbers itself on every keystroke.
+        $filtered = $this->get(route('permissions.index', ['search' => 'settings']))
+            ->viewData();
+        $this->assertCount(2, $filtered['permissions']);
+        $this->assertSame(19, $filtered['totalPermissions']);
+    }
+
+    #[Test]
+    public function the_permission_catalogue_paginates(): void
+    {
+        $this->seed(\Database\Seeders\RoleSeeder::class);
+        $this->seed(\Database\Seeders\PermissionSeeder::class);
+        $user = User::factory()->create(['email_verified_at' => now()]);
+        $user->assignRole(\App\Support\SystemRole::SUPERADMIN);
+        $this->actingAs($user);
+
+        $all = $this->get(route('permissions.index'))->viewData('permissions');
+        $this->assertSame(19, $all->total());
+        $this->assertSame(10, $all->perPage(), 'design-system.md §Pagination: 10 per page');
+        $this->assertCount(10, $all);
+        $this->assertSame(2, $all->lastPage());
+
+        // 11 users.* rows at 10 per page puts users.view — which sorts last — on
+        // page 2. Asserted on the data, not the markup: the name also appears in
+        // the page-2 link, so a string check would pass or fail for the wrong
+        // reason.
+        $page1 = $this->get(route('permissions.index', ['search' => 'users']))->viewData('permissions');
+        $this->assertCount(10, $page1);
+        $this->assertNotContains('users.view', $page1->pluck('name')->all());
+
+        $page2 = $this->get(route('permissions.index', ['search' => 'users', 'page' => 2]))
+            ->viewData('permissions');
+        $this->assertSame(['users.view'], $page2->pluck('name')->all());
+
+        // Row numbers continue across pages instead of restarting at 1.
+        $this->assertStringContainsString(
+            'Showing 11 to 11 of 11 entries',
+            $this->get(route('permissions.index', ['search' => 'users', 'page' => 2]))->getContent()
+        );
+
+        // withQueryString: the page-2 link must carry the search, or clicking it
+        // silently drops the filter.
+        $this->assertStringContainsString(
+            'search=users',
+            $this->get(route('permissions.index', ['search' => 'users']))->getContent()
+        );
+    }
+
+    #[Test]
+    public function the_permission_catalogue_sorts(): void
+    {
+        $this->seed(\Database\Seeders\RoleSeeder::class);
+        $this->seed(\Database\Seeders\PermissionSeeder::class);
+        $user = User::factory()->create(['email_verified_at' => now()]);
+        $user->assignRole(\App\Support\SystemRole::SUPERADMIN);
+        $this->actingAs($user);
+
+        // Read each list out immediately, one request at a time. A LengthAwarePaginator
+        // is a live object, and holding one across later requests made the
+        // comparison compare a stale list against a fresh one.
+        $asc = $this->get(route('permissions.index', ['sort' => 'name', 'direction' => 'asc']))
+            ->viewData('permissions')->pluck('name')->all();
+        $this->assertSame('permissions.view', $asc[0]);
+
+        $desc = $this->get(route('permissions.index', ['sort' => 'name', 'direction' => 'desc']))
+            ->viewData('permissions')->pluck('name')->all();
+
+        // Compare against the full sorted set, not page 1 reversed: only 10 of
+        // 19 rows fit on a page, so reversing the first page is not the second
+        // page — it is a different 10 rows.
+        $all = Permission::where('guard_name', RoleLookup::guard())
+            ->orderBy('name')->pluck('name')->all();
+        $this->assertSame(array_slice($all, 0, 10), $asc);
+        $this->assertSame(array_slice(array_reverse($all), 0, 10), $desc);
+
+        // ?sort= reaches orderBy, so an unknown column must not reach SQL and
+        // must fall back to the default order — not merely avoid a 500.
+        $injected = $this->get(route('permissions.index', ['sort' => 'name); DROP TABLE permissions;--']))
+            ->assertOk()
+            ->viewData('permissions')->pluck('name')->all();
+        $this->assertSame(
+            $this->get(route('permissions.index', ['sort' => 'name', 'direction' => 'asc']))
+                ->viewData('permissions')->pluck('name')->all(),
+            $injected
+        );
+    }
+
+    #[Test]
     public function the_permission_catalogue_offers_no_write_controls(): void
     {
         $this->login();
 
-        $permissions = $this->permissionRows();
-
-        $html = $this->render('pages.permissions.index', [
-            'permissions' => $permissions,
-            'permissionGroups' => $this->grouped($permissions),
-        ]);
+        $html = $this->render('pages.permissions.index', $this->permissionIndexData());
 
         $this->assertStringContainsString('users.view', $html);
         // Read-only: no trigger, and no form posting anywhere under /roles or

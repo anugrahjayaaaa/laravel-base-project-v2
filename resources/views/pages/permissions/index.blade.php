@@ -15,50 +15,119 @@
         </div>
     </div>
 
-    <div class="alert alert-info mb-4">
-        <div class="d-flex align-items-center gap-2 mb-1">
-            <i class="bi bi-info-circle-fill text-info fs-5"></i>
-            <h6 class="mb-0 fw-semibold">Permissions are defined in code</h6>
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-lg-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body p-4">
+                    <div class="text-muted small text-uppercase fw-semibold mb-1">Permissions</div>
+                    <div class="fs-3 fw-bold lh-1">{{ $totalPermissions }}</div>
+                </div>
+            </div>
         </div>
-        <p class="mb-0 text-secondary fs-7">
-            A permission only matters if something checks it. They are seeded, not typed in here — a row nobody's
-            permission check reads is a row that grants nothing.
-        </p>
+        <div class="col-6 col-lg-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body p-4">
+                    <div class="text-muted small text-uppercase fw-semibold mb-1">Resources</div>
+                    <div class="fs-3 fw-bold lh-1">{{ $totalResources }}</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body p-4">
+                    <div class="text-muted small text-uppercase fw-semibold mb-1">Roles</div>
+                    <div class="fs-3 fw-bold lh-1">{{ $totalRoles }}</div>
+                </div>
+            </div>
+        </div>
+        {{-- The one metric worth acting on: a permission no role holds is either a
+             capability nobody has been given yet, or a role that was never built. --}}
+        <div class="col-6 col-lg-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body p-4">
+                    <div class="text-muted small text-uppercase fw-semibold mb-1">Unused</div>
+                    <div class="fs-3 fw-bold lh-1 {{ $unusedPermissions > 0 ? 'text-warning-emphasis' : '' }}">
+                        {{ $unusedPermissions }}
+                    </div>
+                    <div class="text-muted small">No role holds these</div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-transparent border-bottom py-3">
+            <h5 class="card-title mb-0 fw-semibold">All System Permissions</h5>
+        </div>
         <div class="card-body p-4">
-            @if (count($permissions) === 0)
-                <x-ui.empty-state icon="fas fa-key" message="No permissions are defined." />
+            {{-- Filter, laid out as in pages/users/index --}}
+            <form method="GET" class="d-flex align-items-center gap-2 mb-3 flex-wrap">
+                <input type="text" name="search" class="form-control form-control-sm" style="max-width: 280px"
+                    placeholder="Search permission or resource..." value="{{ $search }}">
+                <input type="hidden" name="sort" value="{{ $currentSort }}">
+                <input type="hidden" name="direction" value="{{ $currentDirection }}">
+                <button type="submit" class="btn btn-primary btn-sm">
+                    <i class="fas fa-search"></i> Filter
+                </button>
+                @if ($search)
+                    <a href="{{ route('permissions.index') }}" class="btn btn-outline-secondary btn-sm">
+                        <i class="fas fa-times"></i> Clear
+                    </a>
+                @endif
+            </form>
+
+            @if ($permissions->isEmpty())
+                <x-ui.empty-state
+                    :icon="$search ? 'fas fa-search' : 'fas fa-key'"
+                    :message="$search ? 'No permission matches \''.$search.'\'.' : 'No permissions are defined.'" />
             @else
-                @foreach ($permissionGroups as $resource => $groupPermissions)
-                    <div class="mb-4">
-                        <div class="text-uppercase small fw-semibold text-muted mb-2">{{ $resource }}</div>
-                        <div class="table-responsive">
-                            <table class="table table-hover mb-0">
-                                <thead>
-                                    <tr>
-                                        <th style="width: 50px" class="align-middle">#</th>
-                                        <th class="align-middle">Permission</th>
-                                        <th style="width: 140px" class="align-middle">Roles</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach ($groupPermissions as $permission)
-                                        <tr>
-                                            <td>{{ $loop->iteration }}</td>
-                                            <td><code>{{ $permission->name }}</code></td>
-                                            <td>
-                                                <x-ui.badge :variant="$permission->roles_count > 0 ? 'success' : 'neutral'"
-                                                    :text="(string) $permission->roles_count" />
-                                            </td>
-                                        </tr>
-                                    @endforeach
-                                </tbody>
-                            </table>
-                        </div>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <x-ui.sortable-th field="#" label="#" :sortable="false" />
+                                <x-ui.sortable-th field="name" label="Permission" :current-sort="$currentSort"
+                                    :current-direction="$currentDirection" />
+                                <th class="align-middle">Resource</th>
+                                <x-ui.sortable-th field="roles_count" label="Assigned Roles"
+                                    :current-sort="$currentSort" :current-direction="$currentDirection" />
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach ($permissions as $permission)
+                                @php
+                                    // Derived from the name, so the badge can never
+                                    // disagree with the catalogue the seeder wrote.
+                                    $resource = str($permission->name)->before('.')->value();
+                                @endphp
+                                <tr>
+                                    <td>{{ ($permissions->currentPage() - 1) * $permissions->perPage() + $loop->iteration }}</td>
+                                    <td><code>{{ $permission->name }}</code></td>
+                                    <td><x-ui.badge variant="neutral" :text="$resource" /></td>
+                                    <td>
+                                        @forelse ($permission->roles as $role)
+                                            <x-ui.badge variant="primary" :text="$role->name" class="me-1" />
+                                        @empty
+                                            <span class="text-muted">Unassigned</span>
+                                        @endforelse
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+
+                {{-- Pagination: shared convention, see design-system.md §Pagination --}}
+                <div class="d-flex justify-content-between align-items-center mt-3 flex-wrap gap-2">
+                    @if ($permissions->total() > 0)
+                        <small class="text-muted">
+                            Showing {{ $permissions->firstItem() }} to {{ $permissions->lastItem() }} of {{ $permissions->total() }} entries
+                        </small>
+                    @endif
+                    <div class="d-flex">
+                        {{ $permissions->links() }}
                     </div>
-                @endforeach
+                </div>
             @endif
         </div>
     </div>

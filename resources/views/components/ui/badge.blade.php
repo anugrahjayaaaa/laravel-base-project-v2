@@ -1,6 +1,10 @@
 @props([
     'variant' => 'info',
     'text' => '',
+    // Caller-supplied classes, merged onto the span. Needed for spacing when
+    // several badges sit in one cell — a component that hardcodes its class
+    // attribute would silently drop `me-1` and run them together.
+    'class' => '',
 ])
 
 @php
@@ -17,4 +21,4 @@
     };
 @endphp
 
-<span class="badge {{ $badgeClass }}">{{ $text ?: $slot }}</span>
+<span {{ $attributes->merge(['class' => 'badge '.$badgeClass.' '.$class]) }}>{{ $text ?: $slot }}</span>
