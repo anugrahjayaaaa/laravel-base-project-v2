@@ -71,6 +71,12 @@ export const ACTION_CONFIG = {
         variant: 'warning',
         icon: 'bi bi-person-slash'
     },
+    delete_role: {
+        title: 'Delete Role',
+        msg: 'Delete <b>__ITEM__</b>? Users with this role lose its permissions immediately.',
+        variant: 'danger',
+        icon: 'bi bi-shield-x'
+    },
     // --- session ---
     logout_all: {
         title: 'Logout All Devices?',
