@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Models\RoleLookup;
+use App\Support\SystemRole;
 use Illuminate\Database\Seeder;
 use Spatie\Permission\Models\Role;
 
@@ -13,8 +14,9 @@ class RoleSeeder extends Seeder
      */
     public function run(): void
     {
-        // System roles,seeded with no permissions yet; permissions are
-        // assigned in RBAC-004 (Phase 6) once the permission set is defined.
+        // System roles, seeded with no permissions here. PermissionSeeder runs
+        // immediately after this and owns the role permission matrix (RBAC-004);
+        // superadmin gets no rows at all and its access comes from Gate::before.
         // See docs/base/features/roles-permissions.md §Seeded Roles.
         //
         // Seeded on the guard the app actually assigns roles on, which is not
@@ -27,7 +29,11 @@ class RoleSeeder extends Seeder
         // firstOrCreate, not create: re-seeding must not duplicate a role.
         $guard = RoleLookup::guard();
 
-        foreach (['superadmin', 'admin', 'user'] as $name) {
+        // SystemRole, not a literal here: App\Support\SystemRole is the one
+        // answer to "is this a system role?", shared with the roles UI and the
+        // protection rules. A second copy of the list is how a fourth name gets
+        // added in one place and not the others.
+        foreach (SystemRole::names() as $name) {
             Role::firstOrCreate(['name' => $name, 'guard_name' => $guard]);
         }
     }
