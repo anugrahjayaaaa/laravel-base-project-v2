@@ -2,7 +2,9 @@
 
 use App\Http\Controllers\Web\V1\Auth\AuthController;
 use App\Http\Controllers\Web\V1\DashboardController;
+use App\Http\Controllers\Web\V1\PermissionController;
 use App\Http\Controllers\Web\V1\ProfileController;
+use App\Http\Controllers\Web\V1\RoleController;
 use App\Http\Controllers\Web\V1\SystemSettingController;
 use App\Http\Controllers\Web\V1\UserStateController;
 use App\Http\Controllers\Web\V1\UserController;
@@ -99,4 +101,19 @@ Route::middleware(['auth:web,sanctum', 'verified', 'password.change.required', '
         Route::post('/users/{user}/lock', [UserStateController::class, 'lock'])->name('users.lock');
         Route::post('/users/{user}/unlock', [UserStateController::class, 'unlock'])->name('users.unlock');
     });
+
+    // -----------------------------------------------------------------------
+    // Roles & permissions — Phase 6 Group A (UI only).
+    //
+    // NO `can:` gate here yet, and that is deliberate and temporary: the
+    // permission rows themselves are seeded in Group B (P6-B1), so a gate now
+    // would deny everyone including superadmin. P6-D1 wraps these in
+    // `can:roles.view` / `can:roles.create` / `can:roles.update` /
+    // can:roles.delete` / `can:permissions.view` once the catalogue exists.
+    // -----------------------------------------------------------------------
+    Route::get('/roles', [RoleController::class, 'index'])->name('roles.index');
+    Route::get('/roles/create', [RoleController::class, 'create'])->name('roles.create');
+    Route::get('/roles/{role}/edit', [RoleController::class, 'edit'])->name('roles.edit');
+
+    Route::get('/permissions', [PermissionController::class, 'index'])->name('permissions.index');
 });
