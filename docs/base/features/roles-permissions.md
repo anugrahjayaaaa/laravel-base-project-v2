@@ -132,6 +132,57 @@ audit.view               (view audit records)
 audit.export             (export audit records)
 ```
 
+## Management UI (Phase 6 Group A — read-only until Group C/D)
+
+Shipped and audited 2026-09-28.
+
+| Page | Route | Controller | Write path |
+|---|---|---|---|
+| Roles | `GET /roles` → `roles.index` | `Web\V1\RoleController@index` | none yet (P6-C5) |
+| Create Role | `GET /roles/create` → `roles.create` | `Web\V1\RoleController@create` | none yet |
+| Edit Role | `GET /roles/{role}/edit` → `roles.edit` | `Web\V1\RoleController@edit` | none yet (P6-C5) |
+| Permissions | `GET /permissions` → `permissions.index` | `Web\V1\PermissionController@index` | **none by design** |
+
+The roles index carries a search filter and sortable Name / Users / Permissions
+headers, laid out like `pages/users/index`: the filter form sits in the card body
+above the table, the Create Role button right-aligned in the card header.
+Sorting is whitelisted in the controller (`RoleController::SORTABLE`) because
+the value reaches `orderBy`.
+
+The permissions catalogue is deliberately read-only: a permission row that no
+`can()` call references grants nothing, so a UI that creates one only makes it
+look real. Permissions are seeded from the catalogue (P6-B1/P6-B3).
+
+**These four routes carry no `can:` gate yet.** The permission rows do not exist
+until P6-B1 seeds them, and a gate on a non-existent permission denies everyone
+— superadmin included. P6-D1 wraps them in `can:roles.view` / `can:roles.create`
+/ `can:roles.update` / `can:roles.delete` / `can:permissions.view`. Until then,
+any authenticated user can reach these four pages. That window is Group A's
+known, tracked gap, not an oversight.
+
+**No save path yet.** The create/edit forms post to `roles.index` and the delete
+trigger posts to `roles.index`; both land on real endpoints at P6-C5 / P6-C6.
+
+**System roles** (`superadmin`, `admin`, `user`) are answered by
+`App\Support\SystemRole` — the single place that knows the list. The views read
+`$role->is_system`, which the controller decorates; a system role shows a
+`System` badge in place of its delete trigger, and its name field is readonly on
+the edit form. The server-side refusal lands at P6-C6/P6-E1 — the UI is UX only
+per [UI Authorization Rule](../ui/ui-authorization.md).
+
+**Not built, and why** (proposed 2026-09-28, declined):
+
+- *Active / Inactive / Trash tabs* — need `is_active` + `deleted_at` on `roles`.
+  Soft delete forces a `Role` subclass and a 3-place change
+  (`config/permission.php`, seeder import, observer) whose failure is silent, and
+  `findByName()` / `getStoredRole()` would then throw `RoleDoesNotExist` for
+  users still holding a trashed role. Revisit alongside the subclass, not before.
+- *"Make default role" action* — `registration_default_role` already lives in
+  `SystemSetting`. The guard belongs in `SystemSettingRequest`, not a second
+  writer for one value.
+- *Deactivate / soft-delete buttons* — no endpoint exists yet; the confirm-modal
+  copy does, and `action-type="delete_role"` goes live at P6-C6.
+
 ## Seeding Strategy
 
 System roles (`superadmin`, `admin`, `user`) are seeded in Phase 2 via

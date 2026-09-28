@@ -201,8 +201,99 @@ zero permissions still reaches `/dashboard`, `/profile`, `/sessions`.
 | P6-A8 | Static menu group in `AppMenuComposer` already lists Roles/Permissions — **no change in this group**; the `permission` key is added in Group D | A1 | — |
 | P6-A9 | Gate: `tests/Feature/RbacUiRenderTest.php` — render each new view with a hand-built array (`view('pages.roles.index', ['roles' => collect()])`) and assert: no exception, no forbidden class present in output, delete button absent when `$role->is_system` is true | A1–A7 | medium |
 
-**Gate A:** all six views render, `php artisan view:clear` clean, no query
-inside any view, `RbacUiRenderTest` green. Only then start Group B.
+**Group A status: ✅ DONE** (2026-09-28). Audited against the filesystem; the
+table below is the audit, not a wish list.
+
+### P6-A1 → A9 audit
+
+| ID | Task | Status | Evidence |
+|----|------|--------|----------|
+| P6-A1 | Roles index — header, breadcrumb, filter, table, pagination | ✅ DONE | `resources/views/pages/roles/index.blade.php` (128 lines) |
+| P6-A2 | Actions column — edit always, delete via `<x-ui.confirm-action>`, `System` badge for system roles | ✅ DONE | `delete_role` trigger present; badge on `$role->is_system` |
+| P6-A3 | Roles create — card + form + explainer column | ✅ DONE | `resources/views/pages/roles/create.blade.php` (92 lines) |
+| P6-A4 | Roles edit — prefilled name (readonly for system roles), pre-checked matrix | ✅ DONE | `resources/views/pages/roles/edit.blade.php` (98 lines) |
+| P6-A5 | Permission matrix partial | ✅ DONE | `resources/views/partials/role-permission-matrix.blade.php` (44 lines) |
+| P6-A6 | Permissions index — read-only catalogue, `roles_count` badge | ✅ DONE | `resources/views/pages/permissions/index.blade.php` (65 lines) |
+| P6-A7 | `delete_role` key in `ACTION_CONFIG` | ✅ DONE | `resources/js/helpers/action-config.js:74` |
+| P6-A8 | `AppMenuComposer` unchanged | ✅ as specified | no diff — its `Roles` / `Permissions` items were already listed; `Route::has()` now resolves instead of falling back to `'#'` |
+| P6-A9 | Gate test | ✅ DONE | `tests/Feature/RbacUiRenderTest.php` — 14 tests, 49 assertions, green |
+
+### Shipped beyond the plan (the build needed reachable pages)
+
+| File | Purpose |
+|---|---|
+| `app/Http/Controllers/Web/V1/RoleController.php` | `index` / `create` / `edit` + `SORTABLE` whitelist |
+| `app/Http/Controllers/Web/V1/PermissionController.php` | `index` only |
+| `routes/web.php` | `roles.index`, `roles.create`, `roles.edit`, `permissions.index` (GET) |
+| `app/Support/SystemRole.php` | pulled forward from P6-B4 — the views need `is_system` and there is nowhere honest to put that answer in a view |
+
+### Added after the first review round
+
+| Item | Status | Why |
+|---|---|---|
+| Search filter + `Create Role` button | ✅ DONE | Both were wrapped in `@can('roles.view')` / `@can('roles.create')`, and the permission rows do not exist until P6-B1 — so `@can` was always false and neither rendered. Un-gated here; `@can` returns at P6-D5. |
+| Sortable table headers | ✅ DONE | `<x-ui.sortable-th>` on Name / Users / Permissions; `#` and Actions not sortable. `SORTABLE` whitelist in the controller — the value reaches `orderBy`. |
+| Filter placement aligned with `users/index` | ✅ DONE | Form moved from `card-header` into `card-body` above the table, same markup as `pages/users/index.blade.php:120` |
+| `Create Role` right-aligned | ✅ DONE | `ms-auto` inside the `justify-content-between` row, matching `users/index` |
+
+### Verified gaps inside Group A
+
+| Gap | Why it is still open | Closes at |
+|---|---|---|
+| The four GET routes carry **no `can:` gate** | A `can:` gate on a permission that is not seeded denies everyone, superadmin included. | P6-D1 |
+| Roles create/edit forms post to `roles.index` | No `roles.store` / `roles.update` route exists. Marked `ponytail:` in the view. | P6-C5 |
+| `delete_role` trigger points at `roles.index` | No `roles.destroy` route exists. | P6-C6 |
+| `$role->users_count` on the roles index | `withCount('users')` is in the query, but a hand-built test fixture sets it manually; no controller-level gap. | — |
+
+### Deliberately not built (proposed 2026-09-28, declined)
+
+| Proposal | Decision | Reason |
+|---|---|---|
+| Navbar tabs: Active / Inactive / Trash | ⛔ not built | Needs `is_active` + `deleted_at` on `roles`, and soft delete forces a `Role` subclass plus a 3-place change (`config/permission.php`, seeder import, observer) whose failure mode is silent. `findByName()` and `getStoredRole()` would start throwing `RoleDoesNotExist` for users still holding a trashed role. A tab with no `deleted_at` behind it is a lie. |
+| "Make default role" action in the actions column | ⛔ not built | `registration_default_role` already lives in `SystemSetting` (`database/seeders/SystemSettingSeeder.php:72`, read at `CreateUserAction.php:101`). A second control means two writers for one value — the `PolicyKeyTest` drift pattern. A guard belongs in `SystemSettingRequest`, not a new button. |
+| Deactivate + soft-delete buttons (UI only) | ⛔ not built | A button wired to nothing is worse than no button, and the confirm-modal copy already exists — `action-type="delete_role"` goes live the moment P6-C6 adds the endpoint. |
+
+### Current state of the routes
+
+```
+GET  /roles             roles.index        Web\V1\RoleController@index
+GET  /roles/create      roles.create       Web\V1\RoleController@create
+GET  /roles/{role}/edit roles.edit         Web\V1\RoleController@edit
+GET  /permissions       permissions.index  Web\V1\PermissionController@index
+```
+
+All four sit inside the authenticated group with **no permission gate**. Any
+authenticated user can reach them. This is Group A's known, tracked gap and it
+closes at P6-D1 — before then, the RBAC-006 escalation surface in
+`task-tracker.md` is unchanged by this work.
+
+**View-data contract the views read** (handed over, never queried by the view):
+
+| View | Variables |
+|---|---|
+| `pages.roles.index` | `roles` (paginator of Role + `is_system`, `users_count`, `permissions_count`, `destroy_url`), `search`, `currentSort`, `currentDirection` |
+| `pages.roles.create` / `edit` | `permissions` (Collection), `permissionGroups` (resource prefix → list) |
+| `pages.roles.edit` | `role` (with `permissions` loaded, `is_system`, `users_count`) |
+| `pages.permissions.index` | `permissions` (with `roles_count`), `permissionGroups` |
+
+`is_system` and `destroy_url` are decorated onto the model by the controller.
+A view reading them is reading view data, not reaching into the domain.
+
+**Deviation from the plan, deliberate:** the plan said Group A ships views only.
+The build needed the two controllers and the four GET routes to be reachable in
+a browser, so they came in with it. They contain no save/delete path, no Form
+Request, and no `can:` gate.
+
+**Verification at close of Group A:**
+
+| Check | Result |
+|---|---|
+| `php artisan test tests/Feature/RbacUiRenderTest.php` | 14 passed, 49 assertions |
+| Full suite | 398 passed, 1235 assertions, 1 risky (pre-existing `DebugRateLimiterTest`) |
+| `vendor/bin/pint --test --dirty` | passed |
+| `npm run build` | built in 1.31s |
+| `php artisan view:clear` | clean |
+| Queries inside the views | 0 (asserted on a second render, so the Gate's own cache warm-up does not mask a `Role::…` left in Blade) |
 
 ---
 

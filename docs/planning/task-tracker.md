@@ -100,6 +100,33 @@ observers for audit. See `docs/base/architecture/application-components.md` §Ac
 
 ---
 
+### Phase 6 — RBAC & Authorization
+
+| ID | Task | Phase | Priority | Depends On | Status |
+|----|------|-------|----------|-----------|--------|
+| RBAC-001 | Seed roles (superadmin, admin, user) | 6 | P0 | DB-002 | DONE |
+| RBAC-002 | Implement role management | 6 | P0 | RBAC-001 | IN PROGRESS — UI only (P6-A1..A5, A7); actions at Group C |
+| RBAC-003 | Implement permission management | 6 | P0 | RBAC-001 | IN PROGRESS — read-only catalogue (P6-A6); seeding at Group B |
+| RBAC-004 | Define permission set | 6 | P0 | P0-004 | PLANNED — Group B (`PermissionSeeder`, `PermissionCatalog`) |
+| RBAC-005 | Superadmin + system-role protection | 6 | P0 | RBAC-001 | PLANNED — Group E |
+| RBAC-006 | Gate /users and /settings behind permissions | 6 | P0 | RBAC-004 | PLANNED — Groups C14–C18, D1, D2, E9. **Open escalation path.** |
+| P6-A1 | Roles index view | 6 | P0 | — | DONE |
+| P6-A2 | Roles index actions column | 6 | P0 | P6-A1 | DONE |
+| P6-A3 | Roles create view | 6 | P0 | P6-A1 | DONE |
+| P6-A4 | Roles edit view | 6 | P0 | P6-A3 | DONE |
+| P6-A5 | Permission matrix partial | 6 | P0 | P6-A3 | DONE |
+| P6-A6 | Permissions catalogue view | 6 | P0 | P6-A1 | DONE |
+| P6-A7 | `delete_role` confirm-modal key | 6 | P0 | P6-A2 | DONE |
+| P6-A8 | AppMenuComposer — no change in Group A | 6 | P0 | — | DONE |
+| P6-A9 | Gate test `RbacUiRenderTest` | 6 | P0 | P6-A1..A7 | DONE |
+
+**RBAC-006 is still open.** Group A added four GET routes (`/roles`,
+`/roles/create`, `/roles/{role}/edit`, `/permissions`) with no `can:` gate,
+because the permission rows do not exist until Group B seeds them and a gate on
+a missing permission denies everyone including superadmin. The original
+escalation path on `/users` and `/settings` is unchanged by this work.
+Detail: `docs/planning/phase-6-rbac.md` § Group A.
+
 ## Full Task List (JSON for AI parsing)
 
 ```json[
@@ -488,7 +515,8 @@ observers for audit. See `docs/base/architecture/application-components.md` §Ac
     "depends_on": [
       "DB-002"
     ],
-    "status": "PLANNED"
+    "status": "DONE",
+    "note": "Roles seeded in Phase 2 (RoleSeeder) and pinned by RoleGuardTest. 2026-09-28: the system-role list moved to App\\Support\\SystemRole so the views and the seeder answer 'is this a system role?' identically. Permissions are a separate task — RBAC-004 / Group B."
   },
   {
     "id": "RBAC-002",
@@ -498,7 +526,8 @@ observers for audit. See `docs/base/architecture/application-components.md` §Ac
     "depends_on": [
       "RBAC-001"
     ],
-    "status": "PLANNED"
+    "status": "IN PROGRESS",
+    "note": "2026-09-28: Phase 6 Group A shipped the UI. Roles index/create/edit and the read-only permissions catalogue render and are gated by RbacUiRenderTest (14 tests, 49 assertions). No save/delete path and no can: gate yet — actions land in Group C, gates in Group D."
   },
   {
     "id": "RBAC-003",
@@ -508,7 +537,8 @@ observers for audit. See `docs/base/architecture/application-components.md` §Ac
     "depends_on": [
       "RBAC-001"
     ],
-    "status": "PLANNED"
+    "status": "IN PROGRESS",
+    "note": "2026-09-28: Phase 6 Group A shipped the UI. Roles index/create/edit and the read-only permissions catalogue render and are gated by RbacUiRenderTest (14 tests, 49 assertions). No save/delete path and no can: gate yet — actions land in Group C, gates in Group D."
   },
   {
     "id": "RBAC-004",
@@ -518,7 +548,8 @@ observers for audit. See `docs/base/architecture/application-components.md` §Ac
     "depends_on": [
       "P0-004"
     ],
-    "status": "PLANNED"
+    "status": "PLANNED",
+    "note": "Group B. P6-B1 PermissionSeeder + P6-B3 PermissionCatalog. This is the blocker for every can: gate in the phase: a gate on an unseeded permission denies all."
   },
   {
     "id": "RBAC-005",
@@ -539,7 +570,108 @@ observers for audit. See `docs/base/architecture/application-components.md` §Ac
       "RBAC-004"
     ],
     "status": "PLANNED",
-    "note": "Found by manual browser test of self-registration, 2026-09-27. The authenticated route group in routes/web.php carries only auth+verified+password.change.required+account.state — no can:/permission gate — and UserPolicy only covers unlock/activate/deactivate/lock, none of which index/store/update/destroy call. A user created through POST /register (role `user`, zero permissions) was able to: GET /users (200, all emails); POST /settings (changed login_max_attempts); POST /users with roles[]=superadmin (201, created a superadmin); PUT /users/{id} (demoted a superadmin); DELETE /users/{id} (deleted the superadmin account); POST /users/bulk-action; POST /users/{id}/deactivate. Same on the API: POST /api/v1/settings, POST /api/v1/users, GET /api/v1/users/{id} all accepted a plain user's token. SystemSettingRequest::authorize() and RegisterRequest::authorize() both return true unconditionally, and the `user` role is seeded with no permissions. Not introduced by the register feature — it made an already-reachable escalation available to anyone on the internet. Fix belongs here, not as a patch: add can:/permission middleware per route, give the `user` role its real permission set, and make authorize() consult the caller."
+    "note": "Found by manual browser test of self-registration, 2026-09-27. The authenticated route group in routes/web.php carries only auth+verified+password.change.required+account.state — no can:/permission gate — and UserPolicy only covers unlock/activate/deactivate/lock, none of which index/store/update/destroy call. A user created through POST /register (role `user`, zero permissions) was able to: GET /users (200, all emails); POST /settings (changed login_max_attempts); POST /users with roles[]=superadmin (201, created a superadmin); PUT /users/{id} (demoted a superadmin); DELETE /users/{id} (deleted the superadmin account); POST /users/bulk-action; POST /users/{id}/deactivate. Same on the API: POST /api/v1/settings, POST /api/v1/users, GET /api/v1/users/{id} all accepted a plain user's token. SystemSettingRequest::authorize() and RegisterRequest::authorize() both return true unconditionally, and the `user` role is seeded with no permissions. Not introduced by the register feature — it made an already-reachable escalation available to anyone on the internet. Fix belongs here, not as a patch: add can:/permission middleware per route, give the `user` role its real permission set, and make authorize() consult the caller. 2026-09-28 update: still open. Group A added /roles and /permissions with no can: gate (permissions not seeded until Group B). Original /users and /settings escalation unchanged. Fix remains C14-C18 + D1/D2 + E9."
+  },
+  {
+    "id": "P6-A1",
+    "task": "Roles index view — header, breadcrumb, search filter, table, pagination",
+    "phase": 6,
+    "priority": "P0",
+    "depends_on": [],
+    "status": "DONE",
+    "note": "Phase 6 Group A, shipped 2026-09-28. Audit: docs/planning/phase-6-rbac.md. Two items shipped beyond the original plan because the pages had to be reachable in a browser: Web\\V1\\RoleController + Web\\V1\\PermissionController and the four GET routes. App\\Support\\SystemRole was pulled forward from P6-B4 because the views need is_system. Search filter, sortable headers and the right-aligned Create button were added after a review round; the filter and button had been wrapped in @can, which is always false until P6-B1 seeds the permissions."
+  },
+  {
+    "id": "P6-A2",
+    "task": "Roles index actions column — edit always, delete via <x-ui.confirm-action>, System badge for system roles",
+    "phase": 6,
+    "priority": "P0",
+    "depends_on": [
+      "P6-A1"
+    ],
+    "status": "DONE",
+    "note": "Phase 6 Group A, shipped 2026-09-28. See docs/planning/phase-6-rbac.md."
+  },
+  {
+    "id": "P6-A3",
+    "task": "Roles create view — form + system-role explainer column",
+    "phase": 6,
+    "priority": "P0",
+    "depends_on": [
+      "P6-A1"
+    ],
+    "status": "DONE",
+    "note": "Phase 6 Group A, shipped 2026-09-28. See docs/planning/phase-6-rbac.md."
+  },
+  {
+    "id": "P6-A4",
+    "task": "Roles edit view — prefilled name (readonly for system roles), pre-checked permission matrix",
+    "phase": 6,
+    "priority": "P0",
+    "depends_on": [
+      "P6-A3"
+    ],
+    "status": "DONE",
+    "note": "Phase 6 Group A, shipped 2026-09-28. See docs/planning/phase-6-rbac.md."
+  },
+  {
+    "id": "P6-A5",
+    "task": "Shared permission matrix partial — checkboxes posting permission IDs, old() re-check, empty state",
+    "phase": 6,
+    "priority": "P0",
+    "depends_on": [
+      "P6-A3"
+    ],
+    "status": "DONE",
+    "note": "Phase 6 Group A, shipped 2026-09-28. See docs/planning/phase-6-rbac.md."
+  },
+  {
+    "id": "P6-A6",
+    "task": "Permissions catalogue view — read-only, grouped by resource, roles_count badge",
+    "phase": 6,
+    "priority": "P0",
+    "depends_on": [
+      "P6-A1"
+    ],
+    "status": "DONE",
+    "note": "Phase 6 Group A, shipped 2026-09-28. See docs/planning/phase-6-rbac.md."
+  },
+  {
+    "id": "P6-A7",
+    "task": "Add delete_role key to ACTION_CONFIG for the role delete confirmation",
+    "phase": 6,
+    "priority": "P0",
+    "depends_on": [
+      "P6-A2"
+    ],
+    "status": "DONE",
+    "note": "Phase 6 Group A, shipped 2026-09-28. See docs/planning/phase-6-rbac.md."
+  },
+  {
+    "id": "P6-A8",
+    "task": "AppMenuComposer — no change in Group A (Roles/Permissions items already listed)",
+    "phase": 6,
+    "priority": "P0",
+    "depends_on": [],
+    "status": "DONE",
+    "note": "Phase 6 Group A, shipped 2026-09-28. See docs/planning/phase-6-rbac.md."
+  },
+  {
+    "id": "P6-A9",
+    "task": "Gate test RbacUiRenderTest — views render, query nothing, no forbidden classes, system-role delete hidden",
+    "phase": 6,
+    "priority": "P0",
+    "depends_on": [
+      "P6-A1",
+      "P6-A2",
+      "P6-A3",
+      "P6-A4",
+      "P6-A5",
+      "P6-A6",
+      "P6-A7"
+    ],
+    "status": "DONE",
+    "note": "Phase 6 Group A, shipped 2026-09-28. See docs/planning/phase-6-rbac.md."
   },
   {
     "id": "FEAT-001",
@@ -1093,7 +1225,7 @@ observers for audit. See `docs/base/architecture/application-components.md` §Ac
     "priority": "P0",
     "depends_on": [],
     "status": "DONE",
-    "note": "API: throttle:login (5/min), throttle:forgot-password (3/min), throttle:resend-verification (5/hour). Shared keys via LoginThrottle::key() (identifier+IP). Web forms POST to API endpoints \u2192 shared throttle."
+    "note": "API: throttle:login (5/min), throttle:forgot-password (3/min), throttle:resend-verification (5/hour). Shared keys via LoginThrottle::key() (identifier+IP). Web forms POST to API endpoints → shared throttle."
   },
   {
     "id": "ROUTE-004",
@@ -1102,6 +1234,6 @@ observers for audit. See `docs/base/architecture/application-components.md` §Ac
     "priority": "P1",
     "depends_on": [],
     "status": "DONE",
-    "note": "Added route grouping table and brute force throttle table to phase-3-audit-breakdown.md \u00a71."
+    "note": "Added route grouping table and brute force throttle table to phase-3-audit-breakdown.md §1."
   }
 ]```

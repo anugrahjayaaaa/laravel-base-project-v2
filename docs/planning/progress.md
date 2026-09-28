@@ -12,7 +12,7 @@
 ||| 3 | Authentication foundation | IN PROGRESS (implementation breakdown DONE; phase status not yet reconciled) |
 ||| 4 | User lifecycle & user management | DONE |
 ||| 5 | Password/security lifecycle | DONE — Groups A, B, and C verified |
-| 6 | RBAC & authorization | PLANNED |
+| 6 | RBAC & authorization | IN PROGRESS — Group A (UI) DONE + audited; B–E pending |
 | 7 | Feature availability / feature flags | PLANNED |
 | 8 | Settings | PLANNED |
 | 9 | Notification/mail/queue | PLANNED |
@@ -26,6 +26,24 @@
 | 17 | Full regression / final review | PLANNED |
 
 ## Current Task
+
+Phase 6 Group A — RBAC UI: ✅ DONE (2026-09-28, audited)
+- Roles index / create / edit, permissions catalogue (read-only), shared permission matrix partial
+- `delete_role` confirm-modal key in `resources/js/helpers/action-config.js`
+- `App\Support\SystemRole` — the one answer to "is this a system role?"
+- `Web\V1\RoleController` + `Web\V1\PermissionController`, four GET routes
+- Roles index: search filter (aligned with `users/index`), right-aligned Create Role, sortable Name/Users/Permissions headers with a controller-side whitelist
+- Gate: `tests/Feature/RbacUiRenderTest.php` — 14 tests, 49 assertions
+- Declined after review: Active/Inactive/Trash tabs, "make default role" action, deactivate/soft-delete buttons (reasoning in `phase-6-rbac.md`)
+
+**Open (tracked, not forgotten):** the four new GET routes carry no `can:`
+gate — the permission rows do not exist until P6-B1 seeds them, and a gate on a
+missing permission denies everyone including superadmin. Any authenticated user
+can reach `/roles` and `/permissions` until P6-D1. The role forms post to
+`roles.index` and the delete trigger points at `roles.index` until P6-C5/C6.
+
+**Next:** Group B — `PermissionSeeder`, `PermissionCatalog`, `Gate::before`,
+idempotent role matrix. It is the blocker for every `can:` gate in the phase.
 
 Phase 5C — Password Expiration & Inactivity Lock: ✅ FULLY DONE
 - Shared Web/API settings action
