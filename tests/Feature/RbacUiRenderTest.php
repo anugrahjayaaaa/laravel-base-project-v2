@@ -1,0 +1,357 @@
+<?php
+
+namespace Tests\Feature;
+
+use App\Models\RoleLookup;
+use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\ViewErrorBag;
+use Illuminate\Support\Collection;
+use PHPUnit\Framework\Attributes\DataProvider;
+use PHPUnit\Framework\Attributes\Test;
+use Spatie\Permission\Models\Permission;
+use Spatie\Permission\Models\Role;
+use Tests\TestCase;
+
+/**
+ * Phase 6 Group A gate: the roles + permissions views render, obey the design
+ * system, and execute no query of their own.
+ *
+ * The "no query in a view" rule is asserted by counting queries around the
+ * render call. A view that reaches for `Role::…` or `SystemSetting::…` is the
+ * failure this catches — `ui-architecture.md` rule 1, and the reason the
+ * controllers hand over plain collections instead.
+ */
+class RbacUiRenderTest extends TestCase
+{
+    use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->app->make(\Spatie\Permission\PermissionRegistrar::class)->forgetCachedPermissions();
+    }
+
+    /**
+     * A role as the views see it: the controller decorates is_system and the
+     * counts, so a hand-built fixture has to carry the same shape.
+     */
+    private function login(): self
+    {
+        $this->actingAs(User::factory()->create(['email_verified_at' => now()]));
+
+        return $this;
+    }
+
+    /**
+     * Render a view outside the HTTP kernel with an empty error bag.
+     *
+     * `@if ($errors->any())` is satisfied by ShareErrorsFromSession in a real
+     * request; a bare `view()->render()` has no such variable and would fail on
+     * a line every page shares.
+     */
+    private function render(string $view, array $data): string
+    {
+        return view($view, array_merge(['errors' => new ViewErrorBag()], $data))->render();
+    }
+
+    private function roleRow(string $name, bool $isSystem, int $permissions = 0, int $users = 0): Role
+    {
+        $role = new Role(['name' => $name, 'guard_name' => RoleLookup::guard()]);
+        $role->id = crc32($name) % 10000;
+        $role->is_system = $isSystem;
+        $role->permissions_count = $permissions;
+        $role->users_count = $users;
+        $role->destroy_url = route('roles.index');
+        $role->setRelation('permissions', new Collection());
+
+        return $role;
+    }
+
+    private function paginator(Collection $rows): LengthAwarePaginator
+    {
+        return new LengthAwarePaginator($rows, $rows->count(), 10, 1, ['path' => url('/roles')]);
+    }
+
+    private function permissionRows(): Collection
+    {
+        return collect([
+            new Permission(['name' => 'users.view', 'guard_name' => RoleLookup::guard()]),
+            new Permission(['name' => 'users.update', 'guard_name' => RoleLookup::guard()]),
+            new Permission(['name' => 'roles.view', 'guard_name' => RoleLookup::guard()]),
+        ])->each(function (Permission $permission, int $index): void {
+            $permission->id = $index + 1;
+            $permission->roles_count = 1;
+        });
+    }
+
+    private function grouped(Collection $permissions): array
+    {
+        return $permissions
+            ->groupBy(fn (Permission $permission): string => str($permission->name)->before('.')->value())
+            ->all();
+    }
+
+    /**
+     * @return array<string, array{0: string, 1: array<string, mixed>}>
+     */
+    public static function views(): array
+    {
+        return [
+            'roles index' => ['pages.roles.index', ['roles' => 'paginator', 'search' => '', 'currentSort' => 'name', 'currentDirection' => 'asc']],
+            'roles create' => ['pages.roles.create', ['permissions' => 'permissions', 'permissionGroups' => 'grouped']],
+            'permissions index' => ['pages.permissions.index', ['permissions' => 'permissions', 'permissionGroups' => 'grouped']],
+        ];
+    }
+
+    #[Test]
+    #[DataProvider('views')]
+    public function test_each_view_renders_and_queries_nothing(string $view, array $keys): void
+    {
+        $this->login();
+
+        $permissions = $this->permissionRows();
+        $data = [
+            'roles' => $this->paginator(collect([$this->roleRow('admin', true, 4, 2)])),
+            'search' => '',
+            'currentSort' => 'name',
+            'currentDirection' => 'asc',
+            'permissions' => $permissions,
+            'permissionGroups' => $this->grouped($permissions),
+        ];
+
+        // First render warms Spatie's permission cache, which the Gate reads on
+        // every @can. Measuring only that would blame the framework for the
+        // view's own behaviour — and a Role::… left in Blade fires on the second
+        // render too, so the delta is what actually measures the view.
+        $this->render($view, array_intersect_key($data, $keys));
+
+        DB::flushQueryLog();
+        DB::enableQueryLog();
+        $html = $this->render($view, array_intersect_key($data, $keys));
+        $queries = DB::getQueryLog();
+        DB::disableQueryLog();
+
+        $this->assertNotSame('', $html, "{$view} rendered nothing");
+        $this->assertSame([], $queries, "{$view} queried from inside the view");
+    }
+
+    #[Test]
+    public function the_forbidden_classes_never_appear(): void
+    {
+        $this->login();
+
+        $permissions = $this->permissionRows();
+
+        $rendered = [
+            'pages.roles.index' => $this->render('pages.roles.index', [
+                'roles' => $this->paginator(collect([$this->roleRow('admin', true, 4, 2)])),
+                'search' => '',
+                'currentSort' => 'name',
+                'currentDirection' => 'asc',
+            ]),
+            'pages.roles.create' => $this->render('pages.roles.create', [
+                'permissions' => $permissions,
+                'permissionGroups' => $this->grouped($permissions),
+            ]),
+            'pages.roles.edit' => $this->render('pages.roles.edit', [
+                'role' => $this->roleRow('staff', false, 3, 1),
+                'permissions' => $permissions,
+                'permissionGroups' => $this->grouped($permissions),
+            ]),
+            'pages.permissions.index' => $this->render('pages.permissions.index', [
+                'permissions' => $permissions,
+                'permissionGroups' => $this->grouped($permissions),
+            ]),
+        ];
+
+        foreach ($rendered as $view => $html) {
+            $this->assertDoesNotMatchRegularExpression('/\bbg-white\b/', $html, "{$view} uses bg-white");
+            $this->assertDoesNotMatchRegularExpression('/\bbg-light\b/', $html, "{$view} uses bg-light");
+            $this->assertDoesNotMatchRegularExpression('/class="[^"]*\bcard-body\b(?! p-4)[^"]*"/', $html, "{$view} has a card-body without p-4");
+        }
+    }
+
+    #[Test]
+    public function a_system_role_shows_a_badge_and_no_delete_trigger(): void
+    {
+        $this->login();
+
+        $html = $this->render('pages.roles.index', [
+            'roles' => $this->paginator(collect([$this->roleRow('superadmin', true, 0, 1)])),
+            'search' => '',
+            'currentSort' => 'name',
+            'currentDirection' => 'asc',
+        ]);
+
+        $this->assertStringContainsString('System', $html);
+        $this->assertStringNotContainsString('data-action-type="delete_role"', $html);
+    }
+
+    #[Test]
+    public function a_custom_role_gets_the_delete_trigger(): void
+    {
+        $this->login();
+
+        $html = $this->render('pages.roles.index', [
+            'roles' => $this->paginator(collect([$this->roleRow('staff', false, 3, 0)])),
+            'search' => '',
+            'currentSort' => 'name',
+            'currentDirection' => 'asc',
+        ]);
+
+        $this->assertStringContainsString('data-action-type="delete_role"', $html);
+        $this->assertStringContainsString('data-item-name="staff"', $html);
+    }
+
+    #[Test]
+    public function the_matrix_posts_permission_ids_and_preserves_the_selection(): void
+    {
+        $this->login();
+
+        $permissions = $this->permissionRows();
+
+        $html = $this->render('pages.roles.edit', [
+            'role' => tap($this->roleRow('staff', false, 2, 1), function (Role $role): void {
+                $role->setRelation('permissions', $this->permissionRows()->take(2));
+            }),
+            'permissions' => $permissions,
+            'permissionGroups' => $this->grouped($permissions),
+        ]);
+
+        $this->assertStringContainsString('name="permissions[]"', $html);
+        // IDs, not names — syncPermissions resolves a string as a NAME and throws.
+        $this->assertStringContainsString('value="1"', $html);
+        // The two already on the role come back checked.
+        $this->assertSame(2, substr_count($html, 'checked'), 'pre-checked selection was not preserved');
+    }
+
+    #[Test]
+    public function an_empty_permission_set_renders_the_empty_state(): void
+    {
+        $this->login();
+
+        $html = $this->render('pages.roles.create', [
+            'permissions' => collect(),
+            'permissionGroups' => [],
+        ]);
+
+        $this->assertStringContainsString('No permissions are defined.', $html);
+        $this->assertStringNotContainsString('name="permissions[]"', $html);
+    }
+
+    #[Test]
+    public function the_permission_catalogue_offers_no_write_controls(): void
+    {
+        $this->login();
+
+        $permissions = $this->permissionRows();
+
+        $html = $this->render('pages.permissions.index', [
+            'permissions' => $permissions,
+            'permissionGroups' => $this->grouped($permissions),
+        ]);
+
+        $this->assertStringContainsString('users.view', $html);
+        // Read-only: no trigger, and no form posting anywhere under /roles or
+        // /permissions. The app layout's own logout form is expected and is not
+        // what this is about, hence the route-scoped check rather than `<form`.
+        $this->assertStringNotContainsString('data-action-type=', $html);
+        $this->assertDoesNotMatchRegularExpression('/action="[^"]*\/(roles|permissions)/', $html);
+    }
+
+    #[Test]
+    public function the_index_offers_a_filter_and_a_create_button(): void
+    {
+        $this->login();
+
+        $html = $this->render('pages.roles.index', [
+            'roles' => $this->paginator(collect([$this->roleRow('staff', false, 3, 0)])),
+            'search' => '',
+            'currentSort' => 'name',
+            'currentDirection' => 'asc',
+        ]);
+
+        $this->assertStringContainsString('name="search"', $html);
+        // It is an anchor, not a form field.
+        $this->assertStringContainsString('href="'.route('roles.create').'"', $html);
+        $this->assertStringContainsString('Create Role', $html);
+    }
+
+    #[Test]
+    public function the_index_headers_sort_and_an_unknown_column_is_ignored(): void
+    {
+        $this->login();
+
+        $html = $this->render('pages.roles.index', [
+            'roles' => $this->paginator(collect([$this->roleRow('staff', false, 3, 0)])),
+            'search' => '',
+            'currentSort' => 'name',
+            'currentDirection' => 'asc',
+        ]);
+
+        // Name, Users, Permissions are sortable; # and Actions are not.
+        $this->assertStringContainsString('sort=name', $html);
+        $this->assertStringContainsString('sort=users_count', $html);
+        $this->assertStringContainsString('sort=permissions_count', $html);
+        $this->assertStringNotContainsString('sort=actions', $html);
+
+        // The value reaches orderBy, so an unknown column must fall back to the
+        // default rather than travel into SQL.
+        Role::create(['name' => 'aaa', 'guard_name' => RoleLookup::guard()]);
+        Role::create(['name' => 'zzz', 'guard_name' => RoleLookup::guard()]);
+
+        $this->get(route('roles.index', ['sort' => 'name); DROP TABLE roles;--']))->assertOk();
+        $this->get(route('roles.index', ['sort' => 'guard_name']))->assertOk();
+        $this->assertSame(2, Role::where('guard_name', RoleLookup::guard())->count());
+    }
+
+    #[Test]
+    public function sorting_by_a_count_column_orders_the_page(): void
+    {
+        $this->login();
+
+        $richer = Role::create(['name' => 'aaa', 'guard_name' => RoleLookup::guard()]);
+        Role::create(['name' => 'zzz', 'guard_name' => RoleLookup::guard()]);
+        $richer->givePermissionTo(
+            Permission::create(['name' => 'users.view', 'guard_name' => RoleLookup::guard()])
+        );
+
+        $html = $this->get(route('roles.index', ['sort' => 'permissions_count', 'direction' => 'desc']))
+            ->assertOk()
+            ->getContent();
+
+        $this->assertLessThan(
+            strpos($html, 'zzz'),
+            strpos($html, 'aaa'),
+            'descending permission count did not put the richer role first'
+        );
+    }
+
+
+    #[Test]
+    public function sorting_preserves_the_active_filter_over_http(): void
+    {
+        $this->login();
+
+        $html = $this->get(route('roles.index', ['search' => 'adm', 'sort' => 'users_count', 'direction' => 'desc']))
+            ->assertOk()
+            ->getContent();
+
+        $this->assertMatchesRegularExpression('/href="\?[^"]*search=adm[^"]*sort=users_count/', $html);
+        $this->assertStringContainsString('value="adm"', $html);
+    }
+
+    #[Test]
+    public function every_page_is_reachable_over_http(): void
+    {
+        $role = Role::create(['name' => 'staff', 'guard_name' => RoleLookup::guard()]);
+
+        $this->login()->get(route('roles.index'))->assertOk();
+        $this->login()->get(route('roles.create'))->assertOk();
+        $this->login()->get(route('roles.edit', $role))->assertOk();
+        $this->login()->get(route('permissions.index'))->assertOk();
+    }
+}
