@@ -27,7 +27,7 @@ Auto-generated from codebase scan. Not committed.
 | 19 | Profile view/edit | ✅ | ✅ | own | — | done |
 | 20 | System settings | ✅ | ✅ | admin | features/settings.md | done |
 | 21 | Registration (configurable) | ✅ | — | public | features/registration.md | done |
-| 22 | RBAC roles & permissions (Spatie) | 🟡 | — | — | features/roles-permissions.md | phase 6 in progress — Group A (UI) done; permission set, actions, gates, protection pending |
+| 22 | RBAC roles & permissions (Spatie) | 🟡 | — | — | features/roles-permissions.md | phase 6 in progress — Groups A (UI) + B (permission set, seeders, superadmin bypass) done; actions, route gates, system-role protection pending |
 | 23 | Superadmin protection | — | — | — | features/roles-permissions.md | done |
 | 24 | Feature flags (DB-backed) | — | — | — | features/feature-flags.md | done |
 | 25 | Audit trail (Spatie activitylog) | — | — | — | features/audit-trail.md | done |

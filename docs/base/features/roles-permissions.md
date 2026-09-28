@@ -16,11 +16,16 @@ User → Role → Permissions
 
 ## Seeded Roles
 
-| Role | Permissions | Description |
+| Role | Permissions in `role_has_permissions` | Description |
 |------|-------------|-------------|
-| `superadmin` | All (with protected exceptions) | System administrator |
-| `admin` | Manage users, audit, settings | Project administrator |
-| `user` | Default access | Standard user |
+| `superadmin` | **none** — access from `Gate::before` | System administrator |
+| `admin` | the entire catalogue | Project administrator (delegated superadmin) |
+| `user` | none | Standard user |
+
+`superadmin` holds no permission rows on purpose. Its access comes from
+`Gate::before` in `App\Providers\AuthServiceProvider`, so a permission added to
+the catalogue never requires re-seeding that role, and editing a role's
+permission set can never strip a superadmin of a capability.
 
 ## System Role Protection
 
@@ -83,24 +88,23 @@ Superadmin is a controlled privileged role:
 
 ```
 {resource}.{action}
-
-Examples:
-users.view
-users.create
-users.update
-users.delete
-users.activate
-users.deactivate
-users.lock
-users.unlock
-roles.view
-roles.manage
-permissions.assign
-settings.manage
-audit.view
-audit.export
-feature_flags.manage
 ```
+
+`{resource}` is the feature that exists today, which is why a permission can
+only be added together with the page it guards. The seeded set:
+
+| Resource | Permissions |
+|---|---|
+| `users` | `view` `create` `update` `delete` `force_delete` `restore` `activate` `deactivate` `lock` `unlock` `assign_roles` |
+| `roles` | `view` `create` `update` `delete` `assign_permissions` |
+| `permissions` | `view` |
+| `settings` | `view` `manage` |
+
+Do not add a permission name to this table by hand — `App\Support\PermissionCatalog`
+is the source of truth and this table mirrors it. An earlier revision of this
+document listed `roles.manage`, `permissions.assign` and
+`feature_flags.manage`, none of which exist: exactly the drift a hand-typed list
+produces.
 
 ## User State Permissions
 
@@ -111,25 +115,11 @@ users.lock
 users.unlock
 ```
 
-## Feature Permissions
-
-```
-features.manage          (manage feature flags)
-features.view            (view feature flags)
-```
-
 ## Settings Permissions
 
 ```
 settings.manage          (manage operational settings)
 settings.view            (view settings)
-```
-
-## Audit Permissions
-
-```
-audit.view               (view audit records)
-audit.export             (export audit records)
 ```
 
 ## Management UI (Phase 6 Group A — read-only until Group C/D)
@@ -153,12 +143,13 @@ The permissions catalogue is deliberately read-only: a permission row that no
 `can()` call references grants nothing, so a UI that creates one only makes it
 look real. Permissions are seeded from the catalogue (P6-B1/P6-B3).
 
-**These four routes carry no `can:` gate yet.** The permission rows do not exist
-until P6-B1 seeds them, and a gate on a non-existent permission denies everyone
-— superadmin included. P6-D1 wraps them in `can:roles.view` / `can:roles.create`
-/ `can:roles.update` / `can:roles.delete` / `can:permissions.view`. Until then,
-any authenticated user can reach these four pages. That window is Group A's
-known, tracked gap, not an oversight.
+**These four routes still carry no `can:` gate.** They shipped in Group A before
+the permissions existed, and a gate on a non-existent permission denies everyone
+— superadmin included. **Group B seeded the catalogue, so the blocker is gone
+and P6-D1 can now gate them** with `can:roles.view` / `can:roles.create` /
+`can:roles.update` / `can:roles.delete` / `can:permissions.view`. Until it does,
+any authenticated user can reach these four pages. That window is tracked, not
+an oversight.
 
 **No save path yet.** The create/edit forms post to `roles.index` and the delete
 trigger posts to `roles.index`; both land on real endpoints at P6-C5 / P6-C6.
@@ -185,18 +176,45 @@ per [UI Authorization Rule](../ui/ui-authorization.md).
 
 ## Seeding Strategy
 
-System roles (`superadmin`, `admin`, `user`) are seeded in Phase 2 via
-`Database\Seeders\RoleSeeder`. Permissions are assigned in Phase 6 (RBAC-004)
-once the permission set is defined.
+`Database\Seeders\RoleSeeder` creates the three system roles;
+`Database\Seeders\PermissionSeeder` owns the permission catalogue and the role
+matrix. `DatabaseSeeder` runs them in that order, then `SuperAdminSeeder`.
 
-**Note on Spatie Permission `guard_name`:** The architecture supports both
-`web` (session/Sanctum SPA) and `api` (Sanctum bearer token) authentication
-guards, both backed by the same `User` model. The specific `guard_name` value
-assigned to seeded roles is an implementation decision to be resolved during
-the RBAC implementation phase (Phase 6), based on whether roles must be
-shared across both guards or scoped per guard. See
-`docs/base/security/authentication.md` §Authentication Methods for the guard
-model.
+**19 permissions are seeded**, across three resources that exist today:
+`users.*` (11), `roles.*` (5), `permissions.view` (1), `settings.*` (2).
+
+`audit.*` and `features.*` are **not seeded**. The audit viewer is Phase 10 and
+feature flags are Phase 7; neither has a route, controller or view, so a
+permission for them would be a row in the permissions UI that looks meaningful
+and grants nothing. Each group arrives in the same commit as the page it guards.
+`PermissionSeedTest::every_permission_maps_to_a_resource_the_app_actually_has`
+fails the build if a group is added without a feature behind it.
+
+### `App\Support\PermissionCatalog` is the single source of truth
+
+`all()` returns every name, `grouped()` groups by the `Str::before($name, '.')`
+prefix, `forResource()` returns one resource. The seeder, the role permission
+matrix, and the tests all read it — no permission list is hand-typed anywhere,
+including in Blade. The prefix is derived, never listed, so a permission cannot
+land under the wrong heading.
+
+### Re-seeding is idempotent, and prunes
+
+`PermissionSeeder` flushes the permission cache three times: before seeding
+(a cached registrar makes it write a second real role), after creating and
+before assigning (`syncPermissions` reads the cache), and at the end.
+
+It also **deletes** rows on the app's guard that `all()` no longer declares.
+`firstOrCreate` alone only ever adds, which left a removed permission in the
+database permanently — still listed in the permissions UI, still granting `can()`
+to whoever held it. Scoped to `RoleLookup::guard()`, so another guard's
+catalogue is untouched.
+
+**Note on Spatie Permission `guard_name`:** resolved via
+`App\Models\RoleLookup::guard()` — `Guard::getDefaultName(User::class)`, the
+resolver Spatie itself uses — and never `config('auth.defaults.guard')`, which is
+mutated per request by `Sanctum::actingAs()` and disagreed with the permission
+checks the roles feed.
 
 ## ADR References
 

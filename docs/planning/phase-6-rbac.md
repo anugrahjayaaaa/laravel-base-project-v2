@@ -124,22 +124,33 @@ This list is the single source of truth; the seeder, the route gates, the
 |---|---|
 | `permissions.view` | permissions index (read-only) |
 
-### settings / audit / features
+### settings
 | Permission | Guards |
 |---|---|
 | `settings.view` | settings page read |
 | `settings.manage` | settings page write (POST/PUT) |
-| `audit.view` | activity logs read (Phase 10) |
-| `audit.export` | activity log export (Phase 10) |
-| `features.view` | feature flag page read (Phase 7) |
-| `features.manage` | feature flag write (Phase 7) |
+
+**19 permissions, seeded.** `audit.*` and `features.*` were planned here and
+are **deliberately not seeded** — the audit viewer is Phase 10 and feature flags
+are Phase 7, and neither has a route, controller or view today. A permission
+nothing checks is a row in the permissions UI that looks meaningful and grants
+nothing. Each group arrives in the same commit as the page it guards;
+`PermissionSeedTest::every_permission_maps_to_a_resource_the_app_actually_has`
+fails the moment a group is added without one.
 
 ### Seeded role matrix
 | Role | Permissions |
 |---|---|
 | `superadmin` | Gate bypass (not enumerated in DB — see below) |
-| `admin` | `users.*` (all 11) + `settings.view` + `settings.manage` + `audit.view` |
+| `admin` | **the whole catalogue** (`PermissionCatalog::all()`) |
 | `user` | **none** — baseline is profile + sessions only, which need no permission |
+
+`admin` is the delegated superadmin: the account you hand someone when you do not
+want to hand them the superadmin account. It takes the entire catalogue rather
+than a hand-picked subset, because a subset is a second copy of
+`PermissionCatalog` that rots silently — every permission added later would need
+remembering in two places, and forgetting is invisible. `P6-B7` asserts the count
+matches `all()`, so drift fails a test.
 
 `superadmin` gets no rows in `role_has_permissions`. Its access comes from
 `Gate::before`. This is the documented Spatie pattern and it means adding a new
@@ -318,6 +329,59 @@ Request, and no `can:` gate.
 **Gate B:** `php artisan db:seed` twice is idempotent, `PermissionSeedTest`
 green, `hasRole('superadmin')` → `can()` true while `role_has_permissions` is
 empty for that role.
+
+---
+
+**Group B status: ✅ DONE (verified 2026-09-28)**
+
+| ID | Status | Evidence |
+|----|--------|----------|
+| P6-B1 | ✅ | `database/seeders/PermissionSeeder.php` — prune → create → assign, cache flushed at all three points |
+| P6-B2 | ✅ | `DatabaseSeeder` orders it `RoleSeeder` → `PermissionSeeder` → `SuperAdminSeeder` |
+| P6-B3 | ✅ | `app/Support/PermissionCatalog.php` — `all()`, `grouped()`, `forResource()` |
+| P6-B4 | ✅ | `App\Support\SystemRole` — shipped in Group A, spec satisfied, unchanged |
+| P6-B5 | ✅ | `RoleSeeder` consumes `SystemRole::names()`; the stale RBAC-004 comment corrected |
+| P6-B6 | ✅ | `AuthServiceProvider::configureSuperAdmin()` — `?bool`, returns `true`/`null` |
+| P6-B7 | ✅ | `PermissionSeedTest` — 17 tests, 114 assertions |
+| P6-B8 | ✅ | `PermissionCacheTest` — 5 tests, 10 assertions |
+
+**Gate B result:** 19 permissions seeded · `superadmin` 0 rows and `can()` true ·
+`admin` 19 · `user` 0 · `db:seed` twice → counts unchanged · full suite 420 passed ·
+`pint --test --dirty` clean.
+
+### Deviations from the spec, and why
+
+1. **`matrix()` is a method, not a class constant.** PHP constants cannot call
+   methods, and `admin` needs `PermissionCatalog::all()` rather than a literal
+   copy. A const would have forced a hand-written list back in.
+
+2. **`syncPermissions`, not `assignRole` per permission.** The spec said
+   `$permission->assignRole($role)`. `syncPermissions` also *removes* grants the
+   role no longer has, so a permission dropped from the matrix stops granting
+   instead of sticking forever.
+
+3. **Permissions were pruned. Not in the spec.** `firstOrCreate` only ever adds,
+   so a permission removed from `PermissionCatalog` stayed in the database
+   permanently — visible in the permissions UI and still granting `can()` to
+   whoever held it. The seeder now deletes rows on our guard that `all()` no
+   longer declares, cascading to `role_has_permissions`. Scoped to
+   `RoleLookup::guard()` so another guard's catalogue is untouched.
+
+4. **`SuperAdminSeeder` now assigns the role. Not in the spec, and required.**
+   It created the account but never called `assignRole`, which was invisible
+   until `Gate::before` arrived: the superadmin user had no `superadmin` row, so
+   `hasRole('superadmin')` was false and the account was denied everything. This
+   is the one change outside the B1–B8 list; without it P6-B6 is not actually
+   true. Uses `syncRoles` and `RoleLookup::guard()`.
+
+5. **`audit.*` and `features.*` are not seeded.** See the permission table
+   above. `permissions.view` was added — it guards `permissions.index`, a route
+   that exists, and omitting it would have left the catalogue page ungateable.
+
+6. **`Gate::before` returns `?bool`.** The declared `null`-not-`false` rule is
+   load-bearing, so the return type states it. A `Gate::before` returning
+   `true` wins over every policy — anything that must still apply to a
+   superadmin belongs in the policy, not here. Noted in the docblock.
 
 ---
 

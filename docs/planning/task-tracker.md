@@ -107,8 +107,8 @@ observers for audit. See `docs/base/architecture/application-components.md` §Ac
 | RBAC-001 | Seed roles (superadmin, admin, user) | 6 | P0 | DB-002 | DONE |
 | RBAC-002 | Implement role management | 6 | P0 | RBAC-001 | IN PROGRESS — UI only (P6-A1..A5, A7); actions at Group C |
 | RBAC-003 | Implement permission management | 6 | P0 | RBAC-001 | IN PROGRESS — read-only catalogue (P6-A6); seeding at Group B |
-| RBAC-004 | Define permission set | 6 | P0 | P0-004 | PLANNED — Group B (`PermissionSeeder`, `PermissionCatalog`) |
-| RBAC-005 | Superadmin + system-role protection | 6 | P0 | RBAC-001 | PLANNED — Group E |
+| RBAC-004 | Define permission set | 6 | P0 | P0-004 | DONE — `PermissionCatalog` (19), `PermissionSeeder` |
+| RBAC-005 | Superadmin + system-role protection | 6 | P0 | RBAC-001 | IN PROGRESS — `Gate::before` + `SuperAdminSeeder` role done; delete/rename refusal at C6/E1 |
 | RBAC-006 | Gate /users and /settings behind permissions | 6 | P0 | RBAC-004 | PLANNED — Groups C14–C18, D1, D2, E9. **Open escalation path.** |
 | P6-A1 | Roles index view | 6 | P0 | — | DONE |
 | P6-A2 | Roles index actions column | 6 | P0 | P6-A1 | DONE |
@@ -119,6 +119,14 @@ observers for audit. See `docs/base/architecture/application-components.md` §Ac
 | P6-A7 | `delete_role` confirm-modal key | 6 | P0 | P6-A2 | DONE |
 | P6-A8 | AppMenuComposer — no change in Group A | 6 | P0 | — | DONE |
 | P6-A9 | Gate test `RbacUiRenderTest` | 6 | P0 | P6-A1..A7 | DONE |
+| P6-B1 | `PermissionSeeder` | 6 | P0 | P6-B3, P6-B4 | DONE |
+| P6-B2 | Register seeder in `DatabaseSeeder` | 6 | P0 | P6-B1 | DONE |
+| P6-B3 | `App\Support\PermissionCatalog` | 6 | P0 | P6-B1 | DONE |
+| P6-B4 | `SystemRole` (shipped in Group A) | 6 | P0 | P6-A1 | DONE |
+| P6-B5 | `RoleSeeder` uses `SystemRole::names()` | 6 | P0 | P6-B4 | DONE |
+| P6-B6 | `Gate::before` superadmin bypass | 6 | P0 | P6-B1 | DONE |
+| P6-B7 | `PermissionSeedTest` (17 tests) | 6 | P0 | P6-B1, B5, B6 | DONE |
+| P6-B8 | `PermissionCacheTest` (5 tests) | 6 | P0 | P6-B7 | DONE |
 
 **RBAC-006 is still open.** Group A added four GET routes (`/roles`,
 `/roles/create`, `/roles/{role}/edit`, `/permissions`) with no `can:` gate,
@@ -126,6 +134,10 @@ because the permission rows do not exist until Group B seeds them and a gate on
 a missing permission denies everyone including superadmin. The original
 escalation path on `/users` and `/settings` is unchanged by this work.
 Detail: `docs/planning/phase-6-rbac.md` § Group A.
+
+**The gating blocker is gone.** Group B seeded the 19 permissions, so P6-D1 can
+now wrap the four Group A routes in `can:` without denying every user — a gate on
+a permission that does not exist yet denies everyone, superadmin included.
 
 ## Full Task List (JSON for AI parsing)
 
@@ -548,8 +560,8 @@ Detail: `docs/planning/phase-6-rbac.md` § Group A.
     "depends_on": [
       "P0-004"
     ],
-    "status": "PLANNED",
-    "note": "Group B. P6-B1 PermissionSeeder + P6-B3 PermissionCatalog. This is the blocker for every can: gate in the phase: a gate on an unseeded permission denies all."
+    "status": "DONE",
+    "note": "2026-09-28: Group B. PermissionCatalog (19 permissions across users/roles/permissions/settings) + PermissionSeeder. audit.* and features.* intentionally excluded — no feature behind them. Seeder prunes permissions dropped from the catalogue, which firstOrCreate alone would not do."
   },
   {
     "id": "RBAC-005",
@@ -559,7 +571,8 @@ Detail: `docs/planning/phase-6-rbac.md` § Group A.
     "depends_on": [
       "RBAC-001"
     ],
-    "status": "PLANNED"
+    "status": "PLANNED",
+    "note": "2026-09-28 partial: Gate::before is in place (AuthServiceProvider::configureSuperAdmin) and SuperAdminSeeder now assigns the role. The remaining system-role protection (delete/rename refusal) is P6-C6/E1."
   },
   {
     "id": "RBAC-006",
@@ -570,7 +583,7 @@ Detail: `docs/planning/phase-6-rbac.md` § Group A.
       "RBAC-004"
     ],
     "status": "PLANNED",
-    "note": "Found by manual browser test of self-registration, 2026-09-27. The authenticated route group in routes/web.php carries only auth+verified+password.change.required+account.state — no can:/permission gate — and UserPolicy only covers unlock/activate/deactivate/lock, none of which index/store/update/destroy call. A user created through POST /register (role `user`, zero permissions) was able to: GET /users (200, all emails); POST /settings (changed login_max_attempts); POST /users with roles[]=superadmin (201, created a superadmin); PUT /users/{id} (demoted a superadmin); DELETE /users/{id} (deleted the superadmin account); POST /users/bulk-action; POST /users/{id}/deactivate. Same on the API: POST /api/v1/settings, POST /api/v1/users, GET /api/v1/users/{id} all accepted a plain user's token. SystemSettingRequest::authorize() and RegisterRequest::authorize() both return true unconditionally, and the `user` role is seeded with no permissions. Not introduced by the register feature — it made an already-reachable escalation available to anyone on the internet. Fix belongs here, not as a patch: add can:/permission middleware per route, give the `user` role its real permission set, and make authorize() consult the caller. 2026-09-28 update: still open. Group A added /roles and /permissions with no can: gate (permissions not seeded until Group B). Original /users and /settings escalation unchanged. Fix remains C14-C18 + D1/D2 + E9."
+    "note": "Found by manual browser test of self-registration, 2026-09-27. The authenticated route group in routes/web.php carries only auth+verified+password.change.required+account.state — no can:/permission gate — and UserPolicy only covers unlock/activate/deactivate/lock, none of which index/store/update/destroy call. A user created through POST /register (role `user`, zero permissions) was able to: GET /users (200, all emails); POST /settings (changed login_max_attempts); POST /users with roles[]=superadmin (201, created a superadmin); PUT /users/{id} (demoted a superadmin); DELETE /users/{id} (deleted the superadmin account); POST /users/bulk-action; POST /users/{id}/deactivate. Same on the API: POST /api/v1/settings, POST /api/v1/users, GET /api/v1/users/{id} all accepted a plain user's token. SystemSettingRequest::authorize() and RegisterRequest::authorize() both return true unconditionally, and the `user` role is seeded with no permissions. Not introduced by the register feature — it made an already-reachable escalation available to anyone on the internet. Fix belongs here, not as a patch: add can:/permission middleware per route, give the `user` role its real permission set, and make authorize() consult the caller. 2026-09-28 update: still open. Group A added /roles and /permissions with no can: gate (permissions not seeded until Group B). Original /users and /settings escalation unchanged. Fix remains C14-C18 + D1/D2 + E9. 2026-09-28 (post-Group B): the blocker for gating the Group A routes is gone — the catalogue is seeded, so P6-D1 can now apply can: without denying everyone. /users and /settings escalation unchanged."
   },
   {
     "id": "P6-A1",
@@ -672,6 +685,97 @@ Detail: `docs/planning/phase-6-rbac.md` § Group A.
     ],
     "status": "DONE",
     "note": "Phase 6 Group A, shipped 2026-09-28. See docs/planning/phase-6-rbac.md."
+  },
+  {
+    "id": "P6-B1",
+    "task": "PermissionSeeder — prune orphans, create from catalogue, sync matrix, flush cache 3x",
+    "phase": 6,
+    "priority": "P0",
+    "depends_on": [
+      "P6-B3",
+      "P6-B4"
+    ],
+    "status": "DONE",
+    "note": "Phase 6 Group B, shipped 2026-09-28. Verified: 19 permissions, superadmin 0 rows + can() true, admin 19, user 0, db:seed x2 idempotent, full suite 420 passed. Six deviations from the spec recorded in docs/planning/phase-6-rbac.md §Group B — two fixed real bugs (seeder only ever added, so a permission removed from the catalogue stayed forever; SuperAdminSeeder never assigned its role, which Gate::before turned into a total lockout). audit.* and features.* deliberately not seeded — no feature behind them (Phase 10 / Phase 7)."
+  },
+  {
+    "id": "P6-B2",
+    "task": "Register PermissionSeeder between RoleSeeder and SuperAdminSeeder",
+    "phase": 6,
+    "priority": "P0",
+    "depends_on": [
+      "P6-B1"
+    ],
+    "status": "DONE",
+    "note": "Phase 6 Group B, shipped 2026-09-28. Verified: 19 permissions, superadmin 0 rows + can() true, admin 19, user 0, db:seed x2 idempotent, full suite 420 passed. Six deviations from the spec recorded in docs/planning/phase-6-rbac.md §Group B — two fixed real bugs (seeder only ever added, so a permission removed from the catalogue stayed forever; SuperAdminSeeder never assigned its role, which Gate::before turned into a total lockout). audit.* and features.* deliberately not seeded — no feature behind them (Phase 10 / Phase 7)."
+  },
+  {
+    "id": "P6-B3",
+    "task": "App\\Support\\PermissionCatalog — all(), grouped(), forResource()",
+    "phase": 6,
+    "priority": "P0",
+    "depends_on": [
+      "P6-B1"
+    ],
+    "status": "DONE",
+    "note": "Phase 6 Group B, shipped 2026-09-28. Verified: 19 permissions, superadmin 0 rows + can() true, admin 19, user 0, db:seed x2 idempotent, full suite 420 passed. Six deviations from the spec recorded in docs/planning/phase-6-rbac.md §Group B — two fixed real bugs (seeder only ever added, so a permission removed from the catalogue stayed forever; SuperAdminSeeder never assigned its role, which Gate::before turned into a total lockout). audit.* and features.* deliberately not seeded — no feature behind them (Phase 10 / Phase 7)."
+  },
+  {
+    "id": "P6-B4",
+    "task": "SystemRole::isSystem() / names() — shipped in Group A, spec satisfied",
+    "phase": 6,
+    "priority": "P0",
+    "depends_on": [
+      "P6-A1"
+    ],
+    "status": "DONE",
+    "note": "Phase 6 Group B, shipped 2026-09-28. Verified: 19 permissions, superadmin 0 rows + can() true, admin 19, user 0, db:seed x2 idempotent, full suite 420 passed. Six deviations from the spec recorded in docs/planning/phase-6-rbac.md §Group B — two fixed real bugs (seeder only ever added, so a permission removed from the catalogue stayed forever; SuperAdminSeeder never assigned its role, which Gate::before turned into a total lockout). audit.* and features.* deliberately not seeded — no feature behind them (Phase 10 / Phase 7)."
+  },
+  {
+    "id": "P6-B5",
+    "task": "RoleSeeder consumes SystemRole::names(); stale RBAC-004 comment corrected",
+    "phase": 6,
+    "priority": "P0",
+    "depends_on": [
+      "P6-B4"
+    ],
+    "status": "DONE",
+    "note": "Phase 6 Group B, shipped 2026-09-28. Verified: 19 permissions, superadmin 0 rows + can() true, admin 19, user 0, db:seed x2 idempotent, full suite 420 passed. Six deviations from the spec recorded in docs/planning/phase-6-rbac.md §Group B — two fixed real bugs (seeder only ever added, so a permission removed from the catalogue stayed forever; SuperAdminSeeder never assigned its role, which Gate::before turned into a total lockout). audit.* and features.* deliberately not seeded — no feature behind them (Phase 10 / Phase 7)."
+  },
+  {
+    "id": "P6-B6",
+    "task": "Gate::before in AuthServiceProvider — true for superadmin, null otherwise, never false",
+    "phase": 6,
+    "priority": "P0",
+    "depends_on": [
+      "P6-B1"
+    ],
+    "status": "DONE",
+    "note": "Phase 6 Group B, shipped 2026-09-28. Verified: 19 permissions, superadmin 0 rows + can() true, admin 19, user 0, db:seed x2 idempotent, full suite 420 passed. Six deviations from the spec recorded in docs/planning/phase-6-rbac.md §Group B — two fixed real bugs (seeder only ever added, so a permission removed from the catalogue stayed forever; SuperAdminSeeder never assigned its role, which Gate::before turned into a total lockout). audit.* and features.* deliberately not seeded — no feature behind them (Phase 10 / Phase 7)."
+  },
+  {
+    "id": "P6-B7",
+    "task": "PermissionSeedTest — catalogue seeded, role matrix, idempotency, pruning",
+    "phase": 6,
+    "priority": "P0",
+    "depends_on": [
+      "P6-B1",
+      "P6-B5",
+      "P6-B6"
+    ],
+    "status": "DONE",
+    "note": "Phase 6 Group B, shipped 2026-09-28. Verified: 19 permissions, superadmin 0 rows + can() true, admin 19, user 0, db:seed x2 idempotent, full suite 420 passed. Six deviations from the spec recorded in docs/planning/phase-6-rbac.md §Group B — two fixed real bugs (seeder only ever added, so a permission removed from the catalogue stayed forever; SuperAdminSeeder never assigned its role, which Gate::before turned into a total lockout). audit.* and features.* deliberately not seeded — no feature behind them (Phase 10 / Phase 7)."
+  },
+  {
+    "id": "P6-B8",
+    "task": "PermissionCacheTest — can() reflects writes behind a warm cache",
+    "phase": 6,
+    "priority": "P0",
+    "depends_on": [
+      "P6-B7"
+    ],
+    "status": "DONE",
+    "note": "Phase 6 Group B, shipped 2026-09-28. Verified: 19 permissions, superadmin 0 rows + can() true, admin 19, user 0, db:seed x2 idempotent, full suite 420 passed. Six deviations from the spec recorded in docs/planning/phase-6-rbac.md §Group B — two fixed real bugs (seeder only ever added, so a permission removed from the catalogue stayed forever; SuperAdminSeeder never assigned its role, which Gate::before turned into a total lockout). audit.* and features.* deliberately not seeded — no feature behind them (Phase 10 / Phase 7)."
   },
   {
     "id": "FEAT-001",
