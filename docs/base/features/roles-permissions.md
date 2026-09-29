@@ -1,5 +1,14 @@
 # Roles & Permissions
 
+> **Status: 🟡 IN PROGRESS (Phase 6).** Implemented: Group A (UI), Group B
+> (permission catalogue + seeders + `Gate::before`), Group C1 (role management
+> web — CRUD, soft delete with revocation, trash tab, restore, permanent delete,
+> bulk actions). Not yet implemented: C3 (role assignment sync, the brief's core
+> case), C4 (ungated `authorize()` returns — including
+> `BulkRoleRequest::authorize()` which currently returns `true`), D (route /
+> menu / button `can:` gates), E (API surface). Gate C is **not** met.
+> See `docs/planning/phase-6-rbac.md` § C1 audit notes and `docs/planning/progress.md`.
+
 ## Strategy
 
 Use a mature package such as Spatie Permission rather than implementing RBAC from scratch.

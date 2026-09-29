@@ -30,7 +30,11 @@
 Phase 6 — RBAC & Authorization: 🟡 IN PROGRESS
 - Group A (UI): ✅ DONE (2026-09-28, audited)
 - Group B (permission set + seeders): ✅ DONE (2026-09-28, verified)
-- Group C (controllers, actions, form requests): PLANNED — next
+- Group C1 (role management, web): ✅ DONE (2026-09-29, audited) — P6-C1..C6
+- Group C2 (permission catalogue, read-only): ✅ DONE (P6-C7/C8 shipped with Group A)
+- Group C3 (role assignment sync): ⬜ NOT STARTED
+- Group C4 (ungated `authorize()` returns): 🟡 PARTIAL — see below
+- Group C5 (phase report / QA evidence): ⬜ NOT STARTED
 
 **Group B delivered:**
 - `App\Support\PermissionCatalog` — 19 permissions, the single source of truth
@@ -45,16 +49,58 @@ including two that fixed real bugs: the seeder only ever added (a permission
 removed from the catalogue stayed in the DB forever) and `SuperAdminSeeder`
 never assigned its role.
 
-**Open (tracked, not forgotten):** the four Group A GET routes still carry no
-`can:` gate. **The blocker is gone** — P6-B1 seeded the permissions, so P6-D1 can
-now gate `/roles` and `/permissions` without denying everyone. Until it does,
-any authenticated user can reach them. The role forms post to `roles.index` and
-the delete trigger points at `roles.index` until P6-C5/C6. RBAC-006
-(`/users` + `/settings` ungated) is also still open.
+**Group C1 delivered (2026-09-29, audited against `phase-6-rbac.md` § C1):**
+- `StoreRoleRequest` / `UpdateRoleRequest` / `DeleteRoleRequest` /
+  `RestoreRoleRequest` / `ForceDeleteRoleRequest` — every one carries a real
+  `authorize()` checking `roles.create` / `roles.update` / `roles.delete` /
+  `roles.restore` / `roles.force_delete`. Unique rules are guard-scoped via
+  `RoleLookup::guard()`.
+- `IndexRoleAction` — guard-scoped, `withCount`, `search` before
+  `paginate(10)`, `withQueryString`, and a `trashed` flag that scopes the whole
+  query to the trash rather than filtering rows.
+- `CreateRoleAction` / `UpdateRoleAction` — the spec named one `SaveRoleAction`;
+  implemented as two verbs sharing an `App\Actions\Concerns\PersistsRole` trait,
+  which holds the `DB::transaction`, the `array_map('intval', …)` before
+  `syncPermissions` (Spatie resolves a string `'19'` as a permission *named* "19"
+  and throws), and the audit write **inside** the transaction per DEP-003. Split
+  the verbs to match `CreateUserAction` / `UpdateUserAction` on the user side.
+- `DeleteRoleAction` — refuses system roles, refuses a populated role unless
+  `force`, then in ONE transaction: `users()->detach()` → soft delete → audit
+  carrying `revoked_users` / `revoked_permissions`. `RestoreRoleAction` and
+  `ForceDeleteRoleAction` own the other two verbs. The detach is explicit
+  because Spatie's `deleting` hook skips it on a non-force delete, so relying on
+  the package would revoke nothing.
+- `RoleController` — thin, 10 methods, resolves route data and delegates.
 
-**Next:** Group C — role actions (`CreateRoleAction`, `UpdateRoleAction`,
-`DeleteRoleAction`), form requests with system-role protection, and permission
-id casting before `syncPermissions`.
+**Beyond the C1 spec (shipped, and now documented):**
+- Soft delete + trash tab, restore, and permanent delete for roles. Not in the
+  C1 table — added for the enterprise/SaaS retirement requirement.
+- Bulk actions on the roles index (`POST /roles/bulk-action`), reusing
+  `BulkActionProcessor` + a `RoleBulkActionHandler`, and the shared
+  `bulk-actions.js` parameterised via `data-*` so users and roles share one file.
+- A refused action is now **visible**: `layouts/partials/alerts.blade.php` is
+  included by both index views. Previously a `ValidationException` from a
+  button-driven action landed in the session with nothing rendering it, and the
+  browser returned to a byte-identical page.
+
+**🔴 OPEN — `BulkRoleRequest::authorize()` returns `true` (regression, found by
+this audit, not yet fixed).** P6-C17 requires the bulk request to map each action
+to its permission; the role bulk request shipped with a blanket `true`, the same
+defect the plan flags for `BulkUserRequest`. Measured, not assumed — a user
+holding only the `user` role posted `action=delete` with a role id and got
+`302` with the role **confirmed soft-deleted**, while the single-row
+`DELETE /roles/{id}` correctly refused. Every single-row role write is gated; the
+bulk one is not. Fix is one `match` on the requested action, mirroring C17.
+
+**Open (tracked, not forgotten):** the Group A GET routes still carry no
+`can:` gate, which is P6-D1 by design. The role forms and delete trigger no
+longer point at `roles.index` as placeholders — Group C1 gave them real
+endpoints. RBAC-006 (`/users` + `/settings` ungated) is also still open.
+
+**Next:** Group C3 — role assignment sync (`AssignRolesAction`,
+`LastSuperadminException`, `AssignRolesRequest`) — which is the brief's core
+case, then C4 to close the ungated `authorize()` returns including the role bulk
+request above.
 
 Phase 5C — Password Expiration & Inactivity Lock: ✅ FULLY DONE
 - Shared Web/API settings action

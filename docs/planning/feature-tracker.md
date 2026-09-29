@@ -27,8 +27,8 @@ Auto-generated from codebase scan. Not committed.
 | 19 | Profile view/edit | ✅ | ✅ | own | — | done |
 | 20 | System settings | ✅ | ✅ | admin | features/settings.md | done |
 | 21 | Registration (configurable) | ✅ | — | public | features/registration.md | done |
-| 22 | RBAC roles & permissions (Spatie) | 🟡 | — | — | features/roles-permissions.md | phase 6 in progress — Groups A (UI) + B (permission set, seeders, superadmin bypass) done; actions, route gates, system-role protection pending |
-| 23 | Superadmin protection | — | — | — | features/roles-permissions.md | done |
+| 22 | RBAC roles & permissions (Spatie) | 🟡 | — | — | features/roles-permissions.md | phase 6 in progress — Groups A (UI), B (permission set, seeders, superadmin bypass) and C1 (role management web: CRUD, soft delete, trash, bulk) done; C3 role-assignment sync, C4 ungated `authorize()` returns, and D1 route gates pending |
+| 23 | Superadmin protection | 🟡 | — | — | features/roles-permissions.md | `Gate::before` + seeder role + system-role delete/rename refusals done; last-superadmin guard pending (P6-C11/E1) |
 | 24 | Feature flags (DB-backed) | — | — | — | features/feature-flags.md | done |
 | 25 | Audit trail (Spatie activitylog) | — | — | — | features/audit-trail.md | done |
 | 26 | Notifications (email + DB) | — | — | — | features/notifications.md | done |

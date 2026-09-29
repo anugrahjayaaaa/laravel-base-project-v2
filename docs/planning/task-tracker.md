@@ -105,10 +105,10 @@ observers for audit. See `docs/base/architecture/application-components.md` §Ac
 | ID | Task | Phase | Priority | Depends On | Status |
 |----|------|-------|----------|-----------|--------|
 | RBAC-001 | Seed roles (superadmin, admin, user) | 6 | P0 | DB-002 | DONE |
-| RBAC-002 | Implement role management | 6 | P0 | RBAC-001 | IN PROGRESS — UI only (P6-A1..A5, A7); actions at Group C |
+| RBAC-002 | Implement role management | 6 | P0 | RBAC-001 | IN PROGRESS — C1 done (P6-C1..C6 + soft delete + bulk); C3 assignment sync next; `can:` gates at D1 |
 | RBAC-003 | Implement permission management | 6 | P0 | RBAC-001 | IN PROGRESS — read-only catalogue (P6-A6); seeding at Group B |
 | RBAC-004 | Define permission set | 6 | P0 | P0-004 | DONE — `PermissionCatalog` (19), `PermissionSeeder` |
-| RBAC-005 | Superadmin + system-role protection | 6 | P0 | RBAC-001 | IN PROGRESS — `Gate::before` + `SuperAdminSeeder` role done; delete/rename refusal at C6/E1 |
+| RBAC-005 | Superadmin + system-role protection | 6 | P0 | RBAC-001 | IN PROGRESS — `Gate::before`, seeder role, and the C6 delete/rename refusals are all DONE; last-superadmin guard at C11/E1 |
 | RBAC-006 | Gate /users and /settings behind permissions | 6 | P0 | RBAC-004 | PLANNED — Groups C14–C18, D1, D2, E9. **Open escalation path.** |
 | P6-A1 | Roles index view | 6 | P0 | — | DONE |
 | P6-A2 | Roles index actions column | 6 | P0 | P6-A1 | DONE |
@@ -539,7 +539,7 @@ a permission that does not exist yet denies everyone, superadmin included.
       "RBAC-001"
     ],
     "status": "IN PROGRESS",
-    "note": "2026-09-28: Phase 6 Group A shipped the UI. Roles index/create/edit and the read-only permissions catalogue render and are gated by RbacUiRenderTest (14 tests, 49 assertions). No save/delete path and no can: gate yet — actions land in Group C, gates in Group D."
+    "note": "2026-09-29: Group C1 (P6-C1..C6) shipped and audited. Full role CRUD with guard-scoped unique rules, real authorize() per request, PersistsRole trait (transaction + intval + in-transaction audit), soft delete with revocation, trash tab, restore, permanent delete, and bulk actions. Every single-row write is permission-gated. STILL OPEN: no can: route gates (P6-D1) and BulkRoleRequest::authorize() returns true, so a user with no roles.* permission can bulk-trash a role (measured, tracked with C4). Gate C is not met until C3 role-assignment sync lands."
   },
   {
     "id": "RBAC-003",
@@ -550,7 +550,7 @@ a permission that does not exist yet denies everyone, superadmin included.
       "RBAC-001"
     ],
     "status": "IN PROGRESS",
-    "note": "2026-09-28: Phase 6 Group A shipped the UI. Roles index/create/edit and the read-only permissions catalogue render and are gated by RbacUiRenderTest (14 tests, 49 assertions). No save/delete path and no can: gate yet — actions land in Group C, gates in Group D."
+    "note": "2026-09-29: Group C1 (P6-C1..C6) shipped and audited. Full role CRUD with guard-scoped unique rules, real authorize() per request, PersistsRole trait (transaction + intval + in-transaction audit), soft delete with revocation, trash tab, restore, permanent delete, and bulk actions. Every single-row write is permission-gated. STILL OPEN: no can: route gates (P6-D1) and BulkRoleRequest::authorize() returns true, so a user with no roles.* permission can bulk-trash a role (measured, tracked with C4). Gate C is not met until C3 role-assignment sync lands."
   },
   {
     "id": "RBAC-004",
