@@ -25,7 +25,14 @@ Updated: 2026-09-27
 | VIEW-008 | Three imports were left dead by the no-FQCN refactor, and one body still called `\Log::` | Imports removed, `\Log::` → `Log::` | RESOLVED |
 | VIEW-009 | The sessions table's IP column never showed an IP — `personal_access_tokens` records none | The cell says so instead of printing `Never` under an address heading | RESOLVED |
 | VIEW-010 | 10 `components/ui/*` Blade components (211 lines) are never invoked — `grep '<x-'` returns nothing | `confirm-action` adopted: all 9 triggers across users/index, users/edit, sessions. The other 7 are still unused | OPEN |
+| P6C1-001 | A `ValidationException` from a button-driven action was never rendered — the error bag had the message and no view printed it, so the browser returned to a byte-identical page | `layouts/partials/alerts.blade.php` included by both index views (not the layout, so form pages do not double-print). `ActionErrorVisibilityTest` | RESOLVED |
+| P6C1-002 | `DeleteRoleAction` refused a populated role but no UI path could ever pass `force`, so clicking Delete on a held role did nothing | Web `destroy` and the bulk bar now force — the confirm modal is the deliberate override. The action guard still protects API/console | RESOLVED |
+| P6C1-003 | The roles trash tab rendered differently from the live tab: `table-secondary` (an unthemed Bootstrap class, the only use in the app) painted a fixed light `#e2e3e5` on the dark surface, and the trashed badge used the subtle component where users uses a solid one | Both now use the users-index markup byte for byte. `the_trashed_row_treatment_matches_the_users_index` compares the two views rather than restating the class | RESOLVED |
+| P6C1-004 | Spatie's `deleting` hook skips `detach()` on a soft delete, so trashing a role would revoke nothing and a restore would silently re-grant | `DeleteRoleAction` detaches explicitly inside its transaction; pinned by `test_trashing_a_role_revokes_it_from_every_user_holding_it` | RESOLVED |
+| **P6C1-005** | **`BulkRoleRequest::authorize()` returns `true`** — a user holding only the `user` role can bulk-trash a role (measured: 302, role confirmed soft-deleted) while the single-row delete correctly refuses. P6-C17's pattern, arrived with C1's bulk work | **Not fixed.** Needs a `match` on the requested action → `roles.delete` / `roles.restore` / `roles.force_delete`. Blocks Gate C | **OPEN** |
 
 ## Verification
 
-See [Phase 5C QA report](./phase-reports/phase-5C-password-and-security-lifecycle.md).
+Evidence for each finding is recorded in the tracker row and in
+`docs/planning/phase-6-rbac.md` § C1 audit notes. Full-suite runs are quoted in
+`docs/planning/progress.md`.
