@@ -68,7 +68,8 @@
                         <li class="nav-item">
                             <a class="nav-link {{ $trashed ? 'text-secondary fw-medium' : 'active fw-semibold border-bottom border-primary border-2' }} px-3 py-2 d-flex align-items-center gap-2 border-0 bg-transparent"
                                 href="{{ $tabUrl(false) }}">
-                                All Roles
+                                All Roles <span
+                                    class="badge rounded-pill {{ $trashed ? 'bg-secondary-subtle text-secondary' : 'bg-primary text-white' }}">{{ $liveCount }}</span>
                             </a>
                         </li>
                         <li class="nav-item">
@@ -131,7 +132,7 @@
                     </thead>
                     <tbody>
                         @forelse ($roles as $role)
-                            <tr @if ($role->trashed()) class="table-secondary" @endif>
+                            <tr @if ($role->trashed()) style="background-color: color-mix(in srgb, var(--lbp-danger, #ef4444) 8%, transparent); " @endif>
                                 <td>{{ ($roles->currentPage() - 1) * $roles->perPage() + $loop->iteration }}</td>
                                 <td>
                                     {{ $role->name }}
@@ -142,7 +143,7 @@
                                         <x-ui.badge variant="info" text="System" />
                                     @endif
                                     @if ($role->trashed())
-                                        <x-ui.badge variant="danger" text="Trashed" />
+                                        <span class="badge bg-danger text-white ms-1">TRASHED</span>
                                     @endif
                                 </td>
                                 <td>{{ $role->users_count ?? 0 }}</td>

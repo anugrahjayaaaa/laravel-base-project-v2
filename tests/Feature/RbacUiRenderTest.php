@@ -151,7 +151,7 @@ class RbacUiRenderTest extends TestCase
     public static function views(): array
     {
         return [
-            'roles index' => ['pages.roles.index', ['roles' => 'paginator', 'search' => '', 'trashed' => 'bool', 'trashedCount' => 'int', 'currentSort' => 'name', 'currentDirection' => 'asc']],
+            'roles index' => ['pages.roles.index', ['roles' => 'paginator', 'search' => '', 'trashed' => 'bool', 'trashedCount' => 'int', 'liveCount' => 'int', 'currentSort' => 'name', 'currentDirection' => 'asc']],
             'roles create' => ['pages.roles.create', ['permissions' => 'permissions', 'permissionGroups' => 'grouped']],
             'permissions index' => ['pages.permissions.index', ['permissions' => 'paginator', 'totalPermissions' => 'int', 'totalResources' => 'int', 'totalRoles' => 'int', 'unusedPermissions' => 'int', 'search' => '', 'currentSort' => 'name', 'currentDirection' => 'asc']],
         ];
@@ -169,6 +169,7 @@ class RbacUiRenderTest extends TestCase
             'search' => '',
             'trashed' => false,
             'trashedCount' => 0,
+            'liveCount' => 0,
             'currentSort' => 'name',
             'currentDirection' => 'asc',
             'permissionGroups' => $this->grouped($permissions),
@@ -210,6 +211,7 @@ class RbacUiRenderTest extends TestCase
                 'search' => '',
                 'trashed' => false,
                 'trashedCount' => 0,
+                'liveCount' => 0,
                 'currentSort' => 'name',
                 'currentDirection' => 'asc',
             ]),
@@ -242,6 +244,7 @@ class RbacUiRenderTest extends TestCase
             'search' => '',
             'trashed' => false,
             'trashedCount' => 0,
+            'liveCount' => 0,
             'currentSort' => 'name',
             'currentDirection' => 'asc',
         ]);
@@ -260,6 +263,7 @@ class RbacUiRenderTest extends TestCase
             'search' => '',
             'trashed' => false,
             'trashedCount' => 0,
+            'liveCount' => 0,
             'currentSort' => 'name',
             'currentDirection' => 'asc',
         ]);
@@ -281,6 +285,7 @@ class RbacUiRenderTest extends TestCase
             'search' => '',
             'trashed' => true,
             'trashedCount' => 1,
+            'liveCount' => 0,
             'currentSort' => 'name',
             'currentDirection' => 'asc',
         ]);
@@ -461,6 +466,48 @@ class RbacUiRenderTest extends TestCase
         $this->assertDoesNotMatchRegularExpression('/action="[^"]*\/(roles|permissions)/', $html);
     }
 
+    /**
+     * The trashed-row treatment on the roles index must be the SAME markup the
+     * users index uses.
+     *
+     * This is a comparison, not a restatement of the class: a test that asserts
+     * "roles uses color-mix" passes just as happily when users drifts to
+     * something else, which is how the two lists ended up looking different in
+     * the first place. `table-secondary` was the concrete failure — a Bootstrap
+     * class defined nowhere in public/vendor/theme.css, so it painted a fixed
+     * light #e2e3e5 on the dark surface and read as a broken row.
+     */
+    #[Test]
+    public function the_trashed_row_treatment_matches_the_users_index(): void
+    {
+        $rolesView = file_get_contents(resource_path('views/pages/roles/index.blade.php'));
+        $usersView = file_get_contents(resource_path('views/pages/users/index.blade.php'));
+
+        preg_match('/<tr[^>]*\$role->trashed\(\)[^>]*>/', $rolesView, $roleRow);
+        preg_match('/<tr\s*\n?\s*@if \(\$user->trashed\(\)\)[^>]*>/', $usersView, $userRow);
+
+        $this->assertNotEmpty($roleRow, 'no trashed-row <tr> found in the roles view');
+        $this->assertNotEmpty($userRow, 'no trashed-row <tr> found in the users view');
+
+        // Same style attribute, byte for byte, whitespace included.
+        preg_match('/style="[^"]*"/', $roleRow[0], $roleStyle);
+        preg_match('/style="[^"]*"/', $userRow[0], $userStyle);
+
+        $this->assertSame(
+            $userStyle[0] ?? null,
+            $roleStyle[0] ?? null,
+            'the trashed-row tint differs between the roles and users indexes'
+        );
+
+        // And the unthemed Bootstrap class must not come back. Scoped to the
+        // markup, not the whole file: this test's own docblock names the class.
+        $this->assertStringNotContainsString(
+            'class="table-secondary"',
+            preg_replace('/\{\{--.*?--\}\}/s', '', $rolesView),
+            'the trashed row is back to an unthemed Bootstrap class'
+        );
+    }
+
     #[Test]
     public function the_index_offers_a_filter_and_a_create_button(): void
     {
@@ -471,6 +518,7 @@ class RbacUiRenderTest extends TestCase
             'search' => '',
             'trashed' => false,
             'trashedCount' => 0,
+            'liveCount' => 0,
             'currentSort' => 'name',
             'currentDirection' => 'asc',
         ]);
@@ -557,6 +605,7 @@ class RbacUiRenderTest extends TestCase
             'search' => '',
             'trashed' => false,
             'trashedCount' => 0,
+            'liveCount' => 0,
             'currentSort' => 'name',
             'currentDirection' => 'asc',
         ]);

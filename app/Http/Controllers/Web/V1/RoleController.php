@@ -69,6 +69,10 @@ class RoleController extends Controller
             'search' => (string) $request->input('search', ''),
             'trashed' => $trashed,
             'trashedCount' => Role::onlyTrashed()->count(),
+            // The All Roles pill carries a count too, so both pills have the same
+            // shape — a bare label beside a badged one reads as a different
+            // component. Same reason users/index badges every tab.
+            'liveCount' => Role::query()->count(),
             // Echoed back unresolved: the view only needs them to mark the active
             // sortable column, and re-deriving the whitelist here would give the
             // header a second place to disagree with the query.
