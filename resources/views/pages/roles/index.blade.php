@@ -62,10 +62,9 @@
                             <x-ui.sortable-th field="#" label="#" :sortable="false" />
                             <x-ui.sortable-th field="name" label="Name" :current-sort="$currentSort"
                                 :current-direction="$currentDirection" />
-                            <x-ui.sortable-th field="users_count" label="Users" :current-sort="$currentSort"
-                                :current-direction="$currentDirection" />
+                            <x-ui.sortable-th field="users_count" label="Users" :sortable="false" />
                             <x-ui.sortable-th field="permissions_count" label="Permissions"
-                                :current-sort="$currentSort" :current-direction="$currentDirection" />
+                                :sortable="false" />
                             <th class="align-middle text-end">Actions</th>
                         </tr>
                     </thead>
@@ -92,9 +91,11 @@
                                             <i class="fas fa-pen"></i>
                                         </a>
                                         @unless ($role->is_system)
-                                            <x-ui.confirm-action :action="$role->destroy_url" method="DELETE"
-                                                action-type="delete_role" :item-name="$role->name" label="Delete"
-                                                title="Delete" class="btn btn-sm btn-outline-danger">
+                                            <x-ui.confirm-action :action="route('roles.index')"
+                                                method="DELETE" action-type="delete_role"
+                                                :item-name="$role->name" label="Delete"
+                                                title="Delete"
+                                                class="btn btn-sm btn-outline-danger">
                                                 <i class="fas fa-trash"></i>
                                             </x-ui.confirm-action>
                                         @endunless

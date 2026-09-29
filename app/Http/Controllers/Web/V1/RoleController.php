@@ -3,12 +3,11 @@
 namespace App\Http\Controllers\Web\V1;
 
 use App\Http\Controllers\Controller;
+use App\Models\Role;
 use App\Models\RoleLookup;
-use App\Support\SystemRole;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\Request;
 use Spatie\Permission\Models\Permission;
-use Spatie\Permission\Models\Role;
 
 /**
  * Role management pages (Phase 6, Group A).
@@ -29,7 +28,7 @@ class RoleController extends Controller
      *
      * @var array<int, string>
      */
-    private const SORTABLE = ['name', 'users_count', 'permissions_count', 'created_at'];
+    private const SORTABLE = ['name', 'created_at'];
 
     /**
      * List roles with their user and permission counts.
@@ -52,11 +51,6 @@ class RoleController extends Controller
         }
 
         $roles = $query->orderBy($sort, $direction)->paginate(10)->withQueryString();
-
-        $roles->getCollection()->each(function (Role $role): void {
-            $role->is_system = SystemRole::isSystem($role->name);
-            $role->destroy_url = route('roles.index');
-        });
 
         return view('pages.roles.index', [
             'title' => 'Roles',
@@ -88,7 +82,6 @@ class RoleController extends Controller
     {
         $role->load('permissions');
         $role->loadCount('users');
-        $role->is_system = SystemRole::isSystem($role->name);
 
         [$permissions, $permissionGroups] = $this->permissionData();
 

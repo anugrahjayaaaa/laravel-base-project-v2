@@ -2,8 +2,8 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Collection;
 use Spatie\Permission\Guard;
-use Spatie\Permission\Models\Role;
 
 /**
  * Reads roles for the guard Spatie actually resolves for a User.
@@ -37,9 +37,9 @@ class RoleLookup
     /**
      * Every role the app can actually assign, ordered for a picker.
      *
-     * @return \Illuminate\Database\Eloquent\Collection<int, \Spatie\Permission\Models\Role>
+     * @return Collection<int, \Spatie\Permission\Models\Role>
      */
-    public static function assignable(): \Illuminate\Database\Eloquent\Collection
+    public static function assignable(): Collection
     {
         return Role::query()
             ->where('guard_name', static::guard())

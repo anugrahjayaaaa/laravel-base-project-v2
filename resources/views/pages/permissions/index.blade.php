@@ -90,7 +90,7 @@
                                     :current-direction="$currentDirection" />
                                 <th class="align-middle">Resource</th>
                                 <x-ui.sortable-th field="roles_count" label="Assigned Roles"
-                                    :current-sort="$currentSort" :current-direction="$currentDirection" />
+                                :sortable="false" />
                             </tr>
                         </thead>
                         <tbody>

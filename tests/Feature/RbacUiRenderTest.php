@@ -35,8 +35,9 @@ class RbacUiRenderTest extends TestCase
     }
 
     /**
-     * A role as the views see it: the controller decorates is_system and the
-     * counts, so a hand-built fixture has to carry the same shape.
+     * A role as the views see it: the `is_system` attribute is computed by
+     * the Role model's accessor (App\Models\Role), or set explicitly here
+     * for fixture objects that use the base Spatie class.
      */
     private function login(): self
     {
@@ -64,7 +65,6 @@ class RbacUiRenderTest extends TestCase
         $role->is_system = $isSystem;
         $role->permissions_count = $permissions;
         $role->users_count = $users;
-        $role->destroy_url = route('roles.index');
         $role->setRelation('permissions', new Collection());
 
         return $role;
@@ -440,10 +440,10 @@ class RbacUiRenderTest extends TestCase
             'currentDirection' => 'asc',
         ]);
 
-        // Name, Users, Permissions are sortable; # and Actions are not.
+        // Name is sortable; #, Users, Permissions and Actions are not.
         $this->assertStringContainsString('sort=name', $html);
-        $this->assertStringContainsString('sort=users_count', $html);
-        $this->assertStringContainsString('sort=permissions_count', $html);
+        $this->assertStringNotContainsString('sort=users_count', $html);
+        $this->assertStringNotContainsString('sort=permissions_count', $html);
         $this->assertStringNotContainsString('sort=actions', $html);
 
         // The value reaches orderBy, so an unknown column must fall back to the
@@ -457,38 +457,15 @@ class RbacUiRenderTest extends TestCase
     }
 
     #[Test]
-    public function sorting_by_a_count_column_orders_the_page(): void
-    {
-        $this->login();
-
-        $richer = Role::create(['name' => 'aaa', 'guard_name' => RoleLookup::guard()]);
-        Role::create(['name' => 'zzz', 'guard_name' => RoleLookup::guard()]);
-        $richer->givePermissionTo(
-            Permission::create(['name' => 'users.view', 'guard_name' => RoleLookup::guard()])
-        );
-
-        $html = $this->get(route('roles.index', ['sort' => 'permissions_count', 'direction' => 'desc']))
-            ->assertOk()
-            ->getContent();
-
-        $this->assertLessThan(
-            strpos($html, 'zzz'),
-            strpos($html, 'aaa'),
-            'descending permission count did not put the richer role first'
-        );
-    }
-
-
-    #[Test]
     public function sorting_preserves_the_active_filter_over_http(): void
     {
         $this->login();
 
-        $html = $this->get(route('roles.index', ['search' => 'adm', 'sort' => 'users_count', 'direction' => 'desc']))
+        $html = $this->get(route('roles.index', ['search' => 'adm', 'sort' => 'name', 'direction' => 'desc']))
             ->assertOk()
             ->getContent();
 
-        $this->assertMatchesRegularExpression('/href="\?[^"]*search=adm[^"]*sort=users_count/', $html);
+        $this->assertMatchesRegularExpression('/href="\?[^"]*search=adm[^"]*sort=name/', $html);
         $this->assertStringContainsString('value="adm"', $html);
     }
 
