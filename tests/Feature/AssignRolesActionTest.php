@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Actions\V1\Role\AssignRolesAction;
 use App\Exceptions\LastSuperadminException;
+use App\Models\RoleLookup;
 use App\Models\User;
 use App\Support\SystemRole;
 use Database\Seeders\PermissionSeeder;
@@ -40,7 +41,7 @@ class AssignRolesActionTest extends TestCase
     {
         $user = $this->user();
 
-        $this->action->run($user, [SystemRole::ADMIN]);
+        $this->action->run($user, [SystemRole::ADMIN], $this->causer());
 
         $this->assertTrue($user->fresh()->hasRole(SystemRole::ADMIN));
     }
@@ -49,7 +50,7 @@ class AssignRolesActionTest extends TestCase
     {
         $user = $this->user();
 
-        $this->action->run($user, [SystemRole::ADMIN, 'does-not-exist']);
+        $this->action->run($user, [SystemRole::ADMIN, 'does-not-exist'], $this->causer());
 
         // The known one is applied; the unknown one is simply absent.
         $this->assertSame([SystemRole::ADMIN], $user->fresh()->getRoleNames()->all());
@@ -60,7 +61,7 @@ class AssignRolesActionTest extends TestCase
         $user = $this->user();
         $user->assignRole(SystemRole::ADMIN);
 
-        $this->action->run($user, []);
+        $this->action->run($user, [], $this->causer());
 
         $this->assertCount(0, $user->fresh()->getRoleNames());
     }
@@ -72,7 +73,7 @@ class AssignRolesActionTest extends TestCase
 
         $this->expectException(LastSuperadminException::class);
 
-        $this->action->run($superadmin, [SystemRole::USER]);
+        $this->action->run($superadmin, [SystemRole::USER], $superadmin);
     }
 
     public function test_the_refusal_leaves_the_superadmin_in_place(): void
@@ -81,7 +82,7 @@ class AssignRolesActionTest extends TestCase
         $superadmin->assignRole(SystemRole::SUPERADMIN);
 
         try {
-            $this->action->run($superadmin, [SystemRole::USER]);
+            $this->action->run($superadmin, [SystemRole::USER], $superadmin);
         } catch (LastSuperadminException) {
             // Expected. The point of this test is what is left behind.
         }
@@ -97,7 +98,7 @@ class AssignRolesActionTest extends TestCase
         $second = $this->user();
         $second->assignRole(SystemRole::SUPERADMIN);
 
-        $this->action->run($second, [SystemRole::ADMIN]);
+        $this->action->run($second, [SystemRole::ADMIN], $this->causer());
 
         $this->assertTrue($first->fresh()->hasRole(SystemRole::SUPERADMIN));
         $this->assertFalse($second->fresh()->hasRole(SystemRole::SUPERADMIN));
@@ -112,7 +113,7 @@ class AssignRolesActionTest extends TestCase
         $superadmin->assignRole(SystemRole::SUPERADMIN);
 
         // The only superadmin is elsewhere; this user's roles are not the subject.
-        $this->action->run($user, [SystemRole::ADMIN]);
+        $this->action->run($user, [SystemRole::ADMIN], $this->causer());
 
         $this->assertTrue($user->fresh()->hasRole(SystemRole::ADMIN));
     }
@@ -122,7 +123,7 @@ class AssignRolesActionTest extends TestCase
         $user = $this->user();
         $user->assignRole(SystemRole::USER);
 
-        $this->action->run($user, [SystemRole::ADMIN]);
+        $this->action->run($user, [SystemRole::ADMIN], $this->causer());
 
         $activity = Activity::query()
             ->where('event', 'user.roles_assigned')
@@ -138,5 +139,21 @@ class AssignRolesActionTest extends TestCase
     private function user(): User
     {
         return User::factory()->create();
+    }
+
+    /**
+     * A causer holding users.assign_roles and the superadmin role.
+     *
+     * AssignRolesAction owns the authorization for both C9 and C10, so these
+     * tests bring a causer that passes it — they are about the sync mechanics
+     * and the last-superadmin guard, not about who may assign. The refusal cases
+     * are SuperadminVisibilityTest and GateCAuthorizationTest.
+     */
+    private function causer(): User
+    {
+        $causer = User::factory()->create();
+        $causer->assignRole(RoleLookup::find(SystemRole::SUPERADMIN));
+
+        return $causer;
     }
 }

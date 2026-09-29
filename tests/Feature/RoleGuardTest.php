@@ -108,6 +108,8 @@ class RoleGuardTest extends TestCase
         $offered = RoleLookup::assignable()->pluck('name');
 
         $this->assertSame($offered->unique()->values()->all(), $offered->values()->all());
+        // assignable() is guard-scoped only — it does not filter by viewer, so
+        // superadmin is still here. Visibility is visibleTo()'s job.
         $this->assertSame(['admin', 'superadmin', 'user'], $offered->all());
     }
 
@@ -176,7 +178,9 @@ class RoleGuardTest extends TestCase
         $view = app(SystemSettingController::class)->index();
         $roles = $view->getData()['roles'];
 
-        $this->assertSame(['admin', 'superadmin', 'user'], array_values($roles->all()));
+        // The viewer here is not a superadmin, so `superadmin` is not offered.
+        // The point of the test is that each name appears ONCE, not which names.
+        $this->assertSame(['admin', 'user'], array_values($roles->all()));
     }
 
     public function test_the_user_forms_offer_each_role_name_once(): void
@@ -200,7 +204,9 @@ class RoleGuardTest extends TestCase
             );
             $page->assertOk();
 
-            foreach (RoleLookup::assignable()->pluck('name') as $name) {
+            // visibleTo(), because that is what the picker is fed: this viewer is
+            // not a superadmin, so superadmin is not one of the offered names.
+            foreach (RoleLookup::visibleTo($admin)->pluck('name') as $name) {
                 $page->assertSee($name);
             }
         }

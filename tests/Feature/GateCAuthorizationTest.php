@@ -50,7 +50,7 @@ class GateCAuthorizationTest extends TestCase
      */
     public function test_a_user_with_no_permissions_gets_403_on_every_admin_read_route(): void
     {
-        foreach (['roles.index', 'permissions.index'] as $route) {
+        foreach (['users.index', 'roles.index', 'permissions.index', 'settings.index'] as $route) {
             $this->get(route($route))->assertForbidden();
         }
     }

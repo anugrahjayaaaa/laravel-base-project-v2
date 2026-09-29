@@ -88,7 +88,9 @@ class RoleBulkActionTest extends TestCase
         $html = $this->get(route('roles.index'))->assertOk()->getContent();
 
         // The seeded system roles are on this page and none is checkable.
-        foreach (['superadmin', 'admin', 'user'] as $system) {
+        // `superadmin` is absent from the list entirely for a non-superadmin
+        // viewer, so it is not asserted here — SuperadminVisibilityTest covers it.
+        foreach (['admin', 'user'] as $system) {
             $this->assertMatchesRegularExpression(
                 '/'.preg_quote($system, '/').'.*?(?!.*bulk-check)/s',
                 $html,
