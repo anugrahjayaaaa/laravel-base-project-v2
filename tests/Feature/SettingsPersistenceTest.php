@@ -19,10 +19,16 @@ class SettingsPersistenceTest extends TestCase
 {
     use RefreshDatabase;
 
+    // Note: the request is instantiated with `new`, not resolved from the
+    // container. FormRequest registers a resolving hook that runs
+    // validateResolved() -> authorize(), so `app(...)` would demand
+    // settings.manage (P6-C16) from a test that only wants the rule list. The
+    // gate itself is covered by GateCAuthorizationTest.
+
     public function test_every_validated_setting_is_actually_persisted(): void
     {
         $action = app(UpdateSystemSettingsAction::class);
-        $validated = array_keys(app(SystemSettingRequest::class)->rules());
+        $validated = array_keys((new SystemSettingRequest())->rules());
 
         // Every key at once, because a few are written conditionally — the
         // action only stores inactivity_lock_grace_days when the grace toggle

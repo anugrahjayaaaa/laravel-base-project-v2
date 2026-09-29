@@ -33,6 +33,8 @@ class RbacUiRenderTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        $this->seed(\Database\Seeders\RoleSeeder::class);
+        $this->seed(\Database\Seeders\PermissionSeeder::class);
         $this->app->make(\Spatie\Permission\PermissionRegistrar::class)->forgetCachedPermissions();
     }
 
@@ -43,7 +45,12 @@ class RbacUiRenderTest extends TestCase
      */
     private function login(): self
     {
-        $this->actingAs(User::factory()->create(['email_verified_at' => now()]));
+        // Admin role: every index route is permission-gated (P6-D1), so a bare
+        // factory user would 403 each of these render checks.
+        $user = User::factory()->create(['email_verified_at' => now()]);
+        $user->assignRole(\App\Models\RoleLookup::find('admin'));
+
+        $this->actingAs($user);
 
         return $this;
     }
@@ -337,11 +344,10 @@ class RbacUiRenderTest extends TestCase
     #[Test]
     public function the_permission_catalogue_searches(): void
     {
-        $this->seed(\Database\Seeders\RoleSeeder::class);
-        $this->seed(\Database\Seeders\PermissionSeeder::class);
         // superadmin, not a plain user: once P6-D1 gates this route, a user with
         // zero permissions gets a 403 and the test stops being about search.
         $user = User::factory()->create(['email_verified_at' => now()]);
+        $user->assignRole(\App\Models\RoleLookup::find('admin'));
         $user->assignRole(\App\Support\SystemRole::SUPERADMIN);
         $this->actingAs($user);
 
@@ -371,9 +377,8 @@ class RbacUiRenderTest extends TestCase
     #[Test]
     public function the_permission_catalogue_paginates(): void
     {
-        $this->seed(\Database\Seeders\RoleSeeder::class);
-        $this->seed(\Database\Seeders\PermissionSeeder::class);
         $user = User::factory()->create(['email_verified_at' => now()]);
+        $user->assignRole(\App\Models\RoleLookup::find('admin'));
         $user->assignRole(\App\Support\SystemRole::SUPERADMIN);
         $this->actingAs($user);
 
@@ -415,9 +420,8 @@ class RbacUiRenderTest extends TestCase
     #[Test]
     public function the_permission_catalogue_sorts(): void
     {
-        $this->seed(\Database\Seeders\RoleSeeder::class);
-        $this->seed(\Database\Seeders\PermissionSeeder::class);
         $user = User::factory()->create(['email_verified_at' => now()]);
+        $user->assignRole(\App\Models\RoleLookup::find('admin'));
         $user->assignRole(\App\Support\SystemRole::SUPERADMIN);
         $this->actingAs($user);
 
@@ -539,9 +543,8 @@ class RbacUiRenderTest extends TestCase
     #[Test]
     public function the_role_index_header_matches_the_user_index_header(): void
     {
-        $this->seed(\Database\Seeders\RoleSeeder::class);
-        $this->seed(\Database\Seeders\PermissionSeeder::class);
         $user = User::factory()->create(['email_verified_at' => now(), 'is_active' => true]);
+        $user->assignRole(\App\Models\RoleLookup::find('admin'));
         $user->assignRole(\App\Support\SystemRole::SUPERADMIN);
         $this->actingAs($user);
 
@@ -581,9 +584,8 @@ class RbacUiRenderTest extends TestCase
     #[Test]
     public function switching_tabs_keeps_the_search_term(): void
     {
-        $this->seed(\Database\Seeders\RoleSeeder::class);
-        $this->seed(\Database\Seeders\PermissionSeeder::class);
         $user = User::factory()->create(['email_verified_at' => now(), 'is_active' => true]);
+        $user->assignRole(\App\Models\RoleLookup::find('admin'));
         $user->assignRole(\App\Support\SystemRole::SUPERADMIN);
         $this->actingAs($user);
 
@@ -623,7 +625,11 @@ class RbacUiRenderTest extends TestCase
 
         $this->get(route('roles.index', ['sort' => 'name); DROP TABLE roles;--']))->assertOk();
         $this->get(route('roles.index', ['sort' => 'guard_name']))->assertOk();
-        $this->assertSame(2, Role::where('guard_name', RoleLookup::guard())->count());
+        // Scoped to the two rows this test created. The seeded system roles are
+        // present too, so an unscoped count is no longer 2 — what the assertion
+        // is really about is that the injection attempt dropped nothing.
+        $this->assertSame(2, Role::whereIn('name', ['aaa', 'zzz'])
+            ->where('guard_name', RoleLookup::guard())->count());
     }
 
     #[Test]

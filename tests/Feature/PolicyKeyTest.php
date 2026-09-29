@@ -41,6 +41,7 @@ class PolicyKeyTest extends TestCase
         // RoleSeeder too: registration_default_role is validated with a
         // guard-scoped exists() rule, so the role has to actually be there.
         $this->seed(RoleSeeder::class);
+        $this->seed(\Database\Seeders\PermissionSeeder::class);
         $this->seed(SystemSettingSeeder::class);
     }
 
@@ -118,7 +119,7 @@ class PolicyKeyTest extends TestCase
 
             $this->assertStringNotContainsString(
                 $key,
-                implode(' ', array_keys(app(SystemSettingRequest::class)->rules())),
+                implode(' ', array_keys((new SystemSettingRequest())->rules())),
                 "{$key} must not be a validated setting"
             );
         }
@@ -305,6 +306,10 @@ class PolicyKeyTest extends TestCase
             ]);
             $user->markEmailAsVerified();
         }
+
+        // The username alone grants nothing: Gate::before keys on the superadmin
+        // ROLE, so without this the settings.manage gate (P6-C16) refuses it.
+        $user->assignRole(\App\Models\RoleLookup::find(\App\Support\SystemRole::SUPERADMIN));
 
         return $user;
     }

@@ -14,11 +14,14 @@ class UserStateTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        $this->seed(\Database\Seeders\RoleSeeder::class);
+        $this->seed(\Database\Seeders\PermissionSeeder::class);
         $this->admin = User::factory()->create([
             'name' => 'Admin',
             'email' => 'admin@example.com',
             'is_active' => true,
         ]);
+        $this->admin->assignRole(\App\Models\RoleLookup::find('admin'));
         Sanctum::actingAs($this->admin, ['*']);
         $this->withoutMiddleware(\App\Http\Middleware\VerifyCsrfToken::class);
     }

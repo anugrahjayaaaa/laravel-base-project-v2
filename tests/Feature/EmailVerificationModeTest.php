@@ -25,6 +25,8 @@ class EmailVerificationModeTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        $this->seed(\Database\Seeders\RoleSeeder::class);
+        $this->seed(\Database\Seeders\PermissionSeeder::class);
 
         $this->withoutMiddleware(\App\Http\Middleware\VerifyCsrfToken::class);
         $this->seed(\Database\Seeders\SystemSettingSeeder::class);
@@ -113,6 +115,7 @@ class EmailVerificationModeTest extends TestCase
         SystemSetting::set('email_verification_mode', $mode);
 
         $admin = User::factory()->create();
+        $admin->assignRole(\App\Models\RoleLookup::find('admin'));
         $admin->assignRole(\Spatie\Permission\Models\Role::findOrCreate('admin', 'web'));
         $this->actingAs($admin);
 
@@ -140,6 +143,7 @@ class EmailVerificationModeTest extends TestCase
         SystemSetting::set('email_verification_mode', $mode);
 
         $admin = User::factory()->create();
+        $admin->assignRole(\App\Models\RoleLookup::find('admin'));
         $admin->assignRole(\Spatie\Permission\Models\Role::findOrCreate('admin', 'web'));
         $this->actingAs($admin, 'sanctum');
 
@@ -166,6 +170,7 @@ class EmailVerificationModeTest extends TestCase
         SystemSetting::set('email_verification_mode', $mode);
 
         $admin = User::factory()->create();
+        $admin->assignRole(\App\Models\RoleLookup::find('admin'));
         $admin->assignRole(\Spatie\Permission\Models\Role::findOrCreate('admin', 'web'));
         $this->actingAs($admin);
 

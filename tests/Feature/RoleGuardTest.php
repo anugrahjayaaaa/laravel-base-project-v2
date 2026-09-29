@@ -8,6 +8,7 @@ use App\Http\Requests\System\SystemSettingRequest;
 use App\Models\RoleLookup;
 use App\Models\SystemSetting;
 use App\Models\User;
+use App\Support\SystemRole;
 use Database\Seeders\RoleSeeder;
 use Database\Seeders\SystemSettingSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -38,8 +39,29 @@ class RoleGuardTest extends TestCase
     {
         parent::setUp();
         $this->seed(RoleSeeder::class);
+        // PermissionSeeder too: the role/permission matrix (RBAC-004) lives there,
+        // so without it the admin role carries no rows and every can() is false.
+        $this->seed(\Database\Seeders\PermissionSeeder::class);
         $this->seed(SystemSettingSeeder::class);
-        $this->actingAs(User::factory()->create(), 'web');
+        // Admin role: the users create/edit forms are gated on users.create /
+        // users.update (P6-D1), and this suite renders them.
+        $actor = User::factory()->create();
+        $actor->assignRole(RoleLookup::find('admin'));
+        $this->actingAs($actor, 'web');
+    }
+
+    /**
+     * A causer holding users.assign_roles.
+     *
+     * P6-C10 made the admin path of CreateUserAction permission-gated, so a
+     * direct call with a `roles` key and no causer is now refused — which is the
+     * behaviour, not a test to work around.
+     */
+    private function admin(): \App\Models\User
+    {
+        return \App\Models\User::factory()->create()->assignRole(
+            \App\Models\RoleLookup::find(SystemRole::SUPERADMIN)
+        );
     }
 
     public function test_the_resolver_survives_a_mutated_auth_default(): void
@@ -100,7 +122,7 @@ class RoleGuardTest extends TestCase
             'username' => 'guardtest',
             'email' => 'guardtest@example.com',
             'roles' => ['admin'],
-        ], 'QaTest#2026x');
+        ], 'QaTest#2026x', causer: $this->admin());
 
         $assigned = $user->roles;
 
@@ -132,7 +154,7 @@ class RoleGuardTest extends TestCase
         // resolved guard, so this is the name a real submission carries.
         $this->assertTrue(Validator::make(
             ['registration_default_role' => 'user'],
-            app(SystemSettingRequest::class)->rules()
+            (new SystemSettingRequest())->rules()
         )->passes());
 
         // Now make `user` exist only on another guard. The rule is scoped, so
@@ -142,7 +164,7 @@ class RoleGuardTest extends TestCase
         Role::create(['name' => 'user', 'guard_name' => $guard === 'web' ? 'api' : 'web']);
 
         $this->assertFalse(
-            Validator::make(['registration_default_role' => 'user'], app(SystemSettingRequest::class)->rules())->passes(),
+            Validator::make(['registration_default_role' => 'user'], (new SystemSettingRequest())->rules())->passes(),
             'a role that exists only on another guard must not validate'
         );
     }
@@ -167,7 +189,10 @@ class RoleGuardTest extends TestCase
         // is rendered. Reading getData() off the controller's return value
         // asserts nothing about what the page is given.
         $admin = User::factory()->create(['is_active' => true]);
-        $admin->assignRole(Role::create(['name' => 'webadmin', 'guard_name' => RoleLookup::guard()]));
+        // The seeded admin, not a hand-made 'webadmin' role: the users forms are
+        // gated on users.create / users.update, and a role with no permission
+        // rows satisfies neither.
+        $admin->assignRole(RoleLookup::find('admin'));
 
         foreach (['create', 'show'] as $method) {
             $page = $this->actingAs($admin)->get(

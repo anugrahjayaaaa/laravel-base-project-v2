@@ -9,6 +9,8 @@ use App\Notifications\UserCreatedNotification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Notification;
+use Database\Seeders\RoleSeeder;
+use Database\Seeders\SystemSettingSeeder;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
@@ -28,7 +30,10 @@ class RegisterTest extends TestCase
         parent::setUp();
 
         $this->withoutMiddleware(\App\Http\Middleware\VerifyCsrfToken::class);
-        $this->seed(\Database\Seeders\SystemSettingSeeder::class);
+        $this->seed(SystemSettingSeeder::class);
+        // The superadmin role has to exist for the admin-path causer below:
+        // Gate::before keys on the role, and an absent row grants nothing.
+        $this->seed(RoleSeeder::class);
     }
 
     private function enable(): void
@@ -118,12 +123,17 @@ class RegisterTest extends TestCase
         Role::findOrCreate('admin', 'web');
 
         // The same action, reached the admin way: no password argument.
+        // causer: required since P6-C10 — a client-supplied `roles` key is a
+        // grant, so the admin path checks users.assign_roles.
+        $causer = \App\Models\User::factory()->create();
+        $causer->assignRole(\App\Models\RoleLookup::find(\App\Support\SystemRole::SUPERADMIN));
+
         $user = app(\App\Actions\V1\User\CreateUserAction::class)->run([
             'name' => 'Admin Made',
             'username' => 'adminmade',
             'email' => 'adminmade@example.com',
             'roles' => ['admin'],
-        ]);
+        ], causer: $causer);
 
         $this->assertTrue($user->must_change_password);
         $this->assertTrue($user->hasRole('admin'), 'the admin picks the roles, not the default');

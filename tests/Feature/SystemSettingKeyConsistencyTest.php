@@ -17,6 +17,8 @@ class SystemSettingKeyConsistencyTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        $this->seed(\Database\Seeders\RoleSeeder::class);
+        $this->seed(\Database\Seeders\PermissionSeeder::class);
         $this->withoutMiddleware(\App\Http\Middleware\VerifyCsrfToken::class);
         $this->seed(\Database\Seeders\SystemSettingSeeder::class);
         Http::fake([
@@ -108,6 +110,7 @@ class SystemSettingKeyConsistencyTest extends TestCase
     public function test_update_setting_via_web_controller(): void
     {
         $user = User::factory()->create();
+        $user->assignRole(\App\Models\RoleLookup::find('admin'));
         $this->actingAs($user, 'web');
 
         $response = $this->from('/settings')->post(route('settings.update'), [
@@ -130,6 +133,7 @@ class SystemSettingKeyConsistencyTest extends TestCase
     public function test_update_setting_via_api_controller(): void
     {
         $user = User::factory()->create();
+        $user->assignRole(\App\Models\RoleLookup::find('admin'));
         $this->actingAs($user);
 
         $response = $this->putJson(route('api.v1.settings.update'), [

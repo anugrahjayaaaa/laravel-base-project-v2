@@ -27,13 +27,17 @@ class ConfirmActionUsageTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        $this->seed(\Database\Seeders\RoleSeeder::class);
+        $this->seed(\Database\Seeders\PermissionSeeder::class);
         $this->app->make(\Spatie\Permission\PermissionRegistrar::class)->forgetCachedPermissions();
     }
 
     private function admin(): User
     {
         $admin = User::factory()->create(['name' => 'Budi Santoso', 'is_active' => true]);
-        $admin->assignRole(Role::create(['name' => 'admin', 'guard_name' => RoleLookup::guard()]));
+        // The seeded admin role; Role::create() here would collide with the
+        // seeder's row for the same (name, guard).
+        $admin->assignRole(\App\Models\RoleLookup::find('admin'));
 
         return $admin;
     }
@@ -99,6 +103,7 @@ class ConfirmActionUsageTest extends TestCase
         // A locked user cannot load their own page — account.state redirects
         // them — so the locked one has to be somebody else in the list.
         $locked = User::factory()->create(['name' => 'Budi Santoso', 'is_locked' => true]);
+        $locked->assignRole(\App\Models\RoleLookup::find('admin'));
 
         $html = $this->actingAs($admin)->get(route('users.show', $locked))->getContent();
         $unlock = collect($this->triggers($html))

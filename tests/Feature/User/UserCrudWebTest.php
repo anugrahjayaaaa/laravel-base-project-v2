@@ -4,6 +4,7 @@ namespace Tests\Feature\User;
 
 use App\Enums\UserStatusEnum;
 use App\Models\User;
+use App\Support\SystemRole;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
@@ -16,11 +17,18 @@ class UserCrudWebTest extends TestCase
     {
         parent::setUp();
         $this->withoutMiddleware(\App\Http\Middleware\VerifyCsrfToken::class);
+        // The admin paths are permission-gated (P6-C14/C15), so a bare factory
+        // user would 403 every request. The superadmin role and the permission
+        // catalogue have to exist first — the same pairing
+        // ActionErrorVisibilityTest uses.
+        $this->seed(\Database\Seeders\RoleSeeder::class);
+        $this->seed(\Database\Seeders\PermissionSeeder::class);
         $this->user = User::factory()->create([
             'name' => 'Admin User',
             'email' => 'admin@example.com',
             'is_active' => true,
         ]);
+        $this->user->assignRole(SystemRole::SUPERADMIN);
         $this->actingAs($this->user, 'web');
     }
 

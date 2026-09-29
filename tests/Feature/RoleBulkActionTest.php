@@ -190,8 +190,11 @@ class RoleBulkActionTest extends TestCase
     {
         $role = $this->makeRole('Support One');
 
+        // 403, not a validation error: authorize() runs before rules(), and an
+        // action missing from the permission map must fail closed rather than
+        // fall through to a permissive default.
         $this->post(route('roles.bulk-action'), ['action' => 'drop-database', 'role_ids' => [$role->id]])
-            ->assertSessionHasErrors('action');
+            ->assertForbidden();
         $this->post(route('roles.bulk-action'), ['action' => 'delete', 'role_ids' => []])
             ->assertSessionHasErrors('role_ids');
         $this->post(route('roles.bulk-action'), ['action' => 'delete', 'role_ids' => [999999]])

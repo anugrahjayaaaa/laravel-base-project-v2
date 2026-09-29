@@ -28,6 +28,8 @@ class ThrottleJsonResponseTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        $this->seed(\Database\Seeders\RoleSeeder::class);
+        $this->seed(\Database\Seeders\PermissionSeeder::class);
 
         $this->withoutMiddleware(\App\Http\Middleware\VerifyCsrfToken::class);
         $this->seed(\Database\Seeders\SystemSettingSeeder::class);
@@ -52,6 +54,7 @@ class ThrottleJsonResponseTest extends TestCase
     private function apiUser(): User
     {
         $user = User::factory()->create(['email_verified_at' => now()]);
+        $user->assignRole(\App\Models\RoleLookup::find('admin'));
         $user->assignRole(Role::findOrCreate('admin', 'web'));
 
         return $user;
@@ -99,6 +102,7 @@ class ThrottleJsonResponseTest extends TestCase
         $this->actingAs($admin, 'sanctum');
 
         $target = User::factory()->create(['email_verified_at' => now()]);
+        $target->assignRole(\App\Models\RoleLookup::find('admin'));
 
         // 5/hour. throttle:email-verification is listed before `signed`, so
         // the sixth attempt is the throttle rather than a signature refusal —
