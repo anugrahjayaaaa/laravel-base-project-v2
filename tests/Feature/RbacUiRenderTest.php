@@ -267,7 +267,7 @@ class RbacUiRenderTest extends TestCase
         // IDs, not names — syncPermissions resolves a string as a NAME and throws.
         $this->assertStringContainsString('value="1"', $html);
         // The two already on the role come back checked.
-        $this->assertSame(2, substr_count($html, 'checked'), 'pre-checked selection was not preserved');
+        $this->assertSame(2, substr_count($html, ' checked'), 'pre-checked selection was not preserved');
     }
 
     #[Test]
