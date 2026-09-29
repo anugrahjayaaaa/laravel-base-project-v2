@@ -96,7 +96,7 @@ only be added together with the page it guards. The seeded set:
 | Resource | Permissions |
 |---|---|
 | `users` | `view` `create` `update` `delete` `force_delete` `restore` `activate` `deactivate` `lock` `unlock` `assign_roles` |
-| `roles` | `view` `create` `update` `delete` `assign_permissions` |
+| `roles` | `view` `create` `update` `delete` `force_delete` `restore` `assign_permissions` |
 | `permissions` | `view` |
 | `settings` | `view` `manage` |
 
@@ -163,16 +163,70 @@ per [UI Authorization Rule](../ui/ui-authorization.md).
 
 **Not built, and why** (proposed 2026-09-28, declined):
 
-- *Active / Inactive / Trash tabs* — need `is_active` + `deleted_at` on `roles`.
-  Soft delete forces a `Role` subclass and a 3-place change
-  (`config/permission.php`, seeder import, observer) whose failure is silent, and
-  `findByName()` / `getStoredRole()` would then throw `RoleDoesNotExist` for
-  users still holding a trashed role. Revisit alongside the subclass, not before.
 - *"Make default role" action* — `registration_default_role` already lives in
   `SystemSetting`. The guard belongs in `SystemSettingRequest`, not a second
   writer for one value.
-- *Deactivate / soft-delete buttons* — no endpoint exists yet; the confirm-modal
-  copy does, and `action-type="delete_role"` goes live at P6-C6.
+
+## Role Lifecycle — Trash, Revocation, Restore
+
+Trashing a role is a **revocation**, not a rename. The row survives; the access
+does not.
+
+| | Effect |
+|---|---|
+| `DELETE /roles/{role}` | soft-deletes the role row, **detaches it from every user holding it**, writes `role.deleted` with `revoked_users` + `revoked_permissions` |
+| `POST /roles/{role}/restore` | restores the row **with its `role_has_permissions` intact**, re-assigns nobody, writes `role.restored` |
+| `DELETE /roles/{role}/force` | hard-deletes a **trashed** role only, writes `role.force_deleted` |
+
+### Two mechanisms, both required
+
+1. **Write side — explicit detach.** `DeleteRoleAction` calls
+   `$role->users()->detach()` before `$role->delete()`. Spatie's own `deleting`
+   hook *skips* detach on a non-force delete (`HasRoles::bootHasRoles` returns
+   early when `isForceDeleting()` is false), so a plain soft delete would leave
+   the `model_has_roles` pivot rows intact and a later restore would silently
+   re-grant the role to everyone who had it.
+2. **Read side — the global scope.** `App\Models\Role` uses `SoftDeletes`, so
+   Spatie resolves roles through a model whose global scope hides the trashed
+   row. `$user->roles`, `hasRole()` and every `can()` return "no" with no change
+   at the call sites. `RoleLookup::find()` and `assignable()` therefore never
+   offer a trashed role.
+
+Each is tested separately (`RoleManagementTest`) so a refactor cannot trade one
+mechanism for the other and leave the other half broken.
+
+### Deliberate consequences
+
+- **The permission set is kept; the assignment is not.** Restoring returns the
+  role's `role_has_permissions` exactly as they were, so reassigning is a single
+  deliberate act. A restore that silently re-granted access to a dozen accounts
+  would be indistinguishable, to an auditor, from the compromise it undoes.
+- **The name stays reserved while trashed.** The unique index is on
+  `(name, guard_name)` and a soft-deleted row still occupies it, so
+  `Rule::unique('roles', 'name')` keeps rejecting a second role of that name.
+  That is what makes a restore collision *impossible* rather than merely
+  unlikely — pinned by `test_a_trashed_role_name_stays_reserved` so nobody
+  "helpfully" adds `whereNull('deleted_at')` and opens the hole.
+- **A populated role needs `force`.** The web `destroy` refuses while users
+  still hold the role, because trashing it deassigns all of them. The action's
+  `force: true` is the deliberate override; either way the revocation is counted
+  in the audit row.
+- **A trashed role cannot be edited** — the `{role}` route binding resolves
+  through the global scope and 404s. The view offers no Edit link for the same
+  reason.
+- **No default-role fallback.** A user who loses a role keeps whatever else they
+  hold. Inventing a fallback here would be a second writer for
+  `registration_default_role` (`SystemSetting`) and would silently grant access
+  nobody asked for.
+- **Restore and force-delete have their own permissions** (`roles.restore`,
+  `roles.force_delete`), not `roles.update` / `roles.delete`: a restore brings
+  back a whole permission set, and a force delete destroys the audit subject.
+  Neither is "editing a role".
+
+The trash lives on the roles index as a second tab (`?trashed=1`) with its own
+count, mirroring `pages/users/index`. `Route::post`/`Route::delete` take the raw
+id rather than an implicit `{role}` binding — that binding resolves through the
+global scope and would 404 every trashed row these routes exist for.
 
 ## Seeding Strategy
 
@@ -180,8 +234,11 @@ per [UI Authorization Rule](../ui/ui-authorization.md).
 `Database\Seeders\PermissionSeeder` owns the permission catalogue and the role
 matrix. `DatabaseSeeder` runs them in that order, then `SuperAdminSeeder`.
 
-**19 permissions are seeded**, across three resources that exist today:
-`users.*` (11), `roles.*` (5), `permissions.view` (1), `settings.*` (2).
+**The catalogue is seeded in full**, across the four resources that exist today
+(`users.*`, `roles.*`, `permissions.view`, `settings.*`). Read the count from
+`count(PermissionCatalog::all())` rather than this sentence — a hand-written
+number here is the drift the paragraph below warns about, and it has already
+been wrong once.
 
 `audit.*` and `features.*` are **not seeded**. The audit viewer is Phase 10 and
 feature flags are Phase 7; neither has a route, controller or view, so a

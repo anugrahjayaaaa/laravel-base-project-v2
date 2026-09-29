@@ -260,9 +260,9 @@ table below is the audit, not a wish list.
 
 | Proposal | Decision | Reason |
 |---|---|---|
-| Navbar tabs: Active / Inactive / Trash | ⛔ not built | Needs `is_active` + `deleted_at` on `roles`, and soft delete forces a `Role` subclass plus a 3-place change (`config/permission.php`, seeder import, observer) whose failure mode is silent. `findByName()` and `getStoredRole()` would start throwing `RoleDoesNotExist` for users still holding a trashed role. A tab with no `deleted_at` behind it is a lie. |
+| Navbar tabs: Active / Inactive / Trash | ✅ **Trash built 2026-09-29** (Active/Inactive still not) | `deleted_at` on `roles` is in. Only two tabs shipped — `roles` has no `is_active`, and a tab with no column behind it is a lie. The soft-delete half needed the revocation semantics documented in `docs/base/features/roles-permissions.md` §Role Lifecycle; `RoleSeeder` also restores a trashed system role so a reseed can repair its own state. |
 | "Make default role" action in the actions column | ⛔ not built | `registration_default_role` already lives in `SystemSetting` (`database/seeders/SystemSettingSeeder.php:72`, read at `CreateUserAction.php:101`). A second control means two writers for one value — the `PolicyKeyTest` drift pattern. A guard belongs in `SystemSettingRequest`, not a new button. |
-| Deactivate + soft-delete buttons (UI only) | ⛔ not built | A button wired to nothing is worse than no button, and the confirm-modal copy already exists — `action-type="delete_role"` goes live the moment P6-C6 adds the endpoint. |
+| Reassign a default role to users whose role was trashed | ⛔ not built | A user who loses a role keeps whatever else they hold. A fallback here would be a second writer for `registration_default_role` and would silently grant access nobody asked for. DeleteRoleAction documents the omission; add it when an app actually needs the behaviour. |
 
 ### Current state of the routes
 
@@ -398,10 +398,10 @@ empty for that role.
 |----|------|---------|------|
 | P6-C1 | `App\Http\Requests\Role\StoreRoleRequest` — `authorize(): return $this->user()?->can('roles.create') ?? false`; rules: `name` required/string/max:64/`Rule::unique('roles','name')` **scoped to the resolved guard**; `permissions` nullable array; `permissions.*` `integer` + `exists:permissions,id` | B | small |
 | P6-C2 | `App\Http\Requests\Role\UpdateRoleRequest` — `authorize(): can('roles.update')`; `name` unique ignoring `$role`; `permissions.*` as above | B, C1 | small |
-| P6-C3 | `App\Actions\V1\Role\RoleIndexAction` — `Role::query()->where('guard_name', RoleLookup::guard())->withCount(['permissions','users' …])`, optional `search` filter applied **before** `paginate(10)`, `->withQueryString()`. No N+1 | B4 | small |
+| P6-C3 | `App\Actions\V1\Role\IndexRoleAction` — `Role::query()->where('guard_name', RoleLookup::guard())->withCount(['permissions','users' …])`, optional `search` filter applied **before** `paginate(10)`, `->withQueryString()`. No N+1 | B4 | small |
 | P6-C4 | `App\Actions\V1\Role\SaveRoleAction` — one action for create+update. `DB::transaction`: reject system-role rename (C8), `syncPermissions(array_map('intval', $data['permissions'] ?? []))` — the `intval` is required, spatie resolves a **string** `'19'` via `findByName` and throws `PermissionDoesNotExist`; audit `role.created` / `role.updated` **inside** the transaction before commit (ADR: no audit record on rollback) | B | medium |
 | P6-C5 | `App\Http\Controllers\Web\V1\RoleController` — thin. `index` → `$action->run()` → `view('pages.roles.index')`; `create`/`edit` → `Permission::orderBy('name')->get()` + `PermissionCatalog::grouped()`; `store`/`update` → `SaveRoleAction`; `destroy` → deny for system roles, else delete + audit | C1–C4 | medium |
-| P6-C6 | `App\Actions\V1\Role\DeleteRoleAction` — refuse when `SystemRole::isSystem($role->name)`; refuse when the role still has users assigned (409 with a message naming the count) unless `force` is passed; delete inside a transaction + audit | B4 | small |
+| P6-C6 | `App\Actions\V1\Role\DeleteRoleAction` — refuse when `SystemRole::isSystem($role->name)`; refuse when the role still has users assigned (unless `force` is passed) — trashing **deassigns** every holder, so the count lands in the `role.deleted` audit row. Inside one transaction: `users()->detach()` → `delete()` (soft) → audit. `RestoreRoleAction` / `ForceDeleteRoleAction` own the other two verbs | B4 | small |
 
 ### C2 — Permission catalogue (Web, read-only)
 | ID | Task | Depends | Est. |
