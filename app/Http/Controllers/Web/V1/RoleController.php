@@ -136,7 +136,7 @@ class RoleController extends Controller
      */
     public function destroy(DeleteRoleRequest $request, Role $role): RedirectResponse
     {
-        $this->deleteAction->run($role, $request->user());
+        $this->deleteAction->run($role, $request->user(), force: true);
 
         return redirect()->route('roles.index')
             ->with('status', "Role '{$role->name}' has been moved to trash. Its permissions no longer apply to any user.");

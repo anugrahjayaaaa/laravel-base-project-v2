@@ -13,6 +13,7 @@ use Database\Seeders\PermissionSeeder;
 use Database\Seeders\RoleSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use RuntimeException;
 use Spatie\Permission\Models\Permission;
 use Tests\TestCase;
@@ -150,16 +151,27 @@ class RoleManagementTest extends TestCase
         $this->assertNotNull(RoleLookup::find('admin'));
     }
 
-    public function test_a_role_with_assigned_users_is_not_trashed_without_force(): void
+    public function test_the_action_still_refuses_a_populated_role_without_force(): void
     {
+        // The guard now lives where it always mattered — the ACTION. The web
+        // route passes force because the confirm modal in front of it is the
+        // deliberate override (see RoleController::destroy). This test is the
+        // remaining reason the guard exists: the API and the console call the
+        // action with no modal in front of them, and a stray call there must not
+        // silently strip access from every holder.
         $role = Role::create(['name' => 'Support Agent', 'guard_name' => RoleLookup::guard()]);
-        User::factory()->create()->assignRole($role);
+        $user = User::factory()->create();
+        $user->assignRole($role);
 
-        $this->actingAs($this->admin)
-            ->delete(route('roles.destroy', $role))
-            ->assertSessionHasErrors('name');
+        try {
+            app(DeleteRoleAction::class)->run($role, $this->admin);
+            $this->fail('the action must refuse a populated role when force is not set');
+        } catch (ValidationException $e) {
+            $this->assertSame('This role is still assigned to 1 user(s). Trashing it removes the role from all of them.', $e->errors()['name'][0]);
+        }
 
         $this->assertNotNull(RoleLookup::find('Support Agent'));
+        $this->assertTrue($user->fresh()->hasRole('Support Agent'), 'a refused delete must not detach');
     }
 
     public function test_force_deletes_a_role_that_still_has_users(): void
@@ -211,13 +223,11 @@ class RoleManagementTest extends TestCase
 
         $this->assertTrue($users->first()->fresh()->can($permission->name), 'precondition');
 
-        $this->actingAs($this->admin)
-            ->delete(route('roles.destroy', $role))
-            ->assertSessionHasErrors('name');
-        $this->assertNotSoftDeleted('roles', ['id' => $role->id]);
-        $this->assertNotNull(RoleLookup::find('Support Agent'), 'a refused write must not persist');
-
-        app(DeleteRoleAction::class)->run($role->fresh(), $this->admin, force: true);
+        // Straight to the forced call: the refusal half of this used to be
+        // asserted through the web route, but the web route now forces because
+        // the confirm modal is the deliberate override. The guard itself is
+        // covered by test_the_action_still_refuses_a_populated_role_without_force.
+        app(DeleteRoleAction::class)->run($role, $this->admin, force: true);
 
         foreach ($users as $user) {
             $fresh = $user->fresh();

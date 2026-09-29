@@ -38,6 +38,8 @@
         </div>
     </div>
 
+    @include('layouts.partials.alerts')
+
     @if (session('status'))
         <div class="alert alert-success alert-dismissible fade show mb-3" role="alert">
             <i class="fas fa-circle-check me-1"></i>
