@@ -115,12 +115,39 @@
                         <i class="fas fa-times"></i> Clear
                     </a>
                 @endif
+                {{-- Bulk bar — same element, same id set, same position in the
+                     filter row (after Clear, pushed right by ms-auto) as
+                     pages/users/index, so the two lists behave identically.
+                     The data-* attributes configure the shared bulk-actions.js:
+                     a role's id field is role_ids[], its noun is "role", and a
+                     live role offers only delete while a trashed one offers
+                     restore / force_delete. `keys` points the confirm modal at
+                     the role copy in action-config.js instead of the user copy
+                     ("They can be restored later" is wrong for a role). --}}
+                <div id="bulkBar" class="d-none align-items-center gap-2 flex-wrap ms-auto"
+                    data-bulk-route="{{ route('roles.bulk-action') }}" data-bulk-field="role_ids[]"
+                    data-bulk-noun="role" data-bulk-mixed="delete"
+                    data-bulk-states='@json($trashed ? ['trashed' => ['restore', 'force_delete']] : ['active' => ['delete']])'
+                    data-bulk-keys='@json(['delete' => 'delete_role', 'restore' => 'restore_role', 'force_delete' => 'force_delete_role'])'>
+                    <span class="text-muted fs-7">Selected: <strong id="bulkCount">0</strong></span>
+                    <select id="bulkAction" class="form-select form-select-sm d-inline-block" style="width:auto">
+                        <option value="">-- Action --</option>
+                        <option value="delete">Move to Trash</option>
+                        <option value="force_delete">Permanent Delete</option>
+                        <option value="restore">Restore</option>
+                    </select>
+                    <button type="button" class="btn btn-sm btn-primary" id="bulkApplyBtn">Apply</button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" id="bulkClearBtn">Clear</button>
+                </div>
             </form>
 
             <div class="table-responsive">
                 <table class="table table-hover mb-0">
                     <thead>
                         <tr>
+                            <th style="width: 36px" class="align-middle">
+                                <input type="checkbox" id="bulkSelectAll" aria-label="Select all roles">
+                            </th>
                             <x-ui.sortable-th field="#" label="#" :sortable="false" />
                             <x-ui.sortable-th field="name" label="Name" :current-sort="$currentSort"
                                 :current-direction="$currentDirection" />
@@ -133,6 +160,18 @@
                     <tbody>
                         @forelse ($roles as $role)
                             <tr @if ($role->trashed()) style="background-color: color-mix(in srgb, var(--lbp-danger, #ef4444) 8%, transparent); " @endif>
+                                <td>
+                                    {{-- A system role has no delete, restore or force-delete
+                                         action, so it is not selectable: a checkbox the
+                                         server would reject is worse than no checkbox.
+                                         The handler filters them too — this is convenience,
+                                         not the boundary. --}}
+                                    @if (! $role->is_system)
+                                        <input type="checkbox" class="bulk-check" value="{{ $role->id }}"
+                                            data-status="{{ $role->trashed() ? 'trashed' : 'active' }}"
+                                            data-bs-toggle="tooltip" title="Select for bulk action">
+                                    @endif
+                                </td>
                                 <td>{{ ($roles->currentPage() - 1) * $roles->perPage() + $loop->iteration }}</td>
                                 <td>
                                     {{ $role->name }}
@@ -187,7 +226,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="5" class="text-center text-muted py-4">
+                                <td colspan="6" class="text-center text-muted py-4">
                                     <i class="fas fa-inbox fa-2x text-muted mb-2 d-block"></i>
                                     {{ $trashed ? 'Trash is empty.' : 'No roles found.' }}
                                 </td>

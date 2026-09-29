@@ -116,6 +116,7 @@ Route::middleware(['auth:web,sanctum', 'verified', 'password.change.required', '
     // in `can:roles.view` / `can:roles.create` / `can:roles.update` /
     // `can:roles.delete` / `can:permissions.view` once the catalogue exists.
     // -----------------------------------------------------------------------
+    Route::post('/roles/bulk-action', [RoleController::class, 'bulkAction'])->name('roles.bulk-action')->middleware('throttle:bulk-action');
     Route::get('/roles', [RoleController::class, 'index'])->name('roles.index');
     Route::get('/roles/create', [RoleController::class, 'create'])->name('roles.create');
     Route::post('/roles', [RoleController::class, 'store'])->name('roles.store');

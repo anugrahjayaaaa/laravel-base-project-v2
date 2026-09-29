@@ -2,13 +2,16 @@
 
 namespace App\Http\Controllers\Web\V1;
 
+use App\Actions\V1\BulkAction\BulkActionProcessor;
 use App\Actions\V1\Role\CreateRoleAction;
 use App\Actions\V1\Role\DeleteRoleAction;
 use App\Actions\V1\Role\ForceDeleteRoleAction;
 use App\Actions\V1\Role\IndexRoleAction;
 use App\Actions\V1\Role\RestoreRoleAction;
+use App\Actions\V1\Role\RoleBulkActionHandler;
 use App\Actions\V1\Role\UpdateRoleAction;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Role\BulkRoleRequest;
 use App\Http\Requests\Role\DeleteRoleRequest;
 use App\Http\Requests\Role\ForceDeleteRoleRequest;
 use App\Http\Requests\Role\RestoreRoleRequest;
@@ -42,6 +45,8 @@ class RoleController extends Controller
         private readonly DeleteRoleAction $deleteAction,
         private readonly RestoreRoleAction $restoreAction,
         private readonly ForceDeleteRoleAction $forceDeleteAction,
+        private readonly BulkActionProcessor $bulkProcessor,
+        private readonly RoleBulkActionHandler $bulkHandler,
     ) {
     }
 
@@ -79,6 +84,26 @@ class RoleController extends Controller
             'currentSort' => (string) $request->input('sort', 'name'),
             'currentDirection' => $request->input('direction') === 'asc' ? 'asc' : 'desc',
         ]);
+    }
+
+    /**
+     * Apply one action to many roles from the index bulk bar.
+     *
+     * No bulkAudit() call, unlike UserController::bulkAction: every role action
+     * already writes its own activity row (role.deleted carries revoked_users
+     * and revoked_permissions), so an aggregate row here would duplicate the
+     * subjects without adding the properties that make the log useful.
+     */
+    public function bulkAction(BulkRoleRequest $request): RedirectResponse
+    {
+        $result = $this->bulkProcessor->run(
+            action: $request->validated('action'),
+            ids: $request->validated('role_ids'),
+            causer: $request->user(),
+            handler: $this->bulkHandler,
+        );
+
+        return back()->with('status', "{$result['count']} selected roles have been successfully {$result['label']}.");
     }
 
     /**
