@@ -394,19 +394,24 @@ empty for that role.
 > gating reads the same permissions), E.
 
 ### C1 — Role management (Web)
-| ID | Task | Depends | Est. |
-|----|------|---------|------|
-| P6-C1 | `App\Http\Requests\Role\StoreRoleRequest` — `authorize(): return $this->user()?->can('roles.create') ?? false`; rules: `name` required/string/max:64/`Rule::unique('roles','name')` **scoped to the resolved guard**; `permissions` nullable array; `permissions.*` `integer` + `exists:permissions,id` | B | small |
-| P6-C2 | `App\Http\Requests\Role\UpdateRoleRequest` — `authorize(): can('roles.update')`; `name` unique ignoring `$role`; `permissions.*` as above | B, C1 | small |
-| P6-C3 | `App\Actions\V1\Role\IndexRoleAction` — `Role::query()->where('guard_name', RoleLookup::guard())->withCount(['permissions','users' …])`, optional `search` filter applied **before** `paginate(10)`, `->withQueryString()`. No N+1 | B4 | small |
-| P6-C4 | `App\Actions\V1\Role\SaveRoleAction` — one action for create+update. `DB::transaction`: reject system-role rename (C8), `syncPermissions(array_map('intval', $data['permissions'] ?? []))` — the `intval` is required, spatie resolves a **string** `'19'` via `findByName` and throws `PermissionDoesNotExist`; audit `role.created` / `role.updated` **inside** the transaction before commit (ADR: no audit record on rollback) | B | medium |
-| P6-C5 | `App\Http\Controllers\Web\V1\RoleController` — thin. `index` → `$action->run()` → `view('pages.roles.index')`; `create`/`edit` → `Permission::orderBy('name')->get()` + `PermissionCatalog::grouped()`; `store`/`update` → `SaveRoleAction`; `destroy` → deny for system roles, else delete + audit | C1–C4 | medium |
-| P6-C6 | `App\Actions\V1\Role\DeleteRoleAction` — refuse when `SystemRole::isSystem($role->name)`; refuse when the role still has users assigned (unless `force` is passed) — trashing **deassigns** every holder, so the count lands in the `role.deleted` audit row. Inside one transaction: `users()->detach()` → `delete()` (soft) → audit. `RestoreRoleAction` / `ForceDeleteRoleAction` own the other two verbs | B4 | small |
+
+> **Status: ✅ DONE (2026-09-29, audited against the code).** P6-C1..C6 all
+> implemented. Deviations and the one open defect are listed in
+> § C1 audit notes below. Note that **Gate C is not met** — it also spans C3 and C4.
+
+| ID | Task | Depends | Est. | Status |
+|----|------|---------|------|--------|
+| P6-C1 | `App\Http\Requests\Role\StoreRoleRequest` — `authorize(): return $this->user()?->can('roles.create') ?? false`; rules: `name` required/string/max:64/`Rule::unique('roles','name')` **scoped to the resolved guard**; `permissions` nullable array; `permissions.*` `integer` + `exists:permissions,id` | B | small | **DONE** — as specified; unique guard-scoped via `RoleLookup::guard()` |
+| P6-C2 | `App\Http\Requests\Role\UpdateRoleRequest` — `authorize(): can('roles.update')`; `name` unique ignoring `$role`; `permissions.*` as above | B, C1 | small | **DONE** — as specified; `Rule::unique()->ignore($role)` |
+| P6-C3 | `App\Actions\V1\Role\IndexRoleAction` — `Role::query()->where('guard_name', RoleLookup::guard())->withCount(['permissions','users' …])`, optional `search` filter applied **before** `paginate(10)`, `->withQueryString()`. No N+1 | B4 | small | **DONE** — as specified, plus a `trashed` flag added for the trash tab (scopes the whole query rather than filtering rows) |
+| P6-C4 | `App\Actions\V1\Role\SaveRoleAction` — one action for create+update. `DB::transaction`: reject system-role rename (C8), `syncPermissions(array_map('intval', $data['permissions'] ?? []))` — the `intval` is required, spatie resolves a **string** `'19'` via `findByName` and throws `PermissionDoesNotExist`; audit `role.created` / `role.updated` **inside** the transaction before commit (ADR: no audit record on rollback) | B | medium | **DONE, split** — shipped as `CreateRoleAction` + `UpdateRoleAction` over a shared `App\Actions\Concerns\PersistsRole` trait, which holds the transaction, the `intval` cast, and the in-transaction audit. Split to match `CreateUserAction` / `UpdateUserAction` on the user side |
+| P6-C5 | `App\Http\Controllers\Web\V1\RoleController` — thin. `index` → `$action->run()` → `view('pages.roles.index')`; `create`/`edit` → `Permission::orderBy('name')->get()` + `PermissionCatalog::grouped()`; `store`/`update` → `SaveRoleAction`; `destroy` → deny for system roles, else delete + audit | C1–C4 | medium | **DONE** — thin as specified. The system-role refusal this row places in the controller lives in `DeleteRoleAction` instead (P6-C6's own wording), so the API cannot bypass it by not going through the controller |
+| P6-C6 | `App\Actions\V1\Role\DeleteRoleAction` — refuse when `SystemRole::isSystem($role->name)`; refuse when the role still has users assigned (unless `force` is passed) — trashing **deassigns** every holder, so the count lands in the `role.deleted` audit row. Inside one transaction: `users()->detach()` → `delete()` (soft) → audit. `RestoreRoleAction` / `ForceDeleteRoleAction` own the other two verbs | B4 | small | **DONE, extended** — also `RestoreRoleAction` + `ForceDeleteRoleAction`, and the web path passes `force` because the confirm modal is the deliberate override |
 
 ### C2 — Permission catalogue (Web, read-only)
 | ID | Task | Depends | Est. |
 |----|------|---------|------|
-| P6-C7 | `App\Actions\V1\Permission\PermissionIndexAction` — `Permission::where('guard_name', RoleLookup::guard())->withCount('roles')->orderBy('name')->get()`, grouped by prefix for the view | B3 | tiny |
+| P6-C7 | `App\Actions\V1\Permission\IndexPermissionAction` — `Permission::where('guard_name', RoleLookup::guard())->withCount('roles')->orderBy('name')->get()`, grouped by prefix for the view | B3 | tiny |
 | P6-C8 | `App\Http\Controllers\Web\V1\PermissionController` — `index()` only, guarded by `can('permissions.view')`. **No store/update/destroy** — permissions are code-defined and seeded. A UI that creates a permission row nobody's `can()` call references is a trap | C7 | tiny |
 
 ### C3 — Role assignment sync (the brief's core case)
@@ -433,6 +438,44 @@ grants, replace → swaps, empty array → clears, absent key → untouched);
 last-superadmin cannot be stripped. `UserCrudWebTest` +
 `UserRoleEditTest` still green — they call these endpoints and must be updated
 to the new authorization, not deleted.
+
+### C1 audit notes (2026-09-29)
+
+The table above carries the per-task status; these notes hold the reasoning and
+what shipped beyond it.
+
+**Why C4 was split rather than merged.** The table names one `SaveRoleAction`
+for both verbs. Shipped as two classes over a `PersistsRole` trait, because the
+user side already splits (`CreateUserAction` / `UpdateUserAction`) and a reader
+scanning the action list should see both verbs. The trait holds everything that
+is *not* the verb: the `DB::transaction`, the `intval` cast, and the audit write
+inside the transaction (DEP-003 — an audit row that survives a rollback records
+a save that never happened). Duplicating those across two classes is how one of
+them ends up forgetting the audit.
+
+The `intval` is load-bearing, not tidying: the matrix partial posts checkbox
+values, which arrive as strings. Spatie's `syncPermissions()` resolves a non-int
+through `findByName()`, so `'19'` is looked up as a permission literally **named**
+"19" and throws `PermissionDoesNotExist`.
+
+**Why C5's refusal moved.** The table places the system-role refusal in the
+controller; P6-C6's own wording places it in `DeleteRoleAction`. It lives in the
+action so the API cannot bypass it by not going through the web controller.
+
+**Not in the C1 table, shipped anyway** (the enterprise / SaaS role-retirement
+requirement): soft delete with revocation, the trash tab, restore, permanent
+delete, and bulk actions. All documented in
+`docs/base/features/roles-permissions.md`.
+
+**🔴 Gate C is NOT met.** P6-C1..C6 (this group) is complete, but Gate C also
+spans C3 (role assignment sync, not started) and C4 (ungated `authorize()`
+returns, partial). Concretely, `BulkRoleRequest::authorize()` returns `true`, so
+a user holding no `roles.*` permission can bulk-trash a role — measured, not
+assumed: such a user posted `action=delete` and the role was confirmed
+soft-deleted, while the single-row `DELETE /roles/{id}` correctly refused. That
+is a C4-shaped defect that arrived with C1's bulk work, and it must be fixed
+before Gate C can be called met. Tracked as P6C1-005 in
+`docs/qa/remediation-tracker.md`.
 
 ---
 
