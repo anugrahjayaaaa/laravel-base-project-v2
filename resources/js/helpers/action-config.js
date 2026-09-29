@@ -72,10 +72,22 @@ export const ACTION_CONFIG = {
         icon: 'bi bi-person-slash'
     },
     delete_role: {
-        title: 'Delete Role',
-        msg: 'Delete <b>__ITEM__</b>? Users with this role lose its permissions immediately.',
+        title: 'Move Role to Trash',
+        msg: 'Move <b>__ITEM__</b> to trash? The role stops granting anything immediately and is removed from every user holding it. It can be restored, but those users are not re-assigned automatically.',
         variant: 'danger',
         icon: 'bi bi-shield-x'
+    },
+    restore_role: {
+        title: 'Restore Role',
+        msg: 'Restore <b>__ITEM__</b>? Its permission set comes back intact, but no user is re-assigned to it — assign it again yourself.',
+        variant: 'success',
+        icon: 'bi bi-shield-check'
+    },
+    force_delete_role: {
+        title: 'Delete Role Permanently',
+        msg: 'Permanently delete <b>__ITEM__</b>? This cannot be undone.',
+        variant: 'danger',
+        icon: 'bi bi-exclamation-triangle'
     },
     // --- session ---
     logout_all: {

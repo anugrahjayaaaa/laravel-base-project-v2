@@ -31,7 +31,7 @@
                 <div class="card-header bg-transparent border-bottom py-3">
                     <h5 class="card-title mb-0 fw-semibold">Role Details</h5>
                 </div>
-                <form method="POST" action="{{ route('roles.index') }}">
+                <form method="POST" action="{{ route('roles.store') }}">
                     @csrf
                     <div class="card-body p-4">
                         <div class="mb-3">

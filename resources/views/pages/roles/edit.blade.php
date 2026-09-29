@@ -31,11 +31,8 @@
                 <div class="card-header bg-transparent border-bottom py-3">
                     <h5 class="card-title mb-0 fw-semibold">Role Details</h5>
                 </div>
-                {{-- ponytail: posts to roles.index because roles.store does not exist
-                     until Group C registers the save routes. The form renders and
-                     validates its way; only the endpoint is pending. --}}
-                <form method="POST" action="{{ route('roles.index') }}">
-                    @csrf
+                <form method="POST" action="{{ route('roles.update', $role) }}">
+                    @csrf @method('PUT')
                     <div class="card-body p-4">
                         <div class="mb-3">
                             <label for="name" class="form-label">Role Name</label>

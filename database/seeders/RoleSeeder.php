@@ -33,7 +33,18 @@ class RoleSeeder extends Seeder
         // answer to "is this a system role?", shared with the roles UI and the
         // protection rules. A second copy of the list is how a fourth name gets
         // added in one place and not the others.
+        //
+        // restore() before firstOrCreate: a system role can never be trashed
+        // (DeleteRoleAction refuses), so this only fires on a row that was
+        // trashed by hand, a seeder edit, or a restored database dump. Without
+        // it, firstOrCreate would skip the trashed row and then blow up on the
+        // unique index — a reseed that cannot repair its own state.
         foreach (SystemRole::names() as $name) {
+            Role::withTrashed()
+                ->where('name', $name)
+                ->where('guard_name', $guard)
+                ->first()?->restore();
+
             Role::firstOrCreate(['name' => $name, 'guard_name' => $guard]);
         }
     }

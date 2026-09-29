@@ -2,8 +2,10 @@
 
 namespace Tests\Feature;
 
+use App\Models\Role as AppRole;
 use App\Models\RoleLookup;
 use App\Models\User;
+use App\Support\PermissionCatalog;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
@@ -58,14 +60,24 @@ class RbacUiRenderTest extends TestCase
         return view($view, array_merge(['errors' => new ViewErrorBag()], $data))->render();
     }
 
-    private function roleRow(string $name, bool $isSystem, int $permissions = 0, int $users = 0): Role
+    /**
+     * A role as the views see it.
+     *
+     * App\Models\Role, not the Spatie base: the index calls `$role->trashed()` for
+     * the trash row treatment, and only the subclass carries SoftDeletes. With the
+     * base class that call is a BadMethodCallException — which is a fixture defect
+     * that reads exactly like a view defect. `is_system` is left to the model's
+     * own accessor; assigning it here would be overwritten on read anyway.
+     */
+    private function roleRow(string $name, bool $isSystem, int $permissions = 0, int $users = 0): AppRole
     {
-        $role = new Role(['name' => $name, 'guard_name' => RoleLookup::guard()]);
+        $role = new AppRole(['name' => $name, 'guard_name' => RoleLookup::guard()]);
         $role->id = crc32($name) % 10000;
-        $role->is_system = $isSystem;
         $role->permissions_count = $permissions;
         $role->users_count = $users;
         $role->setRelation('permissions', new Collection());
+
+        $this->assertSame($isSystem, $role->is_system, 'fixture precondition');
 
         return $role;
     }
@@ -139,7 +151,7 @@ class RbacUiRenderTest extends TestCase
     public static function views(): array
     {
         return [
-            'roles index' => ['pages.roles.index', ['roles' => 'paginator', 'search' => '', 'currentSort' => 'name', 'currentDirection' => 'asc']],
+            'roles index' => ['pages.roles.index', ['roles' => 'paginator', 'search' => '', 'trashed' => 'bool', 'trashedCount' => 'int', 'currentSort' => 'name', 'currentDirection' => 'asc']],
             'roles create' => ['pages.roles.create', ['permissions' => 'permissions', 'permissionGroups' => 'grouped']],
             'permissions index' => ['pages.permissions.index', ['permissions' => 'paginator', 'totalPermissions' => 'int', 'totalResources' => 'int', 'totalRoles' => 'int', 'unusedPermissions' => 'int', 'search' => '', 'currentSort' => 'name', 'currentDirection' => 'asc']],
         ];
@@ -155,6 +167,8 @@ class RbacUiRenderTest extends TestCase
         $shared = [
             'roles' => $this->paginator(collect([$this->roleRow('admin', true, 4, 2)])),
             'search' => '',
+            'trashed' => false,
+            'trashedCount' => 0,
             'currentSort' => 'name',
             'currentDirection' => 'asc',
             'permissionGroups' => $this->grouped($permissions),
@@ -194,6 +208,8 @@ class RbacUiRenderTest extends TestCase
             'pages.roles.index' => $this->render('pages.roles.index', [
                 'roles' => $this->paginator(collect([$this->roleRow('admin', true, 4, 2)])),
                 'search' => '',
+                'trashed' => false,
+                'trashedCount' => 0,
                 'currentSort' => 'name',
                 'currentDirection' => 'asc',
             ]),
@@ -224,6 +240,8 @@ class RbacUiRenderTest extends TestCase
         $html = $this->render('pages.roles.index', [
             'roles' => $this->paginator(collect([$this->roleRow('superadmin', true, 0, 1)])),
             'search' => '',
+            'trashed' => false,
+            'trashedCount' => 0,
             'currentSort' => 'name',
             'currentDirection' => 'asc',
         ]);
@@ -240,12 +258,39 @@ class RbacUiRenderTest extends TestCase
         $html = $this->render('pages.roles.index', [
             'roles' => $this->paginator(collect([$this->roleRow('staff', false, 3, 0)])),
             'search' => '',
+            'trashed' => false,
+            'trashedCount' => 0,
             'currentSort' => 'name',
             'currentDirection' => 'asc',
         ]);
 
         $this->assertStringContainsString('data-action-type="delete_role"', $html);
         $this->assertStringContainsString('data-item-name="staff"', $html);
+    }
+
+    #[Test]
+    public function a_trashed_role_offers_restore_and_no_edit(): void
+    {
+        $this->login();
+
+        $trashed = $this->roleRow('staff', false, 3, 0);
+        $trashed->deleted_at = now();
+
+        $html = $this->render('pages.roles.index', [
+            'roles' => $this->paginator(collect([$trashed])),
+            'search' => '',
+            'trashed' => true,
+            'trashedCount' => 1,
+            'currentSort' => 'name',
+            'currentDirection' => 'asc',
+        ]);
+
+        $this->assertStringContainsString('data-action-type="restore_role"', $html);
+        $this->assertStringContainsString('data-action-type="force_delete_role"', $html);
+        $this->assertStringNotContainsString('data-action-type="delete_role"', $html);
+        // Editing a trashed role is meaningless — it grants nothing.
+        $this->assertStringNotContainsString(route('roles.edit', $trashed), $html);
+        $this->assertStringContainsString('Trashed', $html);
     }
 
     #[Test]
@@ -312,7 +357,10 @@ class RbacUiRenderTest extends TestCase
         $filtered = $this->get(route('permissions.index', ['search' => 'settings']))
             ->viewData();
         $this->assertCount(2, $filtered['permissions']);
-        $this->assertSame(19, $filtered['totalPermissions']);
+        // From the catalogue, never a literal: adding a permission is a one-line
+        // change in PermissionCatalog and must not require editing an assertion
+        // three files away. `19` here was that trap, already stale once.
+        $this->assertSame(count(PermissionCatalog::all()), $filtered['totalPermissions']);
     }
 
     #[Test]
@@ -325,10 +373,13 @@ class RbacUiRenderTest extends TestCase
         $this->actingAs($user);
 
         $all = $this->get(route('permissions.index'))->viewData('permissions');
-        $this->assertSame(19, $all->total());
+        $this->assertSame(count(PermissionCatalog::all()), $all->total());
         $this->assertSame(10, $all->perPage(), 'design-system.md §Pagination: 10 per page');
         $this->assertCount(10, $all);
-        $this->assertSame(2, $all->lastPage());
+        $this->assertSame(
+            (int) ceil(count(PermissionCatalog::all()) / 10),
+            $all->lastPage()
+        );
 
         // 11 users.* rows at 10 per page puts users.view — which sorts last — on
         // page 2. Asserted on the data, not the markup: the name also appears in
@@ -418,6 +469,8 @@ class RbacUiRenderTest extends TestCase
         $html = $this->render('pages.roles.index', [
             'roles' => $this->paginator(collect([$this->roleRow('staff', false, 3, 0)])),
             'search' => '',
+            'trashed' => false,
+            'trashedCount' => 0,
             'currentSort' => 'name',
             'currentDirection' => 'asc',
         ]);
@@ -436,6 +489,8 @@ class RbacUiRenderTest extends TestCase
         $html = $this->render('pages.roles.index', [
             'roles' => $this->paginator(collect([$this->roleRow('staff', false, 3, 0)])),
             'search' => '',
+            'trashed' => false,
+            'trashedCount' => 0,
             'currentSort' => 'name',
             'currentDirection' => 'asc',
         ]);

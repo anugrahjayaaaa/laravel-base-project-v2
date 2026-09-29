@@ -103,17 +103,31 @@ Route::middleware(['auth:web,sanctum', 'verified', 'password.change.required', '
     });
 
     // -----------------------------------------------------------------------
-    // Roles & permissions — Phase 6 Group A (UI only).
+    // Roles & permissions — Phase 6.
+    //
+    // Group A added the read routes only, and pointed the create/edit forms at
+    // roles.index as a placeholder because no save route existed yet.
     //
     // NO `can:` gate here yet, and that is deliberate and temporary: the
     // permission rows themselves are seeded in Group B (P6-B1), so a gate now
-    // would deny everyone including superadmin. P6-D1 wraps these in
-    // `can:roles.view` / `can:roles.create` / `can:roles.update` /
-    // can:roles.delete` / `can:permissions.view` once the catalogue exists.
+    // would deny everyone including superadmin. The write routes are not
+    // unguarded in the meantime — their Form Requests authorize() on the same
+    // roles.create / roles.update / roles.delete permissions. P6-D1 wraps these
+    // in `can:roles.view` / `can:roles.create` / `can:roles.update` /
+    // `can:roles.delete` / `can:permissions.view` once the catalogue exists.
     // -----------------------------------------------------------------------
     Route::get('/roles', [RoleController::class, 'index'])->name('roles.index');
     Route::get('/roles/create', [RoleController::class, 'create'])->name('roles.create');
+    Route::post('/roles', [RoleController::class, 'store'])->name('roles.store');
     Route::get('/roles/{role}/edit', [RoleController::class, 'edit'])->name('roles.edit');
+    Route::put('/roles/{role}', [RoleController::class, 'update'])->name('roles.update');
+    Route::delete('/roles/{role}', [RoleController::class, 'destroy'])->name('roles.destroy');
+    // Both take the raw id, NOT an implicit {role} binding: that binding resolves
+    // through the SoftDeletes global scope, so it 404s every trashed role —
+    // exactly the rows these two routes exist for. The controller looks the row
+    // up with onlyTrashed() instead. POST, not GET, for both: they mutate.
+    Route::post('/roles/{role}/restore', [RoleController::class, 'restore'])->name('roles.restore');
+    Route::delete('/roles/{role}/force', [RoleController::class, 'forceDelete'])->name('roles.force-delete');
 
     Route::get('/permissions', [PermissionController::class, 'index'])->name('permissions.index');
 });

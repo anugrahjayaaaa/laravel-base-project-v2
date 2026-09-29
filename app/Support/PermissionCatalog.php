@@ -49,6 +49,8 @@ class PermissionCatalog
         'roles.create',
         'roles.update',
         'roles.delete',
+        'roles.force_delete',
+        'roles.restore',
         'roles.assign_permissions',
     ];
 
