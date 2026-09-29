@@ -68,7 +68,7 @@ Route::middleware(['auth:web,sanctum', 'verified', 'password.change.required', '
 
     Route::get('/dashboard', DashboardController::class)->name('dashboard');
 
-    Route::get('/settings', [SystemSettingController::class, 'index'])->name('settings.index');
+    Route::get('/settings', [SystemSettingController::class, 'index'])->name('settings.index')->can('settings.view');
     Route::post('/settings', [SystemSettingController::class, 'update'])->name('settings.update');
 
     // Profile
@@ -81,7 +81,18 @@ Route::middleware(['auth:web,sanctum', 'verified', 'password.change.required', '
     });
 
     // Users
-    Route::resource('users', UserController::class)->except(['restore', 'force-delete', 'resend-verification']);
+    // Per-ability gates (P6-C14/C15/C18). The Form Requests authorize the
+    // writes; nothing was checking the reads, so any authenticated session could
+    // list and view users. Route::resource registered PUT and PATCH for update
+    // under one name — preserved below.
+    Route::get('/users', [UserController::class, 'index'])->name('users.index')->can('users.view');
+    Route::get('/users/create', [UserController::class, 'create'])->name('users.create')->can('users.create');
+    Route::post('/users', [UserController::class, 'store'])->name('users.store')->can('users.create');
+    Route::get('/users/{user}', [UserController::class, 'show'])->name('users.show')->can('users.view');
+    Route::get('/users/{user}/edit', [UserController::class, 'edit'])->name('users.edit')->can('users.update');
+    Route::put('/users/{user}', [UserController::class, 'update'])->name('users.update')->can('users.update');
+    Route::patch('/users/{user}', [UserController::class, 'update'])->name('users.update')->can('users.update');
+    Route::delete('/users/{user}', [UserController::class, 'destroy'])->name('users.destroy')->can('users.delete');
     Route::post('/users/{user}/restore', [UserController::class, 'restore'])->name('users.restore');
     Route::delete('/users/{user}/force', [UserController::class, 'forceDelete'])->name('users.force-delete');
     Route::bind('user', function ($id) {
@@ -108,19 +119,16 @@ Route::middleware(['auth:web,sanctum', 'verified', 'password.change.required', '
     // Group A added the read routes only, and pointed the create/edit forms at
     // roles.index as a placeholder because no save route existed yet.
     //
-    // NO `can:` gate here yet, and that is deliberate and temporary: the
-    // permission rows themselves are seeded in Group B (P6-B1), so a gate now
-    // would deny everyone including superadmin. The write routes are not
-    // unguarded in the meantime — their Form Requests authorize() on the same
-    // roles.create / roles.update / roles.delete permissions. P6-D1 wraps these
-    // in `can:roles.view` / `can:roles.create` / `can:roles.update` /
-    // `can:roles.delete` / `can:permissions.view` once the catalogue exists.
+    // Gated as of Group C2: the catalogue these gates check against is seeded in
+    // Group B (P6-B1), so the original reason to defer them is gone. The write
+    // routes were never unguarded — their Form Requests authorized on the same
+    // roles.* permissions — and now the reads are closed the same way.
     // -----------------------------------------------------------------------
     Route::post('/roles/bulk-action', [RoleController::class, 'bulkAction'])->name('roles.bulk-action')->middleware('throttle:bulk-action');
-    Route::get('/roles', [RoleController::class, 'index'])->name('roles.index');
-    Route::get('/roles/create', [RoleController::class, 'create'])->name('roles.create');
+    Route::get('/roles', [RoleController::class, 'index'])->name('roles.index')->can('roles.view');
+    Route::get('/roles/create', [RoleController::class, 'create'])->name('roles.create')->can('roles.create');
     Route::post('/roles', [RoleController::class, 'store'])->name('roles.store');
-    Route::get('/roles/{role}/edit', [RoleController::class, 'edit'])->name('roles.edit');
+    Route::get('/roles/{role}/edit', [RoleController::class, 'edit'])->name('roles.edit')->can('roles.update');
     Route::put('/roles/{role}', [RoleController::class, 'update'])->name('roles.update');
     Route::delete('/roles/{role}', [RoleController::class, 'destroy'])->name('roles.destroy');
     // Both take the raw id, NOT an implicit {role} binding: that binding resolves
@@ -130,5 +138,5 @@ Route::middleware(['auth:web,sanctum', 'verified', 'password.change.required', '
     Route::post('/roles/{role}/restore', [RoleController::class, 'restore'])->name('roles.restore');
     Route::delete('/roles/{role}/force', [RoleController::class, 'forceDelete'])->name('roles.force-delete');
 
-    Route::get('/permissions', [PermissionController::class, 'index'])->name('permissions.index');
+    Route::get('/permissions', [PermissionController::class, 'index'])->name('permissions.index')->can('permissions.view');
 });
