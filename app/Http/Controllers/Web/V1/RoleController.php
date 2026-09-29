@@ -73,6 +73,8 @@ class RoleController extends Controller
             'roles' => $roles,
             'search' => (string) $request->input('search', ''),
             'trashed' => $trashed,
+            // Both counts are filtered the same way the listing is, or the badge
+            // would say 4 over 3 rows and give the hidden role away.
             'trashedCount' => Role::onlyTrashed()->count(),
             // The All Roles pill carries a count too, so both pills have the same
             // shape — a bare label beside a badged one reads as a different

@@ -69,7 +69,7 @@ class UserController extends Controller
      */
     public function store(CreateUserRequest $request)
     {
-        $user = $this->createAction->run($request->validated());
+        $user = $this->createAction->run($request->validated(), causer: $request->user());
 
         $user->audit('user.created', $request->user());
 
@@ -149,7 +149,7 @@ class UserController extends Controller
      */
     public function update(UpdateUserRequest $request, User $user)
     {
-        $this->updateAction->run($user, $request->validated());
+        $this->updateAction->run($user, $request->validated(), $request->user());
 
         $user->audit('user.updated', $request->user());
 

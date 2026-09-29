@@ -3,6 +3,7 @@
 namespace App\Actions\V1\User;
 
 use App\Actions\V1\Auth\RecordPasswordHistoryAction;
+use App\Actions\V1\Role\AssignRolesAction;
 use App\Models\RoleLookup;
 use App\Models\SystemSetting;
 use App\Models\User;
@@ -24,6 +25,7 @@ class CreateUserAction
 {
     public function __construct(
         private readonly RecordPasswordHistoryAction $recordHistoryAction,
+        private readonly AssignRolesAction $assignRolesAction,
     ) {
     }
 
@@ -33,9 +35,10 @@ class CreateUserAction
      * @param  array       $data      Keys: name, email, username, roles (admin only)
      * @param  string|null $password  The user's own password. Null means generate a
      *                               temporary one and force a change on first login.
+     * @param  User|null   $causer    Who is creating the account, for the role audit
      * @return User
      */
-    public function run(array $data, ?string $password = null): User
+    public function run(array $data, ?string $password = null, ?User $causer = null): User
     {
         $isTemporary = $password === null;
 
@@ -43,7 +46,7 @@ class CreateUserAction
             $password = $this->generateTempPassword();
         }
 
-        return DB::transaction(function () use ($data, $password, $isTemporary) {
+        return DB::transaction(function () use ($data, $password, $isTemporary, $causer) {
             $user = User::create([
                 'name' => strip_tags($data['name']),
                 'email' => $data['email'],
@@ -56,13 +59,21 @@ class CreateUserAction
                 'last_activity_at' => null,
             ]);
 
-            $roles = $data['roles'] ?? $this->defaultRolesForSelfRegistration();
+            // Two sources of roles, and only one of them is a privilege an admin
+            // handed out. A self-registering user gets the server-side default;
+            // an admin-supplied `roles` key is a grant, so it is checked and
+            // synced through AssignRolesAction rather than assigned inline.
+            if (array_key_exists('roles', $data)) {
+                // No permission check here: AssignRolesAction holds it, so C9 and
+                // C10 cannot drift apart.
+                $user = $this->assignRolesAction->run($user, $data['roles'], $causer);
+            } else {
+                foreach ($this->defaultRolesForSelfRegistration() as $roleName) {
+                    $role = RoleLookup::find($roleName);
 
-            foreach ($roles as $roleName) {
-                $role = RoleLookup::find($roleName);
-
-                if ($role) {
-                    $user->assignRole($role);
+                    if ($role) {
+                        $user->assignRole($role);
+                    }
                 }
             }
 

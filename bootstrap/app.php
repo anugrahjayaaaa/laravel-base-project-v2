@@ -1,5 +1,6 @@
 <?php
 
+use App\Exceptions\LastSuperadminException;
 use App\Http\Middleware\CheckAccountState;
 use App\Http\Middleware\EnsurePasswordChangeRequired;
 use App\Http\Middleware\GenerateRequestCorrelationId;
@@ -11,11 +12,13 @@ use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
 use Illuminate\Session\TokenMismatchException;
 use Illuminate\Validation\ValidationException;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Routing\Exceptions\InvalidSignatureException;
 use Illuminate\Http\Exceptions\ThrottleRequestsException;
 use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 return Application::configure(basePath: dirname(__DIR__))
@@ -54,6 +57,20 @@ return Application::configure(basePath: dirname(__DIR__))
             ], 419);
         }
 
+        // A conflict, not a server fault: the payload was well-formed, it just
+        // asked for something the app must not do. Handled ahead of the blanket
+        // API handler below, which would otherwise turn it into a 500.
+        if ($e instanceof LastSuperadminException) {
+            if ($request->is('api/*') || $request->expectsJson()) {
+                return response()->json([
+                    'message' => $e->getMessage(),
+                    'code' => 'LAST_SUPERADMIN',
+                ], 409);
+            }
+
+            return back()->with('error', $e->getMessage());
+        }
+
         if ($request->is('api/*') && ! config('app.debug')) {
         if ($e instanceof ValidationException) {
             return response()->json([
@@ -88,6 +105,17 @@ return Application::configure(basePath: dirname(__DIR__))
 
         if ($e instanceof HttpResponseException) {
             return null;
+        }
+
+        // Without this, an authorization failure on an api/* route falls through
+        // to the blanket 500 below — the caller is told the server broke rather
+        // than that they are not allowed, and a 403-based client cannot tell
+        // "retry later" from "never". Must sit above that handler.
+        if ($e instanceof AuthorizationException || $e instanceof AccessDeniedHttpException) {
+            return response()->json([
+                'message' => $e->getMessage() ?: 'This action is unauthorized.',
+                'code' => 'FORBIDDEN',
+            ], 403);
         }
 
         if ($e instanceof ModelNotFoundException) {
