@@ -78,9 +78,19 @@ Superadmin is a controlled privileged role:
 
 ### Last Superadmin Enforcement
 
-* Before any role-reassignment or role-deletion operation, the system must verify
-  at least one other valid superadmin remains.
-* This check is part of the mutation transaction.
+* Before any role reassignment, `AssignRolesAction` counts the superadmins before
+  and after the sync and refuses with `LastSuperadminException` if the result
+  would be zero. The check runs inside the same transaction as the sync.
+* A refused reassignment renders as a redirect-back with an `error` flash on the
+  web, and as `409 Conflict` on the API.
+* Granting the `superadmin` role additionally requires the acting user to already
+  be a superadmin. `users.assign_roles` alone is not enough — it can edit any
+  ordinary role, so on its own it would let a delegated admin mint a superadmin.
+* This is a **minimum of one**, not exactly one. A second superadmin can still be
+  created by an existing superadmin.
+* The check guards reassignment only. A superadmin account can still be
+  soft-deleted, and the role can be trashed, provided the last superadmin keeps
+  its own access.
 
 ## Superadmin Protection
 
@@ -92,6 +102,32 @@ Superadmin is a controlled privileged role:
 - Cannot deactivate the last valid superadmin.
 - Cannot accidentally remove all critical superadmin capabilities.
 - Critical system role operations must be protected.
+
+## Superadmin Visibility
+
+The `superadmin` role, and the accounts holding it, are visible only to a user
+who is already a superadmin. This is presentation, layered on top of the
+authorization rules above — hiding a control is not what prevents the action, and
+the API paths are guarded independently.
+
+`RoleLookup::viewerIsSuperAdmin()` is the single decision. `RoleLookup::visibleTo()`
+applies it to the role list, and the two index actions apply the same predicate to
+their own queries — an Eloquent relation filter cannot be expressed by the
+role-name query, so the predicate is shared while the queries stay separate:
+
+- the role picker on the user create/edit forms — `visibleTo()`
+- the registration-default-role dropdown on the settings page — `visibleTo()`
+- the roles index, and its tab counts — inline in `IndexRoleAction`
+- the users index, and its tab counts — inline in `UserIndexAction`
+
+The counts follow the rows on purpose. A badge reading "4" above three rows tells
+an observer something was removed, so the users index keeps two cached count
+keys — one per audience — busted together from the user observer and the bulk
+handler.
+
+`RoleLookup::assignable()` is deliberately **not** viewer-filtered. It answers
+"which roles are on this guard", which settings validation and the guard tests
+depend on; making it viewer-dependent would silently change what those accept.
 
 ## Permission Naming Convention
 

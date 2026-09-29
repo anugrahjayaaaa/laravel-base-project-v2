@@ -411,16 +411,16 @@ empty for that role.
 ### C2 — Permission catalogue (Web, read-only)
 | ID | Task | Depends | Est. |
 |----|------|---------|------|
-| P6-C7 | `App\Actions\V1\Permission\IndexPermissionAction` — `Permission::where('guard_name', RoleLookup::guard())->withCount('roles')->orderBy('name')->get()`, grouped by prefix for the view | B3 | tiny |
-| P6-C8 | `App\Http\Controllers\Web\V1\PermissionController` — `index()` only, guarded by `can('permissions.view')`. **No store/update/destroy** — permissions are code-defined and seeded. A UI that creates a permission row nobody's `can()` call references is a trap | C7 | tiny |
+| P6-C7 | `App\Actions\V1\Permission\PermissionIndexAction` — `Permission::where('guard_name', RoleLookup::guard())->withCount('roles')->orderBy('name')`, plus search, a sortable whitelist, and pagination. **Grouping by prefix not built** (open decision, see audit notes) | B3 | done, with deviation |
+| P6-C8 | `App\Http\Controllers\Web\V1\PermissionController` — `index()` only, guarded by `can('permissions.view')`. **No store/update/destroy** — permissions are code-defined and seeded. A UI that creates a permission row nobody's `can()` call references is a trap | C7 | done |
 
 ### C3 — Role assignment sync (the brief's core case)
 | ID | Task | Depends | Est. |
 |----|------|---------|------|
-| P6-C9 | `UpdateUserAction` — roles branch is already `array_key_exists`-guarded (`:59`). **Do not change it.** Add one thing: a `users.assign_roles` check before `syncRoles`, and reject a payload that would strip `superadmin` from the last superadmin (C11) | C5 | small |
-| P6-C10 | `CreateUserAction` — roles come from `RoleLookup::find()` already (`:62`). Add the same `users.assign_roles` check on the admin path only; the self-registration path (`defaultRolesForSelfRegistration()`) is **not** permission-gated because it is not an admin action and its role is server-side, not client-supplied | C5 | small |
-| P6-C11 | `App\Actions\V1\Role\AssignRolesAction` — one place that both C9 and C10 call: `DB::transaction`, resolve names through `RoleLookup::find()` (skip unknown rather than throw — `CreateUserAction` already silently skips, and a hard failure on a stale form is worse), count superadmins before/after, throw `LastSuperadminException` if the result is zero, `syncRoles()`, audit `user.roles_assigned` with the before/after lists in `properties` | B4 | medium |
-| P6-C12 | `App\Exceptions\LastSuperadminException` + renderable in `bootstrap/app.php` → web redirect with `error` flash, API 409 JSON | C11 | small |
+| P6-C9 | `UpdateUserAction` — roles branch is already `array_key_exists`-guarded (`:59`). **Do not change it.** Add one thing: a `users.assign_roles` check before `syncRoles`, and reject a payload that would strip `superadmin` from the last superadmin (C11) | C5 | done |
+| P6-C10 | `CreateUserAction` — roles come from `RoleLookup::find()` already (`:62`). Add the same `users.assign_roles` check on the admin path only; the self-registration path (`defaultRolesForSelfRegistration()`) is **not** permission-gated because it is not an admin action and its role is server-side, not client-supplied | C5 | done |
+| P6-C11 | `App\Actions\V1\Role\AssignRolesAction` — one place that both C9 and C10 call: `DB::transaction`, resolve names through `RoleLookup::find()` (skip unknown rather than throw — `CreateUserAction` already silently skips, and a hard failure on a stale form is worse), count superadmins before/after, throw `LastSuperadminException` if the result is zero, `syncRoles()`, audit `user.roles_assigned` with the before/after lists in `properties` | B4 | done |
+| P6-C12 | `App\Exceptions\LastSuperadminException` + renderable in `bootstrap/app.php` → web redirect with `error` flash, API 409 JSON | C11 | done |
 | P6-C13 | ~~`AssignRolesRequest`~~ **merged into `AssignRolesAction` (2026-09-29).** The class was built as specced but no route ever referenced it, so the `users.assign_roles` check lived in code nothing could reach. The check and the guard-scoped role resolution now live in `AssignRolesAction`, which both write paths call. Role payloads are still validated before they reach it, by `CreateUserRequest`/`UpdateUserRequest`. Standalone role assignment is a role-picker edit on the existing user forms, not a separate endpoint | C5 | done |
 
 ### C4 — Fix the ungated `authorize()` returns
@@ -438,6 +438,70 @@ grants, replace → swaps, empty array → clears, absent key → untouched);
 last-superadmin cannot be stripped. `UserCrudWebTest` +
 `UserRoleEditTest` still green — they call these endpoints and must be updated
 to the new authorization, not deleted.
+
+### C2/C3 audit notes (2026-09-29)
+
+The tables above carry the per-task status; these notes hold the reasoning, the
+deviations, and what is deliberately still open.
+
+**Why the `users.assign_roles` check is not in either action.** C9 and C10 each
+ask for the same check, in the two actions that already had a roles branch. It
+ships in `AssignRolesAction` instead, which is the one place both call. Two
+copies is how C9 and C10 end up disagreeing about who may hand out a role — and
+they did: with the check in each caller, the create path was protected and the
+update path was not, so a caller holding only `users.update` could make any
+account a superadmin:
+
+    PUT /users/{victim}  + roles:["superadmin"]  =>  302, victim is superadmin
+
+`AssignRolesAction` is also the only path to `syncRoles`; the single inline
+`assignRole()` in `CreateUserAction` is the self-registration default branch,
+which is server-side and must stay un-gated.
+
+**Superadmin grant vs. superadmin removal are different questions.** Removing
+the last superadmin is refused by `guardLastSuperadmin()`, which counts before
+and after and throws `LastSuperadminException` if the result is zero — that is
+C11 exactly as written. Granting it additionally requires the causer to already
+be a superadmin, because `users.assign_roles` is broad enough to edit any
+ordinary role, and on its own it would let a delegated admin mint a second
+superadmin. Note the asymmetry this leaves, which is deliberate: the *count*
+guard is a minimum of one, not exactly one. A second superadmin is still
+creatable by an existing superadmin. The spec says "if the result is zero", so
+enforcing "exactly one" is a change of requirement, not a fix — raise it before
+assuming it.
+
+**C7's class name and the grouping decision.** The table names
+`IndexPermissionAction`; what ships is `PermissionIndexAction`. The C1
+convention (`IndexRoleAction`) puts `Index` first, so the shipped name is the
+inconsistent one — it is being renamed in a later refactor, not fixed here.
+
+Grouping by resource prefix is **not built**. The catalogue page is searchable,
+sortable and paginated, and a paginator cannot be grouped without losing all
+three. The page stays a flat table and the resource is still derived, once per
+row, in the view. This is an open decision between grouping and pagination, not
+a silent omission.
+
+**C13 merged, not built.** `AssignRolesRequest` was built as specced and then
+deleted. No route ever referenced it, so the check it existed to express lived
+in a class nothing could reach; the check and the guard-scoped role resolution
+now live in `AssignRolesAction`. Role payloads are still validated before they
+reach it, by `CreateUserRequest` / `UpdateUserRequest`. A standalone
+role-assignment endpoint was not needed — role editing is the picker on the
+existing user forms.
+
+**Shipped beyond the C2/C3 tables.** The superadmin visibility rule (the role
+and the account that holds it are visible only to a superadmin), the two
+audience-specific user-index count keys, the route-level `can()` gates for
+`/users`, `/roles` and `/permissions`, and the form requests that read the
+index query strings (`RoleQueryRequest`, `PermissionQueryRequest`).
+`registration_default_role` is now validated against the same visible-to-this-
+viewer set its dropdown is built from, so the form cannot offer a choice the
+rules then accept.
+
+**Out of scope, tracked elsewhere.** `lock`, `unlock`, `activate`, `deactivate`,
+`restore`, `force-delete` and `users.bulk-action` carry no route gate. That is
+P6-C18 / C4 work, not a C2/C3 gap — `UserPolicy` already has the state methods,
+they are simply not called yet.
 
 ### C1 audit notes (2026-09-29)
 

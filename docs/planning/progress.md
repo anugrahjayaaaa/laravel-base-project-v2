@@ -31,8 +31,8 @@ Phase 6 — RBAC & Authorization: 🟡 IN PROGRESS
 - Group A (UI): ✅ DONE (2026-09-28, audited)
 - Group B (permission set + seeders): ✅ DONE (2026-09-28, verified)
 - Group C1 (role management, web): ✅ DONE (2026-09-29, audited) — P6-C1..C6
-- Group C2 (permission catalogue, read-only): ✅ DONE (P6-C7/C8 shipped with Group A)
-- Group C3 (role assignment sync): ⬜ NOT STARTED
+- Group C2 (permission catalogue, read-only): ✅ DONE (2026-09-29, audited) — P6-C7/C8; grouping by prefix not built, open decision
+- Group C3 (role assignment sync): ✅ DONE (2026-09-29, audited) — P6-C9..C12; C13 merged into `AssignRolesAction`
 - Group C4 (ungated `authorize()` returns): 🟡 PARTIAL — see below
 - Group C5 (phase report / QA evidence): ⬜ NOT STARTED
 
@@ -97,10 +97,8 @@ bulk one is not. Fix is one `match` on the requested action, mirroring C17.
 longer point at `roles.index` as placeholders — Group C1 gave them real
 endpoints. RBAC-006 (`/users` + `/settings` ungated) is also still open.
 
-**Next:** Group C3 — role assignment sync (`AssignRolesAction`,
-`LastSuperadminException`, `AssignRolesRequest`) — which is the brief's core
-case, then C4 to close the ungated `authorize()` returns including the role bulk
-request above.
+**Next:** Group C5 (phase report / QA evidence). Also open: the 7 ungated user
+state routes, which `UserPolicy` already covers but nothing calls yet.
 
 Phase 5C — Password Expiration & Inactivity Lock: ✅ FULLY DONE
 - Shared Web/API settings action
