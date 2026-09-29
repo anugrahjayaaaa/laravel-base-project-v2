@@ -4,10 +4,10 @@ namespace App\Http\Controllers\Web\V1;
 
 use App\Actions\V1\Permission\PermissionIndexAction;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Permission\PermissionQueryRequest;
 use App\Models\Role;
 use App\Models\RoleLookup;
 use Illuminate\Contracts\View\View;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Spatie\Permission\Models\Permission;
 
@@ -28,18 +28,21 @@ class PermissionController extends Controller
     /**
      * List every permission on the app's guard, with the roles holding it.
      */
-    public function index(Request $request): View
+    public function index(PermissionQueryRequest $request): View
     {
+        $validated = $request->validated();
+
         $result = $this->indexAction->run(
-            search: (string) $request->input('search', ''),
-            sort: (string) $request->input('sort', 'name'),
-            direction: (string) $request->input('direction', 'asc'),
+            search: (string) ($validated['search'] ?? ''),
+            sort: (string) ($validated['sort'] ?? 'name'),
+            direction: (string) ($validated['direction'] ?? 'asc'),
+            perPage: (int) ($validated['per_page'] ?? 10),
         );
 
         return view('pages.permissions.index', [
             'title' => 'Permissions',
             'permissions' => $result['permissions'],
-            'search' => (string) $request->input('search', ''),
+            'search' => (string) ($validated['search'] ?? ''),
             // Echoed back unresolved: the view only needs them to mark the active
             // sortable column, and re-deriving the whitelist here would give the
             // header a second place to disagree with the query.
@@ -86,7 +89,7 @@ class PermissionController extends Controller
                 // cannot disagree with the badge rendered next to each permission.
                 'totalResources' => (clone $catalogue)
                     ->pluck('name')
-                    ->map(fn(string $name): string => str($name)->before('.')->value())
+                    ->map(fn (string $name): string => str($name)->before('.')->value())
                     ->unique()
                     ->count(),
                 // Counted rather than derived from the loaded rows: a role holding no

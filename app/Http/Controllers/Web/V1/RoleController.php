@@ -15,14 +15,16 @@ use App\Http\Requests\Role\BulkRoleRequest;
 use App\Http\Requests\Role\DeleteRoleRequest;
 use App\Http\Requests\Role\ForceDeleteRoleRequest;
 use App\Http\Requests\Role\RestoreRoleRequest;
+use App\Http\Requests\Role\RoleQueryRequest;
 use App\Http\Requests\Role\StoreRoleRequest;
 use App\Http\Requests\Role\UpdateRoleRequest;
 use App\Models\Role;
 use App\Models\RoleLookup;
+use App\Models\User;
 use App\Support\SystemRole;
 use Illuminate\Contracts\View\View;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
 use Spatie\Permission\Models\Permission;
 
 /**
@@ -58,14 +60,16 @@ class RoleController extends Controller
      * query rather than a per-row filter, so a live role can never appear on the
      * trash tab and offer a Restore that would 404.
      */
-    public function index(Request $request): View
+    public function index(RoleQueryRequest $request): View
     {
-        $trashed = $request->boolean('trashed');
+        $validated = $request->validated();
+        $trashed = (bool) ($validated['trashed'] ?? false);
 
         $roles = $this->indexAction->run(
-            search: (string) $request->input('search', ''),
-            sort: (string) $request->input('sort', 'name'),
-            direction: (string) $request->input('direction', 'desc'),
+            search: (string) ($validated['search'] ?? ''),
+            sort: (string) ($validated['sort'] ?? 'name'),
+            direction: (string) ($validated['direction'] ?? 'desc'),
+            perPage: (int) ($validated['per_page'] ?? 10),
             trashed: $trashed,
             viewer: $request->user(),
         );
@@ -73,20 +77,20 @@ class RoleController extends Controller
         return view('pages.roles.index', [
             'title' => $trashed ? 'Role Trash' : 'Roles',
             'roles' => $roles,
-            'search' => (string) $request->input('search', ''),
+            'search' => (string) ($validated['search'] ?? ''),
             'trashed' => $trashed,
             // Both counts are filtered the same way the listing is, or the badge
             // would say 4 over 3 rows and give the hidden role away.
-            'trashedCount' => $this->visibleRoles($request, onlyTrashed: true)->count(),
+            'trashedCount' => $this->visibleRoles($request->user(), onlyTrashed: true)->count(),
             // The All Roles pill carries a count too, so both pills have the same
             // shape — a bare label beside a badged one reads as a different
             // component. Same reason users/index badges every tab.
-            'liveCount' => $this->visibleRoles($request)->count(),
+            'liveCount' => $this->visibleRoles($request->user())->count(),
             // Echoed back unresolved: the view only needs them to mark the active
             // sortable column, and re-deriving the whitelist here would give the
             // header a second place to disagree with the query.
-            'currentSort' => (string) $request->input('sort', 'name'),
-            'currentDirection' => $request->input('direction') === 'asc' ? 'asc' : 'desc',
+            'currentSort' => (string) ($validated['sort'] ?? 'name'),
+            'currentDirection' => ($validated['direction'] ?? 'desc') === 'asc' ? 'asc' : 'desc',
         ]);
     }
 
@@ -97,15 +101,15 @@ class RoleController extends Controller
      * under them always agree. A superadmin sees the superadmin role; nobody
      * else does, in the list or in the number beside it.
      *
-     * @return \Illuminate\Database\Eloquent\Builder<Role>
+     * @return Builder<Role>
      */
-    private function visibleRoles(Request $request, bool $onlyTrashed = false): \Illuminate\Database\Eloquent\Builder
+    private function visibleRoles(?User $viewer, bool $onlyTrashed = false): Builder
     {
         $query = $onlyTrashed ? Role::onlyTrashed() : Role::query();
 
         $query->where('guard_name', RoleLookup::guard());
 
-        if (! RoleLookup::viewerIsSuperAdmin($request->user())) {
+        if (! RoleLookup::viewerIsSuperAdmin($viewer)) {
             $query->where('name', '!=', SystemRole::SUPERADMIN);
         }
 
