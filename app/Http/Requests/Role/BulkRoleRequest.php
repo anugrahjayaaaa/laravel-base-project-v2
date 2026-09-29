@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Role;
 
+use App\Http\Requests\Concerns\AuthorizesBulkAction;
 use App\Models\Role;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -15,15 +16,17 @@ use Illuminate\Validation\Rule;
  */
 class BulkRoleRequest extends FormRequest
 {
-    public function authorize(): bool
+    use AuthorizesBulkAction;
+
+    protected function bulkEntityPrefix(): string
     {
-        return true;
+        return 'roles';
     }
 
     public function rules(): array
     {
         return [
-            'action' => ['required', 'string', Rule::in(['delete', 'force_delete', 'restore'])],
+            'action' => ['required', 'string', Rule::in(self::bulkActions())],
             'role_ids' => ['required', 'array', 'min:1'],
             'role_ids.*' => ['integer', function (string $attribute, mixed $value, \Closure $fail): void {
                 if (! Role::withTrashed()->whereKey($value)->exists()) {

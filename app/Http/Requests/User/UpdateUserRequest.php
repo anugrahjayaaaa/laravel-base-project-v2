@@ -14,11 +14,27 @@ use Illuminate\Validation\ValidationException;
 class UpdateUserRequest extends FormRequest
 {
     /**
-     * Guest route,always authorized.
+     * `users.update`, or a self-profile edit.
+     *
+     * The self-profile exception is deliberately narrow: the caller must be the
+     * target AND must not be sending a `roles` key. Otherwise a user editing
+     * their own profile could hand themselves a superadmin role, and the
+     * narrower rule says so at the boundary rather than relying on every caller
+     * to remember it.
      */
     public function authorize(): bool
     {
-        return true;
+        $user = $this->user();
+
+        if ($user?->can('users.update') === true) {
+            return true;
+        }
+
+        $target = $this->route('user');
+
+        return $target !== null
+            && (string) $user?->getKey() === (string) $target->getKey()
+            && ! $this->has('roles');
     }
 
     /**

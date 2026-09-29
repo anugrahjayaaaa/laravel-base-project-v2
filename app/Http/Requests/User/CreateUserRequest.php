@@ -10,11 +10,15 @@ use Illuminate\Foundation\Http\FormRequest;
 class CreateUserRequest extends FormRequest
 {
     /**
-     * Guest route,always authorized.
+     * Creating a user is an admin action.
+     *
+     * Public self-registration does not come through here — it has its own
+     * `RegisterRequest`, so returning false here closes the admin form without
+     * touching the public signup path.
      */
     public function authorize(): bool
     {
-        return true;
+        return $this->user()?->can('users.create') ?? false;
     }
 
     public function rules(): array

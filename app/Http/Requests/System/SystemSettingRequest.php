@@ -12,11 +12,11 @@ use Illuminate\Validation\Rule;
 class SystemSettingRequest extends FormRequest
 {
     /**
-     * Guest route,always authorized.
+     * Settings are administrator-only.
      */
     public function authorize(): bool
     {
-        return true;
+        return $this->user()?->can('settings.manage') ?? false;
     }
 
     /**
