@@ -106,12 +106,9 @@
                                     <td><x-ui.badge variant="neutral" :text="$resource" /></td>
                                     <td>
                                         @forelse ($permission->roles as $role)
-                                            <span class="text-muted small">{{ $role->name }}</span>
-                                            @if (!$loop->last)
-                                                <span class="text-muted opacity-25 mx-1">·</span>
-                                            @endif
+                                            <x-ui.badge variant="primary" :text="$role->name" class="me-1" />
                                         @empty
-                                            <span class="text-muted fst-italic">Unassigned</span>
+                                            <span class="text-muted">Unassigned</span>
                                         @endforelse
                                     </td>
                                 </tr>

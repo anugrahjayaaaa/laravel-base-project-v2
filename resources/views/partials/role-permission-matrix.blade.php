@@ -14,35 +14,23 @@
     @if (count($permissions) === 0)
         <x-ui.empty-state icon="fas fa-key" message="No permissions are defined." />
     @else
-        <div class="border rounded p-3" style="max-height: 480px; overflow-y: auto;">
+        <div class="border rounded p-3" style="max-height: 320px; overflow-y: auto;">
             @foreach ($permissionGroups as $resource => $groupPermissions)
-                <div class="mb-2">
-                    <div class="d-flex justify-content-between align-items-center mb-1">
-                        <div class="text-uppercase small fw-semibold text-muted">{{ $resource }}</div>
-                        {{-- ponytail: inline onclick, no external JS. Toggles all
-                             checkboxes with name="permissions[]" in this group. --}}
-                        <a href="#" class="small text-decoration-none text-muted"
-                           onclick="const c=this.closest('.mb-2').querySelectorAll('input[name=\"permissions[]\"]');const all=[...c].every(cb=>cb.checked);c.forEach(cb=>cb.checked=!all);this.textContent=all?'Select all':'Deselect all';return false">
-                            Select all
-                        </a>
-                    </div>
+                <div class="mb-3">
+                    <div class="text-uppercase small fw-semibold text-muted mb-2">{{ $resource }}</div>
                     @foreach ($groupPermissions as $permission)
                         @php
                             $checked = in_array($permission->id, old('permissions', $selectedPermissions ?? []));
                         @endphp
-                        <div class="form-check mb-1">
+                        <div class="form-check">
                             <input class="form-check-input @error('permissions.' . $permission->id) is-invalid @enderror"
                                 type="checkbox" name="permissions[]" value="{{ $permission->id }}"
                                 id="permission_{{ $permission->id }}" {{ $checked ? 'checked' : '' }}>
-                            <label class="form-check-label small"
-                                for="permission_{{ $permission->id }}">
+                            <label class="form-check-label small" for="permission_{{ $permission->id }}">
                                 {{ $permission->name }}
                             </label>
                         </div>
                     @endforeach
-                    @unless ($loop->last)
-                        <div class="border-bottom border-secondary-subtle mb-2"></div>
-                    @endunless
                 </div>
             @endforeach
         </div>
