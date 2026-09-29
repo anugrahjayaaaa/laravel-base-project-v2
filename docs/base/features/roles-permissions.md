@@ -207,10 +207,13 @@ mechanism for the other and leave the other half broken.
   That is what makes a restore collision *impossible* rather than merely
   unlikely — pinned by `test_a_trashed_role_name_stays_reserved` so nobody
   "helpfully" adds `whereNull('deleted_at')` and opens the hole.
-- **A populated role needs `force`.** The web `destroy` refuses while users
-  still hold the role, because trashing it deassigns all of them. The action's
-  `force: true` is the deliberate override; either way the revocation is counted
-  in the audit row.
+- **A populated role needs `force`.** `DeleteRoleAction` refuses while users
+  still hold the role, because trashing it deassigns all of them. Both the web
+  `destroy` and the bulk bar pass `force: true` — the confirm modal in front of
+  them spells the consequence out ("removed from every user holding it") before
+  the admin confirms, so the modal *is* the deliberate override. The guard still
+  protects the callers that have no modal: the API and the console, which pass
+  `force` explicitly. Either way the revocation is counted in the audit row.
 - **A trashed role cannot be edited** — the `{role}` route binding resolves
   through the global scope and 404s. The view offers no Edit link for the same
   reason.
@@ -227,6 +230,39 @@ The trash lives on the roles index as a second tab (`?trashed=1`) with its own
 count, mirroring `pages/users/index`. `Route::post`/`Route::delete` take the raw
 id rather than an implicit `{role}` binding — that binding resolves through the
 global scope and would 404 every trashed row these routes exist for.
+
+Both tabs badge their count pill, as `pages/users/index` does: a bare label
+beside a badged one reads as a different component, which is the whole of what
+"the Trash tab looks different" was.
+
+## Bulk Actions
+
+`POST /roles/bulk-action` applies one action to many roles. It reuses the whole
+users bulk path rather than a second implementation:
+
+- `RoleBulkActionHandler` implements the same `BulkActionHandler` interface
+  `UserBulkActionHandler` does, so `BulkActionProcessor` drives both unchanged.
+- `BulkRoleRequest` mirrors `BulkUserRequest`; the id lookup is
+  `Role::withTrashed()` because the trash tab submits already-deleted ids.
+- `resources/js/helpers/bulk-actions.js` is shared. It reads the field name,
+  noun, per-state action map, and action-config key mapping from `data-*` on
+  `#bulkBar`, defaulting to the user values — so the roles page gets correct
+  behaviour and correct modal copy ("selected role(s)", `delete_role` wording)
+  without a second JS file to keep in sync.
+
+`getValidItems()` is the security boundary, not the dropdown: it excludes system
+roles from every action and excludes live roles from restore / force-delete, so
+a hand-posted id cannot trash `admin`. The view simply renders no checkbox for a
+system role, which is convenience rather than enforcement.
+
+Unlike `UserController::bulkAction`, this path writes **no** aggregate audit
+row. Each role action already logs its own `role.deleted` row carrying
+`revoked_users` and `revoked_permissions`; a bulk row would repeat the subjects
+without adding the properties that make the log useful.
+
+**Not implemented:** bulk action on the API. The web route exists; `POST
+/api/v1/roles/bulk-action` does not. Add it when a client needs it — the handler
+is already the reusable half.
 
 ## Seeding Strategy
 
