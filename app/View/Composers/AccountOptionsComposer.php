@@ -36,7 +36,9 @@ class AccountOptionsComposer
     public function compose(View $view): void
     {
         $view->with([
-            'roles' => RoleLookup::assignable(),
+            // visibleTo, not assignable: the superadmin role is hidden from a
+            // viewer who is not one, so it cannot be picked off this list.
+            'roles' => RoleLookup::visibleTo(auth()->user()),
             'allowUsernameChange' => SystemSetting::getBool('allow_username_change', true),
             'allowEmailChange' => SystemSetting::getBool('allow_email_change', true),
             'usernameCooldownDays' => SystemSetting::getInt('username_change_cooldown_days', 30),

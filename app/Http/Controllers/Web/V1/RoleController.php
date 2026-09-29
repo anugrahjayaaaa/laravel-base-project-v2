@@ -19,6 +19,7 @@ use App\Http\Requests\Role\StoreRoleRequest;
 use App\Http\Requests\Role\UpdateRoleRequest;
 use App\Models\Role;
 use App\Models\RoleLookup;
+use App\Support\SystemRole;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -66,6 +67,7 @@ class RoleController extends Controller
             sort: (string) $request->input('sort', 'name'),
             direction: (string) $request->input('direction', 'desc'),
             trashed: $trashed,
+            viewer: $request->user(),
         );
 
         return view('pages.roles.index', [
@@ -75,17 +77,39 @@ class RoleController extends Controller
             'trashed' => $trashed,
             // Both counts are filtered the same way the listing is, or the badge
             // would say 4 over 3 rows and give the hidden role away.
-            'trashedCount' => Role::onlyTrashed()->count(),
+            'trashedCount' => $this->visibleRoles($request, onlyTrashed: true)->count(),
             // The All Roles pill carries a count too, so both pills have the same
             // shape — a bare label beside a badged one reads as a different
             // component. Same reason users/index badges every tab.
-            'liveCount' => Role::query()->count(),
+            'liveCount' => $this->visibleRoles($request)->count(),
             // Echoed back unresolved: the view only needs them to mark the active
             // sortable column, and re-deriving the whitelist here would give the
             // header a second place to disagree with the query.
             'currentSort' => (string) $request->input('sort', 'name'),
             'currentDirection' => $request->input('direction') === 'asc' ? 'asc' : 'desc',
         ]);
+    }
+
+    /**
+     * The roles this viewer is allowed to see counted.
+     *
+     * Mirrors the filter IndexRoleAction applies, so the tab badges and the rows
+     * under them always agree. A superadmin sees the superadmin role; nobody
+     * else does, in the list or in the number beside it.
+     *
+     * @return \Illuminate\Database\Eloquent\Builder<Role>
+     */
+    private function visibleRoles(Request $request, bool $onlyTrashed = false): \Illuminate\Database\Eloquent\Builder
+    {
+        $query = $onlyTrashed ? Role::onlyTrashed() : Role::query();
+
+        $query->where('guard_name', RoleLookup::guard());
+
+        if (! RoleLookup::viewerIsSuperAdmin($request->user())) {
+            $query->where('name', '!=', SystemRole::SUPERADMIN);
+        }
+
+        return $query;
     }
 
     /**

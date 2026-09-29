@@ -75,6 +75,7 @@ class UserController extends Controller
             status: $status,
             sort: $request->validated('sort', 'created_at'),
             direction: $request->validated('direction', 'desc'),
+            viewer: $request->user(),
             perPage: $request->validated('per_page', 10),
         );
 

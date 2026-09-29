@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Collection;
+use App\Support\SystemRole;
 use Spatie\Permission\Guard;
 
 /**
@@ -35,7 +36,45 @@ class RoleLookup
     }
 
     /**
+     * Whether the viewer is one of the superadmins.
+     *
+     * The visibility rule below is a single `if`, and the gate is the same
+     * question everywhere, so it is asked here once.
+     */
+    public static function viewerIsSuperAdmin(?User $viewer): bool
+    {
+        return $viewer?->hasRole(SystemRole::SUPERADMIN) === true;
+    }
+
+    /**
+     * Roles the viewer may see, ordered for a picker.
+     *
+     * The superadmin role is invisible to anyone who is not a superadmin: the
+     * app is expected to run with exactly one, and a delegated admin should not
+     * be able to see it sitting in the list, pick it, or count it. Granting it
+     * is separately refused in AssignRolesAction — this is the UI half of that,
+     * and on its own it protects nothing.
+     *
+     * @return Collection<int, \Spatie\Permission\Models\Role>
+     */
+    public static function visibleTo(?User $viewer): Collection
+    {
+        $query = Role::query()
+            ->where('guard_name', static::guard())
+            ->orderBy('name');
+
+        if (! static::viewerIsSuperAdmin($viewer)) {
+            $query->where('name', '!=', SystemRole::SUPERADMIN);
+        }
+
+        return $query->get();
+    }
+
+    /**
      * Every role the app can actually assign, ordered for a picker.
+     *
+     * Guard scoping only — it says nothing about who may see the role. Use
+     * visibleTo() for anything the viewer sees.
      *
      * @return Collection<int, \Spatie\Permission\Models\Role>
      */

@@ -23,7 +23,7 @@ class SystemSettingController extends Controller
     {
         $settings = SystemSetting::getAll();
         $timezones = Timezone::active()->orderBy('name')->get();
-        $roles = RoleLookup::assignable()->pluck('name', 'name');
+        $roles = RoleLookup::visibleTo(request()->user())->pluck('name', 'name');
 
         return view('pages.settings.index', compact('settings', 'timezones', 'roles'));
     }

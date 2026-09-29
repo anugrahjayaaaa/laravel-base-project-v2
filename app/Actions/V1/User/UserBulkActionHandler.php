@@ -95,7 +95,7 @@ class UserBulkActionHandler implements BulkActionHandler
      */
     public function getCacheKeys(): array
     {
-        return ['user_index_counts'];
+        return UserIndexAction::cacheKeys();
     }
 
     /**

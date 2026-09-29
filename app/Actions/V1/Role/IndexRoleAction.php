@@ -4,6 +4,8 @@ namespace App\Actions\V1\Role;
 
 use App\Models\Role;
 use App\Models\RoleLookup;
+use App\Models\User;
+use App\Support\SystemRole;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 
 /**
@@ -43,6 +45,7 @@ class IndexRoleAction
         string $direction = 'desc',
         int $perPage = 10,
         bool $trashed = false,
+        ?User $viewer = null,
     ): LengthAwarePaginator {
         // withCount, not with: both counts are displayed, so eager loading the
         // permission and user collections would only fetch rows nothing reads.
@@ -51,6 +54,12 @@ class IndexRoleAction
         $query = ($trashed ? Role::onlyTrashed() : Role::query())
             ->where('guard_name', RoleLookup::guard())
             ->withCount(['permissions', 'users']);
+
+        // The superadmin role is only listed for a viewer who is one. UI half of
+        // the rule; AssignRolesAction is the half that actually refuses the grant.
+        if (! RoleLookup::viewerIsSuperAdmin($viewer)) {
+            $query->where('name', '!=', SystemRole::SUPERADMIN);
+        }
 
         if ($search !== null && $search !== '') {
             $query->where('name', 'like', "%{$search}%");

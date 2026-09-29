@@ -3,7 +3,9 @@
 namespace App\Actions\V1\User;
 
 use App\Enums\UserStatusEnum;
+use App\Models\RoleLookup;
 use App\Models\User;
+use App\Support\SystemRole;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Cache;
@@ -19,25 +21,49 @@ class UserIndexAction
      *
      * @return array{active: int, inactive: int, locked: int, trashed: int}
      */
-    public function counts(): array
+    public static function cacheKeys(): array
     {
-        return Cache::rememberForever('user_index_counts', function () {
-            $row = DB::table('users')
-                ->selectRaw('
-                    COUNT(CASE WHEN is_active = true  AND is_locked = false AND deleted_at IS NULL THEN 1 END) as active,
-                    COUNT(CASE WHEN is_active = false AND is_locked = false AND deleted_at IS NULL THEN 1 END) as inactive,
-                    COUNT(CASE WHEN is_locked = true  AND deleted_at IS NULL        THEN 1 END) as locked,
-                    COUNT(CASE WHEN deleted_at IS NOT NULL                              THEN 1 END) as trashed
-                ')
-                ->first();
+        return ['user_index_counts.all', 'user_index_counts.masked'];
+    }
 
-            return [
-                'active'   => (int) $row->active,
-                'inactive' => (int) $row->inactive,
-                'locked'   => (int) $row->locked,
-                'trashed'  => (int) $row->trashed,
-            ];
-        });
+    public function counts(?User $viewer = null): array
+    {
+        $seesSuperadmin = RoleLookup::viewerIsSuperAdmin($viewer);
+
+        // Two keys, not one: the totals must equal the rows the viewer actually
+        // sees, and the hidden superadmin account must not inflate them. A single
+        // shared key would either leak it or under-report it for the superadmin.
+        return Cache::rememberForever(
+            'user_index_counts.' . ($seesSuperadmin ? 'all' : 'masked'),
+            function () use ($seesSuperadmin): array {
+                $query = DB::table('users');
+
+                if (! $seesSuperadmin) {
+                    $query->whereNotIn('id', function ($sub): void {
+                        $sub->select('model_id')
+                            ->from('model_has_roles')
+                            ->join('roles', 'roles.id', '=', 'model_has_roles.role_id')
+                            ->where('roles.name', SystemRole::SUPERADMIN);
+                    });
+                }
+
+                $row = $query
+                    ->selectRaw('
+                        COUNT(CASE WHEN is_active = true  AND is_locked = false AND deleted_at IS NULL THEN 1 END) as active,
+                        COUNT(CASE WHEN is_active = false AND is_locked = false AND deleted_at IS NULL THEN 1 END) as inactive,
+                        COUNT(CASE WHEN is_locked = true  AND deleted_at IS NULL        THEN 1 END) as locked,
+                        COUNT(CASE WHEN deleted_at IS NOT NULL                              THEN 1 END) as trashed
+                    ')
+                    ->first();
+
+                return [
+                    'active'   => (int) $row->active,
+                    'inactive' => (int) $row->inactive,
+                    'locked'   => (int) $row->locked,
+                    'trashed'  => (int) $row->trashed,
+                ];
+            }
+        );
     }
 
     /**
@@ -56,8 +82,16 @@ class UserIndexAction
         ?string $sort = 'created_at',
         ?string $direction = 'desc',
         int $perPage = 10,
+        ?User $viewer = null,
     ): LengthAwarePaginator {
         $query = User::withTrashed();
+
+        // The superadmin account is not a normal user: it is hidden from anyone
+        // who is not a superadmin, so it neither appears in the list nor counts
+        // in the totals below.
+        if (! RoleLookup::viewerIsSuperAdmin($viewer)) {
+            $query->whereDoesntHave('roles', fn ($q) => $q->where('name', SystemRole::SUPERADMIN));
+        }
 
         $this->applySearch($query, $search);
         $this->applyStatusFilter($query, $status);

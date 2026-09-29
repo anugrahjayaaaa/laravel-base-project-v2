@@ -92,10 +92,11 @@ class UserController extends Controller
             status: $status,
             sort: $request->validated('sort', 'created_at'),
             direction: $request->validated('direction', 'desc'),
+            viewer: $request->user(),
             perPage: $request->validated('per_page', 10),
         );
 
-        $counts = $this->indexAction->counts();
+        $counts = $this->indexAction->counts($request->user());
 
         return view('pages.users.index', [
             'title' => 'Users',
