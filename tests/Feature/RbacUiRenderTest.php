@@ -481,6 +481,72 @@ class RbacUiRenderTest extends TestCase
         $this->assertStringContainsString('Create Role', $html);
     }
 
+    /**
+     * roles/index and users/index render the same card header. This compares the
+     * two pages' real HTML, not the roles view in isolation: the drift it guards
+     * against was a roles-only difference (nav-tabs outside the card-header, no
+     * muted inactive pill, `ms-auto` on the button), and a roles-only assertion
+     * would just re-state whichever version this file was written against.
+     */
+    #[Test]
+    public function the_role_index_header_matches_the_user_index_header(): void
+    {
+        $this->seed(\Database\Seeders\RoleSeeder::class);
+        $this->seed(\Database\Seeders\PermissionSeeder::class);
+        $user = User::factory()->create(['email_verified_at' => now(), 'is_active' => true]);
+        $user->assignRole(\App\Support\SystemRole::SUPERADMIN);
+        $this->actingAs($user);
+
+        $header = function (string $html): string {
+            $start = strpos($html, 'card-header index-card-header');
+            $this->assertNotFalse($start, 'the index card header hook is gone');
+
+            // Up to the card-body: the header is the tab strip plus the create
+            // button, and everything between them is the part being compared.
+            return substr($html, $start, strpos($html, 'card-body p-4', $start) - $start);
+        };
+
+        $roles = $header($this->get(route('roles.index'))->getContent());
+        $users = $header($this->get(route('users.index'))->getContent());
+
+        // The shared hook in theme.css. Both pages must use it or the active pill
+        // renders white-on-white, since the view forces bg-transparent.
+        $this->assertStringContainsString('card-header index-card-header', $roles);
+        $this->assertStringNotContainsString('users-card-header', $roles, 'the class was renamed to be shared');
+
+        foreach (['users' => $users, 'roles' => $roles] as $label => $html) {
+            $this->assertStringContainsString('nav nav-pills flex-nowrap overflow-auto pb-2 gap-2', $html, "{$label} tab strip");
+            $this->assertStringNotContainsString('nav-tabs', $html, "{$label} drifted to nav-tabs");
+            $this->assertStringContainsString('flex-nowrap overflow-auto pe-2', $html, "{$label} scroll wrapper");
+            // The inactive pill needs the muted token, or it renders in
+            // AdminLTE's default colour instead of the theme's.
+            $this->assertStringContainsString('text-secondary fw-medium', $html, "{$label} inactive pill");
+            // The create button is the row's second child, not `ms-auto` — the
+            // latter collapses the gap when the tab strip is short.
+            $this->assertStringNotContainsString('gap-2 ms-auto', $html, "{$label} create button drifted to ms-auto");
+        }
+
+        $this->assertStringContainsString('Create Role', $roles);
+        $this->assertStringContainsString('Create User', $users);
+    }
+
+    #[Test]
+    public function switching_tabs_keeps_the_search_term(): void
+    {
+        $this->seed(\Database\Seeders\RoleSeeder::class);
+        $this->seed(\Database\Seeders\PermissionSeeder::class);
+        $user = User::factory()->create(['email_verified_at' => now(), 'is_active' => true]);
+        $user->assignRole(\App\Support\SystemRole::SUPERADMIN);
+        $this->actingAs($user);
+
+        $html = $this->get(route('roles.index', ['search' => 'Supp']))->getContent();
+
+        // Both tab links, not just the current one: dropping the term on the tab
+        // you are not on is the case nobody notices until they click it.
+        $this->assertStringContainsString('search=Supp&amp;sort=name', $html);
+        $this->assertStringContainsString('search=Supp&amp;trashed=1', $html);
+    }
+
     #[Test]
     public function the_index_headers_sort_and_an_unknown_column_is_ignored(): void
     {
