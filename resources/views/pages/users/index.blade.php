@@ -75,7 +75,7 @@
     @endif
 
     <div class="card border-0 shadow-sm mb-4">
-        <div class="card-header users-card-header bg-transparent border-bottom py-2">
+        <div class="card-header index-card-header bg-transparent border-bottom py-2">
             <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
                 <div class="d-flex flex-nowrap overflow-auto pe-2" style="scrollbar-width: none;">
                     <ul class="nav nav-pills flex-nowrap overflow-auto pb-2 gap-2"

@@ -30,17 +30,21 @@
   --lbp-muted: #9ca3af;
 }
 
-/* User index status tabs — theme-adaptive.
+/* Index status tabs — theme-adaptive.
    AdminLTE does not hard-code a colour here; it sets
    --bs-nav-pills-link-active-color:#fff on .nav-pills and lets
-   `.nav-pills .nav-link.active` consume it. The view forces bg-transparent on
+   `.nav-pills .nav-link.active` consume it. The views force bg-transparent on
    these tabs, so the white lands on a white card and the label disappears.
    Overriding the variable beats the property for the right reason: every
-   active pill in the app follows, and the consuming rule stays untouched. */
-.users-card-header .nav-pills {
+   active pill in the app follows, and the consuming rule stays untouched.
+
+   Named for the pattern, not for one page: users/index and roles/index render
+   the same tab strip, and a second copy of these two rules would be a second
+   place for the active pill to drift out of sync. */
+.index-card-header .nav-pills {
   --bs-nav-pills-link-active-color: var(--lbp-primary);
 }
-.users-card-header .nav-link:not(.active) { color: var(--lbp-muted) !important; }
+.index-card-header .nav-link:not(.active) { color: var(--lbp-muted) !important; }
 
 body {
   font-family: var(--lbp-font);

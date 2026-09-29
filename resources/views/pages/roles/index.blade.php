@@ -1,5 +1,25 @@
 @extends('layouts.app', ['title' => $trashed ? 'Role Trash' : 'Roles'])
 
+@php
+    // Same shape as users/index's $tabUrl: a tab switch carries the active search
+    // instead of dropping it, so filtering then changing tab does not silently
+    // reset the filter. `trashed => false` is filtered out below so the live tab
+    // is a clean ?search=… rather than ?trashed=0.
+    $tabUrl = function (bool $trashed) use ($search, $currentSort, $currentDirection) {
+        $params = array_filter(
+            [
+                'search' => $search,
+                'trashed' => $trashed ? 1 : null,
+                'sort' => $currentSort,
+                'direction' => $currentDirection,
+            ],
+            fn ($v) => $v !== '' && $v !== null,
+        );
+
+        return route('roles.index') . '?' . http_build_query($params);
+    };
+@endphp
+
 @section('content')
     <div class="content-header mb-3">
         <div class="d-flex justify-content-between align-items-start w-100">
@@ -27,32 +47,44 @@
     @endif
 
     <div class="card border-0 shadow-sm mb-4">
-        <ul class="nav nav-tabs card-header-tabs px-3 pt-3 mb-0" role="tablist">
-            <li class="nav-item">
-                <a class="nav-link {{ $trashed ? '' : 'active fw-semibold border-bottom border-primary border-2' }} px-3 py-2 d-flex align-items-center gap-2 border-0 bg-transparent"
-                    href="{{ route('roles.index') }}">
-                    All Roles
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link {{ $trashed ? 'active fw-semibold border-bottom border-primary border-2' : '' }} px-3 py-2 d-flex align-items-center gap-2 border-0 bg-transparent"
-                    href="{{ route('roles.index', ['trashed' => 1]) }}">
-                    Trash <span
-                        class="badge rounded-pill {{ $trashed ? 'bg-primary text-white' : 'bg-secondary-subtle text-secondary' }}">{{ $trashedCount }}</span>
-                </a>
-            </li>
-        </ul>
-        <div class="card-header bg-transparent border-bottom py-2">
+        {{-- Card header — the tab strip and the Create button are the same two
+             children of the same justify-content-between row as pages/users/index,
+             copied literally. Three things had drifted and each one is visible:
+             the tabs were a `nav-tabs` list OUTSIDE the card-header, so they sat
+             above the border rather than inside it; `text-secondary fw-medium`
+             was missing from the inactive pill, so it rendered in AdminLTE's
+             default colour instead of the theme's muted token; and the button
+             used `ms-auto` instead of being the row's second child, which
+             collapses the gap when the tab strip is short. The `index-card-header`
+             class is the shared hook in public/vendor/theme.css — same one
+             users/index uses, so the active pill colour cannot drift apart. --}}
+        <div class="card-header index-card-header bg-transparent border-bottom py-2">
             <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <div class="d-flex flex-nowrap overflow-auto pe-2" style="scrollbar-width: none;">
+                    <ul class="nav nav-pills flex-nowrap overflow-auto pb-2 gap-2"
+                        style="-webkit-overflow-scrolling: touch; scrollbar-width: none;">
+                        <li class="nav-item">
+                            <a class="nav-link {{ $trashed ? 'text-secondary fw-medium' : 'active fw-semibold border-bottom border-primary border-2' }} px-3 py-2 d-flex align-items-center gap-2 border-0 bg-transparent"
+                                href="{{ $tabUrl(false) }}">
+                                All Roles
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {{ $trashed ? 'active fw-semibold border-bottom border-primary border-2' : 'text-secondary fw-medium' }} px-3 py-2 d-flex align-items-center gap-2 border-0 bg-transparent"
+                                href="{{ $tabUrl(true) }}">
+                                Trash <span
+                                    class="badge rounded-pill {{ $trashed ? 'bg-primary text-white' : 'bg-secondary-subtle text-secondary' }}">{{ $trashedCount }}</span>
+                            </a>
+                        </li>
+                    </ul>
+                </div>
                 {{-- P6-D5 wraps this button in @can. It is not gated here because the
                      permission rows do not exist until P6-B1 seeds them, and @can on
                      a missing permission is always false — the button simply never
-                     rendered. `ms-auto` pushes it right inside the justify-content-between
-                     row, so it lands where users/index puts Create User. Hidden on the
-                     trash tab: there is nothing to create into a trash listing. --}}
+                     rendered. Hidden on the trash tab: there is nothing to create
+                     into a trash listing. --}}
                 @unless ($trashed)
-                    <a href="{{ route('roles.create') }}"
-                        class="btn btn-primary d-inline-flex align-items-center gap-2 ms-auto">
+                    <a href="{{ route('roles.create') }}" class="btn btn-primary d-inline-flex align-items-center gap-2">
                         <i class="bi bi-plus-lg"></i> Create Role
                     </a>
                 @endunless
@@ -75,9 +107,8 @@
                 <button type="submit" class="btn btn-primary btn-sm">
                     <i class="fas fa-search"></i> Filter
                 </button>
-                @if ($search !== '')
-                    <a href="{{ route('roles.index', $trashed ? ['trashed' => 1] : []) }}"
-                        class="btn btn-outline-secondary btn-sm">
+                @if ($search !== '' || $trashed)
+                    <a href="{{ route('roles.index') }}" class="btn btn-outline-secondary btn-sm">
                         <i class="fas fa-times"></i> Clear
                     </a>
                 @endif
