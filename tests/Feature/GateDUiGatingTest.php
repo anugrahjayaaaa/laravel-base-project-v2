@@ -446,4 +446,168 @@ class GateDUiGatingTest extends TestCase
         $this->post(route('settings.update'), ['login_max_attempts' => 99])
             ->assertForbidden();
     }
+
+    /**
+     * P6-D audit follow-up: the user DETAIL page had the same seven triggers as
+     * the list, ungated. Gating the list and not the detail is the same control
+     * missing one page over — a caller who may edit a user is on that page by
+     * definition, and every button there was offered unconditionally.
+     */
+    public function test_the_user_detail_page_hides_actions_the_caller_cannot_perform(): void
+    {
+        $editor = $this->userWith(['users.view', 'users.update']);
+
+        // Unverified, or the resend callout is not rendered at all and the
+        // positive assertion below would pass on an absent string.
+        $target = User::factory()->create([
+            'email_verified_at' => null,
+            'is_active' => true,
+        ]);
+
+        $this->actingAs($editor, 'web');
+
+        $html = $this->get(route('users.edit', $target->id))->assertOk()->getContent();
+
+        // Held, so still offered — a gate that hides everything is a broken page.
+        $this->assertStringContainsString(
+            route('users.resend-verification', $target),
+            $html
+        );
+
+        // Not held. Assert data-action, not the bare URL: the page's own update
+        // form posts to the same /users/3, so a URL match proves nothing. The
+        // confirm-action component is the only thing that emits data-action.
+        $this->assertStringNotContainsString('data-action="'.route('users.deactivate', $target).'"', $html);
+        $this->assertStringNotContainsString('data-action="'.route('users.lock', $target).'"', $html);
+        $this->assertStringNotContainsString('data-action="'.route('users.destroy', $target).'"', $html);
+    }
+
+    /**
+     * A caller who holds the state permissions gets them back on the detail page.
+     */
+    public function test_the_user_detail_page_still_offers_what_the_caller_can_perform(): void
+    {
+        $locker = $this->userWith(['users.view', 'users.update', 'users.deactivate', 'users.lock']);
+        $target = $this->userWith(['users.view']);
+
+        $this->actingAs($locker, 'web');
+
+        $html = $this->get(route('users.edit', $target->id))->assertOk()->getContent();
+
+        $this->assertStringContainsString('data-action="'.route('users.deactivate', $target).'"', $html);
+        $this->assertStringContainsString('data-action="'.route('users.lock', $target).'"', $html);
+    }
+
+    /**
+     * roles.assign_permissions existed in the catalogue, showed in the
+     * permissions UI, and gated nothing: the matrix rendered unconditionally
+     * and both role requests accepted a posted permission set from anyone who
+     * could open the form. So a caller holding only roles.update could hand a
+     * role superadmin — the one action in this app that escalates the caller.
+     */
+    public function test_a_rename_only_admin_cannot_rewrite_a_permission_set(): void
+    {
+        $renamer = $this->userWith(['roles.view', 'roles.update']);
+
+        $role = AppRole::create([
+            'name' => 'Rename Only Target',
+            'guard_name' => RoleLookup::guard(),
+        ]);
+
+        $this->actingAs($renamer, 'web');
+
+        // The view must not offer it...
+        $html = $this->get(route('roles.edit', $role->id))->assertOk()->getContent();
+        $this->assertStringNotContainsString('name="permissions[]"', $html);
+
+        // ...and the endpoint must refuse a hand-rolled POST, which is the half
+        // that actually matters: @can in a template is not a control.
+        $this->put(route('roles.update', $role->id), [
+            'name' => 'Renamed',
+            'permissions' => [$this->permissionId('roles.force_delete')],
+        ])->assertForbidden();
+
+        // Neither the rename nor the permission set moved.
+        $role->refresh();
+        $this->assertSame('Rename Only Target', $role->name);
+        $this->assertCount(0, $role->permissions);
+    }
+
+    /**
+     * The rename half stays open — only the permission set is split off, so an
+     * admin who may name a role but not distribute permissions is not locked
+     * out of a form they are otherwise entitled to use.
+     */
+    public function test_a_rename_only_admin_can_still_rename_a_role(): void
+    {
+        $renamer = $this->userWith(['roles.view', 'roles.update']);
+
+        $role = AppRole::create([
+            'name' => 'Before',
+            'guard_name' => RoleLookup::guard(),
+        ]);
+
+        $this->actingAs($renamer, 'web');
+
+        $this->put(route('roles.update', $role->id), ['name' => 'After'])
+            ->assertRedirect(route('roles.index'));
+
+        $this->assertSame('After', $role->fresh()->name);
+    }
+
+    /**
+     * ...and one who may assign permissions gets the matrix back, working.
+     */
+    public function test_the_matrix_is_present_for_a_caller_who_may_assign_permissions(): void
+    {
+        $assigner = $this->userWith([
+            'roles.view',
+            'roles.update',
+            'roles.assign_permissions',
+        ]);
+
+        $role = AppRole::create([
+            'name' => 'Assigner Target',
+            'guard_name' => RoleLookup::guard(),
+        ]);
+
+        $this->actingAs($assigner, 'web');
+
+        $html = $this->get(route('roles.edit', $role->id))->assertOk()->getContent();
+        $this->assertStringContainsString('name="permissions[]"', $html);
+
+        $this->put(route('roles.update', $role->id), [
+            'name' => 'Assigner Target',
+            'permissions' => [$this->permissionId('roles.force_delete')],
+        ])->assertRedirect(route('roles.index'));
+
+        $this->assertTrue(
+            $role->fresh()->permissions->contains('name', 'roles.force_delete')
+        );
+    }
+
+    /**
+     * The store side carries the same split: creating a role that grants nothing
+     * is harmless, creating one that grants superadmin is not.
+     */
+    public function test_a_role_cannot_be_created_granting_permissions_without_the_permission(): void
+    {
+        $creator = $this->userWith(['roles.view', 'roles.create']);
+
+        $this->actingAs($creator, 'web');
+
+        $this->post(route('roles.store'), [
+            'name' => 'Sneaky Escalation',
+            'permissions' => [$this->permissionId('roles.force_delete')],
+        ])->assertForbidden();
+
+        $this->assertDatabaseMissing('roles', ['name' => 'Sneaky Escalation']);
+    }
+
+    private function permissionId(string $name): int
+    {
+        return \Spatie\Permission\Models\Permission::where('name', $name)
+            ->where('guard_name', RoleLookup::guard())
+            ->value('id');
+    }
 }
