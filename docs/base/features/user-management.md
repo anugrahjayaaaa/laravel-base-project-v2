@@ -45,7 +45,7 @@ Primary status resolution: `App\Enums\UserStatusEnum::resolve()` — precedence:
 | Failed-login lockout | Cache + `failed_login_attempts.locked_until` | Yes | No |
 | Inactivity lock | `users.is_locked = true` | No | Yes |
 
-`users.is_locked` is ONLY set by admin actions (LockUserAction). Failed-login brute-force protection is 100% handled by the throttle layer — it never touches `users.is_locked`.
+`users.is_locked` is ONLY set by admin actions (UserLockAction). Failed-login brute-force protection is 100% handled by the throttle layer — it never touches `users.is_locked`.
 
 ## Lifecycle Transitions
 
@@ -173,7 +173,7 @@ All state endpoints return JSON `{ data: { message }, meta: { request_id, timest
 
 ### Namespace Fix (Phase 4C)
 
-`UnlockUserAction` moved from `App\Actions\Auth\` → `App\Actions\User\` for consistency. All state actions now live in `App\Actions\User\`.
+`UserUnlockAction` moved from `App\Actions\Auth\` → `App\Actions\User\` for consistency. All state actions now live in `App\Actions\User\`.
 
 `UnlockController` (`Api\V1\Auth\`) removed — `unlock` method merged into `Api\V1\User\UserStateController`. Backwards-compat route `/api/v1/auth/unlock` redirects to `api.v1.users.unlock`.
 
@@ -201,7 +201,7 @@ All state endpoints return JSON `{ data: { message }, meta: { request_id, timest
 | `registration_rate_limit_per_minute` | integer | 3 | Sign-up attempts per minute per IP |
 
 A setting that is seeded, validated and rendered but missing from
-`UpdateSystemSettingsAction::$updates` is never written — the save reports
+`SystemUpdateSettingsAction::$updates` is never written — the save reports
 success and the value does not change. See "Adding a new setting" in
 [docs/user-management.md](../../user-management.md) for the full checklist;
 `SettingsPersistenceTest` fails the suite when the two lists diverge.
@@ -253,7 +253,7 @@ All user management views follow `docs/base/ui/design-system.md` page skeleton t
 ### Permanent Delete Flow (Index)
 - Trashed users show: Restore button (info variant) + Permanent Delete button (danger variant)
 - Both trigger the shared `#confirmModal` with appropriate variant/message
-- Permanent Delete uses `ForceDeleteUserAction` via `users.force-delete` route
+- Permanent Delete uses `UserForceDeleteAction` via `users.force-delete` route
 
 ## UI Patterns — Edit User (Phase 4)
 

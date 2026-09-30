@@ -13,8 +13,8 @@
 - Spatie Permission ^6.0 installed (Phase 6 scope — NOT for Phase 4 use)
 - Action class pattern: `App\Actions\Auth\*` + `App\Actions\User\*`
 - Form Request pattern: `App\Http\Requests\Auth\*` + `App\Http\Requests\User\*`
-- `UnlockUserAction` + `UnlockUserRequest` exist (API only)
-- `ChangePasswordAction` action exists — reuse for user password updates
+- `UserUnlockAction` + `UnlockUserRequest` exist (API only)
+- `AuthChangePasswordAction` action exists — reuse for user password updates
 - `EnsurePasswordChangeRequired` middleware — enforces `must_change_password`
 - No Filament — pure Blade + AdminLTE
 - Base database roles/user traits initialized in Phase 2/3 only
@@ -41,9 +41,9 @@
 || P4-B4 | `resources/views/pages/users/index.blade.php` (AdminLTE table, status badges) | B3 | DONE |
 || P4-B5 | Route `web.php` → `users.index`, `users.update` | B3 | DONE |
 || P4-B6 | Tests: list users, toggle user status | B4,B5 | DONE |
-|| P4-B7 | Soft Delete: `DeleteUserAction` — deactivate + soft delete | A3 | DONE |
-|| P4-B8 | Restore: `RestoreUserAction` — undo soft delete | B7 | DONE |
-|| P4-B9 | Permanent Delete: `ForceDeleteUserAction` — force delete | B7 | DONE |
+|| P4-B7 | Soft Delete: `UserDeleteAction` — deactivate + soft delete | A3 | DONE |
+|| P4-B8 | Restore: `UserRestoreAction` — undo soft delete | B7 | DONE |
+|| P4-B9 | Permanent Delete: `UserForceDeleteAction` — force delete | B7 | DONE |
 || P4-B10 | Detail/Edit View: `ShowUserAction` + edit form | B1 | DONE |
 || P4-B11 | Resend verification email (admin mode trigger) | B10 | DONE |
 
@@ -51,8 +51,8 @@
 
 || ID | Task | Depends | Status |
 |----|------|---------|--------|
-|| P4-C1 | `ActivateUserAction` + `DeactivateUserAction` | A3 | DONE |
-|| P4-C2 | `LockUserAction` + `UnlockUserAction` (moved to User namespace) | A3 | DONE |
+|| P4-C1 | `UserActivateAction` + `UserDeactivateAction` | A3 | DONE |
+|| P4-C2 | `UserLockAction` + `UserUnlockAction` (moved to User namespace) | A3 | DONE |
 ||| P4-C3 | `Web\\UserStateController` + `Api\\V1\\User\\UserStateController` (activate/deactivate/lock/unlock — thin) | C1,C2 | DONE |
 ||| P4-C4 | Views: user state toggle (index + edit sidebar) | C3 | DONE |
 ||| P4-C5 | Route `web.php` + `api.php` → user state endpoints | C3 | DONE |
@@ -108,14 +108,14 @@
 
 | ID | Task | Depends | Status |
 |----|------|---------|--------|
-| P4-D1 | `CreateUserAction` (generate temp password, send email) | A3 | DONE |
+| P4-D1 | `UserCreateAction` (generate temp password, send email) | A3 | DONE |
 | P4-D2 | `CreateUserRequest` (validation) | A3 | DONE |
 | P4-D3 | `Web\\UserController` (create + store — thin) | D1,D2 | DONE |
 | P4-D4 | View: admin create user form (AdminLTE consistent) | D3 | DONE |
 | P4-D5 | Route `web.php` → admin user creation | D3 | DONE |
 | P4-D6 | Tests: admin creates user, temp password enforced on first login | D4,D5 | DONE |
 
-**Note:** `CreateUserAction` (renamed from planned `CreateUserByAdminAction` — no conflict expected).
+**Note:** `UserCreateAction` (renamed from planned `CreateUserByAdminAction` — no conflict expected).
 API `POST /api/v1/users` shares same Action + Request (single source of truth).
 
 **Gaps → Phase 6 (RBAC):**
@@ -143,7 +143,7 @@ Authorization via RBAC (Phase 6) — permission gates applied per endpoint.
 |----|------|---------|--------|
 | P4-F1 | Migration: `username_changed_at`, `email_changed_at`, `pending_email`, `email_change_token`, `email_change_token_expires_at` on users; `system_settings` table | D | DONE |
 | P4-F2 | Model: User `canChangeUsername()`/`canChangeEmail()`, SystemSetting model | F1 | DONE |
-| P4-F3 | Actions: CreateUserAction (username), UpdateUserAction (cooldown + email flow) | F1,F2 | DONE |
+| P4-F3 | Actions: UserCreateAction (username), UserUpdateAction (cooldown + email flow) | F1,F2 | DONE |
 | P4-F4 | Requests: CreateUserRequest (username), UpdateUserRequest (cooldown guard), EmailChangeRequest | F2 | DONE |
 | P4-F5 | Notification: ChangeEmailVerificationNotification (signed URL, 24h expiry) | F1,F2 | DONE |
 | P4-F6 | Controller: requestEmailChange, cancelEmailChange, verifyEmailChange, resendVerification | F3,F4,F5 | DONE |

@@ -17,10 +17,10 @@
 |-----------|----------|--------|
 | History table | `database/migrations/0001_01_01_000003_create_password_histories_table.php` | ✅ |
 | Model | `app/Models/PasswordHistory.php` | ✅ |
-| Record action | `app/Actions/V1/Auth/RecordPasswordHistoryAction.php` | ✅ |
-| ChangePasswordAction integration | `app/Actions/V1/Auth/ChangePasswordAction.php` | ✅ |
-| ResetPasswordAction integration | `app/Actions/V1/Auth/ResetPasswordAction.php` | ✅ |
-| CreateUserAction integration | `app/Actions/V1/User/CreateUserAction.php` | ✅ |
+| Record action | `app/Actions/V1/Auth/AuthRecordPasswordHistoryAction.php` | ✅ |
+| AuthChangePasswordAction integration | `app/Actions/V1/Auth/AuthChangePasswordAction.php` | ✅ |
+| AuthResetPasswordAction integration | `app/Actions/V1/Auth/AuthResetPasswordAction.php` | ✅ |
+| UserCreateAction integration | `app/Actions/V1/User/UserCreateAction.php` | ✅ |
 | View: reset-password hint | `resources/views/pages/auth/reset-password.blade.php` | ✅ |
 | View: profile hint | `resources/views/pages/profile/edit.blade.php` | ✅ |
 | View: settings fields | `resources/views/pages/settings/index.blade.php` | ✅ |

@@ -11,7 +11,7 @@
 
 ### Already in place
 - `password_histories` table migration — `0001_01_01_000003_create_password_histories_table.php`
-- `ChangePasswordAction` action — `app/Actions/V1/Auth/ChangePasswordAction.php` (history check + token revocation + audit wired)
+- `AuthChangePasswordAction` action — `app/Actions/V1/Auth/AuthChangePasswordAction.php` (history check + token revocation + audit wired)
 - User columns: `password_expires_at`, `last_activity_at`, `must_change_password`, `is_active`, `is_locked`
 - `EnsurePasswordChangeRequired` middleware — enforces `must_change_password` + `password_expires_at`
 - `LoginThrottle` + `FailedLoginAttempt` — full rate-limit + progressive lockout (Phase 3 done)
@@ -48,7 +48,7 @@
 | P5-A5 | View: add strength to `users/create.blade.php` | ❌ SKIPPED | Auto-generated temp password, no manual entry |
 | P5-A6 | View: add strength to `auth/reset-password.blade.php` | ✅ DONE | Shared partial included |
 | P5-A7 | View: add strength to `profile/edit.blade.php` | ✅ DONE | Shared partial included |
-| P5-A8 | Wire `PasswordStrengthRule` into 3 FormRequests | ✅ DONE | ChangePasswordAction, ResetPassword, ProfileUpdate |
+| P5-A8 | Wire `PasswordStrengthRule` into 3 FormRequests | ✅ DONE | AuthChangePasswordAction, ResetPassword, ProfileUpdate |
 | P5-A9 | Tests: unit + feature + view render assertions | ✅ DONE — latest full regression: 274 passed, 698 assertions |
 
 **Deliverables (shipped):**
@@ -79,18 +79,18 @@
 |----|------|---------|------|-------|
 | P5-B1 | SystemSetting keys: `password_history_count` (default 5), `password_history_enabled` (bool, default true) | P5-A2 | small | Add to seeder | ✅ DONE |
 | P5-B2 | `PasswordHistory` model — `app/Models/PasswordHistory.php` | — | tiny | CREATE — model does not exist yet; migration table exists but no Eloquent model | ✅ DONE |
-| P5-B3 | `RecordPasswordHistoryAction` action — hash + store on password change | P5-A2 | small | Called by `ChangePasswordAction` + `ResetPassword` + `CreateUser` actions | ✅ DONE |
-| P5-B4 | Update `ChangePasswordAction` action — call `RecordPasswordHistoryAction` + enforce history check before allowing change | P5-B3 | small | Already has history check partially — verify + align | ✅ DONE |
-| P5-B5 | Update `ResetPasswordAction` — record history after successful reset | P5-B3 | small | Ensures reset also feeds history | ✅ DONE |
-| P5-B6 | Update `CreateUserAction` — record initial password hash in history | P5-B3 | small | Prevents immediate reuse of temp password | ✅ DONE |
+| P5-B3 | `AuthRecordPasswordHistoryAction` action — hash + store on password change | P5-A2 | small | Called by `AuthChangePasswordAction` + `ResetPassword` + `CreateUser` actions | ✅ DONE |
+| P5-B4 | Update `AuthChangePasswordAction` action — call `AuthRecordPasswordHistoryAction` + enforce history check before allowing change | P5-B3 | small | Already has history check partially — verify + align | ✅ DONE |
+| P5-B5 | Update `AuthResetPasswordAction` — record history after successful reset | P5-B3 | small | Ensures reset also feeds history | ✅ DONE |
+| P5-B6 | Update `UserCreateAction` — record initial password hash in history | P5-B3 | small | Prevents immediate reuse of temp password | ✅ DONE |
 | P5-B7 | View: add "password cannot be one of last N" hint to reset-password + profile change password | P5-B5 | small | Direct text (no i18n) | ✅ DONE |
 | P5-B8 | View: add `password_history_enabled` + `password_history_count` fields to `/settings` (security section) | P5-B1 | small | SystemSetting form; sidebar + sections layout | ✅ DONE |
 | P5-B9 | Tests: history enforcement (reuse blocked, after N changes allowed), settings toggle | P5-B4..B8 | medium | ✅ DONE |
 
 **Deliverables:**
-- `app/Actions/V1/Auth/RecordPasswordHistoryAction.php` — hash + store
+- `app/Actions/V1/Auth/AuthRecordPasswordHistoryAction.php` — hash + store
 - `app/Models/PasswordHistory.php` — model (if not exists)
-- `ChangePasswordAction` + `ResetPasswordAction` + `CreateUserAction` updated
+- `AuthChangePasswordAction` + `AuthResetPasswordAction` + `UserCreateAction` updated
 - 2 views updated: `auth/reset-password`, `profile/edit`
 - `settings/index.blade.php` — new "Password History" section
 - SystemSettingSeeder: 2 new keys

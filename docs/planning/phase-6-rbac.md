@@ -54,9 +54,9 @@ Sources: Spatie official docs v6 (package installed is `spatie/laravel-permissio
   `Roles`, `Permissions`, `Activity Logs`, `Settings`, `Translations` items
   pointing at route names that **do not exist yet** (`Route::has()` falls back
   to `'#'`)
-- `UpdateUserAction` already syncs roles with `array_key_exists` guard
-  (`app/Actions/V1/User/UpdateUserAction.php:59`)
-- `CreateUserAction` already assigns roles through `RoleLookup::find()`
+- `UserUpdateAction` already syncs roles with `array_key_exists` guard
+  (`app/Actions/V1/User/UserUpdateAction.php:59`)
+- `UserCreateAction` already assigns roles through `RoleLookup::find()`
 - `partials/user-role-picker.blade.php` — shared role checkbox partial
 - `<x-ui.confirm-action>` + `ACTION_CONFIG` — 8 action keys, all destructive/state
 - `tests/Feature/RoleGuardTest.php` — pins the guard resolver
@@ -268,8 +268,8 @@ table below is the audit, not a wish list.
 | Proposal | Decision | Reason |
 |---|---|---|
 | Navbar tabs: Active / Inactive / Trash | ✅ **Trash built 2026-09-29** (Active/Inactive still not) | `deleted_at` on `roles` is in. Only two tabs shipped — `roles` has no `is_active`, and a tab with no column behind it is a lie. The soft-delete half needed the revocation semantics documented in `docs/base/features/roles-permissions.md` §Role Lifecycle; `RoleSeeder` also restores a trashed system role so a reseed can repair its own state. |
-| "Make default role" action in the actions column | ⛔ not built | `registration_default_role` already lives in `SystemSetting` (`database/seeders/SystemSettingSeeder.php:72`, read at `CreateUserAction.php:101`). A second control means two writers for one value — the `PolicyKeyTest` drift pattern. A guard belongs in `SystemSettingRequest`, not a new button. |
-| Reassign a default role to users whose role was trashed | ⛔ not built | A user who loses a role keeps whatever else they hold. A fallback here would be a second writer for `registration_default_role` and would silently grant access nobody asked for. DeleteRoleAction documents the omission; add it when an app actually needs the behaviour. |
+| "Make default role" action in the actions column | ⛔ not built | `registration_default_role` already lives in `SystemSetting` (`database/seeders/SystemSettingSeeder.php:72`, read at `UserCreateAction.php:101`). A second control means two writers for one value — the `PolicyKeyTest` drift pattern. A guard belongs in `SystemSettingRequest`, not a new button. |
+| Reassign a default role to users whose role was trashed | ⛔ not built | A user who loses a role keeps whatever else they hold. A fallback here would be a second writer for `registration_default_role` and would silently grant access nobody asked for. RoleDeleteAction documents the omission; add it when an app actually needs the behaviour. |
 
 ### Current state of the routes
 
@@ -410,10 +410,10 @@ empty for that role.
 |----|------|---------|------|--------|
 | P6-C1 | `App\Http\Requests\Role\StoreRoleRequest` — `authorize(): return $this->user()?->can('roles.create') ?? false`; rules: `name` required/string/max:64/`Rule::unique('roles','name')` **scoped to the resolved guard**; `permissions` nullable array; `permissions.*` `integer` + `exists:permissions,id` | B | small | **DONE** — as specified; unique guard-scoped via `RoleLookup::guard()` |
 | P6-C2 | `App\Http\Requests\Role\UpdateRoleRequest` — `authorize(): can('roles.update')`; `name` unique ignoring `$role`; `permissions.*` as above | B, C1 | small | **DONE** — as specified; `Rule::unique()->ignore($role)` |
-| P6-C3 | `App\Actions\V1\Role\IndexRoleAction` — `Role::query()->where('guard_name', RoleLookup::guard())->withCount(['permissions','users' …])`, optional `search` filter applied **before** `paginate(10)`, `->withQueryString()`. No N+1 | B4 | small | **DONE** — as specified, plus a `trashed` flag added for the trash tab (scopes the whole query rather than filtering rows) |
-| P6-C4 | `App\Actions\V1\Role\SaveRoleAction` — one action for create+update. `DB::transaction`: reject system-role rename (C8), `syncPermissions(array_map('intval', $data['permissions'] ?? []))` — the `intval` is required, spatie resolves a **string** `'19'` via `findByName` and throws `PermissionDoesNotExist`; audit `role.created` / `role.updated` **inside** the transaction before commit (ADR: no audit record on rollback) | B | medium | **DONE, split** — shipped as `CreateRoleAction` + `UpdateRoleAction` over a shared `App\Actions\Concerns\PersistsRole` trait, which holds the transaction, the `intval` cast, and the in-transaction audit. Split to match `CreateUserAction` / `UpdateUserAction` on the user side |
-| P6-C5 | `App\Http\Controllers\Web\V1\RoleController` — thin. `index` → `$action->run()` → `view('pages.roles.index')`; `create`/`edit` → `Permission::orderBy('name')->get()` + `PermissionCatalog::grouped()`; `store`/`update` → `SaveRoleAction`; `destroy` → deny for system roles, else delete + audit | C1–C4 | medium | **DONE** — thin as specified. The system-role refusal this row places in the controller lives in `DeleteRoleAction` instead (P6-C6's own wording), so the API cannot bypass it by not going through the controller |
-| P6-C6 | `App\Actions\V1\Role\DeleteRoleAction` — refuse when `SystemRole::isSystem($role->name)`; refuse when the role still has users assigned (unless `force` is passed) — trashing **deassigns** every holder, so the count lands in the `role.deleted` audit row. Inside one transaction: `users()->detach()` → `delete()` (soft) → audit. `RestoreRoleAction` / `ForceDeleteRoleAction` own the other two verbs | B4 | small | **DONE, extended** — also `RestoreRoleAction` + `ForceDeleteRoleAction`, and the web path passes `force` because the confirm modal is the deliberate override |
+| P6-C3 | `App\Actions\V1\Role\RoleIndexAction` — `Role::query()->where('guard_name', RoleLookup::guard())->withCount(['permissions','users' …])`, optional `search` filter applied **before** `paginate(10)`, `->withQueryString()`. No N+1 | B4 | small | **DONE** — as specified, plus a `trashed` flag added for the trash tab (scopes the whole query rather than filtering rows) |
+| P6-C4 | `App\Actions\V1\Role\SaveRoleAction` — one action for create+update. `DB::transaction`: reject system-role rename (C8), `syncPermissions(array_map('intval', $data['permissions'] ?? []))` — the `intval` is required, spatie resolves a **string** `'19'` via `findByName` and throws `PermissionDoesNotExist`; audit `role.created` / `role.updated` **inside** the transaction before commit (ADR: no audit record on rollback) | B | medium | **DONE, split** — shipped as `RoleCreateAction` + `RoleUpdateAction` over a shared `App\Actions\Concerns\PersistsRole` trait, which holds the transaction, the `intval` cast, and the in-transaction audit. Split to match `UserCreateAction` / `UserUpdateAction` on the user side |
+| P6-C5 | `App\Http\Controllers\Web\V1\RoleController` — thin. `index` → `$action->run()` → `view('pages.roles.index')`; `create`/`edit` → `Permission::orderBy('name')->get()` + `PermissionCatalog::grouped()`; `store`/`update` → `SaveRoleAction`; `destroy` → deny for system roles, else delete + audit | C1–C4 | medium | **DONE** — thin as specified. The system-role refusal this row places in the controller lives in `RoleDeleteAction` instead (P6-C6's own wording), so the API cannot bypass it by not going through the controller |
+| P6-C6 | `App\Actions\V1\Role\RoleDeleteAction` — refuse when `SystemRole::isSystem($role->name)`; refuse when the role still has users assigned (unless `force` is passed) — trashing **deassigns** every holder, so the count lands in the `role.deleted` audit row. Inside one transaction: `users()->detach()` → `delete()` (soft) → audit. `RoleRestoreAction` / `RoleForceDeleteAction` own the other two verbs | B4 | small | **DONE, extended** — also `RoleRestoreAction` + `RoleForceDeleteAction`, and the web path passes `force` because the confirm modal is the deliberate override |
 
 ### C2 — Permission catalogue (Web, read-only)
 | ID | Task | Depends | Est. |
@@ -424,11 +424,11 @@ empty for that role.
 ### C3 — Role assignment sync (the brief's core case)
 | ID | Task | Depends | Est. |
 |----|------|---------|------|
-| P6-C9 | `UpdateUserAction` — roles branch is already `array_key_exists`-guarded (`:59`). **Do not change it.** Add one thing: a `users.assign_roles` check before `syncRoles`, and reject a payload that would strip `superadmin` from the last superadmin (C11) | C5 | done |
-| P6-C10 | `CreateUserAction` — roles come from `RoleLookup::find()` already (`:62`). Add the same `users.assign_roles` check on the admin path only; the self-registration path (`defaultRolesForSelfRegistration()`) is **not** permission-gated because it is not an admin action and its role is server-side, not client-supplied | C5 | done |
-| P6-C11 | `App\Actions\V1\Role\AssignRolesAction` — one place that both C9 and C10 call: `DB::transaction`, resolve names through `RoleLookup::find()` (skip unknown rather than throw — `CreateUserAction` already silently skips, and a hard failure on a stale form is worse), count superadmins before/after, throw `LastSuperadminException` if the result is zero, `syncRoles()`, audit `user.roles_assigned` with the before/after lists in `properties` | B4 | done |
+| P6-C9 | `UserUpdateAction` — roles branch is already `array_key_exists`-guarded (`:59`). **Do not change it.** Add one thing: a `users.assign_roles` check before `syncRoles`, and reject a payload that would strip `superadmin` from the last superadmin (C11) | C5 | done |
+| P6-C10 | `UserCreateAction` — roles come from `RoleLookup::find()` already (`:62`). Add the same `users.assign_roles` check on the admin path only; the self-registration path (`defaultRolesForSelfRegistration()`) is **not** permission-gated because it is not an admin action and its role is server-side, not client-supplied | C5 | done |
+| P6-C11 | `App\Actions\V1\Role\RoleAssignAction` — one place that both C9 and C10 call: `DB::transaction`, resolve names through `RoleLookup::find()` (skip unknown rather than throw — `UserCreateAction` already silently skips, and a hard failure on a stale form is worse), count superadmins before/after, throw `LastSuperadminException` if the result is zero, `syncRoles()`, audit `user.roles_assigned` with the before/after lists in `properties` | B4 | done |
 | P6-C12 | `App\Exceptions\LastSuperadminException` + renderable in `bootstrap/app.php` → web redirect with `error` flash, API 409 JSON | C11 | done |
-| P6-C13 | ~~`AssignRolesRequest`~~ **merged into `AssignRolesAction` (2026-09-29).** The class was built as specced but no route ever referenced it, so the `users.assign_roles` check lived in code nothing could reach. The check and the guard-scoped role resolution now live in `AssignRolesAction`, which both write paths call. Role payloads are still validated before they reach it, by `CreateUserRequest`/`UpdateUserRequest`. Standalone role assignment is a role-picker edit on the existing user forms, not a separate endpoint | C5 | done |
+| P6-C13 | ~~`AssignRolesRequest`~~ **merged into `RoleAssignAction` (2026-09-29).** The class was built as specced but no route ever referenced it, so the `users.assign_roles` check lived in code nothing could reach. The check and the guard-scoped role resolution now live in `RoleAssignAction`, which both write paths call. Role payloads are still validated before they reach it, by `CreateUserRequest`/`UpdateUserRequest`. Standalone role assignment is a role-picker edit on the existing user forms, not a separate endpoint | C5 | done |
 
 ### C4 — Fix the ungated `authorize()` returns
 > **Status: ✅ DONE (2026-09-30, re-audited).** P6-C14..C18 all implemented in
@@ -448,7 +448,7 @@ empty for that role.
 |---|---|
 | Every role/permission route reachable and authorized | `routes/web.php:128-141` gates the four reads; the five writes are gated by their Form Requests. `RoleManagementTest::test_a_user_with_no_permissions_cannot_write_roles` + `test_a_user_with_no_permissions_cannot_reach_the_trash_endpoints` assert 403 on all five |
 | A zero-permission user gets 403 on all of them | `GateCAuthorizationTest::test_a_user_with_no_permissions_gets_403_on_every_admin_read_route` loops `users.index` / `roles.index` / `permissions.index` / `settings.index` |
-| Role assignment syncs (add → grants, replace → swaps, empty → clears, absent → untouched) | `AssignRolesActionTest` (8 tests) + `UserRoleEditTest` (7 tests) |
+| Role assignment syncs (add → grants, replace → swaps, empty → clears, absent → untouched) | `RoleAssignActionTest` (8 tests) + `UserRoleEditTest` (7 tests) |
 | Last-superadmin cannot be stripped | `test_stripping_the_last_superadmin_is_refused` + `test_the_refusal_leaves_the_superadmin_in_place`; a demotion among two is still allowed, so the guard is a floor, not a freeze |
 | `UserCrudWebTest` + `UserRoleEditTest` still green, updated not deleted | Full suite: **505 passed / 1657 assertions**, 1 risky (pre-existing) |
 
@@ -463,7 +463,7 @@ claim that the whole RBAC surface is closed; it is a claim that Group C's own
 tasks are.
 
 **C7's class name is a kept deviation, not a pending refactor.** What ships is
-`PermissionIndexAction`; the C1 convention (`IndexRoleAction`) would name it
+`PermissionIndexAction`; the C1 convention (`RoleIndexAction`) would name it
 `IndexPermissionAction`. Decided 2026-09-30 to **keep** the shipped name and
 record the deviation here rather than spend the rename — the name is referenced
 in exactly 10 places, all internal, and `PermissionIndexActionTest` already
@@ -607,10 +607,10 @@ through a real role holding the catalogue instead.
 | `GET /users/{id}/edit` — **34 roles** | **5** | 9 | flat: the picker renders 34 checkboxes behind ONE `@can`, so the gate count does not grow with the row count |
 | `GET /users/{id}` — role-list gates | 5 | 9 | same shape as edit |
 | `GET /settings` — D8 write-form gate | 3 | 9 | session + timezone list + assignable role list |
-| `AssignRolesAction` — 1 role | 9 | — | after `a4b33ab`; was 11 |
-| `AssignRolesAction` — **20 roles** | **9** | — | **was 28** — `RoleLookup::find()` in a loop, one select per name. Now one `whereIn` |
-| `DeleteRoleAction` — 0 or 30 holders | 5 | — | flat: `detach()` runs once, not per holder |
-| `RestoreRoleAction` / `ForceDeleteRoleAction` | 4 / 5 | — | |
+| `RoleAssignAction` — 1 role | 9 | — | after `a4b33ab`; was 11 |
+| `RoleAssignAction` — **20 roles** | **9** | — | **was 28** — `RoleLookup::find()` in a loop, one select per name. Now one `whereIn` |
+| `RoleDeleteAction` — 0 or 30 holders | 5 | — | flat: `detach()` runs once, not per holder |
+| `RoleRestoreAction` / `RoleForceDeleteAction` | 4 / 5 | — | |
 
 **The assertion is the delta, not the ceiling.** Each test renders the same page
 at two row counts and asserts the counts match. A ceiling like "under 20
@@ -619,14 +619,14 @@ only a count that *moves* when the rows move distinguishes the two. The
 absolute numbers are in the failure messages so a regression is visible even
 while the delta still passes.
 
-**One thing the measurement caught — a real N+1, now fixed.** `AssignRolesAction`
+**One thing the measurement caught — a real N+1, now fixed.** `RoleAssignAction`
 resolved role names through `RoleLookup::find()` once per name, so a 20-role
 payload cost 20 selects: 28 queries total, of which 20 were the same lookup
 repeated. The query tally is what identified it, since a page-level count
 would not show a cost that only appears on a write path. `RoleLookup::findMany()`
 now answers the whole set in one `whereIn` (`a4b33ab`), and the same 20 roles
 cost 9. Fixed in `RoleLookup` rather than at the call site because
-`CreateUserAction`'s self-registration branch had the identical loop.
+`UserCreateAction`'s self-registration branch had the identical loop.
 
 **Two things the measurement did NOT catch, both of which cost a wrong
 conclusion first.** Worth writing down, because the failure mode is a red
@@ -653,7 +653,7 @@ deviations, and what is deliberately still open.
 
 **Why the `users.assign_roles` check is not in either action.** C9 and C10 each
 ask for the same check, in the two actions that already had a roles branch. It
-ships in `AssignRolesAction` instead, which is the one place both call. Two
+ships in `RoleAssignAction` instead, which is the one place both call. Two
 copies is how C9 and C10 end up disagreeing about who may hand out a role — and
 they did: with the check in each caller, the create path was protected and the
 update path was not, so a caller holding only `users.update` could make any
@@ -661,8 +661,8 @@ account a superadmin:
 
     PUT /users/{victim}  + roles:["superadmin"]  =>  302, victim is superadmin
 
-`AssignRolesAction` is also the only path to `syncRoles`; the single inline
-`assignRole()` in `CreateUserAction` is the self-registration default branch,
+`RoleAssignAction` is also the only path to `syncRoles`; the single inline
+`assignRole()` in `UserCreateAction` is the self-registration default branch,
 which is server-side and must stay un-gated.
 
 **Superadmin grant vs. superadmin removal are different questions.** Removing
@@ -679,7 +679,7 @@ assuming it.
 
 **C7's class name and the grouping decision.** The table names
 `IndexPermissionAction`; what ships is `PermissionIndexAction`, and the shipped
-name is the inconsistent one against the C1 convention (`IndexRoleAction`). The
+name is the inconsistent one against the C1 convention (`RoleIndexAction`). The
 deviation is now **kept, not pending** — see the note in § C4 below.
 
 Grouping by resource prefix is **not built**. The catalogue page is searchable,
@@ -691,7 +691,7 @@ a silent omission.
 **C13 merged, not built.** `AssignRolesRequest` was built as specced and then
 deleted. No route ever referenced it, so the check it existed to express lived
 in a class nothing could reach; the check and the guard-scoped role resolution
-now live in `AssignRolesAction`. Role payloads are still validated before they
+now live in `RoleAssignAction`. Role payloads are still validated before they
 reach it, by `CreateUserRequest` / `UpdateUserRequest`. A standalone
 role-assignment endpoint was not needed — role editing is the picker on the
 existing user forms.
@@ -717,7 +717,7 @@ what shipped beyond it.
 
 **Why C4 was split rather than merged.** The table names one `SaveRoleAction`
 for both verbs. Shipped as two classes over a `PersistsRole` trait, because the
-user side already splits (`CreateUserAction` / `UpdateUserAction`) and a reader
+user side already splits (`UserCreateAction` / `UserUpdateAction`) and a reader
 scanning the action list should see both verbs. The trait holds everything that
 is *not* the verb: the `DB::transaction`, the `intval` cast, and the audit write
 inside the transaction (DEP-003 — an audit row that survives a rollback records
@@ -730,7 +730,7 @@ through `findByName()`, so `'19'` is looked up as a permission literally **named
 "19" and throws `PermissionDoesNotExist`.
 
 **Why C5's refusal moved.** The table places the system-role refusal in the
-controller; P6-C6's own wording places it in `DeleteRoleAction`. It lives in the
+controller; P6-C6's own wording places it in `RoleDeleteAction`. It lives in the
 action so the API cannot bypass it by not going through the web controller.
 
 **Not in the C1 table, shipped anyway** (the enterprise / SaaS role-retirement
@@ -784,9 +784,9 @@ sidebar items and can reach exactly those three areas.
 | ID | Task | Depends | Est. |
 |----|------|---------|------|
 | P6-E1 | `RolePolicy` / `SaveRoleAction` — system role rename refused (name in `SystemRole::names()` cannot change; the input is compared to the stored name, server-side, not hidden in the UI) | C4 | small |
-| P6-E2 | `DeleteRoleAction` — refuse for all three system roles, including by superadmin. Already in C6; here add the test | C6 | tiny |
+| P6-E2 | `RoleDeleteAction` — refuse for all three system roles, including by superadmin. Already in C6; here add the test | C6 | tiny |
 | P6-E3 | System-role permission stripping — a system role's permission set is written by the seeder, not by the role form. `SaveRoleAction` refuses a permission payload for a system role name and returns a 422/redirect with the reason | E1 | small |
-| P6-E4 | Last-superadmin: `AssignRolesAction` (C11) already counts. Add the two remaining paths — **delete** the last superadmin user and **deactivate** the last superadmin user — both must be refused. `DeleteUserAction` / `DeactivateUserAction` call the same count helper | C11 | medium |
+| P6-E4 | Last-superadmin: `RoleAssignAction` (C11) already counts. Add the two remaining paths — **delete** the last superadmin user and **deactivate** the last superadmin user — both must be refused. `UserDeleteAction` / `UserDeactivateAction` call the same count helper | C11 | medium |
 | P6-E5 | "Superadmin assignment restricted to the most privileged path" — assigning `superadmin` requires `roles.update` **and** an explicit `confirm_superadmin` flag on the payload; without it the request is rejected. The UI asks via the confirm modal. This is the "removing superadmin requires explicit audited confirmation" rule, applied to both directions | C11, A7 | medium |
 | P6-E6 | Confirm modal copy for E4/E5 — add `remove_superadmin` key to `ACTION_CONFIG` (`variant: 'danger'`, names the account) | E4 | tiny |
 | P6-E7 | `tests/Feature/RbacAuthorizationMatrixTest.php` — the brief's two cases, as tests: **User A** role `user`, zero permissions → 403 on `/users`, `/settings`, `/roles`, `/permissions`; 200 on `/dashboard`, `/profile`, `/sessions`; sidebar HTML contains no `Users`, `Roles`, `Settings` link. **User B** role `staff` with `users.view` + `users.update` + `settings.manage` → 200 on `/users` + `/settings`; 403 on `/roles`; sidebar contains `Users` + `Settings`, not `Roles` | D | medium |

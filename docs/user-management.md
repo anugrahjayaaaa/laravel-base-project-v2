@@ -19,7 +19,7 @@ The system settings control user lifecycle behavior via the `system_settings` ta
 ### Adding a new setting
 
 Five places, and **the fourth is the one that fails silently**. A key missing
-from `UpdateSystemSettingsAction::$updates` is simply never written: the form
+from `SystemSettingsUpdateAction::$updates` is simply never written: the form
 posts, validation passes, the success flash shows, and the value does not
 change. Nothing errors.
 
@@ -27,7 +27,7 @@ change. Nothing errors.
 2. `SystemSettingRequest::rules()` — validation (booleans also need adding to
    `prepareForValidation()`, or a string "on" reaches the action)
 3. `pages/settings/index.blade.php` — the input
-4. **`UpdateSystemSettingsAction::$updates`** — the persistence whitelist
+4. **`SystemSettingsUpdateAction::$updates`** — the persistence whitelist
 5. Read it with `SystemSetting::getBool/getInt/getString()` — never a class name
    inside a Blade view; views get their values from the controller
 
@@ -41,7 +41,7 @@ fails the suite instead of shipping.
 page does not exist rather than the visitor being forbidden, which is what a
 403 would imply. The link on the login page is hidden by the same flag.
 
-`CreateUserAction` serves both entry points. Passing no password (the admin
+`UserCreateAction` serves both entry points. Passing no password (the admin
 form) generates a temporary one, sets `must_change_password`, and emails it.
 Passing the user's own password (self-registration) stores it as given, leaves
 `must_change_password` false, and emails a verification link that contains no
@@ -62,7 +62,7 @@ Accessed via **System → Settings** in the admin sidebar.
 
 ### API
 
-`POST /api/v1/auth/register` — same `RegisterRequest` and `CreateUserAction` as
+`POST /api/v1/auth/register` — same `RegisterRequest` and `UserCreateAction` as
 the web form, no session or token issued. Returns `201` with
 `{ data: { id, username, email } }`. Returns `404` while
 `registration_enabled` is off, matching the web route, so a client cannot probe

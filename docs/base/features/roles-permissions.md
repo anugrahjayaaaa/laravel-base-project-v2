@@ -90,7 +90,7 @@ Superadmin is a controlled privileged role:
 
 ### Last Superadmin Enforcement
 
-* Before any role reassignment, `AssignRolesAction` counts the superadmins before
+* Before any role reassignment, `RoleAssignAction` counts the superadmins before
   and after the sync and refuses with `LastSuperadminException` if the result
   would zero. The check runs inside the same transaction as the sync.
 * A refused reassignment renders as a redirect-back with an `error` flash on the
@@ -105,11 +105,11 @@ Superadmin is a controlled privileged role:
   the *account* reaches the same outcome through a different column, and soft
   delete additionally drops the role through Spatie's scope without anyone
   touching the pivot. `LastSuperadmin::guard()` therefore also runs in
-  `DeactivateUserAction` and `DeleteUserAction`, and the bulk `deactivate` bar
+  `UserDeactivateAction` and `UserDeleteAction`, and the bulk `deactivate` bar
   routes through the action so it inherits the same refusal. The count is over
   **active** superadmins — a trashed or deactivated one does not satisfy it.
   Force-deleting is deliberately unguarded, because it only accepts an
-  already-trashed row that `DeleteUserAction` already refused to create.
+  already-trashed row that `UserDeleteAction` already refused to create.
 * **Adding or removing the role also requires an explicit confirmation
   (P6-E5).** `confirm_superadmin` must be truthy on the payload whenever the sync
   would change superadmin membership in either direction; it fires only on an
@@ -142,7 +142,7 @@ role-name query, so the predicate is shared while the queries stay separate:
 
 - the role picker on the user create/edit forms — `visibleTo()`
 - the registration-default-role dropdown on the settings page — `visibleTo()`
-- the roles index, and its tab counts — inline in `IndexRoleAction`
+- the roles index, and its tab counts — inline in `RoleIndexAction`
 - the users index, and its tab counts — inline in `UserIndexAction`
 
 The counts follow the rows on purpose. A badge reading "4" above three rows tells
@@ -256,7 +256,7 @@ does not.
 
 ### Two mechanisms, both required
 
-1. **Write side — explicit detach.** `DeleteRoleAction` calls
+1. **Write side — explicit detach.** `RoleDeleteAction` calls
    `$role->users()->detach()` before `$role->delete()`. Spatie's own `deleting`
    hook *skips* detach on a non-force delete (`HasRoles::bootHasRoles` returns
    early when `isForceDeleting()` is false), so a plain soft delete would leave
@@ -283,7 +283,7 @@ mechanism for the other and leave the other half broken.
   That is what makes a restore collision *impossible* rather than merely
   unlikely — pinned by `test_a_trashed_role_name_stays_reserved` so nobody
   "helpfully" adds `whereNull('deleted_at')` and opens the hole.
-- **A populated role needs `force`.** `DeleteRoleAction` refuses while users
+- **A populated role needs `force`.** `RoleDeleteAction` refuses while users
   still hold the role, because trashing it deassigns all of them. Both the web
   `destroy` and the bulk bar pass `force: true` — the confirm modal in front of
   them spells the consequence out ("removed from every user holding it") before

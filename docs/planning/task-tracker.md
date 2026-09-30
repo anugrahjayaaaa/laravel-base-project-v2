@@ -108,7 +108,7 @@ observers for audit. See `docs/base/architecture/application-components.md` §Ac
 | RBAC-002 | Implement role management | 6 | P0 | RBAC-001 | DONE — C1 (P6-C1..C6 + soft delete + bulk), C2 (catalogue), C3 (assignment sync), C4 (ungated `authorize()` returns). Gate C met; role write routes still lack a route-level `can:` (defence in depth, P6-D1) |
 | RBAC-003 | Implement permission management | 6 | P0 | RBAC-001 | DONE — catalogue seeded by Group B (`PermissionSeeder`, prune-then-create), read-only web page by C2 (P6-C7/C8). No create/edit UI, by design: a permission row no `can()` references grants nothing |
 | RBAC-004 | Define permission set | 6 | P0 | P0-004 | DONE — `PermissionCatalog` (19), `PermissionSeeder` |
-| RBAC-005 | Superadmin + system-role protection | 6 | P0 | RBAC-001 | DONE — `Gate::before` (AuthServiceProvider), SuperAdminSeeder, C6 system-role delete/rename refusal, C11 last-superadmin assignment guard, and Group E closes the rest: **E3** system-role permissions refused in `PersistsRole::persist()` (the matrix was one POST from emptying `admin`), **E4** `LastSuperadmin::guard()` on deactivate AND delete — the two paths `AssignRolesAction` never covered, verified exploitable end to end (superadmin count reached 0) and fixed at the root, including the bulk handler whose raw `UPDATE` bypassed the action entirely, **E5** `confirm_superadmin` required to add or remove superadmin. Each guard sabotaged and confirmed to turn its tests red |l DONE. Remaining is E4 (delete / deactivate the last superadmin *user*) and E5 (`confirm_superadmin` on grant) |
+| RBAC-005 | Superadmin + system-role protection | 6 | P0 | RBAC-001 | DONE — `Gate::before` (AuthServiceProvider), SuperAdminSeeder, C6 system-role delete/rename refusal, C11 last-superadmin assignment guard, and Group E closes the rest: **E3** system-role permissions refused in `PersistsRole::persist()` (the matrix was one POST from emptying `admin`), **E4** `LastSuperadmin::guard()` on deactivate AND delete — the two paths `RoleAssignAction` never covered, verified exploitable end to end (superadmin count reached 0) and fixed at the root, including the bulk handler whose raw `UPDATE` bypassed the action entirely, **E5** `confirm_superadmin` required to add or remove superadmin. Each guard sabotaged and confirmed to turn its tests red |l DONE. Remaining is E4 (delete / deactivate the last superadmin *user*) and E5 (`confirm_superadmin` on grant) |
 | RBAC-006 | Gate /users and /settings behind permissions | 6 | P0 | RBAC-004 | DONE — the web reads and the user writes are gated (C2 reads, C14–C18 the form requests, `UserPolicy`); D1/D2 put route-level `can:` on both files including the four state toggles and the settings pair that carried no gate at all; D3/D5–D8 gated the sidebar composer and the in-page controls; E7 replays both brief scenarios end to end and E9 replays the RBAC-006 exploit list itself. Attack suite uses a SIBLING permission rather than an empty one — a route written `can('users.view')` instead of `can('users.deactivate')` passes every zero-permission test in the repo | (C2 reads, C14–C18 the form requests, `UserPolicy`). **Still open:** the seven ungated user state routes and `api.v1.settings.index` (P6-D1/D2), plus the D-group button `can:` gates and the E9 pentest replay |
 | P6-A1 | Roles index view | 6 | P0 | — | DONE |
 | P6-A2 | Roles index actions column | 6 | P0 | P6-A1 | DONE |
@@ -129,23 +129,23 @@ observers for audit. See `docs/base/architecture/application-components.md` §Ac
 | P6-B8 | `PermissionCacheTest` (5 tests) | 6 | P0 | P6-B7 | DONE |
 | P6-C1 | `StoreRoleRequest` — `roles.create`, guard-scoped unique | 6 | P0 | P6-B3 | DONE |
 | P6-C2 | `UpdateRoleRequest` — `roles.update`, unique ignoring `$role` | 6 | P0 | P6-C1 | DONE |
-| P6-C3 | `IndexRoleAction` — guard-scoped, `withCount`, search, `trashed` flag | 6 | P0 | P6-B5 | DONE |
-| P6-C4 | `SaveRoleAction` — shipped split as `CreateRoleAction` + `UpdateRoleAction` over a `PersistsRole` trait | 6 | P0 | P6-C1 | DONE (split) |
+| P6-C3 | `RoleIndexAction` — guard-scoped, `withCount`, search, `trashed` flag | 6 | P0 | P6-B5 | DONE |
+| P6-C4 | `SaveRoleAction` — shipped split as `RoleCreateAction` + `RoleUpdateAction` over a `PersistsRole` trait | 6 | P0 | P6-C1 | DONE (split) |
 | P6-C5 | `RoleController` — thin, 10 methods | 6 | P0 | P6-C1..C4 | DONE |
-| P6-C6 | `DeleteRoleAction` + `RestoreRoleAction` + `ForceDeleteRoleAction` | 6 | P0 | P6-B5 | DONE (extended) |
+| P6-C6 | `RoleDeleteAction` + `RoleRestoreAction` + `RoleForceDeleteAction` | 6 | P0 | P6-B5 | DONE (extended) |
 | P6-C7 | `PermissionIndexAction` — see the kept name deviation in `phase-6-rbac.md` § C4 | 6 | P0 | P6-B3 | DONE (renamed from spec) |
 | P6-C8 | `PermissionController@index` only — `can('permissions.view')` | 6 | P0 | P6-C7 | DONE |
-| P6-C9 | `UpdateUserAction` — `users.assign_roles` check before `syncRoles` | 6 | P0 | P6-C5 | DONE (check lives in C11) |
-| P6-C10 | `CreateUserAction` — same check, admin path only | 6 | P0 | P6-C5 | DONE (check lives in C11) |
-| P6-C11 | `AssignRolesAction` — the one path to `syncRoles`, last-superadmin guard, audit | 6 | P0 | P6-B5 | DONE |
+| P6-C9 | `UserUpdateAction` — `users.assign_roles` check before `syncRoles` | 6 | P0 | P6-C5 | DONE (check lives in C11) |
+| P6-C10 | `UserCreateAction` — same check, admin path only | 6 | P0 | P6-C5 | DONE (check lives in C11) |
+| P6-C11 | `RoleAssignAction` — the one path to `syncRoles`, last-superadmin guard, audit | 6 | P0 | P6-B5 | DONE |
 | P6-C12 | `LastSuperadminException` — web redirect + API 409 | 6 | P0 | P6-C11 | DONE |
-| P6-C13 | ~~`AssignRolesRequest`~~ merged into `AssignRolesAction` | 6 | P0 | P6-C11 | DONE (merged) |
+| P6-C13 | ~~`AssignRolesRequest`~~ merged into `RoleAssignAction` | 6 | P0 | P6-C11 | DONE (merged) |
 | P6-C14 | `CreateUserRequest::authorize()` → `can('users.create')` | 6 | P0 | P6-C5 | DONE |
 | P6-C15 | `UpdateUserRequest::authorize()` → `can('users.update')` + narrow self-edit exception | 6 | P0 | P6-C5 | DONE |
 | P6-C16 | `SystemSettingRequest::authorize()` → `can('settings.manage')` | 6 | P0 | P6-C5 | DONE |
 | P6-C17 | `BulkUserRequest::authorize()` → action→permission map, via `AuthorizesBulkAction` | 6 | P0 | P6-C5 | DONE (extended to `BulkRoleRequest`) |
 | P6-C18 | `UserPolicy` — 7 CRUD methods delegating to `users.*`; 4 state methods untouched | 6 | P0 | P6-C5 | DONE |
-| P6-C-GATE | Gate C: routes authorized, zero-perm 403, sync proven, last-superadmin held | 6 | P0 | P6-C1..C18 | **MET (2026-09-30)** — `GateCAuthorizationTest` (8) + `RoleManagementTest` + `AssignRolesActionTest` + `UserRoleEditTest`; 505 tests / 1657 assertions |
+| P6-C-GATE | Gate C: routes authorized, zero-perm 403, sync proven, last-superadmin held | 6 | P0 | P6-C1..C18 | **MET (2026-09-30)** — `GateCAuthorizationTest` (8) + `RoleManagementTest` + `RoleAssignActionTest` + `UserRoleEditTest`; 505 tests / 1657 assertions |
 
 **Gate C is met.** Groups C1–C4 all shipped and were audited against the code,
 not against the plan. What remains open from the RBAC work is Group D — the
@@ -224,7 +224,7 @@ genuinely open and are the real D1/D2 work.
       "AUTH-004"
     ],
     "status": "DONE",
-    "note": "LoginController: __invoke, uses AuthenticateUserAction (throttle + findUser + account state). Controllers thin — API JSON, Web redirect. Audit by controller with channel."
+    "note": "LoginController: __invoke, uses AuthAuthenticateAction (throttle + findUser + account state). Controllers thin — API JSON, Web redirect. Audit by controller with channel."
   },
   {
     "id": "AUTH-006",
@@ -290,7 +290,7 @@ genuinely open and are the real D1/D2 work.
       "AUTH-006"
     ],
     "status": "DONE",
-    "note": "VerifyEmailController → VerifyEmailAction (markEmailAsVerified + audit). ResendVerificationController unchanged."
+    "note": "VerifyEmailController → AuthVerifyEmailAction (markEmailAsVerified + audit). ResendVerificationController unchanged."
   },
   {
     "id": "UI-A-001",
@@ -359,7 +359,7 @@ genuinely open and are the real D1/D2 work.
       "AUTH-001"
     ],
     "status": "DONE",
-    "note": "PasswordForgotController → SendPasswordResetLinkAction (lock check + send link + audit). Anti-enumeration: always-same-response."
+    "note": "PasswordForgotController → AuthSendResetLinkAction (lock check + send link + audit). Anti-enumeration: always-same-response."
   },
   {
     "id": "AUTH-013",
@@ -370,7 +370,7 @@ genuinely open and are the real D1/D2 work.
       "AUTH-012"
     ],
     "status": "DONE",
-    "note": "PasswordResetController → ResetPasswordAction (lock check + reset + audit). Uses Laravel Password facade."
+    "note": "PasswordResetController → AuthResetPasswordAction (lock check + reset + audit). Uses Laravel Password facade."
   },
   {
     "id": "AUTH-014",
@@ -504,7 +504,7 @@ genuinely open and are the real D1/D2 work.
       "PWD-001"
     ],
     "status": "DONE",
-    "note": "Group A complete: PasswordStrengthRule wired into ChangePasswordAction, ResetPassword, ProfileUpdate requests."
+    "note": "Group A complete: PasswordStrengthRule wired into AuthChangePasswordAction, ResetPassword, ProfileUpdate requests."
   },
   {
     "id": "PWD-003",
@@ -568,7 +568,7 @@ genuinely open and are the real D1/D2 work.
       "RBAC-001"
     ],
     "status": "DONE",
-    "note": "2026-09-30: Groups C1-C4 all shipped and audited. C1 role CRUD (guard-scoped unique, PersistsRole trait, soft delete with revocation, trash/restore/force, bulk); C2 read-only catalogue + the can: gates on the four reads; C3 AssignRolesAction as the single path to syncRoles with the last-superadmin guard; C4 the four blanket authorize() returns closed, AuthorizesBulkAction trait, UserPolicy CRUD methods. Gate C MET - 505 tests / 1657 assertions. STILL OPEN but out of C scope: no can: on the five role write routes (defence in depth only, each is gated by its Form Request) and the seven ungated user state routes (P6-D1/D2, tracked as P6C4-001..005)."
+    "note": "2026-09-30: Groups C1-C4 all shipped and audited. C1 role CRUD (guard-scoped unique, PersistsRole trait, soft delete with revocation, trash/restore/force, bulk); C2 read-only catalogue + the can: gates on the four reads; C3 RoleAssignAction as the single path to syncRoles with the last-superadmin guard; C4 the four blanket authorize() returns closed, AuthorizesBulkAction trait, UserPolicy CRUD methods. Gate C MET - 505 tests / 1657 assertions. STILL OPEN but out of C scope: no can: on the five role write routes (defence in depth only, each is gated by its Form Request) and the seven ungated user state routes (P6-D1/D2, tracked as P6C4-001..005)."
   },
   {
     "id": "RBAC-003",
@@ -601,7 +601,7 @@ genuinely open and are the real D1/D2 work.
       "RBAC-001"
     ],
     "status": "DONE",
-    "note": "2026-09-30: Gate::before in place (AuthServiceProvider::configureSuperAdmin), SuperAdminSeeder assigns the role, C6 refuses system-role delete/rename, C11 refuses stripping the last superadmin on assignment, and granting superadmin requires the causer to already be one. Group E closed the rest. P6-E3: system-role permissions are code-defined — PersistsRole::persist() now refuses a permission payload aimed at any SystemRole name; the role matrix was one POST (submit no checkboxes) from silently emptying admin, and the old RoleManagementTest asserted that edit SUCCEEDED. P6-E4: LastSuperadmin::guard() now runs in DeactivateUserAction and DeleteUserAction. This was a live hole, not a theoretical one — verified before the fix that a caller holding users.deactivate + users.delete + users.force_delete and NOT being a superadmin could deactivate the only superadmin, delete them, and force-delete them, ending at zero superadmins. The bulk handler compounded it: 'deactivate' ran a raw User::whereIn()->update(), bypassing DeactivateUserAction entirely, so the guard the row button enforced was absent from the dropdown one screen above; it now routes through the action. ForceDeleteUserAction deliberately has NO guard (it only accepts already-trashed rows, which DeleteUserAction already refused to create) — documented in place rather than left as a silent omission. P6-E5: confirm_superadmin is required to add OR remove superadmin, threaded through both user write actions and both FormRequests, with a confirm control in the role picker so the UI can still perform the operation. Every guard was sabotaged and confirmed to turn its tests red (E5 -> 4 red, E4 -> 6, E3 -> 5, bulk hole -> 1). Pinned by LastSuperadminGuardTest (19) and RoleManagementTest (30). Full suite 661 passed / 2243 assertions."
+    "note": "2026-09-30: Gate::before in place (AuthServiceProvider::configureSuperAdmin), SuperAdminSeeder assigns the role, C6 refuses system-role delete/rename, C11 refuses stripping the last superadmin on assignment, and granting superadmin requires the causer to already be one. Group E closed the rest. P6-E3: system-role permissions are code-defined — PersistsRole::persist() now refuses a permission payload aimed at any SystemRole name; the role matrix was one POST (submit no checkboxes) from silently emptying admin, and the old RoleManagementTest asserted that edit SUCCEEDED. P6-E4: LastSuperadmin::guard() now runs in UserDeactivateAction and UserDeleteAction. This was a live hole, not a theoretical one — verified before the fix that a caller holding users.deactivate + users.delete + users.force_delete and NOT being a superadmin could deactivate the only superadmin, delete them, and force-delete them, ending at zero superadmins. The bulk handler compounded it: 'deactivate' ran a raw User::whereIn()->update(), bypassing UserDeactivateAction entirely, so the guard the row button enforced was absent from the dropdown one screen above; it now routes through the action. UserForceDeleteAction deliberately has NO guard (it only accepts already-trashed rows, which UserDeleteAction already refused to create) — documented in place rather than left as a silent omission. P6-E5: confirm_superadmin is required to add OR remove superadmin, threaded through both user write actions and both FormRequests, with a confirm control in the role picker so the UI can still perform the operation. Every guard was sabotaged and confirmed to turn its tests red (E5 -> 4 red, E4 -> 6, E3 -> 5, bulk hole -> 1). Pinned by LastSuperadminGuardTest (19) and RoleManagementTest (30). Full suite 661 passed / 2243 assertions."
   },
   {
     "id": "RBAC-006",
@@ -830,7 +830,7 @@ genuinely open and are the real D1/D2 work.
   },
   {
     "id": "P6-C3",
-    "task": "IndexRoleAction — guard-scoped, withCount, search, sortable, trashed flag",
+    "task": "RoleIndexAction — guard-scoped, withCount, search, sortable, trashed flag",
     "phase": 6,
     "priority": "P0",
     "depends_on": [
@@ -848,7 +848,7 @@ genuinely open and are the real D1/D2 work.
       "P6-C1"
     ],
     "status": "DONE",
-    "note": "Phase 6 Group C1, shipped 2026-09-29. DEVIATION: the spec named one SaveRoleAction; shipped as CreateRoleAction + UpdateRoleAction over an App\\Actions\\Concerns\\PersistsRole trait holding everything that is not the verb — the DB::transaction, the array_map('intval') before syncPermissions (Spatie resolves a string '19' as a permission NAMED 19 and throws), and the audit write inside the transaction per DEP-003. Split to match CreateUserAction/UpdateUserAction on the user side."
+    "note": "Phase 6 Group C1, shipped 2026-09-29. DEVIATION: the spec named one SaveRoleAction; shipped as RoleCreateAction + RoleUpdateAction over an App\\Actions\\Concerns\\PersistsRole trait holding everything that is not the verb — the DB::transaction, the array_map('intval') before syncPermissions (Spatie resolves a string '19' as a permission NAMED 19 and throws), and the audit write inside the transaction per DEP-003. Split to match UserCreateAction/UserUpdateAction on the user side."
   },
   {
     "id": "P6-C5",
@@ -862,18 +862,18 @@ genuinely open and are the real D1/D2 work.
       "P6-C4"
     ],
     "status": "DONE",
-    "note": "Phase 6 Group C1, shipped 2026-09-29. 10 methods, resolves route data and delegates. The system-role refusal this row places in the controller lives in DeleteRoleAction instead (P6-C6's own wording) so the API cannot bypass it by not going through the web controller."
+    "note": "Phase 6 Group C1, shipped 2026-09-29. 10 methods, resolves route data and delegates. The system-role refusal this row places in the controller lives in RoleDeleteAction instead (P6-C6's own wording) so the API cannot bypass it by not going through the web controller."
   },
   {
     "id": "P6-C6",
-    "task": "DeleteRoleAction — refuse system roles and populated roles unless forced, detach + soft delete + audit in one transaction",
+    "task": "RoleDeleteAction — refuse system roles and populated roles unless forced, detach + soft delete + audit in one transaction",
     "phase": 6,
     "priority": "P0",
     "depends_on": [
       "P6-B5"
     ],
     "status": "DONE",
-    "note": "Phase 6 Group C1, shipped 2026-09-29, EXTENDED beyond the spec: also RestoreRoleAction + ForceDeleteRoleAction, a trash tab, and bulk actions, for the enterprise/SaaS role-retirement requirement. The users()->detach() is explicit because Spatie's deleting hook skips it on a soft delete — relying on the package would revoke nothing and a restore would silently re-grant (P6C1-004)."
+    "note": "Phase 6 Group C1, shipped 2026-09-29, EXTENDED beyond the spec: also RoleRestoreAction + RoleForceDeleteAction, a trash tab, and bulk actions, for the enterprise/SaaS role-retirement requirement. The users()->detach() is explicit because Spatie's deleting hook skips it on a soft delete — relying on the package would revoke nothing and a restore would silently re-grant (P6C1-004)."
   },
   {
     "id": "P6-C7",
@@ -899,29 +899,29 @@ genuinely open and are the real D1/D2 work.
   },
   {
     "id": "P6-C9",
-    "task": "UpdateUserAction — users.assign_roles check before syncRoles",
+    "task": "UserUpdateAction — users.assign_roles check before syncRoles",
     "phase": 6,
     "priority": "P0",
     "depends_on": [
       "P6-C5"
     ],
     "status": "DONE",
-    "note": "Phase 6 Group C3, shipped 2026-09-29. The array_key_exists guard on the roles branch was left alone as instructed. The check ships in AssignRolesAction (C11), not here — with the check in each caller the create path was protected and the update path was not, so a caller holding only users.update could make any account a superadmin (measured: PUT /users/{victim} with roles:[superadmin] returned 302 and the victim became superadmin)."
+    "note": "Phase 6 Group C3, shipped 2026-09-29. The array_key_exists guard on the roles branch was left alone as instructed. The check ships in RoleAssignAction (C11), not here — with the check in each caller the create path was protected and the update path was not, so a caller holding only users.update could make any account a superadmin (measured: PUT /users/{victim} with roles:[superadmin] returned 302 and the victim became superadmin)."
   },
   {
     "id": "P6-C10",
-    "task": "CreateUserAction — same check, admin path only; self-registration stays ungated",
+    "task": "UserCreateAction — same check, admin path only; self-registration stays ungated",
     "phase": 6,
     "priority": "P0",
     "depends_on": [
       "P6-C5"
     ],
     "status": "DONE",
-    "note": "Phase 6 Group C3, shipped 2026-09-29. The self-registration path (defaultRolesForSelfRegistration) is deliberately not permission-gated: it is not an admin action and its role is server-side, not client-supplied. Check lives in AssignRolesAction (C11)."
+    "note": "Phase 6 Group C3, shipped 2026-09-29. The self-registration path (defaultRolesForSelfRegistration) is deliberately not permission-gated: it is not an admin action and its role is server-side, not client-supplied. Check lives in RoleAssignAction (C11)."
   },
   {
     "id": "P6-C11",
-    "task": "AssignRolesAction — the single path to syncRoles, last-superadmin guard, before/after audit",
+    "task": "RoleAssignAction — the single path to syncRoles, last-superadmin guard, before/after audit",
     "phase": 6,
     "priority": "P0",
     "depends_on": [
@@ -950,7 +950,7 @@ genuinely open and are the real D1/D2 work.
       "P6-C11"
     ],
     "status": "DONE",
-    "note": "Phase 6 Group C3, 2026-09-29. MERGED, not built: the class was created as specced then deleted. No route ever referenced it, so the users.assign_roles check lived in a class nothing could reach. The check and the guard-scoped role resolution now live in AssignRolesAction, which both write paths call. Role payloads are still validated before they reach it, by CreateUserRequest/UpdateUserRequest. A standalone role-assignment endpoint was not needed — role editing is the picker on the existing user forms."
+    "note": "Phase 6 Group C3, 2026-09-29. MERGED, not built: the class was created as specced then deleted. No route ever referenced it, so the users.assign_roles check lived in a class nothing could reach. The check and the guard-scoped role resolution now live in RoleAssignAction, which both write paths call. Role payloads are still validated before they reach it, by CreateUserRequest/UpdateUserRequest. A standalone role-assignment endpoint was not needed — role editing is the picker on the existing user forms."
   },
   {
     "id": "P6-C14",
@@ -1017,7 +1017,7 @@ genuinely open and are the real D1/D2 work.
       "P6-C18"
     ],
     "status": "DONE",
-    "note": "MET 2026-09-30. Evidence, per clause: 403 on all admin read routes — GateCAuthorizationTest::test_a_user_with_no_permissions_gets_403_on_every_admin_read_route; 403 on all five role write routes — RoleManagementTest::test_a_user_with_no_permissions_cannot_write_roles + test_a_user_with_no_permissions_cannot_reach_the_trash_endpoints; role sync (add/replace/empty-clears/absent-untouched) — AssignRolesActionTest (8) + UserRoleEditTest (7); last-superadmin — test_stripping_the_last_superadmin_is_refused + test_the_refusal_leaves_the_superadmin_in_place; regression suite green — 505 passed / 1657 assertions, 1 risky (pre-existing). Gate C is a GROUP C gate: the seven ungated user state routes and api.v1.settings.index are P6-D1/D2 and remain open."
+    "note": "MET 2026-09-30. Evidence, per clause: 403 on all admin read routes — GateCAuthorizationTest::test_a_user_with_no_permissions_gets_403_on_every_admin_read_route; 403 on all five role write routes — RoleManagementTest::test_a_user_with_no_permissions_cannot_write_roles + test_a_user_with_no_permissions_cannot_reach_the_trash_endpoints; role sync (add/replace/empty-clears/absent-untouched) — RoleAssignActionTest (8) + UserRoleEditTest (7); last-superadmin — test_stripping_the_last_superadmin_is_refused + test_the_refusal_leaves_the_superadmin_in_place; regression suite green — 505 passed / 1657 assertions, 1 risky (pre-existing). Gate C is a GROUP C gate: the seven ungated user state routes and api.v1.settings.index are P6-D1/D2 and remain open."
   },
   {
     "id": "FEAT-001",
