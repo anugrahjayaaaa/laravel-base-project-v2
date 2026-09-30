@@ -928,7 +928,7 @@ genuinely open and are the real D1/D2 work.
       "P6-B5"
     ],
     "status": "DONE",
-    "note": "Phase 6 Group C3, shipped 2026-09-29. DB::transaction, resolve names via RoleLookup::find() (skip unknown rather than throw — a hard failure on a stale form is worse), count superadmins before/after and throw LastSuperadminException if the result is zero, syncRoles, audit user.roles_assigned with both lists. Granting superadmin additionally requires the causer to already be one, or a delegated admin could mint a second. The count guard is a MINIMUM of one, not exactly one — the spec says zero, so enforcing exactly-one would be a change of requirement, not a fix."
+    "note": "Phase 6 Group C3, shipped 2026-09-29. DB::transaction, resolve names via RoleLookup::findMany() (skip unknown rather than throw — a hard failure on a stale form is worse; fewer roles than names IS the skip), count superadmins before/after and throw LastSuperadminException if the result is zero, syncRoles, audit user.roles_assigned with both lists. Granting superadmin additionally requires the causer to already be one, or a delegated admin could mint a second. The count guard is a MINIMUM of one, not exactly one — the spec says zero, so enforcing exactly-one would be a change of requirement, not a fix. 2026-09-30: name resolution was one RoleLookup::find() per name, so a 20-role payload cost 28 queries; findMany() brings it to 9 (a4b33ab). Pinned by RbacPerformanceTest::test_assigning_roles_costs_the_same_at_one_and_at_twenty."
   },
   {
     "id": "P6-C12",

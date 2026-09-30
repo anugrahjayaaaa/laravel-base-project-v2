@@ -470,6 +470,63 @@ in exactly 10 places, all internal, and `PermissionIndexActionTest` already
 pins behaviour. Revisit if a third action appears and the inconsistency starts
 costing a reader.
 
+### Performance — measured 2026-09-30 (P6-E10, Group C surfaces)
+
+SQLite, warm permission cache, `RefreshDatabase`. Counts are per HTTP request,
+measured after one throwaway request warms Spatie's cache, so the cache fill is
+not billed to the page. Pinned by `RbacPerformanceTest` (7 tests).
+
+| Request | Queries | ms | Note |
+|---|---|---|---|
+| `GET /roles` — 10 roles | 5 | 46 | |
+| `GET /roles` — **100 roles** | **5** | 55 | flat: `withCount` is a subquery, not a per-row load |
+| `GET /roles?search=A` — 100 roles | 5 | 50 | search is applied before `paginate`, so it narrows rather than filters |
+| `GET /roles?trashed=1` — 100 roles | 4 | 31 | one fewer: the live count query is skipped |
+| `GET /permissions` — 21 catalogue | 4 | 80 | `withCount('roles')` + the eager role load |
+| `GET /permissions?search=users` | 4 | 117 | |
+| `GET /roles/create` — 21 checkboxes | 2 | 35 | `PermissionCatalog` is a static array: 0 queries for the catalogue |
+| `GET /roles/{id}/edit` | 5 | 39 | +3 over create: the role, its permissions, its user count |
+| `GET /dashboard` — sidebar | 1 | 21 | the sidebar carries **no** `@can` gates (that gap is P6-D5), so it cannot cost a permission query |
+| `GET /users` | 3 | 126 | not a Group C page; the ms is the count subqueries, unchanged by this phase |
+| `AssignRolesAction` — 1 role | 9 | — | after `a4b33ab`; was 11 |
+| `AssignRolesAction` — **20 roles** | **9** | — | **was 28** — `RoleLookup::find()` in a loop, one select per name. Now one `whereIn` |
+| `DeleteRoleAction` — 0 or 30 holders | 5 | — | flat: `detach()` runs once, not per holder |
+| `RestoreRoleAction` / `ForceDeleteRoleAction` | 4 / 5 | — | |
+
+**The assertion is the delta, not the ceiling.** Each test renders the same page
+at two row counts and asserts the counts match. A ceiling like "under 20
+queries" passes for an N+1 that happens to fit under the number someone picked;
+only a count that *moves* when the rows move distinguishes the two. The
+absolute numbers are in the failure messages so a regression is visible even
+while the delta still passes.
+
+**One thing the measurement caught — a real N+1, now fixed.** `AssignRolesAction`
+resolved role names through `RoleLookup::find()` once per name, so a 20-role
+payload cost 20 selects: 28 queries total, of which 20 were the same lookup
+repeated. The query tally is what identified it, since a page-level count
+would not show a cost that only appears on a write path. `RoleLookup::findMany()`
+now answers the whole set in one `whereIn` (`a4b33ab`), and the same 20 roles
+cost 9. Fixed in `RoleLookup` rather than at the call site because
+`CreateUserAction`'s self-registration branch had the identical loop.
+
+**Two things the measurement did NOT catch, both of which cost a wrong
+conclusion first.** Worth writing down, because the failure mode is a red
+number that reads exactly like a real defect:
+
+- A fixture write flushes Spatie's cache, so the next call pays to refill it —
+  a full `permissions` select plus a role eager load. The first run of
+  `the_permissions_index_does_not_grow_with_the_row_count` reported 4 → 6 and
+  looked like a missing `withCount`. It was not: both extra queries were the
+  refill caused by the test's own `givePermissionTo()`, and the page's query
+  shape was an identical 4 either way.
+- A cold first call is not comparable to a warm second one. The first
+  `can()`/`hasRole()` in a process fills the cache, so measuring both and
+  comparing gives 11 vs 9 — which reads as "one role costs more than twenty".
+  It is the cache fill, not the query.
+
+Rule: warm, then measure. If a delta goes red, check whether the fixture wrote
+first.
+
 ### C2/C3 audit notes (2026-09-29)
 
 The tables above carry the per-task status; these notes hold the reasoning, the
@@ -616,7 +673,7 @@ sidebar items and can reach exactly those three areas.
 | P6-E7 | `tests/Feature/RbacAuthorizationMatrixTest.php` — the brief's two cases, as tests: **User A** role `user`, zero permissions → 403 on `/users`, `/settings`, `/roles`, `/permissions`; 200 on `/dashboard`, `/profile`, `/sessions`; sidebar HTML contains no `Users`, `Roles`, `Settings` link. **User B** role `staff` with `users.view` + `users.update` + `settings.manage` → 200 on `/users` + `/settings`; 403 on `/roles`; sidebar contains `Users` + `Settings`, not `Roles` | D | medium |
 | P6-E8 | `tests/Feature/RbacRoleSyncTest.php` — user A `user` → change to `staff` → `$user->fresh()->can('users.view')` is true and `can('roles.view')` is false; the DB shows no row in `model_has_permissions` (role-derived, ADR-004, no physical copy); replace roles swaps; `roles => []` clears; **omitting** `roles` leaves them untouched; a payload naming a non-existent role is rejected with a validation error | C9 | medium |
 | P6-E9 | `tests/Feature/RbacPentestTest.php` — replay the RBAC-006 exploit list verbatim: every request in the table at the top of this doc, as a zero-permission user, web **and** API, expecting 403. Plus: mass-assignment of `roles` on `PUT /profile` (self endpoint) must not assign roles; `PUT /users/{other}` with `roles[]=superadmin` must 403; `POST /settings` with a valid `settings.manage` holder still requires CSRF | D, C | medium |
-| P6-E10 | Performance check — `PermissionCatalog::all()` and the matrix view add **zero** queries per row (`assertQueryCount` or Telescope-free manual count): roles index uses `withCount`, permissions index uses `withCount('roles')`, the sidebar composer makes at most one permission-cache read per request (package cache is on; `Gate::before` does `hasRole` on an already-loaded relation, not a fresh query). Record the numbers in the phase report | C, D | small |
+| P6-E10 | Performance check — `PermissionCatalog::all()` and the matrix view add **zero** queries per row (`assertQueryCount` or Telescope-free manual count): roles index uses `withCount`, permissions index uses `withCount('roles')`, the sidebar composer makes at most one permission-cache read per request (package cache is on; `Gate::before` does `hasRole` on an already-loaded relation, not a fresh query). Record the numbers in the phase report | C, D | small | **PARTIAL (2026-09-30)** — every Group C surface measured and pinned by `RbacPerformanceTest` (7 tests); numbers in `phase-6-rbac.md` § Performance. No regression anywhere: the roles index is flat at 5 queries from 10 rows to 100, and three warm `can()` calls cost 0. One real N+1 found and fixed on the way (`a4b33ab`). **Blocked on D** for the sidebar half — it carries no `@can` gates at all today, so there is nothing to measure until D5 adds them |
 | P6-E11 | Docs — update `docs/base/features/roles-permissions.md` (fill the permission table, mark seeded roles with real sets, resolve the `guard_name` open question from §Seeding Strategy: `RoleLookup::guard()`), `docs/base/security/authorization.md` (Gate::before is the superadmin mechanism), `docs/planning/task-tracker.md` (RBAC-001..006 → DONE with group refs), `docs/planning/progress.md` (phase 6 row), `docs/planning/qa-tracker.md` (QA-RBAC-* rows → DONE with the manual scenario each one covers) | A–E | medium |
 | P6-E12 | Full regression — `php artisan test` green, `npm run build` clean, `vendor/bin/pint --test` clean. Every pre-existing user test that calls a now-gated endpoint gets a permission grant in `setUp()`, not a deleted assertion | A–E | medium |
 
