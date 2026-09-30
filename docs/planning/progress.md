@@ -27,7 +27,13 @@
 
 ## Current Task
 
-Phase 6 — RBAC & Authorization: 🟡 IN PROGRESS
+Phase 6 — RBAC & Authorization: ✅ COMPLETED / CLOSED (2026-09-30)
+Every gate closed. Full suite 661 passed / 2243 assertions, 0 regressions; pint clean; assets build clean.
+
+One live vulnerability was found and fixed during Group E rather than confirmed absent: the last superadmin could be
+removed by DEACTIVATING or DELETING the account, not only by stripping the role — three sibling actions that never
+asked. The bulk deactivate compounded it with a raw `UPDATE` that bypassed the action entirely. See
+`docs/planning/phase-6-rbac.md` § Adversarial and the E4 notes in `task-tracker.md`.
 - Group A (UI): ✅ DONE (2026-09-28, audited)
 - Group B (permission set + seeders): ✅ DONE (2026-09-28, verified)
 - Group C1 (role management, web): ✅ DONE (2026-09-29, audited) — P6-C1..C6

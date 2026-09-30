@@ -59,9 +59,18 @@ special protection rules.
 ### Role Assignment Restrictions
 
 * Superadmin role assignment is restricted to the most privileged path.
-* Removing the superadmin role from a user should require explicit, audited
-  confirmation (particularly when that user is the last valid superadmin).
+* Removing the superadmin role from a user **requires** explicit, audited
+  confirmation — implemented as the `confirm_superadmin` flag (P6-E5), enforced
+  in both directions and recorded by the existing `user.roles_assigned` audit
+  row. Applies whether or not the target is the last valid superadmin.
 * Custom roles may not be assigned permissions that conflict with sealed system roles.
+* A system role's own permission set is **not editable at all** (P6-E3).
+  `PersistsRole::persist()` refuses a `permissions` payload aimed at any
+  `SystemRole` name: submitting the matrix with nothing ticked used to call
+  `syncPermissions([])` and silently empty the role while writing an audit row
+  that recorded a successful save. Note `superadmin` legitimately holds **zero**
+  permission rows — its access is `Gate::before`, not the pivot — so the loss
+  that mattered was `admin`, which is granted the whole catalogue.
 
 ### Enforcement
 
@@ -83,17 +92,30 @@ Superadmin is a controlled privileged role:
 
 * Before any role reassignment, `AssignRolesAction` counts the superadmins before
   and after the sync and refuses with `LastSuperadminException` if the result
-  would be zero. The check runs inside the same transaction as the sync.
+  would zero. The check runs inside the same transaction as the sync.
 * A refused reassignment renders as a redirect-back with an `error` flash on the
-  web, and as `409 Conflict` on the API.
+  web, and as `409 Conflict` (`LAST_SUPERADMIN`) on the API.
 * Granting the `superadmin` role additionally requires the acting user to already
   be a superadmin. `users.assign_roles` alone is not enough — it can edit any
   ordinary role, so on its own it would let a delegated admin mint a superadmin.
 * This is a **minimum of one**, not exactly one. A second superadmin can still be
   created by an existing superadmin.
-* The check guards reassignment only. A superadmin account can still be
-  soft-deleted, and the role can be trashed, provided the last superadmin keeps
-  its own access.
+* **The guard is not limited to reassignment (P6-E4).** Removing the role is only
+  one of the ways the last superadmin can disappear; deactivating or deleting
+  the *account* reaches the same outcome through a different column, and soft
+  delete additionally drops the role through Spatie's scope without anyone
+  touching the pivot. `LastSuperadmin::guard()` therefore also runs in
+  `DeactivateUserAction` and `DeleteUserAction`, and the bulk `deactivate` bar
+  routes through the action so it inherits the same refusal. The count is over
+  **active** superadmins — a trashed or deactivated one does not satisfy it.
+  Force-deleting is deliberately unguarded, because it only accepts an
+  already-trashed row that `DeleteUserAction` already refused to create.
+* **Adding or removing the role also requires an explicit confirmation
+  (P6-E5).** `confirm_superadmin` must be truthy on the payload whenever the sync
+  would change superadmin membership in either direction; it fires only on an
+  actual change, so an ordinary save of a superadmin's own form is unaffected.
+  The flag does not substitute for authority — a delegated admin is still
+  refused with it set.
 
 ## Superadmin Protection
 
