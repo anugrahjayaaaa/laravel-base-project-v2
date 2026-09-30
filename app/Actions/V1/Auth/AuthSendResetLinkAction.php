@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Password;
 /**
  * Send a password reset link email to the user.
  */
-class SendPasswordResetLinkAction
+class AuthSendResetLinkAction
 {
     /**
      * Send the password reset link via Laravel's Password broker.

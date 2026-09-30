@@ -13,14 +13,14 @@ use Illuminate\Validation\ValidationException;
 /**
  * The shared write path for creating and updating a role.
  *
- * CreateRoleAction and UpdateRoleAction are separate classes because the User
- * side already is (CreateUserAction / UpdateUserAction), and a caller reading
+ * RoleCreateAction and RoleUpdateAction are separate classes because the User
+ * side already is (UserCreateAction / UserUpdateAction), and a caller reading
  * the action list should see both verbs. What they share is everything that is
  * not the verb: the guard, the permission sync, the transaction boundary and
  * the audit write. Duplicating those across both classes is how one of them ends
  * up forgetting the audit, or casting permission ids differently.
  *
- * The verb itself — the system-role rename refusal — stays in UpdateRoleAction,
+ * The verb itself — the system-role rename refusal — stays in RoleUpdateAction,
  * because "a row that already exists" is the only thing it depends on.
  */
 trait PersistsRole

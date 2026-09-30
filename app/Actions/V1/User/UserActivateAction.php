@@ -11,7 +11,7 @@ use Illuminate\Validation\ValidationException;
 /**
  * Activate a user account (requires not locked).
  */
-class ActivateUserAction
+class UserActivateAction
 {
     /**
      * Activate the user.

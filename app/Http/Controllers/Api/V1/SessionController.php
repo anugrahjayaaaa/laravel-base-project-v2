@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1;
 
-use App\Actions\V1\Auth\ListUserSessionsAction;
+use App\Actions\V1\Auth\AuthListSessionsAction;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
@@ -13,10 +13,10 @@ use Illuminate\Support\Facades\Auth;
 class SessionController extends Controller
 {
     /**
-     * @param  ListUserSessionsAction  $listSessionsAction
+     * @param  AuthListSessionsAction  $listSessionsAction
      */
     public function __construct(
-        private readonly ListUserSessionsAction $listSessionsAction,
+        private readonly AuthListSessionsAction $listSessionsAction,
     ) {}
 
     /**

@@ -3,13 +3,13 @@
 namespace App\Http\Controllers\Web\V1;
 
 use App\Actions\V1\BulkAction\BulkActionProcessor;
-use App\Actions\V1\Role\CreateRoleAction;
-use App\Actions\V1\Role\DeleteRoleAction;
-use App\Actions\V1\Role\ForceDeleteRoleAction;
-use App\Actions\V1\Role\IndexRoleAction;
-use App\Actions\V1\Role\RestoreRoleAction;
+use App\Actions\V1\Role\RoleCreateAction;
+use App\Actions\V1\Role\RoleDeleteAction;
+use App\Actions\V1\Role\RoleForceDeleteAction;
+use App\Actions\V1\Role\RoleIndexAction;
+use App\Actions\V1\Role\RoleRestoreAction;
 use App\Actions\V1\Role\RoleBulkActionHandler;
-use App\Actions\V1\Role\UpdateRoleAction;
+use App\Actions\V1\Role\RoleUpdateAction;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Role\BulkRoleRequest;
 use App\Http\Requests\Role\DeleteRoleRequest;
@@ -42,12 +42,12 @@ use Spatie\Permission\Models\Permission;
 class RoleController extends Controller
 {
     public function __construct(
-        private readonly IndexRoleAction $indexAction,
-        private readonly CreateRoleAction $createAction,
-        private readonly UpdateRoleAction $updateAction,
-        private readonly DeleteRoleAction $deleteAction,
-        private readonly RestoreRoleAction $restoreAction,
-        private readonly ForceDeleteRoleAction $forceDeleteAction,
+        private readonly RoleIndexAction $indexAction,
+        private readonly RoleCreateAction $createAction,
+        private readonly RoleUpdateAction $updateAction,
+        private readonly RoleDeleteAction $deleteAction,
+        private readonly RoleRestoreAction $restoreAction,
+        private readonly RoleForceDeleteAction $forceDeleteAction,
         private readonly BulkActionProcessor $bulkProcessor,
         private readonly RoleBulkActionHandler $bulkHandler,
     ) {
@@ -97,7 +97,7 @@ class RoleController extends Controller
     /**
      * The roles this viewer is allowed to see counted.
      *
-     * Mirrors the filter IndexRoleAction applies, so the tab badges and the rows
+     * Mirrors the filter RoleIndexAction applies, so the tab badges and the rows
      * under them always agree. A superadmin sees the superadmin role; nobody
      * else does, in the list or in the number beside it.
      *

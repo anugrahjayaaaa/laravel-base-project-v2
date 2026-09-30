@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\DB;
 /**
  * Revoke all active tokens and sessions for a user (logout everywhere).
  */
-class LogoutAllDevicesAction
+class AuthLogoutAllDevicesAction
 {
     /**
      * Delete all tokens and sessions for the user.

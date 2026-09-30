@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\DB;
 /**
  * Verify and apply a pending email change using the token.
  */
-class VerifyEmailChangeAction
+class UserVerifyEmailChangeAction
 {
     /**
      * Verify the email change token and apply the new email.

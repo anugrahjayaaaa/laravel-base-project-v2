@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\RoleLookup;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -11,7 +12,7 @@ use Illuminate\Support\Facades\Schema;
  * `web`, and Spatie keys a role by (name, guard_name). So the seeded roles were
  * rows no permission check ever read, `Role::all()` returned each name twice,
  * and the role pickers rendered `superadmin` and `admin` as two checkboxes
- * each. `CreateUserAction` then resolved `where('name', ...)->first()`, which
+ * each. `UserCreateAction` then resolved `where('name', ...)->first()`, which
  * returned the unreadable row and left new users with a role that granted
  * nothing.
  *
@@ -31,7 +32,7 @@ return new class () extends Migration {
         // Same resolver the app uses, not config('auth.defaults.guard'): Spatie
         // intersects that default with the guards a User can authenticate
         // under, so the two can disagree.
-        $guard = \App\Models\RoleLookup::guard();
+        $guard = RoleLookup::guard();
 
         // name => the id it now lives under on the app guard.
         $moved = [];

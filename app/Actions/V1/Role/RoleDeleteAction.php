@@ -49,11 +49,11 @@ use Illuminate\Validation\ValidationException;
  * access from N people who never saw the role picker.
  *
  * superadmin is never granted as the fallback. It is the one role whose grant
- * is restricted to superadmin actors by `AssignRolesAction`, and a side effect
+ * is restricted to superadmin actors by `RoleAssignAction`, and a side effect
  * of a role deletion is not an actor anyone authorised. If the configured
  * default is somehow superadmin, the account is left empty rather than promoted.
  */
-class DeleteRoleAction
+class RoleDeleteAction
 {
     /**
      * Trash a role, revoking it from every user holding it.
@@ -102,7 +102,7 @@ class DeleteRoleAction
      * still has another role keeps it — trashing one role must not silently
      * rewrite somebody who is still perfectly well covered.
      *
-     * Roles are assigned directly rather than through AssignRolesAction: that
+     * Roles are assigned directly rather than through RoleAssignAction: that
      * action exists to police an actor-supplied grant, and this is a system
      * consequence with no payload. Routing it through would mean the
      * users.assign_roles check firing on a role deletion, and the

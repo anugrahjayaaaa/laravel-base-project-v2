@@ -11,7 +11,7 @@ use Illuminate\Support\Str;
 /**
  * Request an email change by setting a pending email with verification token.
  */
-class RequestEmailChangeAction
+class UserRequestEmailChangeAction
 {
     /**
      * Set pending email and send verification notification.

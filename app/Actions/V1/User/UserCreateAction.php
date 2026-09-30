@@ -2,8 +2,8 @@
 
 namespace App\Actions\V1\User;
 
-use App\Actions\V1\Auth\RecordPasswordHistoryAction;
-use App\Actions\V1\Role\AssignRolesAction;
+use App\Actions\V1\Auth\AuthRecordPasswordHistoryAction;
+use App\Actions\V1\Role\RoleAssignAction;
 use App\Models\RoleLookup;
 use App\Models\SystemSetting;
 use App\Models\User;
@@ -21,11 +21,11 @@ use Illuminate\Support\Facades\URL;
  * temporary one; a self-registering user supplies their own. Everything else
  * about the account is identical, so it stays here rather than being forked.
  */
-class CreateUserAction
+class UserCreateAction
 {
     public function __construct(
-        private readonly RecordPasswordHistoryAction $recordHistoryAction,
-        private readonly AssignRolesAction $assignRolesAction,
+        private readonly AuthRecordPasswordHistoryAction $recordHistoryAction,
+        private readonly RoleAssignAction $assignRolesAction,
     ) {
     }
 
@@ -62,9 +62,9 @@ class CreateUserAction
             // Two sources of roles, and only one of them is a privilege an admin
             // handed out. A self-registering user gets the server-side default;
             // an admin-supplied `roles` key is a grant, so it is checked and
-            // synced through AssignRolesAction rather than assigned inline.
+            // synced through RoleAssignAction rather than assigned inline.
             if (array_key_exists('roles', $data)) {
-                // No permission check here: AssignRolesAction holds it, so C9 and
+                // No permission check here: RoleAssignAction holds it, so C9 and
                 // C10 cannot drift apart.
                 $user = $this->assignRolesAction->run(
                     $user,

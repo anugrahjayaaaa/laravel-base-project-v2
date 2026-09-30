@@ -197,7 +197,7 @@ class PolicyKeyTest extends TestCase
     public function test_every_settings_switch_can_actually_be_turned_off(): void
     {
         // A bare checkbox is ABSENT from the payload when unticked, and
-        // UpdateSystemSettingsAction falls back to `?? true` for it — so the
+        // SystemSettingsUpdateAction falls back to `?? true` for it — so the
         // action writes the setting straight back ON and the switch looks like
         // it saved. Six of the seven original switches had no hidden companion
         // and could only ever be enabled. The companion input is what makes

@@ -68,7 +68,7 @@ class SelfRegistrationSecurityTest extends TestCase
     /**
      * is_active, must_change_password and password_expires_at are all in the
      * User's fillable list, because an admin form has to set them. A
-     * self-registering visitor has no such business, and if CreateUserAction
+     * self-registering visitor has no such business, and if UserCreateAction
      * ever spread its input into the create call instead of naming the
      * columns, a visitor could post is_active=0 and lock themselves out, or
      * post the other way and skip a check.
@@ -109,7 +109,7 @@ class SelfRegistrationSecurityTest extends TestCase
     }
 
     /**
-     * CreateUserAction honours a `roles` key when it is present — the admin
+     * UserCreateAction honours a `roles` key when it is present — the admin
      * form supplies one. A self-registering visitor must get the default role
      * and nothing else, or public sign-up is a free admin grant.
      */
@@ -162,7 +162,7 @@ class SelfRegistrationSecurityTest extends TestCase
         $this->register()->assertSessionHasNoErrors();
 
         // Through the real endpoint, not Auth::attempt() — the guard knows
-        // nothing about verification, and AuthenticateUserAction is what
+        // nothing about verification, and AuthAuthenticateAction is what
         // refuses. Asserting on the guard would test Laravel, not this app.
         $this->post(route('login'), [
             'identifier' => 'budi@example.test',
@@ -254,7 +254,7 @@ class SelfRegistrationSecurityTest extends TestCase
 
     /**
      * The name is the one field that gets rendered back to other users, so it
-     * is the one worth poisoning. CreateUserAction strips tags; this asserts
+     * is the one worth poisoning. UserCreateAction strips tags; this asserts
      * that still holds rather than trusting the comment.
      */
     #[Test]
@@ -342,7 +342,7 @@ class SelfRegistrationSecurityTest extends TestCase
     }
 
     /**
-     * The API and the web form share RegisterRequest and CreateUserAction, so
+     * The API and the web form share RegisterRequest and UserCreateAction, so
      * a bypass on one surface must not exist on the other. Specifically: the
      * feature switch and the role grant.
      */

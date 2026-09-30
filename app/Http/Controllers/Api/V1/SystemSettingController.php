@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1;
 
-use App\Actions\V1\System\UpdateSystemSettingsAction;
+use App\Actions\V1\System\SystemSettingsUpdateAction;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\System\SystemSettingRequest;
 use App\Models\SystemSetting;
@@ -29,7 +29,7 @@ class SystemSettingController extends Controller
      * every field, and where an unchecked checkbox is simply absent — reads a
      * missing key as "reset to default".
      */
-    public function update(SystemSettingRequest $request, UpdateSystemSettingsAction $action): JsonResponse
+    public function update(SystemSettingRequest $request, SystemSettingsUpdateAction $action): JsonResponse
     {
         $data = $request->validated();
 

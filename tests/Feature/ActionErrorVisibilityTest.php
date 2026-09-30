@@ -102,7 +102,7 @@ class ActionErrorVisibilityTest extends TestCase
 
     public function test_a_refused_user_delete_is_visible_too(): void
     {
-        // Same hole, same fix. DeleteUserAction refuses self-deletion with an
+        // Same hole, same fix. UserDeleteAction refuses self-deletion with an
         // 'email' error, which the users index also had nowhere to render — so a
         // fix scoped to the roles page would have left this identical symptom
         // one route over.

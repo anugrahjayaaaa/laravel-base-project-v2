@@ -14,10 +14,10 @@ use Illuminate\Support\Facades\Password;
 /**
  * Reset a user's password via token with expiration enforcement + history recording.
  */
-class ResetPasswordAction
+class AuthResetPasswordAction
 {
     public function __construct(
-        private readonly RecordPasswordHistoryAction $recordHistoryAction,
+        private readonly AuthRecordPasswordHistoryAction $recordHistoryAction,
     ) {
     }
 

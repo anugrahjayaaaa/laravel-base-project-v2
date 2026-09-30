@@ -11,7 +11,7 @@ use Illuminate\Validation\ValidationException;
 /**
  * Lock a user account with optional session invalidation.
  */
-class LockUserAction
+class UserLockAction
 {
     /**
      * Lock the user.

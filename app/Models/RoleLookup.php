@@ -11,7 +11,7 @@ use Spatie\Permission\Guard;
  *
  * Spatie keys a role by (name, guard_name), so the same name can exist twice.
  * Reading roles without naming a guard is what made the role pickers render
- * `superadmin` and `admin` twice, and made CreateUserAction's
+ * `superadmin` and `admin` twice, and made UserCreateAction's
  * `where('name', ...)->first()` return whichever row came first — possibly one
  * no permission check ever consults.
  *
@@ -74,7 +74,7 @@ class RoleLookup
      * The superadmin role is invisible to anyone who is not a superadmin: the
      * app is expected to run with exactly one, and a delegated admin should not
      * be able to see it sitting in the list, pick it, or count it. Granting it
-     * is separately refused in AssignRolesAction — this is the UI half of that,
+     * is separately refused in RoleAssignAction — this is the UI half of that,
      * and on its own it protects nothing.
      *
      * @return Collection<int, \Spatie\Permission\Models\Role>

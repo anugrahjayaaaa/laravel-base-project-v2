@@ -1,40 +1,38 @@
 <?php
 
-namespace App\Actions\V1\User;
+namespace App\Actions\V1\Auth;
 
 use App\Models\SystemSetting;
 use App\Models\User;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 
 /**
- * Admin-triggered resend of email verification notification.
+ * Resend email verification notification with rate limiting.
  */
-class AdminResendVerificationAction
+class AuthResendVerificationAction
 {
     /**
-     * Resend the verification email to the user.
+     * Send a new verification email if the user hasn't verified yet.
      *
-     * @param  User   $user
-     * @param  string $ip
+     * @param  string  $email
+     * @param  string  $ip
      * @return array
      */
-    public function run(User $user, string $ip): array
+    public function run(string $email, string $ip): array
     {
-        // The single gate for both the web and the API caller. `disabled` means
-        // nobody may send, whoever is asking — gating only the controller left
-        // the API endpoint able to send in a mode that claims it cannot.
-        // `admin` is deliberately allowed: reissuing a link is the whole point
-        // of that mode.
-        if (SystemSetting::getString('email_verification_mode', 'public') === 'disabled') {
-            return ['error' => ['message' => 'Verification emails are disabled.', 'status' => 403]];
+        $user = User::where('email', $email)->first();
+
+        if (! $user) {
+            return ['success' => true];
         }
 
         if ($user->hasVerifiedEmail()) {
             return ['error' => ['message' => 'Email already verified.', 'status' => 422]];
         }
 
-        $key = $this->key($user->email, $ip);
+        $key = $this->key($email, $ip);
         $maxAttempts = SystemSetting::getInt('email_verification_rate_limit', 5);
 
         if (RateLimiter::tooManyAttempts($key, $maxAttempts)) {
@@ -43,10 +41,20 @@ class AdminResendVerificationAction
             return ['error' => ['message' => "Too many requests. Try again in " . (int) ceil($seconds / 60) . " minute(s).", 'status' => 429]];
         }
 
-        $user->sendEmailVerificationNotification();
+        try {
+            $user->sendEmailVerificationNotification();
+        } catch (\Exception $e) {
+            Log::error('Resend verification email failed', [
+                'email' => $email,
+                'error' => $e->getMessage(),
+            ]);
+
+            return ['error' => ['message' => 'Failed to send verification email. Please try again later.', 'status' => 500]];
+        }
+
         RateLimiter::hit($key, 3600);
 
-        return ['user' => $user];
+        return ['success' => true];
     }
 
     /**

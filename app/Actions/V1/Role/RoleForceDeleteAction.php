@@ -19,7 +19,7 @@ use Illuminate\Validation\ValidationException;
  * exists to make visible. Requiring the role to be trashed first means the
  * permanent step is always the second half of a recorded two-step.
  */
-class ForceDeleteRoleAction
+class RoleForceDeleteAction
 {
     /**
      * Permanently delete a trashed role.

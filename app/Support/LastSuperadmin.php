@@ -7,7 +7,7 @@ use App\Models\User;
 /**
  * The last-superadmin invariant, counted once for every caller.
  *
- * `AssignRolesAction` already refuses to leave nobody able to administer the
+ * `RoleAssignAction` already refuses to leave nobody able to administer the
  * app, but it only covers ONE of the four ways a superadmin can disappear: the
  * role is stripped. The other three — deactivate, soft delete, force delete —
  * each took a plain `User` and wrote a column, and none of them asked. Verified

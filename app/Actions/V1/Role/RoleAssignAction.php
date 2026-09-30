@@ -15,7 +15,7 @@ use Illuminate\Support\Facades\DB;
  * Both user write paths call this, so the superadmin guard cannot be forgotten
  * on one of them.
  */
-class AssignRolesAction
+class RoleAssignAction
 {
     /**
      * Replace a user's roles and record what changed.
@@ -71,7 +71,7 @@ class AssignRolesAction
      * Handing out roles is its own permission, separate from `users.update`.
      *
      * Both write paths land here (C9 and C10), so the check lives here rather
-     * than in each caller: before this, `UpdateUserAction` synced whatever roles
+     * than in each caller: before this, `UserUpdateAction` synced whatever roles
      * the payload carried, and a caller holding only `users.update` could make
      * anybody superadmin.
      *

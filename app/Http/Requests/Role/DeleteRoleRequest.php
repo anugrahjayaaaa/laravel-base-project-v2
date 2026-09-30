@@ -9,7 +9,7 @@ use Illuminate\Foundation\Http\FormRequest;
  *
  * Delete carries no input to validate — it is a bare route parameter — but it
  * still needs the authorization half. Reading a plain `Request` here skipped the
- * permission check entirely: a user holding nothing reached DeleteRoleAction and
+ * permission check entirely: a user holding nothing reached RoleDeleteAction and
  * got a 302 with the action's own refusal message instead of a 403, which told
  * an unauthorized caller that the role exists and is a system role.
  */

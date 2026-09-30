@@ -12,7 +12,7 @@ use Illuminate\Validation\ValidationException;
 /**
  * Update a role and sync its permission set.
  */
-class UpdateRoleAction
+class RoleUpdateAction
 {
     use PersistsRole;
 

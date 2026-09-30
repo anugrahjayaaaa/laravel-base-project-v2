@@ -9,7 +9,7 @@ use App\Models\User;
 /**
  * Create a role and sync its permission set.
  */
-class CreateRoleAction
+class RoleCreateAction
 {
     use PersistsRole;
 

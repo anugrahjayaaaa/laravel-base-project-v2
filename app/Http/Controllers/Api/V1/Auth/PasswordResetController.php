@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1\Auth;
 
-use App\Actions\V1\Auth\ResetPasswordAction;
+use App\Actions\V1\Auth\AuthResetPasswordAction;
 use App\Auth\LoginThrottle;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\PasswordResetRequest;
@@ -19,13 +19,13 @@ class PasswordResetController extends Controller
      *
      * @param  PasswordResetRequest  $request
      * @param  LoginThrottle  $throttle
-     * @param  ResetPasswordAction  $action
+     * @param  AuthResetPasswordAction  $action
      * @return JsonResponse
      */
     public function __invoke(
         PasswordResetRequest $request,
         LoginThrottle $throttle,
-        ResetPasswordAction $action,
+        AuthResetPasswordAction $action,
     ): JsonResponse {
         $data = $request->validated();
         $email = $data['email'];

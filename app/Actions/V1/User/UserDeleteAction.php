@@ -11,7 +11,7 @@ use Illuminate\Validation\ValidationException;
 /**
  * Soft-delete a user with session invalidation.
  */
-class DeleteUserAction
+class UserDeleteAction
 {
     /**
      * Soft-delete the user.
@@ -59,7 +59,7 @@ class DeleteUserAction
 
         // Trashing the last superadmin strips the role through Spatie's soft
         // delete scope, so nobody can administer the app afterwards. Same
-        // invariant AssignRolesAction protects, on a path that never went near
+        // invariant RoleAssignAction protects, on a path that never went near
         // it. Throws LastSuperadminException, which renders as a 409 / flash.
         LastSuperadmin::guard($user, __('deleted'));
     }

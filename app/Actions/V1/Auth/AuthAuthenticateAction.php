@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Hash;
 /**
  * Authenticate a user by email/username and password with throttle and state checks.
  */
-class AuthenticateUserAction
+class AuthAuthenticateAction
 {
     /**
      * Attempt to authenticate a user.

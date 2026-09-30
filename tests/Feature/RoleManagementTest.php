@@ -2,10 +2,10 @@
 
 namespace Tests\Feature;
 
-use App\Actions\V1\Role\DeleteRoleAction;
+use App\Actions\V1\Role\RoleDeleteAction;
 use App\Http\Middleware\VerifyCsrfToken;
-use App\Actions\V1\Role\CreateRoleAction;
-use App\Actions\V1\Role\UpdateRoleAction;
+use App\Actions\V1\Role\RoleCreateAction;
+use App\Actions\V1\Role\RoleUpdateAction;
 use App\Models\Role;
 use App\Models\RoleLookup;
 use App\Models\User;
@@ -238,7 +238,7 @@ class RoleManagementTest extends TestCase
         $user->assignRole($role);
 
         try {
-            app(DeleteRoleAction::class)->run($role, $this->admin);
+            app(RoleDeleteAction::class)->run($role, $this->admin);
             $this->fail('the action must refuse a populated role when force is not set');
         } catch (ValidationException $e) {
             $this->assertSame('This role is still assigned to 1 user(s). Trashing it removes the role from all of them.', $e->errors()['name'][0]);
@@ -254,7 +254,7 @@ class RoleManagementTest extends TestCase
         $user = User::factory()->create();
         $user->assignRole($role);
 
-        app(DeleteRoleAction::class)->run($role, $this->admin, force: true);
+        app(RoleDeleteAction::class)->run($role, $this->admin, force: true);
 
         $this->assertSoftDeleted('roles', ['id' => $role->id]);
         $this->assertFalse($user->fresh()->hasRole('Support Agent'), 'force trashing still revokes');
@@ -301,7 +301,7 @@ class RoleManagementTest extends TestCase
         // asserted through the web route, but the web route now forces because
         // the confirm modal is the deliberate override. The guard itself is
         // covered by test_the_action_still_refuses_a_populated_role_without_force.
-        app(DeleteRoleAction::class)->run($role, $this->admin, force: true);
+        app(RoleDeleteAction::class)->run($role, $this->admin, force: true);
 
         foreach ($users as $user) {
             $fresh = $user->fresh();
@@ -324,7 +324,7 @@ class RoleManagementTest extends TestCase
         $role = Role::create(['name' => 'Support Agent', 'guard_name' => RoleLookup::guard()]);
         User::factory(2)->create()->each(fn (User $user) => $user->assignRole($role));
 
-        app(DeleteRoleAction::class)->run($role, $this->admin, force: true);
+        app(RoleDeleteAction::class)->run($role, $this->admin, force: true);
 
         $log = DB::table('activity_log')->where('event', 'role.deleted')->first();
 
@@ -362,7 +362,7 @@ class RoleManagementTest extends TestCase
         $permission = Permission::query()->first();
         $role->syncPermissions([$permission->id]);
 
-        app(DeleteRoleAction::class)->run($role, $this->admin, force: true);
+        app(RoleDeleteAction::class)->run($role, $this->admin, force: true);
 
         $this->actingAs($this->admin)
             ->post(route('roles.restore', $role->id))
@@ -387,7 +387,7 @@ class RoleManagementTest extends TestCase
     public function test_a_trashed_role_disappears_from_the_pickers(): void
     {
         $role = Role::create(['name' => 'Support Agent', 'guard_name' => RoleLookup::guard()]);
-        app(DeleteRoleAction::class)->run($role, $this->admin, force: true);
+        app(RoleDeleteAction::class)->run($role, $this->admin, force: true);
 
         $this->assertNull(RoleLookup::find('Support Agent'));
         $this->assertFalse(
@@ -403,7 +403,7 @@ class RoleManagementTest extends TestCase
         // merely unlikely. Asserted so nobody "helpfully" adds whereNull to the
         // unique rule and opens the hole this design depends on.
         $role = Role::create(['name' => 'Support Agent', 'guard_name' => RoleLookup::guard()]);
-        app(DeleteRoleAction::class)->run($role, $this->admin, force: true);
+        app(RoleDeleteAction::class)->run($role, $this->admin, force: true);
 
         $this->actingAs($this->admin)
             ->post(route('roles.store'), ['name' => 'Support Agent'])
@@ -414,7 +414,7 @@ class RoleManagementTest extends TestCase
     {
         $live = Role::create(['name' => 'Live Agent', 'guard_name' => RoleLookup::guard()]);
         $gone = Role::create(['name' => 'Retired Agent', 'guard_name' => RoleLookup::guard()]);
-        app(DeleteRoleAction::class)->run($gone, $this->admin, force: true);
+        app(RoleDeleteAction::class)->run($gone, $this->admin, force: true);
 
         $indexed = $this->actingAs($this->admin)->get(route('roles.index'))->viewData('roles')->pluck('name');
         $this->assertTrue($indexed->contains('Live Agent'));
@@ -432,7 +432,7 @@ class RoleManagementTest extends TestCase
     public function test_a_trashed_role_cannot_be_edited(): void
     {
         $role = Role::create(['name' => 'Support Agent', 'guard_name' => RoleLookup::guard()]);
-        app(DeleteRoleAction::class)->run($role, $this->admin, force: true);
+        app(RoleDeleteAction::class)->run($role, $this->admin, force: true);
 
         $this->actingAs($this->admin)
             ->get(route('roles.edit', $role->id))
@@ -457,7 +457,7 @@ class RoleManagementTest extends TestCase
         $role = Role::create(['name' => 'Support Agent', 'guard_name' => RoleLookup::guard()]);
         $permission = Permission::query()->first();
         $role->syncPermissions([$permission->id]);
-        app(DeleteRoleAction::class)->run($role, $this->admin, force: true);
+        app(RoleDeleteAction::class)->run($role, $this->admin, force: true);
 
         $this->actingAs($this->admin)
             ->delete(route('roles.force-delete', $role->id))
@@ -496,7 +496,7 @@ class RoleManagementTest extends TestCase
         // brings back a whole permission set, and a force delete destroys the
         // audit subject — neither is "editing a role".
         $role = Role::create(['name' => 'Support Agent', 'guard_name' => RoleLookup::guard()]);
-        app(DeleteRoleAction::class)->run($role, $this->admin, force: true);
+        app(RoleDeleteAction::class)->run($role, $this->admin, force: true);
 
         $limited = User::factory()->create(['is_active' => true]);
         $limited->assignRole(RoleLookup::find('user'));
@@ -520,7 +520,7 @@ class RoleManagementTest extends TestCase
     public function test_a_user_with_no_permissions_cannot_reach_the_trash_endpoints(): void
     {
         $role = Role::create(['name' => 'Support Agent', 'guard_name' => RoleLookup::guard()]);
-        app(DeleteRoleAction::class)->run($role, $this->admin, force: true);
+        app(RoleDeleteAction::class)->run($role, $this->admin, force: true);
 
         $nobody = User::factory()->create(['is_active' => true]);
 
@@ -539,7 +539,7 @@ class RoleManagementTest extends TestCase
 
         try {
             DB::transaction(function (): void {
-                app(CreateRoleAction::class)->run(['name' => 'Support Agent'], $this->admin);
+                app(RoleCreateAction::class)->run(['name' => 'Support Agent'], $this->admin);
 
                 throw new RuntimeException('rolled back after the write');
             });
@@ -563,7 +563,7 @@ class RoleManagementTest extends TestCase
 
         try {
             DB::transaction(function () use ($role): void {
-                app(UpdateRoleAction::class)->run($role, [
+                app(RoleUpdateAction::class)->run($role, [
                     'name' => 'Support Agent Renamed',
                     'permissions' => [],
                 ], $this->admin);

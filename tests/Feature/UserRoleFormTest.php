@@ -16,7 +16,7 @@ use Tests\TestCase;
  *
  * The role picker is a checkbox group, and a checkbox group has one failure mode
  * no other input has: an UNCHECKED box is not sent at all. Unticking every box
- * therefore posted no `roles` key whatsoever, and `UpdateUserAction` reads
+ * therefore posted no `roles` key whatsoever, and `UserUpdateAction` reads
  * `array_key_exists('roles', $data)` precisely to tell "the admin removed them
  * all" apart from "this caller never had roles in its payload". The two were
  * indistinguishable, so removing every role silently did nothing while the page

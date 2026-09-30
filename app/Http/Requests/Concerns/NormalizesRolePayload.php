@@ -8,7 +8,7 @@ namespace App\Http\Requests\Concerns;
  * A checkbox group has one failure mode that no other input has: an UNCHECKED
  * box is not sent at all. Untick every box and the browser posts no `roles` key,
  * which is indistinguishable from a caller that never had roles in its payload
- * — so `UpdateUserAction`'s `array_key_exists('roles', ...)` reads "removed
+ * — so `UserUpdateAction`'s `array_key_exists('roles', ...)` reads "removed
  * them all" as "leave the roles alone" and the removal silently does nothing.
  *
  * The view sends a hidden `roles[]` with an empty value to close that hole, and

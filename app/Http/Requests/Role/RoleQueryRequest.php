@@ -12,7 +12,7 @@ use Illuminate\Foundation\Http\FormRequest;
  * the reason is readable next to it.
  *
  * `sort` is type-checked only. The column whitelist stays in
- * IndexRoleAction::SORTABLE, where it is applied as a fallback: an unknown
+ * RoleIndexAction::SORTABLE, where it is applied as a fallback: an unknown
  * column is ignored and the default order is used. Repeating the list here as
  * an `in:` rule would reject the request with a 422 instead, which is a
  * different contract, and would leave the whitelist in two places able to drift

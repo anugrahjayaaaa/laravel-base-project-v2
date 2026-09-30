@@ -7,7 +7,7 @@ use App\Models\User;
 /**
  * Mark a user's email as verified.
  */
-class VerifyEmailAction
+class AuthVerifyEmailAction
 {
     /**
      * Verify the user's email if not already verified.

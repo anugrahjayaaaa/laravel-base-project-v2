@@ -2,9 +2,9 @@
 
 namespace Tests\Feature;
 
-use App\Actions\V1\Auth\ChangePasswordAction;
-use App\Actions\V1\Auth\RecordPasswordHistoryAction;
-use App\Actions\V1\User\CreateUserAction;
+use App\Actions\V1\Auth\AuthChangePasswordAction;
+use App\Actions\V1\Auth\AuthRecordPasswordHistoryAction;
+use App\Actions\V1\User\UserCreateAction;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -37,7 +37,7 @@ class PasswordHistoryBenchmark extends TestCase
     {
         $user = User::factory()->create(['password' => bcrypt('CurrentP@ss1!')]);
 
-        $action = app(ChangePasswordAction::class);
+        $action = app(AuthChangePasswordAction::class);
 
         DB::enableQueryLog();
         $start = microtime(true);
@@ -59,7 +59,7 @@ class PasswordHistoryBenchmark extends TestCase
     {
         $user = User::factory()->create(['password' => bcrypt('OldP@ss1!')]);
 
-        $action = app(RecordPasswordHistoryAction::class);
+        $action = app(AuthRecordPasswordHistoryAction::class);
 
         DB::enableQueryLog();
         $start = microtime(true);
@@ -79,7 +79,7 @@ class PasswordHistoryBenchmark extends TestCase
 
     public function test_benchmark_user_creation_with_history(): void
     {
-        $action = app(CreateUserAction::class);
+        $action = app(UserCreateAction::class);
 
         DB::enableQueryLog();
         $start = microtime(true);
@@ -114,7 +114,7 @@ class PasswordHistoryBenchmark extends TestCase
             ]);
         }
 
-        $action = app(RecordPasswordHistoryAction::class);
+        $action = app(AuthRecordPasswordHistoryAction::class);
 
         DB::enableQueryLog();
         $start = microtime(true);
@@ -145,7 +145,7 @@ class PasswordHistoryBenchmark extends TestCase
             ]);
         }
 
-        $action = app(ChangePasswordAction::class);
+        $action = app(AuthChangePasswordAction::class);
 
         DB::enableQueryLog();
         $start = microtime(true);
@@ -180,7 +180,7 @@ class PasswordHistoryBenchmark extends TestCase
         \App\Models\SystemSetting::set('password_history_enabled', 'false');
         \App\Models\SystemSetting::bustCache();
 
-        $action = app(ChangePasswordAction::class);
+        $action = app(AuthChangePasswordAction::class);
 
         DB::enableQueryLog();
         $start = microtime(true);
@@ -208,11 +208,11 @@ class PasswordHistoryBenchmark extends TestCase
         $start = microtime(true);
         $memBefore = memory_get_usage(true);
 
-        // 1. Create user with known password (not via CreateUserAction, since we don't know the temp)
+        // 1. Create user with known password (not via UserCreateAction, since we don't know the temp)
         $user = User::factory()->create(['password' => bcrypt('TempP@ss1!')]);
 
         // 2. Change password 6 times (to test history rotation)
-        $changeAction = app(ChangePasswordAction::class);
+        $changeAction = app(AuthChangePasswordAction::class);
         $currentPassword = 'TempP@ss1!';
         for ($i = 1; $i <= 6; $i++) {
             $newPassword = "NewP@ss{$i}!" . str_repeat('x', 5);

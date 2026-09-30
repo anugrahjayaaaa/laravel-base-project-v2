@@ -20,7 +20,7 @@ use Spatie\Permission\Models\Role as SpatieRole;
  * resolves roles through this model, so the global scope hides the row from
  * `$user->roles`, `hasRole()`, and every `can()` — with no change at the read
  * sites. It also makes the revocation auditable rather than silent, because the
- * assignments are detached explicitly in DeleteRoleAction (Spatie's own
+ * assignments are detached explicitly in RoleDeleteAction (Spatie's own
  * `deleting` hook deliberately skips detach on a soft delete, so nothing would
  * clean the pivots for us).
  *

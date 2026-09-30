@@ -72,7 +72,7 @@ export const ACTION_CONFIG = {
         icon: 'bi bi-person-slash'
     },
     // P6-E6. The server refuses to add or remove superadmin without a
-    // deliberate confirmation (AssignRolesAction::guardSuperadminChange), so
+    // deliberate confirmation (RoleAssignAction::guardSuperadminChange), so
     // the copy has to say what is being confirmed — a generic "are you sure?"
     // would be the wrong prompt for a change this permanent.
     remove_superadmin: {

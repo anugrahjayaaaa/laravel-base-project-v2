@@ -12,7 +12,7 @@ use Illuminate\Validation\ValidationException;
 /**
  * Deactivate a user account with optional session invalidation.
  */
-class DeactivateUserAction
+class UserDeactivateAction
 {
     /**
      * Deactivate the user.
@@ -72,7 +72,7 @@ class DeactivateUserAction
 
         // An inactive superadmin cannot log in, so deactivating the last one
         // leaves nobody able to administer the app — the same lockout the role
-        // guard in AssignRolesAction prevents, reached by a different column.
+        // guard in RoleAssignAction prevents, reached by a different column.
         LastSuperadmin::guard($user, __('deactivated'));
     }
 }

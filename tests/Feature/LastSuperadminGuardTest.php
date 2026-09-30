@@ -2,7 +2,7 @@
 
 namespace Tests\Feature;
 
-use App\Actions\V1\Role\AssignRolesAction;
+use App\Actions\V1\Role\RoleAssignAction;
 use App\Exceptions\LastSuperadminException;
 use App\Models\Role as AppRole;
 use App\Models\RoleLookup;
@@ -20,11 +20,11 @@ use Tests\TestCase;
  * P6-E4 and P6-E5 — the two invariants that keep the application governable.
  *
  * E4 exists because the last-superadmin guard lived in exactly one place.
- * `AssignRolesAction` refused to strip the role, and the three sibling actions
- * that remove a superadmin by some OTHER means never asked: `DeactivateUserAction`
- * flipped `is_active`, `DeleteUserAction` soft-deleted (which drops the role
+ * `RoleAssignAction` refused to strip the role, and the three sibling actions
+ * that remove a superadmin by some OTHER means never asked: `UserDeactivateAction`
+ * flipped `is_active`, `UserDeleteAction` soft-deleted (which drops the role
  * through Spatie's soft-delete scope without anyone touching the pivot), and
- * `ForceDeleteUserAction` removed the row. Verified before the fix: a caller
+ * `UserForceDeleteAction` removed the row. Verified before the fix: a caller
  * holding `users.deactivate` + `users.delete` + `users.force_delete` and NOT
  * being a superadmin could walk the only superadmin down to zero.
  *
@@ -300,14 +300,14 @@ class LastSuperadminGuardTest extends TestCase
 
         $this->expectException(AuthorizationException::class);
 
-        app(AssignRolesAction::class)->run($target, [SystemRole::SUPERADMIN], $assigner);
+        app(RoleAssignAction::class)->run($target, [SystemRole::SUPERADMIN], $assigner);
     }
 
     public function test_granting_superadmin_succeeds_with_the_flag(): void
     {
         $target = User::factory()->create();
 
-        app(AssignRolesAction::class)->run($target, [SystemRole::SUPERADMIN], $this->assigner(), true);
+        app(RoleAssignAction::class)->run($target, [SystemRole::SUPERADMIN], $this->assigner(), true);
 
         $this->assertTrue($target->fresh()->hasRole(SystemRole::SUPERADMIN));
     }
@@ -324,7 +324,7 @@ class LastSuperadminGuardTest extends TestCase
 
         $this->expectException(AuthorizationException::class);
 
-        app(AssignRolesAction::class)->run($target, [SystemRole::ADMIN], $assigner);
+        app(RoleAssignAction::class)->run($target, [SystemRole::ADMIN], $assigner);
     }
 
     public function test_removing_superadmin_succeeds_with_the_flag(): void
@@ -333,7 +333,7 @@ class LastSuperadminGuardTest extends TestCase
         $keeper = $this->superadmin();
         $assigner = $this->assigner();
 
-        app(AssignRolesAction::class)->run($target, [SystemRole::ADMIN], $assigner, true);
+        app(RoleAssignAction::class)->run($target, [SystemRole::ADMIN], $assigner, true);
 
         $this->assertFalse($target->fresh()->hasRole(SystemRole::SUPERADMIN));
         $this->assertTrue($keeper->fresh()->hasRole(SystemRole::SUPERADMIN));
@@ -350,7 +350,7 @@ class LastSuperadminGuardTest extends TestCase
         $assigner = $this->assigner();
 
         // Same role before and after: no change, so no confirmation demanded.
-        app(AssignRolesAction::class)->run($target, [SystemRole::SUPERADMIN, SystemRole::ADMIN], $assigner);
+        app(RoleAssignAction::class)->run($target, [SystemRole::SUPERADMIN, SystemRole::ADMIN], $assigner);
 
         $this->assertTrue($target->fresh()->hasRole(SystemRole::SUPERADMIN));
     }
@@ -412,11 +412,11 @@ class LastSuperadminGuardTest extends TestCase
 
         $this->expectException(AuthorizationException::class);
 
-        app(AssignRolesAction::class)->run(
+        app(RoleAssignAction::class)->run(
             $target,
             [SystemRole::SUPERADMIN],
             $assigner,
-            // What the action receives after UpdateUserAction's cast.
+            // What the action receives after UserUpdateAction's cast.
             filter_var('0', FILTER_VALIDATE_BOOLEAN)
         );
     }

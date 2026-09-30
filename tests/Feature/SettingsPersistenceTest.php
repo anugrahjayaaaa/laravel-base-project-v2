@@ -2,7 +2,7 @@
 
 namespace Tests\Feature;
 
-use App\Actions\V1\System\UpdateSystemSettingsAction;
+use App\Actions\V1\System\SystemSettingsUpdateAction;
 use App\Http\Requests\System\SystemSettingRequest;
 use App\Models\SystemSetting;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -11,7 +11,7 @@ use Tests\TestCase;
 /**
  * The settings form and the persistence whitelist are two separate lists, and
  * nothing in the framework connects them. A key that is validated and rendered
- * but absent from UpdateSystemSettingsAction saves without complaint and never
+ * but absent from SystemSettingsUpdateAction saves without complaint and never
  * takes effect — which is exactly how Allow Self-Registration silently failed
  * to persist. This pins the two lists together.
  */
@@ -27,7 +27,7 @@ class SettingsPersistenceTest extends TestCase
 
     public function test_every_validated_setting_is_actually_persisted(): void
     {
-        $action = app(UpdateSystemSettingsAction::class);
+        $action = app(SystemSettingsUpdateAction::class);
         $validated = array_keys((new SystemSettingRequest())->rules());
 
         // Every key at once, because a few are written conditionally — the
@@ -41,12 +41,12 @@ class SettingsPersistenceTest extends TestCase
         $this->assertSame([], $missing, implode(
             ', ',
             $missing
-        ).' validated but never written — add to UpdateSystemSettingsAction::$updates');
+        ).' validated but never written — add to SystemSettingsUpdateAction::$updates');
     }
 
     public function test_the_registration_toggle_persists_in_both_directions(): void
     {
-        $action = app(UpdateSystemSettingsAction::class);
+        $action = app(SystemSettingsUpdateAction::class);
 
         $action->run(['registration_enabled' => true]);
         $this->assertTrue(SystemSetting::getBool('registration_enabled', false));
@@ -59,7 +59,7 @@ class SettingsPersistenceTest extends TestCase
 
     public function test_a_partial_payload_leaves_every_other_setting_alone(): void
     {
-        $action = app(UpdateSystemSettingsAction::class);
+        $action = app(SystemSettingsUpdateAction::class);
 
         $action->run([
             'password_min_length' => 12,
@@ -81,7 +81,7 @@ class SettingsPersistenceTest extends TestCase
 
     public function test_a_partial_payload_can_still_switch_a_boolean_off(): void
     {
-        $action = app(UpdateSystemSettingsAction::class);
+        $action = app(SystemSettingsUpdateAction::class);
         $action->run(['registration_enabled' => true]);
 
         // Stored booleans are the strings 'true'/'false', and PHP reads

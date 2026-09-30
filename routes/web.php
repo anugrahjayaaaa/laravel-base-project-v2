@@ -77,7 +77,7 @@ Route::middleware(['auth:web,sanctum', 'verified', 'password.change.required', '
         Route::put('/profile', 'update')->name('profile.update');
         Route::get('/password/expired', 'showExpiredPassword')->name('password.expired');
         Route::get('/password/change', 'show')->name('password.change');
-        Route::put('/password/change', 'ChangePasswordAction')->name('password.change.update');
+        Route::put('/password/change', 'changePassword')->name('password.change.update');
     });
 
     // Users
@@ -93,7 +93,7 @@ Route::middleware(['auth:web,sanctum', 'verified', 'password.change.required', '
     Route::put('/users/{user}', [UserController::class, 'update'])->name('users.update')->can('users.update');
     Route::patch('/users/{user}', [UserController::class, 'update'])->name('users.update')->can('users.update');
     Route::delete('/users/{user}', [UserController::class, 'destroy'])->name('users.destroy')->can('users.delete');
-    // restore/force-delete took a plain Request and RestoreUserAction checks
+    // restore/force-delete took a plain Request and UserRestoreAction checks
     // nothing, so these two wrote to any user's row by id with no gate at all.
     Route::post('/users/{user}/restore', [UserController::class, 'restore'])->name('users.restore')->can('users.restore');
     Route::delete('/users/{user}/force', [UserController::class, 'forceDelete'])->name('users.force-delete')->can('users.force_delete');

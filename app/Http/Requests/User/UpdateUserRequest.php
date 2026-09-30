@@ -55,7 +55,7 @@ class UpdateUserRequest extends FormRequest
             // Same shape as CreateUserRequest: an array of existing role names.
             // The action syncs, so an empty array legitimately clears every role.
             'roles' => ['nullable', 'array'],
-            // P6-E5 — see CreateUserRequest. Enforced by AssignRolesAction only
+            // P6-E5 — see CreateUserRequest. Enforced by RoleAssignAction only
             // when superadmin is genuinely being added or removed.
             'confirm_superadmin' => ['nullable', 'boolean'],
             'roles.*' => ['string', 'exists:roles,name'],

@@ -2,7 +2,7 @@
 
 namespace Tests\Feature;
 
-use App\Actions\V1\Role\AssignRolesAction;
+use App\Actions\V1\Role\RoleAssignAction;
 use App\Actions\V1\User\UserIndexAction;
 use App\Models\RoleLookup;
 use App\Models\User;
@@ -19,7 +19,7 @@ use Tests\TestCase;
  * The superadmin is not an ordinary account: it is visible only to a superadmin.
  *
  * Two separate halves, and the tests are kept apart on purpose:
- *  - the GRANT is refused unless the causer is already a superadmin (AssignRolesAction)
+ *  - the GRANT is refused unless the causer is already a superadmin (RoleAssignAction)
  *  - the ROLE and the ACCOUNT are hidden from a non-superadmin viewer
  * Hiding alone would prove nothing about the grant, so both are asserted.
  */
@@ -55,7 +55,7 @@ class SuperadminVisibilityTest extends TestCase
 
         $this->expectException(AuthorizationException::class);
 
-        app(AssignRolesAction::class)->run($target, [SystemRole::SUPERADMIN], $this->delegate);
+        app(RoleAssignAction::class)->run($target, [SystemRole::SUPERADMIN], $this->delegate);
     }
 
     public function test_a_superadmin_can_grant_superadmin(): void
@@ -65,7 +65,7 @@ class SuperadminVisibilityTest extends TestCase
         // Confirmed — this is the legitimate grant E5 requires a deliberate
         // signal for. Without the flag it is refused, which is the point of the
         // neighbouring test, not a failure of this one.
-        app(AssignRolesAction::class)->run($target, [SystemRole::SUPERADMIN], $this->superadmin, true);
+        app(RoleAssignAction::class)->run($target, [SystemRole::SUPERADMIN], $this->superadmin, true);
 
         $this->assertTrue($target->fresh()->hasRole(SystemRole::SUPERADMIN));
     }

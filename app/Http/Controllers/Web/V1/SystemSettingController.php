@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers\Web\V1;
 
-use App\Actions\V1\System\UpdateSystemSettingsAction;
+use App\Actions\V1\System\SystemSettingsUpdateAction;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\System\SystemSettingRequest;
 use App\Models\RoleLookup;
@@ -31,7 +31,7 @@ class SystemSettingController extends Controller
     /**
      * Update system settings and record the acting user in the audit log.
      */
-    public function update(SystemSettingRequest $request, UpdateSystemSettingsAction $action): RedirectResponse
+    public function update(SystemSettingRequest $request, SystemSettingsUpdateAction $action): RedirectResponse
     {
         $data = $request->validated();
 

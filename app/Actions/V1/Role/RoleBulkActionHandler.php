@@ -60,9 +60,9 @@ class RoleBulkActionHandler implements BulkActionHandler
         $roles = Role::withTrashed()->whereIn('id', $ids)->get();
 
         match ($action) {
-            'delete' => $roles->each(fn (Role $role) => app(DeleteRoleAction::class)->run($role, $causer, force: true)),
-            'restore' => $roles->each(fn (Role $role) => app(RestoreRoleAction::class)->run($role, $causer)),
-            'force_delete' => $roles->each(fn (Role $role) => app(ForceDeleteRoleAction::class)->run($role, $causer)),
+            'delete' => $roles->each(fn (Role $role) => app(RoleDeleteAction::class)->run($role, $causer, force: true)),
+            'restore' => $roles->each(fn (Role $role) => app(RoleRestoreAction::class)->run($role, $causer)),
+            'force_delete' => $roles->each(fn (Role $role) => app(RoleForceDeleteAction::class)->run($role, $causer)),
             default => null,
         };
     }

@@ -16,7 +16,7 @@ use App\Models\SystemSetting;
  * form saves "successfully" and the value never changes. SystemSettingRequest
  * must stay a subset of $updates; SettingsPersistenceTest enforces it.
  */
-class UpdateSystemSettingsAction
+class SystemSettingsUpdateAction
 {
     /**
      * Normalize and persist the settings payload.

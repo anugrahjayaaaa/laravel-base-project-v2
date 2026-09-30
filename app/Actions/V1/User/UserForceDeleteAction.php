@@ -10,7 +10,7 @@ use Illuminate\Validation\ValidationException;
 /**
  * Permanently delete a trashed user (hard delete).
  */
-class ForceDeleteUserAction
+class UserForceDeleteAction
 {
     /**
      * Force-delete the user.
@@ -39,7 +39,7 @@ class ForceDeleteUserAction
     protected function validate(User $user, User $causer): void
     {
         // No last-superadmin guard here, deliberately. This action only accepts
-        // an ALREADY-trashed user, and DeleteUserAction refused to trash the
+        // an ALREADY-trashed user, and UserDeleteAction refused to trash the
         // last active superadmin — a trashed row is outside both
         // `LastSuperadmin::activeSuperadminCount()` and Spatie's role scope, so
         // by the time a user reaches this method they cannot be the last one

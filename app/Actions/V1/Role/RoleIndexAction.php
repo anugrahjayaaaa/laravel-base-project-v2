@@ -16,7 +16,7 @@ use Illuminate\Contracts\Pagination\LengthAwarePaginator;
  * twice when both guards hold a row, and the duplicate belongs to a guard no
  * permission check ever reads.
  */
-class IndexRoleAction
+class RoleIndexAction
 {
     /**
      * Columns the index may be sorted by.
@@ -49,14 +49,14 @@ class IndexRoleAction
     ): LengthAwarePaginator {
         // withCount, not with: both counts are displayed, so eager loading the
         // permission and user collections would only fetch rows nothing reads.
-        // A trashed role has no users left — DeleteRoleAction detaches them — so
+        // A trashed role has no users left — RoleDeleteAction detaches them — so
         // its users_count is legitimately 0 rather than a broken relation.
         $query = ($trashed ? Role::onlyTrashed() : Role::query())
             ->where('guard_name', RoleLookup::guard())
             ->withCount(['permissions', 'users']);
 
         // The superadmin role is only listed for a viewer who is one. UI half of
-        // the rule; AssignRolesAction is the half that actually refuses the grant.
+        // the rule; RoleAssignAction is the half that actually refuses the grant.
         if (! RoleLookup::viewerIsSuperAdmin($viewer)) {
             $query->where('name', '!=', SystemRole::SUPERADMIN);
         }

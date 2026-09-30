@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\DB;
 /**
  * Unlock a user account and optionally reset login throttle.
  */
-class UnlockUserAction
+class UserUnlockAction
 {
     /**
      * Unlock the user and reset throttle if provided.

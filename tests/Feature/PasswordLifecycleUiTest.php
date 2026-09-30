@@ -2,7 +2,7 @@
 
 namespace Tests\Feature;
 
-use App\Actions\V1\Auth\ChangePasswordAction;
+use App\Actions\V1\Auth\AuthChangePasswordAction;
 use App\Models\SystemSetting;
 use App\Models\User;
 use App\Services\InactivityLock;
@@ -107,7 +107,7 @@ class PasswordLifecycleUiTest extends TestCase
 
         $user = User::factory()->create();
 
-        app(ChangePasswordAction::class)->run(
+        app(AuthChangePasswordAction::class)->run(
             user: $user,
             currentPassword: 'password',
             newPassword: 'NewP@ss1!',

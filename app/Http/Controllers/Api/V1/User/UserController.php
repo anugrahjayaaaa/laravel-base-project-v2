@@ -2,18 +2,18 @@
 
 namespace App\Http\Controllers\Api\V1\User;
 
-use App\Actions\V1\User\AdminResendVerificationAction;
+use App\Actions\V1\User\UserAdminResendVerificationAction;
 use App\Actions\V1\BulkAction\BulkActionProcessor;
 use App\Actions\V1\User\UserBulkActionHandler;
-use App\Actions\V1\User\CancelEmailChangeAction;
-use App\Actions\V1\User\CreateUserAction;
-use App\Actions\V1\User\DeleteUserAction;
-use App\Actions\V1\User\ForceDeleteUserAction;
-use App\Actions\V1\User\RequestEmailChangeAction;
-use App\Actions\V1\User\RestoreUserAction;
-use App\Actions\V1\User\UpdateUserAction;
+use App\Actions\V1\User\UserCancelEmailChangeAction;
+use App\Actions\V1\User\UserCreateAction;
+use App\Actions\V1\User\UserDeleteAction;
+use App\Actions\V1\User\UserForceDeleteAction;
+use App\Actions\V1\User\UserRequestEmailChangeAction;
+use App\Actions\V1\User\UserRestoreAction;
+use App\Actions\V1\User\UserUpdateAction;
 use App\Actions\V1\User\UserIndexAction;
-use App\Actions\V1\User\VerifyEmailChangeAction;
+use App\Actions\V1\User\UserVerifyEmailChangeAction;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\User\BulkUserRequest;
 use App\Http\Requests\User\CreateUserRequest;
@@ -31,32 +31,32 @@ use App\Models\User;
 class UserController extends Controller
 {
     /**
-     * @param  CreateUserAction  $createAction
+     * @param  UserCreateAction  $createAction
      * @param  UserIndexAction  $indexAction
-     * @param  UpdateUserAction  $updateAction
-     * @param  DeleteUserAction  $deleteAction
-     * @param  RestoreUserAction  $restoreAction
-     * @param  ForceDeleteUserAction  $forceDeleteAction
+     * @param  UserUpdateAction  $updateAction
+     * @param  UserDeleteAction  $deleteAction
+     * @param  UserRestoreAction  $restoreAction
+     * @param  UserForceDeleteAction  $forceDeleteAction
      * @param  BulkActionProcessor  $processor
      * @param  UserBulkActionHandler  $userBulkActionHandler
-     * @param  RequestEmailChangeAction  $requestEmailChangeAction
-     * @param  CancelEmailChangeAction  $cancelEmailChangeAction
-     * @param  VerifyEmailChangeAction  $verifyEmailChangeAction
-     * @param  AdminResendVerificationAction  $resendVerificationAction
+     * @param  UserRequestEmailChangeAction  $requestEmailChangeAction
+     * @param  UserCancelEmailChangeAction  $cancelEmailChangeAction
+     * @param  UserVerifyEmailChangeAction  $verifyEmailChangeAction
+     * @param  UserAdminResendVerificationAction  $resendVerificationAction
      */
     public function __construct(
-        private readonly CreateUserAction $createAction,
+        private readonly UserCreateAction $createAction,
         private readonly UserIndexAction $indexAction,
-        private readonly UpdateUserAction $updateAction,
-        private readonly DeleteUserAction $deleteAction,
-        private readonly RestoreUserAction $restoreAction,
-        private readonly ForceDeleteUserAction $forceDeleteAction,
+        private readonly UserUpdateAction $updateAction,
+        private readonly UserDeleteAction $deleteAction,
+        private readonly UserRestoreAction $restoreAction,
+        private readonly UserForceDeleteAction $forceDeleteAction,
         private readonly BulkActionProcessor $processor,
         private readonly UserBulkActionHandler $userBulkActionHandler,
-        private readonly RequestEmailChangeAction $requestEmailChangeAction,
-        private readonly CancelEmailChangeAction $cancelEmailChangeAction,
-        private readonly VerifyEmailChangeAction $verifyEmailChangeAction,
-        private readonly AdminResendVerificationAction $resendVerificationAction,
+        private readonly UserRequestEmailChangeAction $requestEmailChangeAction,
+        private readonly UserCancelEmailChangeAction $cancelEmailChangeAction,
+        private readonly UserVerifyEmailChangeAction $verifyEmailChangeAction,
+        private readonly UserAdminResendVerificationAction $resendVerificationAction,
     ) {
     }
 

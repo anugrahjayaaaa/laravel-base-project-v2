@@ -8,7 +8,7 @@ use Illuminate\Support\Collection;
 /**
  * List all active sessions/tokens for a user.
  */
-class ListUserSessionsAction
+class AuthListSessionsAction
 {
     /**
      * Get the user's tokens sorted by last used.

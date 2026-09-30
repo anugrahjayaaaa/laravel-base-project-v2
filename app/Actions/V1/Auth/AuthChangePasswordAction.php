@@ -16,10 +16,10 @@ use Illuminate\Validation\ValidationException;
  * history (if enabled), hashes the new password, updates expiration, clears
  * must_change_password, revokes active sessions/tokens, and records history.
  */
-class ChangePasswordAction
+class AuthChangePasswordAction
 {
     public function __construct(
-        private readonly RecordPasswordHistoryAction $recordHistoryAction,
+        private readonly AuthRecordPasswordHistoryAction $recordHistoryAction,
     ) {}
 
     /**

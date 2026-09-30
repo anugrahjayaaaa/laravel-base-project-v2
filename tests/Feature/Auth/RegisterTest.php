@@ -128,7 +128,7 @@ class RegisterTest extends TestCase
         $causer = \App\Models\User::factory()->create();
         $causer->assignRole(\App\Models\RoleLookup::find(\App\Support\SystemRole::SUPERADMIN));
 
-        $user = app(\App\Actions\V1\User\CreateUserAction::class)->run([
+        $user = app(\App\Actions\V1\User\UserCreateAction::class)->run([
             'name' => 'Admin Made',
             'username' => 'adminmade',
             'email' => 'adminmade@example.com',

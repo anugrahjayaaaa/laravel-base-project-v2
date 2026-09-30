@@ -24,7 +24,7 @@ use Illuminate\Support\Facades\DB;
  * is what makes an accidental name reuse — and the restore that would then blow up
  * on the index — impossible rather than merely unlikely.
  */
-class RestoreRoleAction
+class RoleRestoreAction
 {
     /**
      * Restore a role from the trash.

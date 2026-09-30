@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\DB;
 /**
  * Restore a trashed user with optional re-activation.
  */
-class RestoreUserAction
+class UserRestoreAction
 {
     /**
      * Restore the user from trash.

@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\DB;
 /**
  * Cancel a pending email change by clearing the token fields.
  */
-class CancelEmailChangeAction
+class UserCancelEmailChangeAction
 {
     /**
      * Clear pending email change data.

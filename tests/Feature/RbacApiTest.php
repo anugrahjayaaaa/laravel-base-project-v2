@@ -117,7 +117,7 @@ class RbacApiTest extends TestCase
 
         // The count columns the web table shows, so a client does not have to
         // guess whether a role with no members is zero or unloaded. The
-        // permission aggregate is `permissions_count` — IndexRoleAction counts
+        // permission aggregate is `permissions_count` — RoleIndexAction counts
         // the permissions relation, not the roles.
         $superadminRow = collect($response->json('data.roles'))->firstWhere('name', SystemRole::SUPERADMIN);
         $this->assertSame(1, $superadminRow['users_count']);

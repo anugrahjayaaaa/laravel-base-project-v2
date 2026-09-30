@@ -2,7 +2,7 @@
 
 namespace App\Actions\V1\User;
 
-use App\Actions\V1\Role\AssignRolesAction;
+use App\Actions\V1\Role\RoleAssignAction;
 use App\Enums\UserStatusEnum;
 use App\Models\User;
 use App\Notifications\ChangeEmailVerificationNotification;
@@ -12,10 +12,10 @@ use Illuminate\Support\Str;
 /**
  * Update a user's profile fields with email change flow.
  */
-class UpdateUserAction
+class UserUpdateAction
 {
     public function __construct(
-        private readonly AssignRolesAction $assignRolesAction,
+        private readonly RoleAssignAction $assignRolesAction,
     ) {
     }
 

@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1\Auth;
 
-use App\Actions\V1\Auth\LogoutAllDevicesAction;
+use App\Actions\V1\Auth\AuthLogoutAllDevicesAction;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -16,10 +16,10 @@ class LogoutAllController extends Controller
      * Log out all devices for the current user.
      *
      * @param  Request  $request
-     * @param  LogoutAllDevicesAction  $action
+     * @param  AuthLogoutAllDevicesAction  $action
      * @return JsonResponse
      */
-    public function __invoke(Request $request, LogoutAllDevicesAction $action): JsonResponse
+    public function __invoke(Request $request, AuthLogoutAllDevicesAction $action): JsonResponse
     {
         $action->run($request->user());
 
