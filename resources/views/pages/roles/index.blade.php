@@ -81,16 +81,19 @@
                         </li>
                     </ul>
                 </div>
-                {{-- P6-D5 wraps this button in @can. It is not gated here because the
-                     permission rows do not exist until P6-B1 seeds them, and @can on
-                     a missing permission is always false — the button simply never
-                     rendered. Hidden on the trash tab: there is nothing to create
-                     into a trash listing. --}}
+                {{-- Gated as of P6-D. The note that used to sit here said it could
+                     not be: "the permission rows do not exist until P6-B1 seeds
+                     them, and @can on a missing permission is always false". P6-B1
+                     shipped and seeded them, so the button has been rendering
+                     ungated ever since — offered to anyone who could load the page,
+                     and refused by the endpoint. --}}
+                @can('roles.create')
                 @unless ($trashed)
                     <a href="{{ route('roles.create') }}" class="btn btn-primary d-inline-flex align-items-center gap-2">
                         <i class="bi bi-plus-lg"></i> Create Role
                     </a>
                 @endunless
+                @endcan
             </div>
         </div>
         <div class="card-body p-4">
@@ -132,9 +135,9 @@
                     <span class="text-muted fs-7">Selected: <strong id="bulkCount">0</strong></span>
                     <select id="bulkAction" class="form-select form-select-sm d-inline-block" style="width:auto">
                         <option value="">-- Action --</option>
-                        <option value="delete">Move to Trash</option>
-                        <option value="force_delete">Permanent Delete</option>
-                        <option value="restore">Restore</option>
+                        @can('roles.delete')<option value="delete">Move to Trash</option>@endcan
+                        @can('roles.force_delete')<option value="force_delete">Permanent Delete</option>@endcan
+                        @can('roles.restore')<option value="restore">Restore</option>@endcan
                     </select>
                     <button type="button" class="btn btn-sm btn-primary" id="bulkApplyBtn">Apply</button>
                     <button type="button" class="btn btn-sm btn-outline-secondary" id="bulkClearBtn">Clear</button>
@@ -195,30 +198,40 @@
                                                  so there is nothing meaningful to change, and the
                                                  update endpoint resolves {role} through the global
                                                  scope and would 404 anyway. --}}
-                                            <x-ui.confirm-action :action="route('roles.restore', $role->id)"
-                                                method="POST" action-type="restore_role" :item-name="$role->name"
-                                                label="Restore" title="Restore" class="btn btn-sm btn-outline-success">
-                                                <i class="fas fa-rotate-left"></i>
-                                            </x-ui.confirm-action>
-                                            <x-ui.confirm-action :action="route('roles.force-delete', $role->id)"
-                                                method="DELETE" action-type="force_delete_role"
-                                                :item-name="$role->name" label="Permanent Delete"
-                                                title="Permanent Delete" class="btn btn-sm btn-danger">
-                                                <i class="fas fa-trash"></i>
-                                            </x-ui.confirm-action>
+                                            @can('roles.restore')
+                                                <x-ui.confirm-action :action="route('roles.restore', $role->id)"
+                                                    method="POST" action-type="restore_role" :item-name="$role->name"
+                                                    label="Restore" title="Restore" class="btn btn-sm btn-outline-success">
+                                                    <i class="fas fa-rotate-left"></i>
+                                                </x-ui.confirm-action>
+                                            @endcan
+                                            @can('roles.force_delete')
+                                                <x-ui.confirm-action :action="route('roles.force-delete', $role->id)"
+                                                    method="DELETE" action-type="force_delete_role"
+                                                    :item-name="$role->name" label="Permanent Delete"
+                                                    title="Permanent Delete" class="btn btn-sm btn-danger">
+                                                    <i class="fas fa-trash"></i>
+                                                </x-ui.confirm-action>
+                                            @endcan
                                         @else
                                             <a href="{{ route('roles.edit', $role) }}"
                                                 class="btn btn-sm btn-outline-primary" title="Edit">
                                                 <i class="fas fa-pen"></i>
                                             </a>
+                                            {{-- System roles can never be trashed, so they
+                                                 get no trigger at all. Two independent
+                                                 reasons to hide a control: the row is not
+                                                 deletable, and the caller may not delete. --}}
                                             @unless ($role->is_system)
-                                                <x-ui.confirm-action :action="route('roles.destroy', $role)"
-                                                    method="DELETE" action-type="delete_role"
-                                                    :item-name="$role->name" label="Move to Trash"
-                                                    title="Move to Trash"
-                                                    class="btn btn-sm btn-outline-danger">
-                                                    <i class="fas fa-trash"></i>
-                                                </x-ui.confirm-action>
+                                                @can('roles.delete')
+                                                    <x-ui.confirm-action :action="route('roles.destroy', $role)"
+                                                        method="DELETE" action-type="delete_role"
+                                                        :item-name="$role->name" label="Move to Trash"
+                                                        title="Move to Trash"
+                                                        class="btn btn-sm btn-outline-danger">
+                                                        <i class="fas fa-trash"></i>
+                                                    </x-ui.confirm-action>
+                                                @endcan
                                             @endunless
                                         @endif
                                     </div>
