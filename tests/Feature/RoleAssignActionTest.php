@@ -2,7 +2,7 @@
 
 namespace Tests\Feature;
 
-use App\Actions\V1\Role\AssignRolesAction;
+use App\Actions\V1\Role\RoleAssignAction;
 use App\Exceptions\LastSuperadminException;
 use App\Models\RoleLookup;
 use App\Models\User;
@@ -21,11 +21,11 @@ use Tests\TestCase;
  * a regression there would look like a successful save. Each case is asserted
  * separately for that reason.
  */
-class AssignRolesActionTest extends TestCase
+class RoleAssignActionTest extends TestCase
 {
     use RefreshDatabase;
 
-    private AssignRolesAction $action;
+    private RoleAssignAction $action;
 
     protected function setUp(): void
     {
@@ -34,7 +34,7 @@ class AssignRolesActionTest extends TestCase
         $this->seed(RoleSeeder::class);
         $this->seed(PermissionSeeder::class);
 
-        $this->action = app(AssignRolesAction::class);
+        $this->action = app(RoleAssignAction::class);
     }
 
     public function test_it_syncs_roles(): void
@@ -150,7 +150,7 @@ class AssignRolesActionTest extends TestCase
     /**
      * A causer holding users.assign_roles and the superadmin role.
      *
-     * AssignRolesAction owns the authorization for both C9 and C10, so these
+     * RoleAssignAction owns the authorization for both C9 and C10, so these
      * tests bring a causer that passes it — they are about the sync mechanics
      * and the last-superadmin guard, not about who may assign. The refusal cases
      * are SuperadminVisibilityTest and GateCAuthorizationTest.
