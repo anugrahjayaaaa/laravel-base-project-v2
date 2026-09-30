@@ -241,6 +241,13 @@ class UserController extends Controller
      */
     public function cancelEmailChange(Request $request, User $user): JsonResponse
     {
+        // Same rule as the web controller: own account, or users.update. Same
+        // unguarded hole, so it is closed here too rather than only on one layer.
+        abort_unless(
+            $user->is($request->user()) || $request->user()?->can('users.update'),
+            403
+        );
+
         $this->cancelEmailChangeAction->run($user);
 
         $user->audit('user.email_change_cancelled', $request->user());

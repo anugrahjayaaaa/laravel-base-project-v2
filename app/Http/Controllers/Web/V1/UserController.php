@@ -268,8 +268,17 @@ class UserController extends Controller
      * @param  User  $user
      * @return RedirectResponse
      */
-    public function cancelEmailChange(User $user)
+    public function cancelEmailChange(Request $request, User $user)
     {
+        // Plain Request on purpose: EmailChangeRequest validates an `email`
+        // field, which this endpoint does not submit. Same rule as that request
+        // — own account, or users.update. This had no guard at all, so any
+        // authenticated account could clear another user's pending_email.
+        abort_unless(
+            $user->is($request->user()) || $request->user()?->can('users.update'),
+            403
+        );
+
         $this->cancelEmailChangeAction->run($user);
 
         $user->audit('user.email_change_cancelled', auth()->user());
