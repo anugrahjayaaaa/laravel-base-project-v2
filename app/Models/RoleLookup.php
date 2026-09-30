@@ -97,4 +97,34 @@ class RoleLookup
             ->where('guard_name', static::guard())
             ->first();
     }
+
+    /**
+     * Find many roles by name on that guard, in ONE query.
+     *
+     * `find()` in a loop is an N+1: assigning 20 roles cost 20 selects. This
+     * asks for the whole set at once and keys it by name, so the caller pays
+     * one query whether the payload carries one role or twenty.
+     *
+     * Order is NOT preserved — it comes back in whatever order the database
+     * returns, keyed by name for the caller to look up. Callers that care about
+     * order (a picker) want `assignable()` or `visibleTo()` instead.
+     *
+     * @param  array<int, string>  $names
+     * @return Collection<string, Role>  Keyed by name; a name with no role on
+     *                                    this guard is simply absent
+     */
+    public static function findMany(array $names): Collection
+    {
+        $names = array_values(array_unique($names));
+
+        if ($names === []) {
+            return new Collection();
+        }
+
+        return Role::query()
+            ->where('guard_name', static::guard())
+            ->whereIn('name', $names)
+            ->get()
+            ->keyBy('name');
+    }
 }

@@ -68,12 +68,11 @@ class CreateUserAction
                 // C10 cannot drift apart.
                 $user = $this->assignRolesAction->run($user, $data['roles'], $causer);
             } else {
-                foreach ($this->defaultRolesForSelfRegistration() as $roleName) {
-                    $role = RoleLookup::find($roleName);
-
-                    if ($role) {
-                        $user->assignRole($role);
-                    }
+                // findMany(), not find() in a loop: the default set is short
+                // today but it is data, and a second default role would make
+                // this an N+1 for nothing.
+                foreach (RoleLookup::findMany($this->defaultRolesForSelfRegistration()) as $role) {
+                    $user->assignRole($role);
                 }
             }
 

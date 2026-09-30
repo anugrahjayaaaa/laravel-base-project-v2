@@ -34,12 +34,16 @@ class AssignRolesAction
             // A name with no role on this guard is skipped rather than thrown on:
             // the request rules already reject it, so reaching here means a
             // programmatic caller, and refusing the whole sync over one bad name
-            // would be the more surprising outcome.
+            // would be the more surprising outcome. findMany() returning fewer
+            // roles than names is exactly that skip, in one query instead of one
+            // per name.
             $this->authorizeRoleAssignment($causer);
 
+            $found = RoleLookup::findMany($roleNames);
             $roles = collect($roleNames)
-                ->map(fn (string $name) => RoleLookup::find($name))
+                ->map(fn (string $name) => $found->get($name))
                 ->filter()
+                ->values()
                 ->all();
 
             $this->guardSuperadminGrant($causer, $roles);
