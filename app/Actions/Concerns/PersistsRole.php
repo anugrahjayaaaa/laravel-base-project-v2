@@ -5,7 +5,10 @@ namespace App\Actions\Concerns;
 use App\Models\Role;
 use App\Models\RoleLookup;
 use App\Models\User;
+use App\Support\SystemRole;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\ValidationException;
 
 /**
  * The shared write path for creating and updating a role.
@@ -33,6 +36,8 @@ trait PersistsRole
      */
     protected function persist(Role $role, array $data, ?User $causer, string $event): Role
     {
+        $this->guardSystemPermissions($role, $data);
+
         return DB::transaction(function () use ($role, $data, $causer, $event): Role {
             $role->forceFill([
                 'name' => $data['name'],
@@ -52,5 +57,50 @@ trait PersistsRole
 
             return $role;
         });
+    }
+
+    /**
+     * Refuse a permission payload aimed at a system role.
+     *
+     * `superadmin`, `admin` and `user` get their permissions from the seeder,
+     * which is code. The role form's matrix is a POST away from emptying one of
+     * them: submit no checkboxes and `syncPermissions([])` strips every
+     * permission from the row, silently — no error, an audit row recording a
+     * successful save. For `superadmin` that is the whole admin panel, gone by
+     * one form post, and the next admin to notice has no way back.
+     *
+     * Checked against the STORED name (the row being written) rather than the
+     * submitted one, matching the rename guard: the question is whether this
+     * row is one the application depends on. The rename guard already stops a
+     * system role being renamed INTO something editable, but an ordinary role
+     * renamed TO `superadmin` must not become strippable either — and by the
+     * time `persist()` runs, `$role->name` is still the old value, so the
+     * incoming name is checked too.
+     *
+     * Refuses only when a `permissions` key is actually present. Every existing
+     * caller sends one, but the key's absence must not become a new way to
+     * fail: an update that legitimately carries no permissions key syncs
+     * nothing, which is already a no-op on the pivot.
+     */
+    private function guardSystemPermissions(Role $role, array $data): void
+    {
+        if (! array_key_exists('permissions', $data)) {
+            return;
+        }
+
+        $stored = (string) $role->name;
+        $incoming = (string) ($data['name'] ?? $stored);
+
+        if (! SystemRole::isSystem($stored) && ! SystemRole::isSystem($incoming)) {
+            return;
+        }
+
+        $validator = Validator::make([], []);
+        $validator->errors()->add(
+            'permissions',
+            __('System role permissions are defined in code and cannot be edited.')
+        );
+
+        throw new ValidationException($validator);
     }
 }
