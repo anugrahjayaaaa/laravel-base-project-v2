@@ -33,8 +33,21 @@ Phase 6 — RBAC & Authorization: 🟡 IN PROGRESS
 - Group C1 (role management, web): ✅ DONE (2026-09-29, audited) — P6-C1..C6
 - Group C2 (permission catalogue, read-only): ✅ DONE (2026-09-29, audited) — P6-C7/C8; grouping by prefix not built, open decision
 - Group C3 (role assignment sync): ✅ DONE (2026-09-29, audited) — P6-C9..C12; C13 merged into `AssignRolesAction`
-- Group C4 (ungated `authorize()` returns): 🟡 PARTIAL — see below
-- Group C5 (phase report / QA evidence): ⬜ NOT STARTED
+- Group C4 (authorization guards + policy): ✅ DONE — P6-C14..C18. Shipped in `015d6c3`: the four ungated `authorize()` returns are closed, bulk actions map to their own permission via `AuthorizesBulkAction`, and `UserPolicy` delegates the seven CRUD methods to `users.*`. Pinned by `GateCAuthorizationTest` (8 tests)
+
+**Gate C: MET (2026-09-30, re-measured).** All four C groups ship, and the
+negative case is pinned rather than assumed: `GateCAuthorizationTest` asserts a
+403 for a zero-permission user on every admin read route, on user create/update
+(both the other-user and the escalate-my-own-profile shapes), on both bulk bars,
+and on settings write. `RoleManagementTest` pins the same for all five role
+write routes. Role assignment sync is pinned four ways by
+`AssignRolesActionTest` (sync, unknown-name skip, empty-clears, absent-key
+untouched) plus the last-superadmin guard in both directions. Full suite: 505
+passed / 1657 assertions.
+
+**Next:** Group D (route, menu & UI gating). The seven ungated user state routes
+and `api.v1.settings.index` are P6-D1/D2 — `UserPolicy` already has the methods,
+nothing calls them yet. Phase report + docs are P6-E11.
 
 **Group B delivered:**
 - `App\Support\PermissionCatalog` — 19 permissions, the single source of truth
@@ -83,22 +96,21 @@ never assigned its role.
   button-driven action landed in the session with nothing rendering it, and the
   browser returned to a byte-identical page.
 
-**🔴 OPEN — `BulkRoleRequest::authorize()` returns `true` (regression, found by
-this audit, not yet fixed).** P6-C17 requires the bulk request to map each action
-to its permission; the role bulk request shipped with a blanket `true`, the same
-defect the plan flags for `BulkUserRequest`. Measured, not assumed — a user
-holding only the `user` role posted `action=delete` with a role id and got
-`302` with the role **confirmed soft-deleted**, while the single-row
-`DELETE /roles/{id}` correctly refused. Every single-row role write is gated; the
-bulk one is not. Fix is one `match` on the requested action, mirroring C17.
+**`BulkRoleRequest::authorize()` blanket `true` (regression from C1, fixed by
+P6-C17).** Both bulk requests now share the `AuthorizesBulkAction` trait, so the
+requested action maps to its own permission and an unmapped action fails closed.
 
 **Open (tracked, not forgotten):** the Group A GET routes still carry no
 `can:` gate, which is P6-D1 by design. The role forms and delete trigger no
 longer point at `roles.index` as placeholders — Group C1 gave them real
-endpoints. RBAC-006 (`/users` + `/settings` ungated) is also still open.
-
-**Next:** Group C5 (phase report / QA evidence). Also open: the 7 ungated user
-state routes, which `UserPolicy` already covers but nothing calls yet.
+endpoints, and Group C2 closed the reads behind `can:roles.view` /
+`can:roles.create` / `can:roles.update` / `can:permissions.view` once Group B had
+seeded the catalogue those gates check against. The role **write** routes still
+have no `can:` on the route itself; each is gated by its own Form Request
+(`StoreRoleRequest` → `roles.create`, etc.), which is why
+`RoleManagementTest` can assert 403 on all five. Route-level gates there are
+defence in depth, tracked as P6-D1. RBAC-006 (`/users` + `/settings` ungated on
+the API twin) is also still open.
 
 Phase 5C — Password Expiration & Inactivity Lock: ✅ FULLY DONE
 - Shared Web/API settings action
