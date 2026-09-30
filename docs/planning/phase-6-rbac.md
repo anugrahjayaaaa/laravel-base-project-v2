@@ -251,9 +251,10 @@ table below is the audit, not a wish list.
 
 | Gap | Why it is still open | Closes at |
 |---|---|---|
-| The four GET routes carry **no `can:` gate** | A `can:` gate on a permission that is not seeded denies everyone, superadmin included. | P6-D1 |
-| Roles create/edit forms post to `roles.index` | No `roles.store` / `roles.update` route exists. Marked `ponytail:` in the view. | P6-C5 |
-| `delete_role` trigger points at `roles.index` | No `roles.destroy` route exists. | P6-C6 |
+| The four GET routes carried **no `can:` gate** | A `can:` gate on a permission that is not seeded denies everyone, superadmin included. Group B seeded the catalogue, so Group C2 gated them: `can:roles.view` / `can:roles.create` / `can:roles.update` / `can:permissions.view`. **CLOSED** | — |
+| Roles create/edit forms posted to `roles.index` | No `roles.store` / `roles.update` route existed. Group C1 gave both real endpoints and the views post to them. **CLOSED** | — |
+| `delete_role` trigger pointed at `roles.index` | No `roles.destroy` route existed. Group C1 added it, with the force override behind the confirm modal. **CLOSED** | — |
+| The five role **write** routes still have no `can:` on the route | Not exploitable: each is gated by its own Form Request (`StoreRoleRequest` → `roles.create`, `UpdateRoleRequest` → `roles.update`, `DeleteRoleRequest` → `roles.delete`, `RestoreRoleRequest` → `roles.restore`, `ForceDeleteRoleRequest` → `roles.force_delete`). Route-level gates there are defence in depth only | P6-D1 (cosmetic) |
 | `$role->users_count` on the roles index | `withCount('users')` is in the query, but a hand-built test fixture sets it manually; no controller-level gap. | — |
 
 ### Deliberately not built (proposed 2026-09-28, declined)
@@ -396,8 +397,8 @@ empty for that role.
 ### C1 — Role management (Web)
 
 > **Status: ✅ DONE (2026-09-29, audited against the code).** P6-C1..C6 all
-> implemented. Deviations and the one open defect are listed in
-> § C1 audit notes below. Note that **Gate C is not met** — it also spans C3 and C4.
+> implemented. Deviations are listed in § C1 audit notes below. Gate C is now
+> **met** — the evidence table sits in the § C4 section below.
 
 | ID | Task | Depends | Est. | Status |
 |----|------|---------|------|--------|
@@ -424,20 +425,44 @@ empty for that role.
 | P6-C13 | ~~`AssignRolesRequest`~~ **merged into `AssignRolesAction` (2026-09-29).** The class was built as specced but no route ever referenced it, so the `users.assign_roles` check lived in code nothing could reach. The check and the guard-scoped role resolution now live in `AssignRolesAction`, which both write paths call. Role payloads are still validated before they reach it, by `CreateUserRequest`/`UpdateUserRequest`. Standalone role assignment is a role-picker edit on the existing user forms, not a separate endpoint | C5 | done |
 
 ### C4 — Fix the ungated `authorize()` returns
-| ID | Task | Depends | Est. |
-|----|------|---------|------|
-| P6-C14 | `CreateUserRequest::authorize()` → `can('users.create')` **on the admin path only**. A self-registering user has no permission, so the register controller must not reuse this request. `RegisterRequest` is the separate public contract and stays `true` | C5 | small |
-| P6-C15 | `UpdateUserRequest::authorize()` → `can('users.update')`, plus `$this->user()->id === $user->id` **only** when the target is the caller and the payload has no `roles` key (self-profile edit through the admin form) | C5 | small |
-| P6-C16 | `SystemSettingRequest::authorize()` → `can('settings.manage')` | C5 | small |
-| P6-C17 | `BulkUserRequest::authorize()` → map the requested `action` to its permission (`delete`→`users.delete`, `lock`→`users.lock`, …) instead of one blanket check | C5 | medium |
-| P6-C18 | `UserPolicy` — add `viewAny`, `view`, `create`, `update`, `delete`, `forceDelete`, `restore` methods delegating to the matching `users.*` permission, keeping the four existing state methods **exactly as they are** (their 409 preconditions are business rules, not authorization) | C5 | small |
+> **Status: ✅ DONE (2026-09-30, re-audited).** P6-C14..C18 all implemented in
+> `015d6c3`. Gate C is met; the evidence is in § C4 audit notes below.
 
-**Gate C:** every role/permission route reachable and authorized; a
-zero-permission user gets 403 on all of them; role assignment syncs (add →
-grants, replace → swaps, empty array → clears, absent key → untouched);
-last-superadmin cannot be stripped. `UserCrudWebTest` +
-`UserRoleEditTest` still green — they call these endpoints and must be updated
-to the new authorization, not deleted.
+| ID | Task | Depends | Est. | Status |
+|----|------|---------|------|--------|
+| P6-C14 | `CreateUserRequest::authorize()` → `can('users.create')` **on the admin path only**. A self-registering user has no permission, so the register controller must not reuse this request. `RegisterRequest` is the separate public contract and stays `true` | C5 | small | **DONE** — as specified. `UserController@store` (web + api) is the only caller; `RegisterController` uses `RegisterRequest` |
+| P6-C15 | `UpdateUserRequest::authorize()` → `can('users.update')`, plus `$this->user()->id === $user->id` **only** when the target is the caller and the payload has no `roles` key (self-profile edit through the admin form) | C5 | small | **DONE** — as specified. The self exception is also key-compared as strings, so a `null` user cannot match |
+| P6-C16 | `SystemSettingRequest::authorize()` → `can('settings.manage')` | C5 | small | **DONE** — as specified |
+| P6-C17 | `BulkUserRequest::authorize()` → map the requested `action` to its permission (`delete`→`users.delete`, `lock`→`users.lock`, …) instead of one blanket check | C5 | medium | **DONE, extended** — extracted to the `AuthorizesBulkAction` trait and adopted by `BulkRoleRequest` too, which is what closed P6C1-005 |
+| P6-C18 | `UserPolicy` — add `viewAny`, `view`, `create`, `update`, `delete`, `forceDelete`, `restore` methods delegating to the matching `users.*` permission, keeping the four existing state methods **exactly as they are** (their 409 preconditions are business rules, not authorization) | C5 | small | **DONE** — as specified. The four state methods are untouched |
+
+**Gate C: MET (2026-09-30).** Every clause, with the test that carries it:
+
+| Gate C clause | Evidence |
+|---|---|
+| Every role/permission route reachable and authorized | `routes/web.php:128-141` gates the four reads; the five writes are gated by their Form Requests. `RoleManagementTest::test_a_user_with_no_permissions_cannot_write_roles` + `test_a_user_with_no_permissions_cannot_reach_the_trash_endpoints` assert 403 on all five |
+| A zero-permission user gets 403 on all of them | `GateCAuthorizationTest::test_a_user_with_no_permissions_gets_403_on_every_admin_read_route` loops `users.index` / `roles.index` / `permissions.index` / `settings.index` |
+| Role assignment syncs (add → grants, replace → swaps, empty → clears, absent → untouched) | `AssignRolesActionTest` (8 tests) + `UserRoleEditTest` (7 tests) |
+| Last-superadmin cannot be stripped | `test_stripping_the_last_superadmin_is_refused` + `test_the_refusal_leaves_the_superadmin_in_place`; a demotion among two is still allowed, so the guard is a floor, not a freeze |
+| `UserCrudWebTest` + `UserRoleEditTest` still green, updated not deleted | Full suite: **505 passed / 1657 assertions**, 1 risky (pre-existing) |
+
+**What Gate C deliberately does not cover.** Gate C is a *Group C* gate. The
+seven ungated user state routes (`restore`, `force-delete`, `activate`,
+`deactivate`, `lock`, `unlock`, `resend-verification`, `cancel-email-change`) and
+`api.v1.settings.index` carry no `can:` and no request-level check — measured,
+with the side effect confirmed rather than the 302 — and `UserPolicy`'s methods
+for them are still dead code on those paths. All of that is P6-D1/D2, tracked in
+`docs/qa/remediation-tracker.md` as P6C4-001..005. Calling Gate C met is not a
+claim that the whole RBAC surface is closed; it is a claim that Group C's own
+tasks are.
+
+**C7's class name is a kept deviation, not a pending refactor.** What ships is
+`PermissionIndexAction`; the C1 convention (`IndexRoleAction`) would name it
+`IndexPermissionAction`. Decided 2026-09-30 to **keep** the shipped name and
+record the deviation here rather than spend the rename — the name is referenced
+in exactly 10 places, all internal, and `PermissionIndexActionTest` already
+pins behaviour. Revisit if a third action appears and the inconsistency starts
+costing a reader.
 
 ### C2/C3 audit notes (2026-09-29)
 
@@ -471,9 +496,9 @@ enforcing "exactly one" is a change of requirement, not a fix — raise it befor
 assuming it.
 
 **C7's class name and the grouping decision.** The table names
-`IndexPermissionAction`; what ships is `PermissionIndexAction`. The C1
-convention (`IndexRoleAction`) puts `Index` first, so the shipped name is the
-inconsistent one — it is being renamed in a later refactor, not fixed here.
+`IndexPermissionAction`; what ships is `PermissionIndexAction`, and the shipped
+name is the inconsistent one against the C1 convention (`IndexRoleAction`). The
+deviation is now **kept, not pending** — see the note in § C4 below.
 
 Grouping by resource prefix is **not built**. The catalogue page is searchable,
 sortable and paginated, and a paginator cannot be grouped without losing all
@@ -531,15 +556,14 @@ requirement): soft delete with revocation, the trash tab, restore, permanent
 delete, and bulk actions. All documented in
 `docs/base/features/roles-permissions.md`.
 
-**🔴 Gate C is NOT met.** P6-C1..C6 (this group) is complete, but Gate C also
-spans C3 (role assignment sync, not started) and C4 (ungated `authorize()`
-returns, partial). Concretely, `BulkRoleRequest::authorize()` returns `true`, so
-a user holding no `roles.*` permission can bulk-trash a role — measured, not
-assumed: such a user posted `action=delete` and the role was confirmed
-soft-deleted, while the single-row `DELETE /roles/{id}` correctly refused. That
-is a C4-shaped defect that arrived with C1's bulk work, and it must be fixed
-before Gate C can be called met. Tracked as P6C1-005 in
-`docs/qa/remediation-tracker.md`.
+**The `BulkRoleRequest` defect this section used to carry is fixed.** It shipped
+with a blanket `return true`, so a user holding no `roles.*` permission could
+bulk-trash a role while the single-row delete correctly refused. P6-C17 closed
+it: both bulk requests now share the `AuthorizesBulkAction` trait, one
+`BULK_ACTIONS` map plus an entity prefix, and an unmapped action fails closed.
+Pinned by `test_a_role_bulk_action_requires_its_own_permission` in
+`GateCAuthorizationTest`. Tracked as P6C1-005 in
+`docs/qa/remediation-tracker.md` (RESOLVED).
 
 ---
 
