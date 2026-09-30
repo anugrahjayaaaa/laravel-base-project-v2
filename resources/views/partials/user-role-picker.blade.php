@@ -12,7 +12,16 @@
     hidden input the two are indistinguishable and removing every role silently
     does nothing. It must come BEFORE the checkboxes: PHP takes the LAST value
     for a repeated name, so a hidden input after them would win every time.
+
+    The whole picker sits inside @can('users.assign_roles'), INCLUDING the hidden
+    input. That is what makes hiding it safe: a caller without the permission
+    posts no `roles` key at all, which UpdateUserAction reads as "leave the roles
+    alone". Rendering the hidden input outside the @can would post `roles: ['']`
+    → normalised to `roles: []` → and silently strip every role from the account
+    as a side effect of saving an unrelated field. The gate would look right and
+    the damage would be exactly the bug the hidden input exists to prevent.
 --}}
+@can('users.assign_roles')
 <div class="mt-3">
     <label class="form-label">Roles</label>
     <div class="border rounded p-3" style="max-height: 200px; overflow-y: auto;">
@@ -35,3 +44,4 @@
         <div class="invalid-feedback d-block">{{ $message }}</div>
     @enderror
 </div>
+@endcan
