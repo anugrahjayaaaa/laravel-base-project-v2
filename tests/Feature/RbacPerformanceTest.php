@@ -12,6 +12,7 @@ use Database\Seeders\PermissionSeeder;
 use Database\Seeders\RoleSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 /**
@@ -161,11 +162,30 @@ class RbacPerformanceTest extends TestCase
         );
     }
 
-    public function test_the_sidebar_costs_no_permission_query(): void
+    /**
+     * P6-E10, second pass — the sidebar now CARRIES gates.
+     *
+     * The first version of this test could only assert a fixed cost, because
+     * P6-D5 had not landed: the sidebar had no @can at all, so there was nothing
+     * to measure. It also said so in a comment, which is how a test ends up
+     * documenting behaviour nobody checked.
+     *
+     * The composer now runs one can() per permissioned item — five of them. The
+     * assertion is ABSOLUTE (1 query), not a delta, and that choice is
+     * deliberate: the menu is a literal array, so the item count cannot grow
+     * between two runs of the same code, and a delta between two fixtures of
+     * the SAME item count is always zero. A delta test here would pass against a
+     * composer that queries the database once per item — measured: swapping
+     * can() for a raw `DB::table('permissions')->exists()` takes the dashboard
+     * from 1 query to 5, and a delta test does not notice, because both its
+     * fixtures still render the same five items.
+     *
+     * 1 = the dashboard's own query. The gates add nothing: Gate::before
+     * short-circuits on hasRole() and Spatie's cache holds the pivot read, so
+     * five can() calls are free.
+     */
+    public function test_the_sidebar_gates_cost_nothing(): void
     {
-        // The sidebar has no @can gates at all (that gap is P6-D5), so it can
-        // only ever be a fixed cost. Pinned because the day someone adds a
-        // gate here, this is the test that notices.
         $this->get(route('dashboard'))->assertOk();
 
         DB::flushQueryLog();
@@ -174,13 +194,246 @@ class RbacPerformanceTest extends TestCase
         $queries = DB::getQueryLog();
         DB::disableQueryLog();
 
-        foreach ($queries as $q) {
+        $this->assertSame(
+            1,
+            count($queries),
+            'the dashboard spent '.count($queries).' queries — the five sidebar gates are '
+            .'hitting the database, which means one query per menu item'
+        );
+
+        // Named, so the failure says which gate moved rather than just a count.
+        foreach ($queries as $query) {
             $this->assertStringNotContainsString(
-                'model_has_roles',
-                $q['query'],
-                'the sidebar is loading roles per request'
+                'from "permissions"',
+                $query['query'],
+                'the sidebar resolves a permission per item instead of reading the cached set'
             );
         }
+    }
+
+    /**
+     * The D5/D6/D7 view gates are per-ROW triggers — one @can per user row on
+     * the list. That is the shape that hides an N+1, so it is measured here.
+     *
+     * The assertion is ABSOLUTE (3 queries), and the choice is worth recording
+     * because a delta was tried first and does not work here for two reasons:
+     *
+     * 1. perPage is 10, so 4 users and 25 users render the same capped number
+     *    of rows. A delta between them is zero by construction.
+     * 2. A Spatie gate cannot produce a per-row query at all: hasPermissionTo
+     *    resolves against ONE globally cached permission set, not against the
+     *    row's own model instance. Measured: replacing the viewer with a
+     *    row-scoped check added 0 queries at any row count.
+     *
+     * So the thing that would actually regress is a gate that stops using the
+     * cached set and starts querying — which is what the named assertion below
+     * catches, and which a count alone would report as "3, fine".
+     *
+     * 3 = the list query, its count, and the session/settings read. Measured
+     * 2026-09-30 at 4 users and at 25.
+     */
+    public function test_the_view_gates_cost_nothing_per_row(): void
+    {
+        $viewer = $this->viewerWithEveryPermission();
+        User::factory()->count(10)->create([
+            'email_verified_at' => now(),
+            'is_active' => true,
+        ]);
+
+        $this->actingAs($viewer, 'web');
+
+        $this->get(route('users.index'))->assertOk();
+
+        DB::flushQueryLog();
+        DB::enableQueryLog();
+        $this->get(route('users.index'))->assertOk();
+        $queries = DB::getQueryLog();
+        DB::disableQueryLog();
+
+        $this->assertSame(
+            3,
+            count($queries),
+            'the user list spent '.count($queries).' queries for 11 rows — a per-row gate '
+            .'is querying per row'
+        );
+
+        // Named, so the failure says which read moved rather than just a count.
+        foreach ($queries as $query) {
+            $this->assertStringNotContainsString(
+                'from "permissions"',
+                $query['query'],
+                'a view gate resolved a permission row instead of reading the cached set'
+            );
+        }
+    }
+
+    /**
+     * A caller the Gate actually resolves, holding the whole catalogue.
+     *
+     * NOT the superadmin: Gate::before answers true for it, so a gate written
+     * as `@can(...) || $somethingExpensive` never evaluates the right-hand side.
+     * A superadmin viewer cannot tell a cheap gate from an expensive one — the
+     * measurement would hide behind the short circuit.
+     */
+    private function viewerWithEveryPermission(): User
+    {
+        $role = AppRole::create([
+            'name' => 'Row Probe '.uniqid(),
+            'guard_name' => RoleLookup::guard(),
+        ]);
+
+        $role->givePermissionTo(
+            \Spatie\Permission\Models\Permission::whereIn('name', PermissionCatalog::all())
+                ->where('guard_name', RoleLookup::guard())
+                ->get()
+        );
+
+        $user = User::factory()->create([
+            'email_verified_at' => now(),
+            'is_active' => true,
+        ]);
+        $user->assignRole($role);
+
+        return $user;
+    }
+
+    /**
+     * P6-D7 — the role picker renders one checkbox per ROLE, inside an
+     * `@can('users.assign_roles')` block. That is a per-row gate on a
+     * variable-length collection, which is the only shape in 6D that can
+     * genuinely produce an N+1: the gate count grows with the role count.
+     *
+     * So this one IS a delta, not an absolute — unlike the sidebar and the
+     * user list, the collection it renders is not capped by a page size. 30
+     * extra roles render 30 extra checkboxes, so if anything resolved per
+     * checkbox the count would move. Measured: 5 queries at 4 roles and at
+     * 34.
+     *
+     * 5 = the session read, the target user, their failed-login aggregate,
+     * their roles, and the assignable role list.
+     */
+    public function test_the_role_picker_gates_cost_nothing_per_role(): void
+    {
+        $viewer = $this->viewerWithEveryPermission();
+        $target = User::factory()->create([
+            'email_verified_at' => now(),
+            'is_active' => true,
+        ]);
+
+        $this->actingAs($viewer, 'web');
+
+        $countFor = function () use ($target): int {
+            // Warm first: givePermissionTo-style writes flush Spatie's cache,
+            // and the refill would otherwise be billed to the page.
+            $this->get(route('users.edit', $target))->assertOk();
+
+            DB::flushQueryLog();
+            DB::enableQueryLog();
+            $this->get(route('users.edit', $target))->assertOk();
+            $count = count(DB::getQueryLog());
+            DB::disableQueryLog();
+
+            return $count;
+        };
+
+        $few = $countFor();
+
+        $this->makeRoles(30, 'Picker');
+
+        $many = $countFor();
+
+        $this->assertSame(
+            $few,
+            $many,
+            "the role picker cost {$few} queries with 4 roles and {$many} with 34 — "
+            .'a gate is resolving once per checkbox'
+        );
+    }
+
+    /**
+     * The rest of the 6D surfaces, pinned so a gate added to one of them is
+     * noticed. Absolute, because these pages render a FIXED number of gates
+     * (one picker block, one settings-write block) regardless of data — a
+     * delta between two row counts is zero here for the same reason it is on
+     * the sidebar. See the sidebar test for why an absolute count plus the
+     * named table read is the stronger assertion on a fixed-cost page.
+     *
+     * Measured 2026-09-30 with a full-catalogue (non-superadmin) viewer, warm
+     * cache, SQLite.
+     */
+    #[DataProvider('sixDSurfaces')]
+    public function test_a_phase_6d_surface_costs_a_fixed_number_of_queries(
+        string $page,
+        int $expected,
+        callable $url
+    ): void {
+        $this->actingAs($this->viewerWithEveryPermission(), 'web');
+
+        User::factory()->count(10)->create([
+            'email_verified_at' => now(),
+            'is_active' => true,
+        ]);
+
+        $url = $url();
+
+        $this->get($url)->assertOk();
+
+        DB::flushQueryLog();
+        DB::enableQueryLog();
+        $this->get($url)->assertOk();
+        $queries = DB::getQueryLog();
+        DB::disableQueryLog();
+
+        $this->assertSame(
+            $expected,
+            count($queries),
+            "{$page} spent ".count($queries)." queries, budget {$expected} — "
+            .'a 6D gate started resolving against the database'
+        );
+
+        foreach ($queries as $query) {
+            $this->assertStringNotContainsString(
+                'from "permissions"',
+                $query['query'],
+                "{$page} resolved a permission row instead of reading the cached set"
+            );
+        }
+    }
+
+    /**
+     * The 6D surfaces the sidebar and user-list tests do not already cover.
+     * Kept in one provider so the whole measured surface is visible in one
+     * place instead of scattered across test names.
+     *
+     * 2 = create: session + the assignable role list.
+     * 5 = edit / show: session + the target + their failed-login aggregate +
+     *     their roles + the assignable role list.
+     * 3 = settings: session + the timezone list + the assignable role list.
+     */
+    public static function sixDSurfaces(): array
+    {
+        return [
+            'users.create — picker gates' => [
+                'GET /users/create',
+                2,
+                fn () => route('users.create'),
+            ],
+            'users.edit — picker gates' => [
+                'GET /users/{id}/edit',
+                5,
+                fn () => route('users.edit', User::query()->firstOrFail()),
+            ],
+            'users.show — role list gates' => [
+                'GET /users/{id}',
+                5,
+                fn () => route('users.show', User::query()->firstOrFail()),
+            ],
+            'settings.index — write form gate' => [
+                'GET /settings',
+                3,
+                fn () => route('settings.index'),
+            ],
+        ];
     }
 
     public function test_a_superadmin_check_costs_one_cached_read_not_a_query(): void

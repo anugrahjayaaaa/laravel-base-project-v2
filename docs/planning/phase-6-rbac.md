@@ -470,11 +470,59 @@ in exactly 10 places, all internal, and `PermissionIndexActionTest` already
 pins behaviour. Revisit if a third action appears and the inconsistency starts
 costing a reader.
 
-### Performance — measured 2026-09-30 (P6-E10, Group C surfaces)
+### Performance — measured 2026-09-30 (P6-E10, Group C surfaces), sidebar re-measured 2026-09-30 after P6-D3
 
 SQLite, warm permission cache, `RefreshDatabase`. Counts are per HTTP request,
 measured after one throwaway request warms Spatie's cache, so the cache fill is
-not billed to the page. Pinned by `RbacPerformanceTest` (7 tests).
+not billed to the page. Pinned by `RbacPerformanceTest` (13 tests).
+
+**The 6D surfaces.** D3/D5/D6/D7/D8 put `@can` on five surfaces. Only the
+sidebar and the user list were measured; the create/edit/show forms and the
+settings page carried no perf test at all, so a gate added to them would have
+been invisible. Measured now — every one of them is flat or a fixed cost.
+
+The role picker is the only shape in 6D that can produce a genuine N+1: it
+renders one checkbox per ROLE, and the role count is not capped by a page size
+the way `users.index` is. It is therefore asserted as a **delta** — 5 queries at
+4 roles, 5 at 34 — while the create / show / settings pages render a FIXED
+number of gates and are pinned **absolutely** (2 / 5 / 3) for the reason the
+sidebar test gives.
+
+All five new targets were sabotaged and confirmed to go red before being
+restored: replacing the picker's per-checkbox resolution with a
+`model_has_roles` lookup, and the settings `@can` with a raw `permissions`
+exists query, each turned the corresponding test red.
+
+**The sidebar and view gates, re-measured after P6-D3/D5.** The original
+sidebar row said the sidebar carried no `@can` gates because P6-D5 had not
+landed — a promise about the future, in a table of measured facts. It now
+carries five, and one `can()` per permissioned item still costs **0** queries
+(1 total on `/dashboard`, unchanged). Measured at 1, 5 and all 21 permissions
+held: flat. The D5/D6/D7 view gates on the user list cost **0** per row as
+well (3 total for 11 users).
+
+Both are asserted **absolutely** (1 and 3), not as a delta between two row
+counts, and that is a deliberate correction rather than a style choice:
+
+- `perPage` is 10, so 4 users and 25 users render the same capped number of
+  rows. A delta between them is zero by construction — the test cannot fail.
+- A Spatie gate **cannot** produce a per-row query at all:
+  `hasPermissionTo()` resolves against one globally cached permission set, not
+  against the row's model instance. Verified: swapping the viewer for a
+  row-scoped check added 0 queries at every row count.
+
+So a delta test here would pass against a composer that queries once per menu
+item. Both were confirmed to fail when sabotaged — `can()` replaced with
+`DB::table('permissions')->exists()` takes `/dashboard` from 1 query to 5, and
+the per-row gate takes the user list from 3 to 13. The named
+`assertStringNotContainsString('from "permissions"')` rides along so the failure
+names the read that moved instead of only reporting a count.
+
+One trap worth recording: a superadmin viewer cannot be used to measure gate
+cost. `Gate::before` answers `true`, so a gate written as
+`@can(...) || $somethingExpensive` never evaluates the right-hand side, and the
+measurement hides behind the short circuit. Both tests resolve the viewer
+through a real role holding the catalogue instead.
 
 | Request | Queries | ms | Note |
 |---|---|---|---|
@@ -486,8 +534,13 @@ not billed to the page. Pinned by `RbacPerformanceTest` (7 tests).
 | `GET /permissions?search=users` | 4 | 117 | |
 | `GET /roles/create` — 21 checkboxes | 2 | 35 | `PermissionCatalog` is a static array: 0 queries for the catalogue |
 | `GET /roles/{id}/edit` | 5 | 39 | +3 over create: the role, its permissions, its user count |
-| `GET /dashboard` — sidebar | 1 | 21 | the sidebar carries **no** `@can` gates (that gap is P6-D5), so it cannot cost a permission query |
+| `GET /dashboard` — sidebar, 5 gates | 1 | 21 | **re-measured after P6-D3**: the composer runs one `can()` per permissioned item and it still costs 0. `Gate::before` short-circuits on `hasRole()`, Spatie's cache holds the pivot read |
 | `GET /users` | 3 | 126 | not a Group C page; the ms is the count subqueries, unchanged by this phase |
+| `GET /users/create` — D7 picker gate | 2 | 8 | session + the assignable role list |
+| `GET /users/{id}/edit` — D7 picker gate | 5 | 10 | + the target, their failed-login aggregate and their roles |
+| `GET /users/{id}/edit` — **34 roles** | **5** | 9 | flat: the picker renders 34 checkboxes behind ONE `@can`, so the gate count does not grow with the row count |
+| `GET /users/{id}` — role-list gates | 5 | 9 | same shape as edit |
+| `GET /settings` — D8 write-form gate | 3 | 9 | session + timezone list + assignable role list |
 | `AssignRolesAction` — 1 role | 9 | — | after `a4b33ab`; was 11 |
 | `AssignRolesAction` — **20 roles** | **9** | — | **was 28** — `RoleLookup::find()` in a loop, one select per name. Now one `whereIn` |
 | `DeleteRoleAction` — 0 or 30 holders | 5 | — | flat: `detach()` runs once, not per holder |
@@ -673,7 +726,7 @@ sidebar items and can reach exactly those three areas.
 | P6-E7 | `tests/Feature/RbacAuthorizationMatrixTest.php` — the brief's two cases, as tests: **User A** role `user`, zero permissions → 403 on `/users`, `/settings`, `/roles`, `/permissions`; 200 on `/dashboard`, `/profile`, `/sessions`; sidebar HTML contains no `Users`, `Roles`, `Settings` link. **User B** role `staff` with `users.view` + `users.update` + `settings.manage` → 200 on `/users` + `/settings`; 403 on `/roles`; sidebar contains `Users` + `Settings`, not `Roles` | D | medium |
 | P6-E8 | `tests/Feature/RbacRoleSyncTest.php` — user A `user` → change to `staff` → `$user->fresh()->can('users.view')` is true and `can('roles.view')` is false; the DB shows no row in `model_has_permissions` (role-derived, ADR-004, no physical copy); replace roles swaps; `roles => []` clears; **omitting** `roles` leaves them untouched; a payload naming a non-existent role is rejected with a validation error | C9 | medium |
 | P6-E9 | `tests/Feature/RbacPentestTest.php` — replay the RBAC-006 exploit list verbatim: every request in the table at the top of this doc, as a zero-permission user, web **and** API, expecting 403. Plus: mass-assignment of `roles` on `PUT /profile` (self endpoint) must not assign roles; `PUT /users/{other}` with `roles[]=superadmin` must 403; `POST /settings` with a valid `settings.manage` holder still requires CSRF | D, C | medium |
-| P6-E10 | Performance check — `PermissionCatalog::all()` and the matrix view add **zero** queries per row (`assertQueryCount` or Telescope-free manual count): roles index uses `withCount`, permissions index uses `withCount('roles')`, the sidebar composer makes at most one permission-cache read per request (package cache is on; `Gate::before` does `hasRole` on an already-loaded relation, not a fresh query). Record the numbers in the phase report | C, D | small | **PARTIAL (2026-09-30)** — every Group C surface measured and pinned by `RbacPerformanceTest` (7 tests); numbers in `phase-6-rbac.md` § Performance. No regression anywhere: the roles index is flat at 5 queries from 10 rows to 100, and three warm `can()` calls cost 0. One real N+1 found and fixed on the way (`a4b33ab`). **Blocked on D** for the sidebar half — it carries no `@can` gates at all today, so there is nothing to measure until D5 adds them |
+| P6-E10 | Performance check — `PermissionCatalog::all()` and the matrix view add **zero** queries per row (`assertQueryCount` or Telescope-free manual count): roles index uses `withCount`, permissions index uses `withCount('roles')`, the sidebar composer makes at most one permission-cache read per request (package cache is on; `Gate::before` does `hasRole` on an already-loaded relation, not a fresh query). Record the numbers in the phase report | C, D | small | **DONE (2026-09-30, re-measured after D3/D5/D7/D8)** — every Group C **and** every 6D surface measured and pinned by `RbacPerformanceTest` (13 tests); numbers in `phase-6-rbac.md` § Performance. No regression anywhere: the roles index is flat at 5 queries from 10 rows to 100, and three warm `can()` calls cost 0. One real N+1 found and fixed on the way (`a4b33ab`). The sidebar half is no longer blocked: the composer now runs 5 `can()` gates and still costs 0 queries, and the D5/D6/D7 view gates cost 0 per row (3 total for 11 users). Both are asserted absolutely rather than as a delta, because `perPage` caps the row count and Spatie resolves from one global cache. The D7 role picker is the exception and IS a delta (5 queries at 4 roles, 5 at 34 — the one 6D collection not capped by a page size), and the create/show/settings pages are pinned absolutely at 2/5/3. Every gate was sabotaged and confirmed to turn its test red before restore — reasoning and evidence in § Performance |
 | P6-E11 | Docs — update `docs/base/features/roles-permissions.md` (fill the permission table, mark seeded roles with real sets, resolve the `guard_name` open question from §Seeding Strategy: `RoleLookup::guard()`), `docs/base/security/authorization.md` (Gate::before is the superadmin mechanism), `docs/planning/task-tracker.md` (RBAC-001..006 → DONE with group refs), `docs/planning/progress.md` (phase 6 row), `docs/planning/qa-tracker.md` (QA-RBAC-* rows → DONE with the manual scenario each one covers) | A–E | medium |
 | P6-E12 | Full regression — `php artisan test` green, `npm run build` clean, `vendor/bin/pint --test` clean. Every pre-existing user test that calls a now-gated endpoint gets a permission grant in `setUp()`, not a deleted assertion | A–E | medium |
 
