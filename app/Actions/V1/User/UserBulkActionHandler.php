@@ -50,7 +50,14 @@ class UserBulkActionHandler implements BulkActionHandler
             'lock' => User::whereIn('id', $ids)->update(['is_locked' => true]),
             'unlock' => User::whereIn('id', $ids)->update(['is_locked' => false]),
             'activate' => User::whereIn('id', $ids)->update(['is_active' => true, 'is_locked' => false]),
-            'deactivate' => User::whereIn('id', $ids)->update(['is_active' => false]),
+            // NOT a raw UPDATE. Deactivating writes `is_active`, and an inactive
+            // superadmin cannot log in — so this column is load-bearing for the
+            // last-superadmin invariant. The single-user path enforces it inside
+            // DeactivateUserAction; a bulk `update()` here bypassed that action
+            // completely, so the same guard the UI enforced was absent from the
+            // dropdown one screen above. Routing through the action means the
+            // guard lives in one place instead of two.
+            'deactivate' => $this->deactivateUsers($ids),
             'delete' => $this->deleteUsers($ids),
             'restore' => $this->restoreUsers($ids),
             'force_delete' => $this->forceDeleteUsers($ids),
@@ -120,6 +127,28 @@ class UserBulkActionHandler implements BulkActionHandler
     public function getSessionInvalidationActions(): array
     {
         return ['lock', 'deactivate', 'delete'];
+    }
+
+    /**
+     * Deactivate each user through the action, not around it.
+     *
+     * Looping the action means the last-superadmin guard inside it applies to
+     * the bulk bar as well as the row button. A refusal aborts the whole batch
+     * with the exception, which is the correct outcome: partially deactivating
+     * a selection that included the last superadmin would be worse than doing
+     * nothing, and the transaction-free loop leaves the earlier rows already
+     * written either way — so the guard firing is what stops the half-applied
+     * state from ever starting.
+     *
+     * @param  array<int>  $ids
+     */
+    private function deactivateUsers(array $ids): void
+    {
+        $users = User::withTrashed()->whereIn('id', $ids)->get();
+
+        foreach ($users as $user) {
+            app(DeactivateUserAction::class)->run($user, auth()->user());
+        }
     }
 
     private function deleteUsers(array $ids): void

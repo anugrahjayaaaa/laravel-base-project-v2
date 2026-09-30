@@ -3,6 +3,7 @@
 namespace App\Actions\V1\User;
 
 use App\Models\User;
+use App\Support\LastSuperadmin;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
@@ -55,5 +56,11 @@ class DeleteUserAction
 
             throw new ValidationException($validator);
         }
+
+        // Trashing the last superadmin strips the role through Spatie's soft
+        // delete scope, so nobody can administer the app afterwards. Same
+        // invariant AssignRolesAction protects, on a path that never went near
+        // it. Throws LastSuperadminException, which renders as a 409 / flash.
+        LastSuperadmin::guard($user, __('deleted'));
     }
 }
