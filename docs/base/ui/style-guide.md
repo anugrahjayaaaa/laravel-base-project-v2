@@ -99,6 +99,11 @@
 - Header: uppercase, 0.7rem, letter-spacing 0.05em, muted, border-bottom.
 - Hover rows: `var(--lbp-surface-2)` background.
 - Sortable headers use the `sortable-th` Blade component.
+- Index pages paginate with the shared footer described in
+  [design-system.md §Pagination](design-system.md#pagination) — 10 per page,
+  `->paginate(10)->withQueryString()`, the same `Showing X to Y of Z` block, and
+  rows numbered `(currentPage() - 1) * perPage() + $loop->iteration`. Copy the
+  block; do not improvise a per-page variant.
 
 ## 12. Status / Badges
 

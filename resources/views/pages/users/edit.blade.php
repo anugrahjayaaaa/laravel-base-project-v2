@@ -152,31 +152,39 @@
                     @if (!$user->trashed())
                         @php $s = $user->getStatus(); @endphp
                         @if ($s->value === 'active')
-                            <x-ui.confirm-action :action="route('users.deactivate', $user)" method="POST"
-                                action-type="deactivate" :item-name="$user->name" label="Deactivate"
-                                class="btn btn-outline-warning btn-sm w-100">
-                                <i class="fas fa-user-slash me-1"></i> Deactivate
-                            </x-ui.confirm-action>
-                            <x-ui.confirm-action :action="route('users.lock', $user)" method="POST"
-                                action-type="lock" :item-name="$user->name" label="Lock"
-                                class="btn btn-outline-danger btn-sm w-100">
-                                <i class="fas fa-lock me-1"></i> Lock
-                            </x-ui.confirm-action>
+                            @can('users.deactivate')
+                                <x-ui.confirm-action :action="route('users.deactivate', $user)" method="POST"
+                                    action-type="deactivate" :item-name="$user->name" label="Deactivate"
+                                    class="btn btn-outline-warning btn-sm w-100">
+                                    <i class="fas fa-user-slash me-1"></i> Deactivate
+                                </x-ui.confirm-action>
+                            @endcan
+                            @can('users.lock')
+                                <x-ui.confirm-action :action="route('users.lock', $user)" method="POST"
+                                    action-type="lock" :item-name="$user->name" label="Lock"
+                                    class="btn btn-outline-danger btn-sm w-100">
+                                    <i class="fas fa-lock me-1"></i> Lock
+                                </x-ui.confirm-action>
+                            @endcan
                         @elseif ($s->value === 'inactive')
-                            <x-ui.confirm-action :action="route('users.activate', $user)" method="POST"
-                                action-type="activate" :item-name="$user->name" label="Activate"
-                                class="btn btn-outline-success btn-sm w-100">
-                                <i class="fas fa-user-check me-1"></i> Activate
-                            </x-ui.confirm-action>
+                            @can('users.activate')
+                                <x-ui.confirm-action :action="route('users.activate', $user)" method="POST"
+                                    action-type="activate" :item-name="$user->name" label="Activate"
+                                    class="btn btn-outline-success btn-sm w-100">
+                                    <i class="fas fa-user-check me-1"></i> Activate
+                                </x-ui.confirm-action>
+                            @endcan
                         @elseif ($s->value === 'locked')
                             {{-- No action-type: this one keeps its own copy, the way it always has. --}}
-                            <x-ui.confirm-action :action="route('users.unlock', $user)" method="POST"
-                                :item-name="$user->name" label="Unlock" title="Unlock User Account?"
-                                message="Are you sure you want to unlock {{ $user->name }}? The administrative lock will be removed, allowing normal access."
-                                variant="success" icon="bi-shield-check"
-                                class="btn btn-outline-success btn-sm w-100">
-                                <i class="fas fa-lock-open me-1"></i> Unlock
-                            </x-ui.confirm-action>
+                            @can('users.unlock')
+                                <x-ui.confirm-action :action="route('users.unlock', $user)" method="POST"
+                                    :item-name="$user->name" label="Unlock" title="Unlock User Account?"
+                                    message="Are you sure you want to unlock {{ $user->name }}? The administrative lock will be removed, allowing normal access."
+                                    variant="success" icon="bi-shield-check"
+                                    class="btn btn-outline-success btn-sm w-100">
+                                    <i class="fas fa-lock-open me-1"></i> Unlock
+                                </x-ui.confirm-action>
+                            @endcan
                         @endif
                     @endif
 
@@ -198,23 +206,29 @@
                 </div>
                 <div class="card-body d-grid gap-2">
                     @if ($user->trashed())
-                        <x-ui.confirm-action :action="route('users.restore', $user)" method="POST"
-                            action-type="restore" :item-name="$user->name" label="Restore"
-                            class="btn btn-outline-success btn-sm w-100">
-                            <i class="fas fa-rotate-left me-1"></i> Restore User
-                        </x-ui.confirm-action>
-                        <x-ui.confirm-action :action="route('users.force-delete', $user)" method="DELETE"
-                            action-type="force_delete" :item-name="$user->name" label="Permanent Delete"
-                            class="btn btn-danger btn-sm w-100">
-                            <i class="fas fa-trash me-1"></i> Permanent Delete
-                        </x-ui.confirm-action>
+                        @can('users.restore')
+                            <x-ui.confirm-action :action="route('users.restore', $user)" method="POST"
+                                action-type="restore" :item-name="$user->name" label="Restore"
+                                class="btn btn-outline-success btn-sm w-100">
+                                <i class="fas fa-rotate-left me-1"></i> Restore User
+                            </x-ui.confirm-action>
+                        @endcan
+                        @can('users.force_delete')
+                            <x-ui.confirm-action :action="route('users.force-delete', $user)" method="DELETE"
+                                action-type="force_delete" :item-name="$user->name" label="Permanent Delete"
+                                class="btn btn-danger btn-sm w-100">
+                                <i class="fas fa-trash me-1"></i> Permanent Delete
+                            </x-ui.confirm-action>
+                        @endcan
                         <p class="text-muted small mt-1 mb-0">User is in trash. Restore or permanently delete.</p>
                     @else
-                        <x-ui.confirm-action :action="route('users.destroy', $user)" method="DELETE"
-                            action-type="delete" :item-name="$user->name" label="Delete"
-                            class="btn btn-outline-danger btn-sm w-100">
-                            <i class="fas fa-trash me-1"></i> Delete
-                        </x-ui.confirm-action>
+                        @can('users.delete')
+                            <x-ui.confirm-action :action="route('users.destroy', $user)" method="DELETE"
+                                action-type="delete" :item-name="$user->name" label="Delete"
+                                class="btn btn-outline-danger btn-sm w-100">
+                                <i class="fas fa-trash me-1"></i> Delete
+                            </x-ui.confirm-action>
+                        @endcan
                         <p class="text-muted small mt-1 mb-0">Temporary delete. Can be restored.</p>
                     @endif
                 </div>

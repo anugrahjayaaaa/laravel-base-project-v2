@@ -34,13 +34,20 @@ class SecurityAuditTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        $this->seed(\Database\Seeders\RoleSeeder::class);
+        $this->seed(\Database\Seeders\PermissionSeeder::class);
         $this->app->make(\Spatie\Permission\PermissionRegistrar::class)->forgetCachedPermissions();
         Cache::flush();
     }
 
     protected function makeUsers(array $overrides = []): array
     {
-        $adminRole = Role::create(['name' => 'admin', 'guard_name' => 'api']);
+        // Seeded rather than hand-made: the admin role's permission rows come
+        // from PermissionSeeder (RBAC-004), and the hand-made row was on the
+        // 'api' guard with no permissions, so it satisfied no users.* gate.
+        $adminRole = Role::where('name', 'admin')
+            ->where('guard_name', \App\Models\RoleLookup::guard())
+            ->firstOrFail();
         $admin = User::factory()->create(array_merge([
             'name' => 'Admin',
             'email' => 'admin@example.com',
@@ -148,45 +155,68 @@ class SecurityAuditTest extends TestCase
     // =====================================================================
 
     #[Test]
-    public function test_regular_user_can_view_other_users_via_api_idor(): void
+    /**
+     * A user without users.view cannot read another user's record by id.
+     *
+     * INVERTED in Phase 6, same as the CRUD test above: this one was named
+     * "...idor" but asserted a 200, so it documented the hole instead of
+     * closing it. Both halves are asserted now — the regular user is refused,
+     * and the admin who is allowed still gets the record, so the gate cannot be
+     * "fixed" by breaking the endpoint outright.
+     */
+    public function test_regular_user_cannot_view_other_users_via_api_idor(): void
     {
         [$admin, $regular] = $this->makeUsers();
         $target = User::factory()->create(['name' => 'Target']);
+
         $this->actingAsApi($regular);
+        $this->getJson(route('api.v1.users.show', $target->id))->assertStatus(403);
+
+        $this->actingAsApi($admin);
         $this->getJson(route('api.v1.users.show', $target->id))
             ->assertStatus(200)
             ->assertJsonPath('data.user.name', 'Target');
     }
 
     #[Test]
-    public function test_regular_user_can_crud_other_users_via_api(): void
+    /**
+     * A user with no users.* permission is refused every admin endpoint.
+     *
+     * INVERTED in Phase 6. This test used to assert that a "regular" user could
+     * create, list, update and delete other users through the API — which is to
+     * say, it asserted the vulnerability rather than its absence. The four 2xx
+     * responses it required were the thing RBAC exists to prevent, so the
+     * expectations are now 403 and the state is asserted rather than assumed.
+     */
+    public function test_regular_user_cannot_crud_other_users_via_api(): void
     {
         [$admin, $regular] = $this->makeUsers();
         $this->actingAsApi($regular);
 
-        // Create user
         $this->postJson(route('api.v1.users.store'), [
             'name' => 'Hacker',
             'username' => 'hacker',
             'email' => 'hacker@test.com',
             'password' => 'Password123!',
             'password_confirmation' => 'Password123!',
-        ])->assertStatus(201);
+        ])->assertStatus(403);
 
-        // List users
-        $this->getJson(route('api.v1.users.index'))->assertStatus(200);
+        $this->getJson(route('api.v1.users.index'))->assertStatus(403);
 
-        // Update another user
         $target = User::factory()->create();
         $this->putJson(route('api.v1.users.update', $target->id), [
             'name' => 'Hijacked',
             'email' => $target->email,
             'status' => 'inactive',
-        ])->assertStatus(200);
+        ])->assertStatus(403);
 
-        // Delete another user
         $victim = User::factory()->create();
-        $this->deleteJson(route('api.v1.users.destroy', $victim->id))->assertStatus(200);
+        $this->deleteJson(route('api.v1.users.destroy', $victim->id))->assertStatus(403);
+
+        // None of the four attempts changed anything.
+        $this->assertDatabaseMissing('users', ['email' => 'hacker@test.com']);
+        $this->assertNotSame('Hijacked', $target->fresh()->name);
+        $this->assertNull($victim->fresh()->deleted_at);
     }
 
     #[Test]

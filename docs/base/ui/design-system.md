@@ -99,7 +99,7 @@ Shared table conventions:
 - Columns sortable where meaningful (consistent UI pattern)
 - Bulk selection supported where applicable
 - Bulk actions exposed consistently
-- Pagination follows shared convention
+- Pagination follows the shared convention — see §Pagination (structure + tokens)
 - Search/filter controls follow shared UI convention
 
 ### Table Actions Column
@@ -214,11 +214,40 @@ Omitting it is the honest signal that a trigger brings its own
 
 ### Pagination
 
-|| Element | Token |
-||---------|-------|
-|| Active page | `primary` |
-|| Hover page | `surface-alt` |
-|| Border | `border` |
+The one footer for every index page, inside `card-body p-4` after
+`.table-responsive`.
+
+```html
+<!-- Pagination -->
+<div class="d-flex justify-content-between align-items-center mt-3 flex-wrap gap-2">
+    @if ($items->total() > 0)
+        <small class="text-muted">
+            Showing {{ $items->firstItem() }} to {{ $items->lastItem() }} of {{ $items->total() }} entries
+        </small>
+    @endif
+    <div class="d-flex">
+        {{ $items->links() }}
+    </div>
+</div>
+```
+
+| Rule | Value | Why |
+|------|-------|-----|
+| Per page | `10` | `paginate(10)` — one shared value, not a per-page decision |
+| Controller | `->paginate(10)->withQueryString()` | **required** — without it page 2 silently drops the active filter and sort, and the user lands on a different list than the one they were reading |
+| Empty result | Render the count block only when `total() > 0` | `firstItem()` is null on an empty page; "Showing  to  of 0" is the tell |
+| Wrapper | `justify-content-between`, `flex-wrap gap-2` | Count left, controls right; wraps to a stack on mobile instead of overflowing |
+| Row numbering | `(currentPage() - 1) * perPage() + loop->iteration` | Plain `$loop->iteration` restarts at 1 on every page, so page 2 numbers its rows 1..10 again |
+| Placement | After the table, inside `card-body` | Never in `card-footer` — that is reserved for form actions |
+| Active page | `primary` | |
+| Hover page | `surface-alt` | |
+| Border | `border` | |
+
+Bootstrap 5's default `links()` view is used as-is. Do not build a custom
+paginator or swap the view per page: the block above is the whole convention.
+
+Reference implementations: `resources/views/pages/users/index.blade.php`,
+`pages/roles/index.blade.php`, `pages/permissions/index.blade.php`.
 
 ### Navigation Tabs (Status Filter)
 

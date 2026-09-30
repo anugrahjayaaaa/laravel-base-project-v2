@@ -22,7 +22,15 @@ class UserCrudApiTest extends TestCase
 
         $this->app->make(\Spatie\Permission\PermissionRegistrar::class)->forgetCachedPermissions();
 
-        $adminRole = Role::create(['name' => 'admin', 'guard_name' => 'api']);
+        // Seeded, and on the guard the app actually resolves for a User. The
+        // hand-made row was on the 'api' guard and carried no permissions, so it
+        // was invisible to every users.* check.
+        $this->seed(\Database\Seeders\RoleSeeder::class);
+        $this->seed(\Database\Seeders\PermissionSeeder::class);
+
+        $adminRole = Role::where('name', 'admin')
+            ->where('guard_name', \App\Models\RoleLookup::guard())
+            ->firstOrFail();
         $admin = User::factory()->create([
             'name' => 'Admin',
             'email' => 'admin@example.com',
@@ -193,12 +201,13 @@ class UserCrudApiTest extends TestCase
 
     // -- Authorization --
 
-    public function test_unauthenticated_user_cannot_access_api(): void
+    public function test_a_token_without_users_view_cannot_list_users(): void
     {
+        // Authenticates fine, holds nothing: the token passes auth:sanctum and
+        // is still refused, which is the Phase 6 gate this test was waiting for.
         Sanctum::actingAs(User::factory()->create(), []);
 
-        // auth:sanctum passes; RBAC permission gates come in Phase 6
         $this->getJson(route('api.v1.users.index'))
-            ->assertStatus(200);
+            ->assertStatus(403);
     }
 }

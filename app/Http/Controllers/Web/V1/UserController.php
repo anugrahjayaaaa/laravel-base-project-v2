@@ -69,7 +69,7 @@ class UserController extends Controller
      */
     public function store(CreateUserRequest $request)
     {
-        $user = $this->createAction->run($request->validated());
+        $user = $this->createAction->run($request->validated(), causer: $request->user());
 
         $user->audit('user.created', $request->user());
 
@@ -92,10 +92,11 @@ class UserController extends Controller
             status: $status,
             sort: $request->validated('sort', 'created_at'),
             direction: $request->validated('direction', 'desc'),
+            viewer: $request->user(),
             perPage: $request->validated('per_page', 10),
         );
 
-        $counts = $this->indexAction->counts();
+        $counts = $this->indexAction->counts($request->user());
 
         return view('pages.users.index', [
             'title' => 'Users',
@@ -149,7 +150,7 @@ class UserController extends Controller
      */
     public function update(UpdateUserRequest $request, User $user)
     {
-        $this->updateAction->run($user, $request->validated());
+        $this->updateAction->run($user, $request->validated(), $request->user());
 
         $user->audit('user.updated', $request->user());
 
@@ -267,8 +268,17 @@ class UserController extends Controller
      * @param  User  $user
      * @return RedirectResponse
      */
-    public function cancelEmailChange(User $user)
+    public function cancelEmailChange(Request $request, User $user)
     {
+        // Plain Request on purpose: EmailChangeRequest validates an `email`
+        // field, which this endpoint does not submit. Same rule as that request
+        // — own account, or users.update. This had no guard at all, so any
+        // authenticated account could clear another user's pending_email.
+        abort_unless(
+            $user->is($request->user()) || $request->user()?->can('users.update'),
+            403
+        );
+
         $this->cancelEmailChangeAction->run($user);
 
         $user->audit('user.email_change_cancelled', auth()->user());

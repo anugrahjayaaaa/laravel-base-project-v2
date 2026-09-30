@@ -2,6 +2,7 @@
 
 namespace App\Observers;
 
+use App\Actions\V1\User\UserIndexAction;
 use App\Models\User;
 use Illuminate\Support\Facades\Cache;
 
@@ -15,7 +16,9 @@ class UserObserver
      */
     public function saved(User $user): void
     {
-        Cache::forget('user_index_counts');
+        foreach (UserIndexAction::cacheKeys() as $key) {
+            Cache::forget($key);
+        }
     }
 
     /**
@@ -23,7 +26,9 @@ class UserObserver
      */
     public function deleted(User $user): void
     {
-        Cache::forget('user_index_counts');
+        foreach (UserIndexAction::cacheKeys() as $key) {
+            Cache::forget($key);
+        }
     }
 
     /**
@@ -31,6 +36,8 @@ class UserObserver
      */
     public function restored(User $user): void
     {
-        Cache::forget('user_index_counts');
+        foreach (UserIndexAction::cacheKeys() as $key) {
+            Cache::forget($key);
+        }
     }
 }

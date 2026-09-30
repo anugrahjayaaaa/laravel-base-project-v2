@@ -24,6 +24,8 @@ class SharedIdentityFieldsTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        $this->seed(\Database\Seeders\RoleSeeder::class);
+        $this->seed(\Database\Seeders\PermissionSeeder::class);
         $this->app->make(\Spatie\Permission\PermissionRegistrar::class)->forgetCachedPermissions();
 
         // Several suites flip this off and the store is cached, so a test that
@@ -41,7 +43,9 @@ class SharedIdentityFieldsTest extends TestCase
         $guard = RoleLookup::guard();
 
         $admin = User::factory()->create(['name' => 'John Ronald Reuel Tolkien', 'is_active' => true]);
-        $admin->assignRole(Role::create(['name' => 'admin', 'guard_name' => $guard]));
+        // The seeded admin, not Role::create(): the seeder already made the row,
+        // and a second create for the same (name, guard) throws.
+        $admin->assignRole(Role::where('name', 'admin')->where('guard_name', $guard)->firstOrFail());
 
         return $admin;
     }

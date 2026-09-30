@@ -25,6 +25,12 @@
         </div>
     @endif
 
+    {{-- The route is gated on settings.view, so someone holding only that gets a
+         READ-ONLY page rather than a 403 — they can see what is configured but
+         cannot change it. Wrapping the whole form (inputs AND the save button in
+         one pair) is what makes the page read-only; gating the button alone would
+         leave editable fields that silently discard what is typed into them. --}}
+    @can('settings.manage')
     <form method="POST" action="{{ route('settings.update') }}">
         @csrf
 
@@ -565,6 +571,42 @@
             </div>
         </div>
     </form>
+    @else
+        {{-- settings.view without settings.manage. The editable form is NOT
+             rendered: leaving inputs on screen and hiding only Save would let
+             someone fill them in and discover on submit that nothing happened.
+             Read-only means the values are visible and there is nothing to fill.
+             The server re-checks regardless — see SystemSettingRequest. --}}
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-transparent border-bottom py-3 d-flex justify-content-between align-items-center">
+                <h5 class="card-title mb-0 fw-semibold">System Settings</h5>
+                <span class="badge bg-secondary-subtle text-secondary">Read-only</span>
+            </div>
+            <div class="card-body p-4">
+                <p class="text-muted fs-6">
+                    You can view these settings but not change them.
+                </p>
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th scope="col" style="width: 40%">Setting</th>
+                                <th scope="col">Current value</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (($settings ?? []) as $key => $value)
+                                <tr>
+                                    <td class="text-muted"><code>{{ $key }}</code></td>
+                                    <td>{{ is_bool($value) ? ($value ? 'true' : 'false') : $value }}</td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    @endcan
 
     <script>
         document.addEventListener('DOMContentLoaded', function () {

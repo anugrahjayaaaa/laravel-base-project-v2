@@ -12,7 +12,7 @@
 ||| 3 | Authentication foundation | IN PROGRESS (implementation breakdown DONE; phase status not yet reconciled) |
 ||| 4 | User lifecycle & user management | DONE |
 ||| 5 | Password/security lifecycle | DONE — Groups A, B, and C verified |
-| 6 | RBAC & authorization | PLANNED |
+| 6 | RBAC & authorization | IN PROGRESS — Groups A (UI) and B (permission set + seeders) DONE; C–E pending |
 | 7 | Feature availability / feature flags | PLANNED |
 | 8 | Settings | PLANNED |
 | 9 | Notification/mail/queue | PLANNED |
@@ -26,6 +26,97 @@
 | 17 | Full regression / final review | PLANNED |
 
 ## Current Task
+
+Phase 6 — RBAC & Authorization: ✅ COMPLETED / CLOSED (2026-09-30)
+Every gate closed. Full suite 661 passed / 2243 assertions, 0 regressions; pint clean; assets build clean.
+
+One live vulnerability was found and fixed during Group E rather than confirmed absent: the last superadmin could be
+removed by DEACTIVATING or DELETING the account, not only by stripping the role — three sibling actions that never
+asked. The bulk deactivate compounded it with a raw `UPDATE` that bypassed the action entirely. See
+`docs/planning/phase-6-rbac.md` § Adversarial and the E4 notes in `task-tracker.md`.
+- Group A (UI): ✅ DONE (2026-09-28, audited)
+- Group B (permission set + seeders): ✅ DONE (2026-09-28, verified)
+- Group C1 (role management, web): ✅ DONE (2026-09-29, audited) — P6-C1..C6
+- Group C2 (permission catalogue, read-only): ✅ DONE (2026-09-29, audited) — P6-C7/C8; grouping by prefix not built, open decision
+- Group C3 (role assignment sync): ✅ DONE (2026-09-29, audited) — P6-C9..C12; C13 merged into `AssignRolesAction`
+- Group C4 (authorization guards + policy): ✅ DONE — P6-C14..C18. Shipped in `015d6c3`: the four ungated `authorize()` returns are closed, bulk actions map to their own permission via `AuthorizesBulkAction`, and `UserPolicy` delegates the seven CRUD methods to `users.*`. Pinned by `GateCAuthorizationTest` (8 tests)
+
+**Gate C: MET (2026-09-30, re-measured).** All four C groups ship, and the
+negative case is pinned rather than assumed: `GateCAuthorizationTest` asserts a
+403 for a zero-permission user on every admin read route, on user create/update
+(both the other-user and the escalate-my-own-profile shapes), on both bulk bars,
+and on settings write. `RoleManagementTest` pins the same for all five role
+write routes. Role assignment sync is pinned four ways by
+`AssignRolesActionTest` (sync, unknown-name skip, empty-clears, absent-key
+untouched) plus the last-superadmin guard in both directions. Full suite: 505
+passed / 1657 assertions.
+
+**Next:** Group D (route, menu & UI gating). The seven ungated user state routes
+and `api.v1.settings.index` are P6-D1/D2 — `UserPolicy` already has the methods,
+nothing calls them yet. Phase report + docs are P6-E11.
+
+**Group B delivered:**
+- `App\Support\PermissionCatalog` — 19 permissions, the single source of truth
+- `PermissionSeeder` — prune orphans → create → assign, cache flushed at all three points
+- `Gate::before` — `superadmin` passes every check and holds 0 `role_has_permissions` rows
+- `SuperAdminSeeder` now assigns the role (it never did; `Gate::before` made that a real bug)
+- `admin` holds the whole catalogue; `user` holds none
+- Gate: `PermissionSeedTest` 17 tests/114 assertions, `PermissionCacheTest` 5/10
+
+**Audit vs spec** — 6 deviations recorded in `phase-6-rbac.md` § Group B,
+including two that fixed real bugs: the seeder only ever added (a permission
+removed from the catalogue stayed in the DB forever) and `SuperAdminSeeder`
+never assigned its role.
+
+**Group C1 delivered (2026-09-29, audited against `phase-6-rbac.md` § C1):**
+- `StoreRoleRequest` / `UpdateRoleRequest` / `DeleteRoleRequest` /
+  `RestoreRoleRequest` / `ForceDeleteRoleRequest` — every one carries a real
+  `authorize()` checking `roles.create` / `roles.update` / `roles.delete` /
+  `roles.restore` / `roles.force_delete`. Unique rules are guard-scoped via
+  `RoleLookup::guard()`.
+- `IndexRoleAction` — guard-scoped, `withCount`, `search` before
+  `paginate(10)`, `withQueryString`, and a `trashed` flag that scopes the whole
+  query to the trash rather than filtering rows.
+- `CreateRoleAction` / `UpdateRoleAction` — the spec named one `SaveRoleAction`;
+  implemented as two verbs sharing an `App\Actions\Concerns\PersistsRole` trait,
+  which holds the `DB::transaction`, the `array_map('intval', …)` before
+  `syncPermissions` (Spatie resolves a string `'19'` as a permission *named* "19"
+  and throws), and the audit write **inside** the transaction per DEP-003. Split
+  the verbs to match `CreateUserAction` / `UpdateUserAction` on the user side.
+- `DeleteRoleAction` — refuses system roles, refuses a populated role unless
+  `force`, then in ONE transaction: `users()->detach()` → soft delete → audit
+  carrying `revoked_users` / `revoked_permissions`. `RestoreRoleAction` and
+  `ForceDeleteRoleAction` own the other two verbs. The detach is explicit
+  because Spatie's `deleting` hook skips it on a non-force delete, so relying on
+  the package would revoke nothing.
+- `RoleController` — thin, 10 methods, resolves route data and delegates.
+
+**Beyond the C1 spec (shipped, and now documented):**
+- Soft delete + trash tab, restore, and permanent delete for roles. Not in the
+  C1 table — added for the enterprise/SaaS retirement requirement.
+- Bulk actions on the roles index (`POST /roles/bulk-action`), reusing
+  `BulkActionProcessor` + a `RoleBulkActionHandler`, and the shared
+  `bulk-actions.js` parameterised via `data-*` so users and roles share one file.
+- A refused action is now **visible**: `layouts/partials/alerts.blade.php` is
+  included by both index views. Previously a `ValidationException` from a
+  button-driven action landed in the session with nothing rendering it, and the
+  browser returned to a byte-identical page.
+
+**`BulkRoleRequest::authorize()` blanket `true` (regression from C1, fixed by
+P6-C17).** Both bulk requests now share the `AuthorizesBulkAction` trait, so the
+requested action maps to its own permission and an unmapped action fails closed.
+
+**Open (tracked, not forgotten):** the Group A GET routes still carry no
+`can:` gate, which is P6-D1 by design. The role forms and delete trigger no
+longer point at `roles.index` as placeholders — Group C1 gave them real
+endpoints, and Group C2 closed the reads behind `can:roles.view` /
+`can:roles.create` / `can:roles.update` / `can:permissions.view` once Group B had
+seeded the catalogue those gates check against. The role **write** routes still
+have no `can:` on the route itself; each is gated by its own Form Request
+(`StoreRoleRequest` → `roles.create`, etc.), which is why
+`RoleManagementTest` can assert 403 on all five. Route-level gates there are
+defence in depth, tracked as P6-D1. RBAC-006 (`/users` + `/settings` ungated on
+the API twin) is also still open.
 
 Phase 5C — Password Expiration & Inactivity Lock: ✅ FULLY DONE
 - Shared Web/API settings action

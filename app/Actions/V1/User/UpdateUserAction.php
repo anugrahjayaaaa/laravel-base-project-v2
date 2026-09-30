@@ -2,6 +2,7 @@
 
 namespace App\Actions\V1\User;
 
+use App\Actions\V1\Role\AssignRolesAction;
 use App\Enums\UserStatusEnum;
 use App\Models\User;
 use App\Notifications\ChangeEmailVerificationNotification;
@@ -13,14 +14,20 @@ use Illuminate\Support\Str;
  */
 class UpdateUserAction
 {
+    public function __construct(
+        private readonly AssignRolesAction $assignRolesAction,
+    ) {
+    }
+
     /**
      * Update user fields. Handles email change via verification flow if email changes.
      *
-     * @param  User   $user
-     * @param  array  $data  Keys: name, status, username, email, roles (all optional except name/status)
+     * @param  User       $user
+     * @param  array      $data     Keys: name, status, username, email, roles (all optional except name/status)
+     * @param  User|null  $causer   Who to attribute the audit record to
      * @return User
      */
-    public function run(User $user, array $data): User
+    public function run(User $user, array $data, ?User $causer = null): User
     {
         $user->update([
             'name' => strip_tags($data['name'] ?? $user->name),
@@ -57,7 +64,16 @@ class UpdateUserAction
         // and an empty array is a deliberate "remove them all" — array_key_exists
         // tells those two apart where isset() cannot.
         if (array_key_exists('roles', $data)) {
-            $user->syncRoles($data['roles'] ?? []);
+            $user = $this->assignRolesAction->run(
+                $user,
+                $data['roles'] ?? [],
+                $causer,
+                // P6-E5: only a payload that explicitly confirmed it may add or
+                // remove superadmin. The cast matters — an unchecked HTML
+                // checkbox is absent, and a hidden "0" arrives as the string
+                // "0", which is falsy but NOT false.
+                filter_var($data['confirm_superadmin'] ?? false, FILTER_VALIDATE_BOOLEAN)
+            );
         }
 
         return $user->fresh();

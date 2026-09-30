@@ -27,6 +27,14 @@ class UserRoleEditTest extends TestCase
 
         $this->withoutMiddleware(\App\Http\Middleware\VerifyCsrfToken::class);
 
+        // The admin form is permission-gated (P6-C14/C15), and a bare
+        // `Role::findOrCreate('admin')` holds no permission rows — the matrix
+        // lives in PermissionSeeder (RBAC-004), so both must run before the
+        // admin is expected to pass `can()`. Kept as `admin` rather than
+        // superadmin on purpose: this suite is about a delegated admin.
+        $this->seed(\Database\Seeders\RoleSeeder::class);
+        $this->seed(\Database\Seeders\PermissionSeeder::class);
+
         $this->admin = User::factory()->create();
         $this->admin->assignRole(Role::findOrCreate('admin', 'web'));
         $this->actingAs($this->admin);

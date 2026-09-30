@@ -12,11 +12,11 @@ use Illuminate\Validation\Rule;
 class SystemSettingRequest extends FormRequest
 {
     /**
-     * Guest route,always authorized.
+     * Settings are administrator-only.
      */
     public function authorize(): bool
     {
-        return true;
+        return $this->user()?->can('settings.manage') ?? false;
     }
 
     /**
@@ -81,14 +81,16 @@ class SystemSettingRequest extends FormRequest
             // Self-registration
             'registration_enabled' => ['boolean'],
             'registration_rate_limit_per_minute' => ['integer', 'min:1', 'max:30'],
-            // Empty means "no role"; otherwise it must name a real one on the
-            // guard the app can actually assign, or the create action would
-            // silently assign nothing. Scoped to that guard because the table
-            // can hold the same name twice, once per guard.
+            // Empty means "no role"; otherwise it must name a role this viewer
+            // is allowed to pick. That set is the very one the dropdown is built
+            // from, so the form cannot offer a choice the rules then refuse, or
+            // vice versa — the earlier Rule::exists only asked "does this role
+            // exist?", which let a non-superadmin set the default to superadmin
+            // by posting it directly and make every self-registrant one.
             'registration_default_role' => [
                 'nullable',
                 'string',
-                Rule::exists('roles', 'name')->where('guard_name', RoleLookup::guard()),
+                Rule::in(RoleLookup::visibleTo($this->user())->pluck('name')),
             ],
         ];
     }

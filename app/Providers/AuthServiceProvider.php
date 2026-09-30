@@ -6,11 +6,13 @@ use App\Auth\LoginThrottle;
 use App\Models\SystemSetting;
 use App\Models\User;
 use App\Policies\UserPolicy;
+use App\Support\SystemRole;
 use Illuminate\Auth\Notifications\VerifyEmail;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Middleware\ThrottleRequests;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
 
@@ -32,8 +34,34 @@ class AuthServiceProvider extends ServiceProvider
     public function boot(): void
     {
         ThrottleRequests::shouldHashKeys(false);
+        $this->configureSuperAdmin();
         $this->configureRateLimiters();
         $this->configureEmailVerification();
+    }
+
+    /**
+     * Let superadmin pass every Gate check.
+     *
+     * The superadmin role holds no rows in role_has_permissions — its access
+     * lives here instead, so adding a permission to PermissionCatalog never
+     * requires re-seeding the role and editing a role's permission set can
+     * never strip a superadmin of a capability.
+     *
+     * MUST return null when the user is not a superadmin, never false. Gate
+     * treats a non-null return as a final answer and stops: returning false
+     * would short-circuit every policy in the app and deny all users, not just
+     * this one. null means "no opinion, keep going" and lets the normal
+     * permission/policy path run.
+     *
+     * Before, not after: a policy that must still apply to a superadmin (see
+     * UserPolicy) can be expressed explicitly, but a `before` returning true
+     * wins over it. Anything of that kind belongs in the policy, not here.
+     */
+    protected function configureSuperAdmin(): void
+    {
+        Gate::before(function (User $user, string $ability): ?bool {
+            return $user->hasRole(SystemRole::SUPERADMIN) ? true : null;
+        });
     }
 
     /**

@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\User;
 
+use App\Http\Requests\Concerns\NormalizesRolePayload;
 use App\Models\SystemSetting;
 use App\Enums\UserStatusEnum;
 use Illuminate\Foundation\Http\FormRequest;
@@ -13,12 +14,30 @@ use Illuminate\Validation\ValidationException;
  */
 class UpdateUserRequest extends FormRequest
 {
+    use NormalizesRolePayload;
+
     /**
-     * Guest route,always authorized.
+     * `users.update`, or a self-profile edit.
+     *
+     * The self-profile exception is deliberately narrow: the caller must be the
+     * target AND must not be sending a `roles` key. Otherwise a user editing
+     * their own profile could hand themselves a superadmin role, and the
+     * narrower rule says so at the boundary rather than relying on every caller
+     * to remember it.
      */
     public function authorize(): bool
     {
-        return true;
+        $user = $this->user();
+
+        if ($user?->can('users.update') === true) {
+            return true;
+        }
+
+        $target = $this->route('user');
+
+        return $target !== null
+            && (string) $user?->getKey() === (string) $target->getKey()
+            && ! $this->has('roles');
     }
 
     /**
@@ -36,6 +55,9 @@ class UpdateUserRequest extends FormRequest
             // Same shape as CreateUserRequest: an array of existing role names.
             // The action syncs, so an empty array legitimately clears every role.
             'roles' => ['nullable', 'array'],
+            // P6-E5 — see CreateUserRequest. Enforced by AssignRolesAction only
+            // when superadmin is genuinely being added or removed.
+            'confirm_superadmin' => ['nullable', 'boolean'],
             'roles.*' => ['string', 'exists:roles,name'],
         ];
 

@@ -75,6 +75,7 @@ class UserController extends Controller
             status: $status,
             sort: $request->validated('sort', 'created_at'),
             direction: $request->validated('direction', 'desc'),
+            viewer: $request->user(),
             perPage: $request->validated('per_page', 10),
         );
 
@@ -97,7 +98,7 @@ class UserController extends Controller
      */
     public function store(CreateUserRequest $request): JsonResponse
     {
-        $user = $this->createAction->run($request->validated());
+        $user = $this->createAction->run($request->validated(), causer: $request->user());
 
         $user->audit('user.created', $request->user());
 
@@ -132,7 +133,7 @@ class UserController extends Controller
      */
     public function update(UpdateUserRequest $request, User $user): JsonResponse
     {
-        $this->updateAction->run($user, $request->validated());
+        $this->updateAction->run($user, $request->validated(), $request->user());
 
         $user->audit('user.updated', $request->user());
 
@@ -240,6 +241,13 @@ class UserController extends Controller
      */
     public function cancelEmailChange(Request $request, User $user): JsonResponse
     {
+        // Same rule as the web controller: own account, or users.update. Same
+        // unguarded hole, so it is closed here too rather than only on one layer.
+        abort_unless(
+            $user->is($request->user()) || $request->user()?->can('users.update'),
+            403
+        );
+
         $this->cancelEmailChangeAction->run($user);
 
         $user->audit('user.email_change_cancelled', $request->user());

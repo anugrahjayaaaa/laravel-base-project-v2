@@ -38,6 +38,15 @@ class ForceDeleteUserAction
      */
     protected function validate(User $user, User $causer): void
     {
+        // No last-superadmin guard here, deliberately. This action only accepts
+        // an ALREADY-trashed user, and DeleteUserAction refused to trash the
+        // last active superadmin — a trashed row is outside both
+        // `LastSuperadmin::activeSuperadminCount()` and Spatie's role scope, so
+        // by the time a user reaches this method they cannot be the last one
+        // standing. Adding a guard would be a second place to keep in sync with
+        // no case it could ever refuse. The "last active user" check below is
+        // a different invariant: it stops emptying the users table entirely,
+        // which this action can still do.
         if ($user->id === $causer->id) {
             $validator = Validator::make([], []);
 

@@ -18,6 +18,8 @@ class SystemSettingUpdateTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        $this->seed(\Database\Seeders\RoleSeeder::class);
+        $this->seed(\Database\Seeders\PermissionSeeder::class);
         $this->withoutMiddleware(\App\Http\Middleware\VerifyCsrfToken::class);
         Http::fake([
             'aisenseapi.com/*' => Http::response([
@@ -32,6 +34,7 @@ class SystemSettingUpdateTest extends TestCase
     public function test_update_settings_persists_to_database(): void
     {
         $user = User::factory()->create();
+        $user->assignRole(\App\Models\RoleLookup::find('admin'));
         $this->actingAs($user, 'web');
 
         $response = $this->from('/settings')->post(route('settings.update'), [
@@ -62,6 +65,7 @@ class SystemSettingUpdateTest extends TestCase
     public function test_sweep_schedule_settings_can_be_customized(): void
     {
         $user = User::factory()->create();
+        $user->assignRole(\App\Models\RoleLookup::find('admin'));
         $this->actingAs($user, 'web');
         $this->seed(TimezoneSeeder::class);
 
@@ -78,6 +82,7 @@ class SystemSettingUpdateTest extends TestCase
     public function test_sweep_schedule_rejects_invalid_timezone(): void
     {
         $user = User::factory()->create();
+        $user->assignRole(\App\Models\RoleLookup::find('admin'));
         $this->actingAs($user, 'web');
 
         $response = $this->from('/settings')->post(route('settings.update'), [
@@ -94,6 +99,7 @@ class SystemSettingUpdateTest extends TestCase
         SystemSetting::set('inactivity_lock_grace_days', '45');
 
         $user = User::factory()->create();
+        $user->assignRole(\App\Models\RoleLookup::find('admin'));
         $this->actingAs($user, 'web');
 
         $response = $this->from('/settings')->post(route('settings.update'), [
@@ -109,6 +115,7 @@ class SystemSettingUpdateTest extends TestCase
     public function test_enabled_grace_toggle_stores_grace_days(): void
     {
         $user = User::factory()->create();
+        $user->assignRole(\App\Models\RoleLookup::find('admin'));
         $this->actingAs($user, 'web');
 
         $response = $this->from('/settings')->post(route('settings.update'), [
@@ -127,6 +134,7 @@ class SystemSettingUpdateTest extends TestCase
         SystemSetting::set('allow_email_change', 'true');
 
         $user = User::factory()->create();
+        $user->assignRole(\App\Models\RoleLookup::find('admin'));
         $this->actingAs($user, 'web');
 
         $response = $this->from('/settings')->post(route('settings.update'), [
@@ -147,6 +155,7 @@ class SystemSettingUpdateTest extends TestCase
         SystemSetting::bustCache();
 
         $user = User::factory()->create();
+        $user->assignRole(\App\Models\RoleLookup::find('admin'));
         $response = $this->actingAs($user, 'web')->get(route('settings.index'));
 
         $response->assertOk()
@@ -170,6 +179,7 @@ class SystemSettingUpdateTest extends TestCase
         $this->assertFalse(SystemSetting::getBool('allow_email_change'));
 
         $user = User::factory()->create();
+        $user->assignRole(\App\Models\RoleLookup::find('admin'));
         $this->actingAs($user, 'web');
 
         // Update via UI POST

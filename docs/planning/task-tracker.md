@@ -100,6 +100,74 @@ observers for audit. See `docs/base/architecture/application-components.md` §Ac
 
 ---
 
+### Phase 6 — RBAC & Authorization
+
+| ID | Task | Phase | Priority | Depends On | Status |
+|----|------|-------|----------|-----------|--------|
+| RBAC-001 | Seed roles (superadmin, admin, user) | 6 | P0 | DB-002 | DONE |
+| RBAC-002 | Implement role management | 6 | P0 | RBAC-001 | DONE — C1 (P6-C1..C6 + soft delete + bulk), C2 (catalogue), C3 (assignment sync), C4 (ungated `authorize()` returns). Gate C met; role write routes still lack a route-level `can:` (defence in depth, P6-D1) |
+| RBAC-003 | Implement permission management | 6 | P0 | RBAC-001 | DONE — catalogue seeded by Group B (`PermissionSeeder`, prune-then-create), read-only web page by C2 (P6-C7/C8). No create/edit UI, by design: a permission row no `can()` references grants nothing |
+| RBAC-004 | Define permission set | 6 | P0 | P0-004 | DONE — `PermissionCatalog` (19), `PermissionSeeder` |
+| RBAC-005 | Superadmin + system-role protection | 6 | P0 | RBAC-001 | DONE — `Gate::before` (AuthServiceProvider), SuperAdminSeeder, C6 system-role delete/rename refusal, C11 last-superadmin assignment guard, and Group E closes the rest: **E3** system-role permissions refused in `PersistsRole::persist()` (the matrix was one POST from emptying `admin`), **E4** `LastSuperadmin::guard()` on deactivate AND delete — the two paths `AssignRolesAction` never covered, verified exploitable end to end (superadmin count reached 0) and fixed at the root, including the bulk handler whose raw `UPDATE` bypassed the action entirely, **E5** `confirm_superadmin` required to add or remove superadmin. Each guard sabotaged and confirmed to turn its tests red |l DONE. Remaining is E4 (delete / deactivate the last superadmin *user*) and E5 (`confirm_superadmin` on grant) |
+| RBAC-006 | Gate /users and /settings behind permissions | 6 | P0 | RBAC-004 | DONE — the web reads and the user writes are gated (C2 reads, C14–C18 the form requests, `UserPolicy`); D1/D2 put route-level `can:` on both files including the four state toggles and the settings pair that carried no gate at all; D3/D5–D8 gated the sidebar composer and the in-page controls; E7 replays both brief scenarios end to end and E9 replays the RBAC-006 exploit list itself. Attack suite uses a SIBLING permission rather than an empty one — a route written `can('users.view')` instead of `can('users.deactivate')` passes every zero-permission test in the repo | (C2 reads, C14–C18 the form requests, `UserPolicy`). **Still open:** the seven ungated user state routes and `api.v1.settings.index` (P6-D1/D2), plus the D-group button `can:` gates and the E9 pentest replay |
+| P6-A1 | Roles index view | 6 | P0 | — | DONE |
+| P6-A2 | Roles index actions column | 6 | P0 | P6-A1 | DONE |
+| P6-A3 | Roles create view | 6 | P0 | P6-A1 | DONE |
+| P6-A4 | Roles edit view | 6 | P0 | P6-A3 | DONE |
+| P6-A5 | Permission matrix partial | 6 | P0 | P6-A3 | DONE |
+| P6-A6 | Permissions catalogue view | 6 | P0 | P6-A1 | DONE |
+| P6-A7 | `delete_role` confirm-modal key | 6 | P0 | P6-A2 | DONE |
+| P6-A8 | AppMenuComposer — no change in Group A | 6 | P0 | — | DONE |
+| P6-A9 | Gate test `RbacUiRenderTest` | 6 | P0 | P6-A1..A7 | DONE |
+| P6-B1 | `PermissionSeeder` | 6 | P0 | P6-B3, P6-B4 | DONE |
+| P6-B2 | Register seeder in `DatabaseSeeder` | 6 | P0 | P6-B1 | DONE |
+| P6-B3 | `App\Support\PermissionCatalog` | 6 | P0 | P6-B1 | DONE |
+| P6-B4 | `SystemRole` (shipped in Group A) | 6 | P0 | P6-A1 | DONE |
+| P6-B5 | `RoleSeeder` uses `SystemRole::names()` | 6 | P0 | P6-B4 | DONE |
+| P6-B6 | `Gate::before` superadmin bypass | 6 | P0 | P6-B1 | DONE |
+| P6-B7 | `PermissionSeedTest` (17 tests) | 6 | P0 | P6-B1, B5, B6 | DONE |
+| P6-B8 | `PermissionCacheTest` (5 tests) | 6 | P0 | P6-B7 | DONE |
+| P6-C1 | `StoreRoleRequest` — `roles.create`, guard-scoped unique | 6 | P0 | P6-B3 | DONE |
+| P6-C2 | `UpdateRoleRequest` — `roles.update`, unique ignoring `$role` | 6 | P0 | P6-C1 | DONE |
+| P6-C3 | `IndexRoleAction` — guard-scoped, `withCount`, search, `trashed` flag | 6 | P0 | P6-B5 | DONE |
+| P6-C4 | `SaveRoleAction` — shipped split as `CreateRoleAction` + `UpdateRoleAction` over a `PersistsRole` trait | 6 | P0 | P6-C1 | DONE (split) |
+| P6-C5 | `RoleController` — thin, 10 methods | 6 | P0 | P6-C1..C4 | DONE |
+| P6-C6 | `DeleteRoleAction` + `RestoreRoleAction` + `ForceDeleteRoleAction` | 6 | P0 | P6-B5 | DONE (extended) |
+| P6-C7 | `PermissionIndexAction` — see the kept name deviation in `phase-6-rbac.md` § C4 | 6 | P0 | P6-B3 | DONE (renamed from spec) |
+| P6-C8 | `PermissionController@index` only — `can('permissions.view')` | 6 | P0 | P6-C7 | DONE |
+| P6-C9 | `UpdateUserAction` — `users.assign_roles` check before `syncRoles` | 6 | P0 | P6-C5 | DONE (check lives in C11) |
+| P6-C10 | `CreateUserAction` — same check, admin path only | 6 | P0 | P6-C5 | DONE (check lives in C11) |
+| P6-C11 | `AssignRolesAction` — the one path to `syncRoles`, last-superadmin guard, audit | 6 | P0 | P6-B5 | DONE |
+| P6-C12 | `LastSuperadminException` — web redirect + API 409 | 6 | P0 | P6-C11 | DONE |
+| P6-C13 | ~~`AssignRolesRequest`~~ merged into `AssignRolesAction` | 6 | P0 | P6-C11 | DONE (merged) |
+| P6-C14 | `CreateUserRequest::authorize()` → `can('users.create')` | 6 | P0 | P6-C5 | DONE |
+| P6-C15 | `UpdateUserRequest::authorize()` → `can('users.update')` + narrow self-edit exception | 6 | P0 | P6-C5 | DONE |
+| P6-C16 | `SystemSettingRequest::authorize()` → `can('settings.manage')` | 6 | P0 | P6-C5 | DONE |
+| P6-C17 | `BulkUserRequest::authorize()` → action→permission map, via `AuthorizesBulkAction` | 6 | P0 | P6-C5 | DONE (extended to `BulkRoleRequest`) |
+| P6-C18 | `UserPolicy` — 7 CRUD methods delegating to `users.*`; 4 state methods untouched | 6 | P0 | P6-C5 | DONE |
+| P6-C-GATE | Gate C: routes authorized, zero-perm 403, sync proven, last-superadmin held | 6 | P0 | P6-C1..C18 | **MET (2026-09-30)** — `GateCAuthorizationTest` (8) + `RoleManagementTest` + `AssignRolesActionTest` + `UserRoleEditTest`; 505 tests / 1657 assertions |
+
+**Gate C is met.** Groups C1–C4 all shipped and were audited against the code,
+not against the plan. What remains open from the RBAC work is Group D — the
+seven ungated user state routes (`restore`, `force-delete`, `activate`,
+`deactivate`, `lock`, `unlock`, `resend-verification`, `cancel-email-change`) and
+`api.v1.settings.index` carry no `can:` and no request-level check, so
+`UserPolicy`'s methods for them are still uncalled on those paths. Measured with
+the side effect confirmed, tracked as P6C4-001..005 in
+`docs/qa/remediation-tracker.md`, closes at P6-D1/D2. The four Group A GET
+routes this section used to describe as ungated were closed in Group C2.
+Detail: `docs/planning/phase-6-rbac.md` § Group A and § C4.
+
+**The gating blocker is gone, and Group C2 used it.** Group B seeded the 19
+permissions, which removed the reason the Group A reads were left open (a gate
+on a permission that does not exist yet denies everyone, superadmin included).
+Group C2 then gated them: `can:roles.view` / `can:roles.create` /
+`can:roles.update` / `can:permissions.view`. What is left for D1/D2 is the
+**write** side — the five role write routes and the seven user state routes,
+none of which carry a route-level `can:`. The role writes are already refused by
+their Form Requests, so those are defence in depth; the user state routes are
+genuinely open and are the real D1/D2 work.
+
 ## Full Task List (JSON for AI parsing)
 
 ```json[
@@ -488,7 +556,8 @@ observers for audit. See `docs/base/architecture/application-components.md` §Ac
     "depends_on": [
       "DB-002"
     ],
-    "status": "PLANNED"
+    "status": "DONE",
+    "note": "Roles seeded in Phase 2 (RoleSeeder) and pinned by RoleGuardTest. 2026-09-28: the system-role list moved to App\\Support\\SystemRole so the views and the seeder answer 'is this a system role?' identically. Permissions are a separate task — RBAC-004 / Group B."
   },
   {
     "id": "RBAC-002",
@@ -498,7 +567,8 @@ observers for audit. See `docs/base/architecture/application-components.md` §Ac
     "depends_on": [
       "RBAC-001"
     ],
-    "status": "PLANNED"
+    "status": "DONE",
+    "note": "2026-09-30: Groups C1-C4 all shipped and audited. C1 role CRUD (guard-scoped unique, PersistsRole trait, soft delete with revocation, trash/restore/force, bulk); C2 read-only catalogue + the can: gates on the four reads; C3 AssignRolesAction as the single path to syncRoles with the last-superadmin guard; C4 the four blanket authorize() returns closed, AuthorizesBulkAction trait, UserPolicy CRUD methods. Gate C MET - 505 tests / 1657 assertions. STILL OPEN but out of C scope: no can: on the five role write routes (defence in depth only, each is gated by its Form Request) and the seven ungated user state routes (P6-D1/D2, tracked as P6C4-001..005)."
   },
   {
     "id": "RBAC-003",
@@ -508,7 +578,8 @@ observers for audit. See `docs/base/architecture/application-components.md` §Ac
     "depends_on": [
       "RBAC-001"
     ],
-    "status": "PLANNED"
+    "status": "DONE",
+    "note": "2026-09-30: Group B seeded the catalogue (PermissionSeeder prunes orphans, then creates, then assigns, flushing the cache at all three points) and Group C2 shipped the read-only web page (P6-C7/C8, PermissionIndexAction). No create/edit UI, by design: a permission row that no can() call references grants nothing. Known deviation kept: the class is PermissionIndexAction, not the table's IndexPermissionAction - documented in phase-6-rbac.md section C4."
   },
   {
     "id": "RBAC-004",
@@ -518,7 +589,8 @@ observers for audit. See `docs/base/architecture/application-components.md` §Ac
     "depends_on": [
       "P0-004"
     ],
-    "status": "PLANNED"
+    "status": "DONE",
+    "note": "2026-09-28: Group B. PermissionCatalog + PermissionSeeder. audit.* and features.* intentionally excluded — no feature behind them. Seeder prunes permissions dropped from the catalogue, which firstOrCreate alone would not do. 2026-09-30 correction: the catalogue is 21, not the 19 measured on 2026-09-28 — C1 added roles.force_delete and roles.restore with the trash tab. The count in the other Group B notes is left as written because it records what that commit actually measured."
   },
   {
     "id": "RBAC-005",
@@ -528,7 +600,8 @@ observers for audit. See `docs/base/architecture/application-components.md` §Ac
     "depends_on": [
       "RBAC-001"
     ],
-    "status": "PLANNED"
+    "status": "DONE",
+    "note": "2026-09-30: Gate::before in place (AuthServiceProvider::configureSuperAdmin), SuperAdminSeeder assigns the role, C6 refuses system-role delete/rename, C11 refuses stripping the last superadmin on assignment, and granting superadmin requires the causer to already be one. Group E closed the rest. P6-E3: system-role permissions are code-defined — PersistsRole::persist() now refuses a permission payload aimed at any SystemRole name; the role matrix was one POST (submit no checkboxes) from silently emptying admin, and the old RoleManagementTest asserted that edit SUCCEEDED. P6-E4: LastSuperadmin::guard() now runs in DeactivateUserAction and DeleteUserAction. This was a live hole, not a theoretical one — verified before the fix that a caller holding users.deactivate + users.delete + users.force_delete and NOT being a superadmin could deactivate the only superadmin, delete them, and force-delete them, ending at zero superadmins. The bulk handler compounded it: 'deactivate' ran a raw User::whereIn()->update(), bypassing DeactivateUserAction entirely, so the guard the row button enforced was absent from the dropdown one screen above; it now routes through the action. ForceDeleteUserAction deliberately has NO guard (it only accepts already-trashed rows, which DeleteUserAction already refused to create) — documented in place rather than left as a silent omission. P6-E5: confirm_superadmin is required to add OR remove superadmin, threaded through both user write actions and both FormRequests, with a confirm control in the role picker so the UI can still perform the operation. Every guard was sabotaged and confirmed to turn its tests red (E5 -> 4 red, E4 -> 6, E3 -> 5, bulk hole -> 1). Pinned by LastSuperadminGuardTest (19) and RoleManagementTest (30). Full suite 661 passed / 2243 assertions."
   },
   {
     "id": "RBAC-006",
@@ -538,8 +611,413 @@ observers for audit. See `docs/base/architecture/application-components.md` §Ac
     "depends_on": [
       "RBAC-004"
     ],
-    "status": "PLANNED",
-    "note": "Found by manual browser test of self-registration, 2026-09-27. The authenticated route group in routes/web.php carries only auth+verified+password.change.required+account.state — no can:/permission gate — and UserPolicy only covers unlock/activate/deactivate/lock, none of which index/store/update/destroy call. A user created through POST /register (role `user`, zero permissions) was able to: GET /users (200, all emails); POST /settings (changed login_max_attempts); POST /users with roles[]=superadmin (201, created a superadmin); PUT /users/{id} (demoted a superadmin); DELETE /users/{id} (deleted the superadmin account); POST /users/bulk-action; POST /users/{id}/deactivate. Same on the API: POST /api/v1/settings, POST /api/v1/users, GET /api/v1/users/{id} all accepted a plain user's token. SystemSettingRequest::authorize() and RegisterRequest::authorize() both return true unconditionally, and the `user` role is seeded with no permissions. Not introduced by the register feature — it made an already-reachable escalation available to anyone on the internet. Fix belongs here, not as a patch: add can:/permission middleware per route, give the `user` role its real permission set, and make authorize() consult the caller."
+    "status": "DONE",
+    "note": "CLOSED 2026-09-30 (Phase 6 Groups A-E). Every exploit in the original report is now refused, and each was replayed as a test rather than asserted in prose: RbacPentestTest covers roles[] mass-assigned onto PUT /profile and PUT /api/v1/profile/update, roles[]=superadmin on PUT /users/{other} (web and API), a delegated users.assign_roles holder granting superadmin even WITH confirm_superadmin, the same via POST /users/bulk-action, and CSRF on POST /settings (419, with the companion test proving the write lands once CSRF is dropped so the refusal is not measuring something else). GateD6DPentestTest attacks the D-group routes with a SIBLING permission rather than an empty one — the shape 6D actually opened — and E7 replays both brief scenarios end to end across routes, sidebar and in-page controls. ORIGINAL REPORT: Found by manual browser test of self-registration, 2026-09-27. The authenticated route group in routes/web.php carries only auth+verified+password.change.required+account.state — no can:/permission gate — and UserPolicy only covers unlock/activate/deactivate/lock, none of which index/store/update/destroy call. A user created through POST /register (role `user`, zero permissions) was able to: GET /users (200, all emails); POST /settings (changed login_max_attempts); POST /users with roles[]=superadmin (201, created a superadmin); PUT /users/{id} (demoted a superadmin); DELETE /users/{id} (deleted the superadmin account); POST /users/bulk-action; POST /users/{id}/deactivate. Same on the API: POST /api/v1/settings, POST /api/v1/users, GET /api/v1/users/{id} all accepted a plain user's token. SystemSettingRequest::authorize() and RegisterRequest::authorize() both return true unconditionally, and the `user` role is seeded with no permissions. Not introduced by the register feature — it made an already-reachable escalation available to anyone on the internet. Fix belongs here, not as a patch: add can:/permission middleware per route, give the `user` role its real permission set, and make authorize() consult the caller. 2026-09-28 update: still open. Group A added /roles and /permissions with no can: gate (permissions not seeded until Group B). Original /users and /settings escalation unchanged. Fix remains C14-C18 + D1/D2 + E9. 2026-09-28 (post-Group B): the blocker for gating the Group A routes is gone — the catalogue is seeded, so P6-D1 can now apply can: without denying everyone. /users and /settings escalation unchanged."
+  },
+  {
+    "id": "P6-A1",
+    "task": "Roles index view — header, breadcrumb, search filter, table, pagination",
+    "phase": 6,
+    "priority": "P0",
+    "depends_on": [],
+    "status": "DONE",
+    "note": "Phase 6 Group A, shipped 2026-09-28. Audit: docs/planning/phase-6-rbac.md. Two items shipped beyond the original plan because the pages had to be reachable in a browser: Web\\V1\\RoleController + Web\\V1\\PermissionController and the four GET routes. App\\Support\\SystemRole was pulled forward from P6-B4 because the views need is_system. Search filter, sortable headers and the right-aligned Create button were added after a review round; the filter and button had been wrapped in @can, which is always false until P6-B1 seeds the permissions."
+  },
+  {
+    "id": "P6-A2",
+    "task": "Roles index actions column — edit always, delete via <x-ui.confirm-action>, System badge for system roles",
+    "phase": 6,
+    "priority": "P0",
+    "depends_on": [
+      "P6-A1"
+    ],
+    "status": "DONE",
+    "note": "Phase 6 Group A, shipped 2026-09-28. See docs/planning/phase-6-rbac.md."
+  },
+  {
+    "id": "P6-A3",
+    "task": "Roles create view — form + system-role explainer column",
+    "phase": 6,
+    "priority": "P0",
+    "depends_on": [
+      "P6-A1"
+    ],
+    "status": "DONE",
+    "note": "Phase 6 Group A, shipped 2026-09-28. See docs/planning/phase-6-rbac.md."
+  },
+  {
+    "id": "P6-A4",
+    "task": "Roles edit view — prefilled name (readonly for system roles), pre-checked permission matrix",
+    "phase": 6,
+    "priority": "P0",
+    "depends_on": [
+      "P6-A3"
+    ],
+    "status": "DONE",
+    "note": "Phase 6 Group A, shipped 2026-09-28. See docs/planning/phase-6-rbac.md."
+  },
+  {
+    "id": "P6-A5",
+    "task": "Shared permission matrix partial — checkboxes posting permission IDs, old() re-check, empty state",
+    "phase": 6,
+    "priority": "P0",
+    "depends_on": [
+      "P6-A3"
+    ],
+    "status": "DONE",
+    "note": "Phase 6 Group A, shipped 2026-09-28. See docs/planning/phase-6-rbac.md."
+  },
+  {
+    "id": "P6-A6",
+    "task": "Permissions catalogue view — read-only, grouped by resource, roles_count badge",
+    "phase": 6,
+    "priority": "P0",
+    "depends_on": [
+      "P6-A1"
+    ],
+    "status": "DONE",
+    "note": "Phase 6 Group A, shipped 2026-09-28. See docs/planning/phase-6-rbac.md."
+  },
+  {
+    "id": "P6-A7",
+    "task": "Add delete_role key to ACTION_CONFIG for the role delete confirmation",
+    "phase": 6,
+    "priority": "P0",
+    "depends_on": [
+      "P6-A2"
+    ],
+    "status": "DONE",
+    "note": "Phase 6 Group A, shipped 2026-09-28. See docs/planning/phase-6-rbac.md."
+  },
+  {
+    "id": "P6-A8",
+    "task": "AppMenuComposer — no change in Group A (Roles/Permissions items already listed)",
+    "phase": 6,
+    "priority": "P0",
+    "depends_on": [],
+    "status": "DONE",
+    "note": "Phase 6 Group A, shipped 2026-09-28. See docs/planning/phase-6-rbac.md."
+  },
+  {
+    "id": "P6-A9",
+    "task": "Gate test RbacUiRenderTest — views render, query nothing, no forbidden classes, system-role delete hidden",
+    "phase": 6,
+    "priority": "P0",
+    "depends_on": [
+      "P6-A1",
+      "P6-A2",
+      "P6-A3",
+      "P6-A4",
+      "P6-A5",
+      "P6-A6",
+      "P6-A7"
+    ],
+    "status": "DONE",
+    "note": "Phase 6 Group A, shipped 2026-09-28. See docs/planning/phase-6-rbac.md."
+  },
+  {
+    "id": "P6-B1",
+    "task": "PermissionSeeder — prune orphans, create from catalogue, sync matrix, flush cache 3x",
+    "phase": 6,
+    "priority": "P0",
+    "depends_on": [
+      "P6-B3",
+      "P6-B4"
+    ],
+    "status": "DONE",
+    "note": "Phase 6 Group B, shipped 2026-09-28. Verified at that commit: 19 permissions, superadmin 0 rows + can() true, admin 19, user 0, db:seed x2 idempotent, full suite 420 passed. Six deviations from the spec recorded in docs/planning/phase-6-rbac.md §Group B — two fixed real bugs (seeder only ever added, so a permission removed from the catalogue stayed forever; SuperAdminSeeder never assigned its role, which Gate::before turned into a total lockout). audit.* and features.* deliberately not seeded — no feature behind them (Phase 10 / Phase 7). LATER: the catalogue is 21 since C1 added roles.force_delete and roles.restore; the 19 above is what this commit measured."
+  },
+  {
+    "id": "P6-B2",
+    "task": "Register PermissionSeeder between RoleSeeder and SuperAdminSeeder",
+    "phase": 6,
+    "priority": "P0",
+    "depends_on": [
+      "P6-B1"
+    ],
+    "status": "DONE",
+    "note": "Phase 6 Group B, shipped 2026-09-28. Verified at that commit: 19 permissions, superadmin 0 rows + can() true, admin 19, user 0, db:seed x2 idempotent, full suite 420 passed. Six deviations from the spec recorded in docs/planning/phase-6-rbac.md §Group B — two fixed real bugs (seeder only ever added, so a permission removed from the catalogue stayed forever; SuperAdminSeeder never assigned its role, which Gate::before turned into a total lockout). audit.* and features.* deliberately not seeded — no feature behind them (Phase 10 / Phase 7). LATER: the catalogue is 21 since C1 added roles.force_delete and roles.restore; the 19 above is what this commit measured."
+  },
+  {
+    "id": "P6-B3",
+    "task": "App\\Support\\PermissionCatalog — all(), grouped(), forResource()",
+    "phase": 6,
+    "priority": "P0",
+    "depends_on": [
+      "P6-B1"
+    ],
+    "status": "DONE",
+    "note": "Phase 6 Group B, shipped 2026-09-28. Verified at that commit: 19 permissions, superadmin 0 rows + can() true, admin 19, user 0, db:seed x2 idempotent, full suite 420 passed. Six deviations from the spec recorded in docs/planning/phase-6-rbac.md §Group B — two fixed real bugs (seeder only ever added, so a permission removed from the catalogue stayed forever; SuperAdminSeeder never assigned its role, which Gate::before turned into a total lockout). audit.* and features.* deliberately not seeded — no feature behind them (Phase 10 / Phase 7). LATER: the catalogue is 21 since C1 added roles.force_delete and roles.restore; the 19 above is what this commit measured."
+  },
+  {
+    "id": "P6-B4",
+    "task": "SystemRole::isSystem() / names() — shipped in Group A, spec satisfied",
+    "phase": 6,
+    "priority": "P0",
+    "depends_on": [
+      "P6-A1"
+    ],
+    "status": "DONE",
+    "note": "Phase 6 Group B, shipped 2026-09-28. Verified at that commit: 19 permissions, superadmin 0 rows + can() true, admin 19, user 0, db:seed x2 idempotent, full suite 420 passed. Six deviations from the spec recorded in docs/planning/phase-6-rbac.md §Group B — two fixed real bugs (seeder only ever added, so a permission removed from the catalogue stayed forever; SuperAdminSeeder never assigned its role, which Gate::before turned into a total lockout). audit.* and features.* deliberately not seeded — no feature behind them (Phase 10 / Phase 7). LATER: the catalogue is 21 since C1 added roles.force_delete and roles.restore; the 19 above is what this commit measured."
+  },
+  {
+    "id": "P6-B5",
+    "task": "RoleSeeder consumes SystemRole::names(); stale RBAC-004 comment corrected",
+    "phase": 6,
+    "priority": "P0",
+    "depends_on": [
+      "P6-B4"
+    ],
+    "status": "DONE",
+    "note": "Phase 6 Group B, shipped 2026-09-28. Verified at that commit: 19 permissions, superadmin 0 rows + can() true, admin 19, user 0, db:seed x2 idempotent, full suite 420 passed. Six deviations from the spec recorded in docs/planning/phase-6-rbac.md §Group B — two fixed real bugs (seeder only ever added, so a permission removed from the catalogue stayed forever; SuperAdminSeeder never assigned its role, which Gate::before turned into a total lockout). audit.* and features.* deliberately not seeded — no feature behind them (Phase 10 / Phase 7). LATER: the catalogue is 21 since C1 added roles.force_delete and roles.restore; the 19 above is what this commit measured."
+  },
+  {
+    "id": "P6-B6",
+    "task": "Gate::before in AuthServiceProvider — true for superadmin, null otherwise, never false",
+    "phase": 6,
+    "priority": "P0",
+    "depends_on": [
+      "P6-B1"
+    ],
+    "status": "DONE",
+    "note": "Phase 6 Group B, shipped 2026-09-28. Verified at that commit: 19 permissions, superadmin 0 rows + can() true, admin 19, user 0, db:seed x2 idempotent, full suite 420 passed. Six deviations from the spec recorded in docs/planning/phase-6-rbac.md §Group B — two fixed real bugs (seeder only ever added, so a permission removed from the catalogue stayed forever; SuperAdminSeeder never assigned its role, which Gate::before turned into a total lockout). audit.* and features.* deliberately not seeded — no feature behind them (Phase 10 / Phase 7). LATER: the catalogue is 21 since C1 added roles.force_delete and roles.restore; the 19 above is what this commit measured."
+  },
+  {
+    "id": "P6-B7",
+    "task": "PermissionSeedTest — catalogue seeded, role matrix, idempotency, pruning",
+    "phase": 6,
+    "priority": "P0",
+    "depends_on": [
+      "P6-B1",
+      "P6-B5",
+      "P6-B6"
+    ],
+    "status": "DONE",
+    "note": "Phase 6 Group B, shipped 2026-09-28. Verified at that commit: 19 permissions, superadmin 0 rows + can() true, admin 19, user 0, db:seed x2 idempotent, full suite 420 passed. Six deviations from the spec recorded in docs/planning/phase-6-rbac.md §Group B — two fixed real bugs (seeder only ever added, so a permission removed from the catalogue stayed forever; SuperAdminSeeder never assigned its role, which Gate::before turned into a total lockout). audit.* and features.* deliberately not seeded — no feature behind them (Phase 10 / Phase 7). LATER: the catalogue is 21 since C1 added roles.force_delete and roles.restore; the 19 above is what this commit measured."
+  },
+  {
+    "id": "P6-B8",
+    "task": "PermissionCacheTest — can() reflects writes behind a warm cache",
+    "phase": 6,
+    "priority": "P0",
+    "depends_on": [
+      "P6-B7"
+    ],
+    "status": "DONE",
+    "note": "Phase 6 Group B, shipped 2026-09-28. Verified at that commit: 19 permissions, superadmin 0 rows + can() true, admin 19, user 0, db:seed x2 idempotent, full suite 420 passed. Six deviations from the spec recorded in docs/planning/phase-6-rbac.md §Group B — two fixed real bugs (seeder only ever added, so a permission removed from the catalogue stayed forever; SuperAdminSeeder never assigned its role, which Gate::before turned into a total lockout). audit.* and features.* deliberately not seeded — no feature behind them (Phase 10 / Phase 7). LATER: the catalogue is 21 since C1 added roles.force_delete and roles.restore; the 19 above is what this commit measured."
+  },
+  {
+    "id": "P6-C1",
+    "task": "StoreRoleRequest — can('roles.create'), guard-scoped unique name",
+    "phase": 6,
+    "priority": "P0",
+    "depends_on": [
+      "P6-B3"
+    ],
+    "status": "DONE",
+    "note": "Phase 6 Group C1, shipped 2026-09-29. Uniqueness scoped to RoleLookup::guard() so a name taken on another guard stays available."
+  },
+  {
+    "id": "P6-C2",
+    "task": "UpdateRoleRequest — can('roles.update'), unique ignoring the role",
+    "phase": 6,
+    "priority": "P0",
+    "depends_on": [
+      "P6-C1"
+    ],
+    "status": "DONE",
+    "note": "Phase 6 Group C1, shipped 2026-09-29. Rule::unique()->ignore($role) keeps the role out of its own uniqueness check."
+  },
+  {
+    "id": "P6-C3",
+    "task": "IndexRoleAction — guard-scoped, withCount, search, sortable, trashed flag",
+    "phase": 6,
+    "priority": "P0",
+    "depends_on": [
+      "P6-B5"
+    ],
+    "status": "DONE",
+    "note": "Phase 6 Group C1, shipped 2026-09-29. As specified plus a trashed flag that scopes the whole query rather than filtering rows. No N+1 (pinned by test_it_searches_and_paginates_without_n_plus_one)."
+  },
+  {
+    "id": "P6-C4",
+    "task": "SaveRoleAction — one action for create+update, transaction + in-transaction audit",
+    "phase": 6,
+    "priority": "P0",
+    "depends_on": [
+      "P6-C1"
+    ],
+    "status": "DONE",
+    "note": "Phase 6 Group C1, shipped 2026-09-29. DEVIATION: the spec named one SaveRoleAction; shipped as CreateRoleAction + UpdateRoleAction over an App\\Actions\\Concerns\\PersistsRole trait holding everything that is not the verb — the DB::transaction, the array_map('intval') before syncPermissions (Spatie resolves a string '19' as a permission NAMED 19 and throws), and the audit write inside the transaction per DEP-003. Split to match CreateUserAction/UpdateUserAction on the user side."
+  },
+  {
+    "id": "P6-C5",
+    "task": "RoleController — thin, index/create/edit/store/update/destroy",
+    "phase": 6,
+    "priority": "P0",
+    "depends_on": [
+      "P6-C1",
+      "P6-C2",
+      "P6-C3",
+      "P6-C4"
+    ],
+    "status": "DONE",
+    "note": "Phase 6 Group C1, shipped 2026-09-29. 10 methods, resolves route data and delegates. The system-role refusal this row places in the controller lives in DeleteRoleAction instead (P6-C6's own wording) so the API cannot bypass it by not going through the web controller."
+  },
+  {
+    "id": "P6-C6",
+    "task": "DeleteRoleAction — refuse system roles and populated roles unless forced, detach + soft delete + audit in one transaction",
+    "phase": 6,
+    "priority": "P0",
+    "depends_on": [
+      "P6-B5"
+    ],
+    "status": "DONE",
+    "note": "Phase 6 Group C1, shipped 2026-09-29, EXTENDED beyond the spec: also RestoreRoleAction + ForceDeleteRoleAction, a trash tab, and bulk actions, for the enterprise/SaaS role-retirement requirement. The users()->detach() is explicit because Spatie's deleting hook skips it on a soft delete — relying on the package would revoke nothing and a restore would silently re-grant (P6C1-004)."
+  },
+  {
+    "id": "P6-C7",
+    "task": "PermissionIndexAction — guard-scoped catalogue with role counts, search, sortable whitelist, pagination",
+    "phase": 6,
+    "priority": "P0",
+    "depends_on": [
+      "P6-B3"
+    ],
+    "status": "DONE",
+    "note": "Phase 6 Group C2, shipped 2026-09-29. DEVIATION 1: class is PermissionIndexAction, not the spec's IndexPermissionAction. Decided 2026-09-30 to KEEP the shipped name rather than spend the rename (10 internal refs, behaviour already pinned by PermissionIndexActionTest). DEVIATION 2: grouping by resource prefix NOT built — a paginator cannot be grouped without losing search, sort and pagination. Open decision, not an omission."
+  },
+  {
+    "id": "P6-C8",
+    "task": "PermissionController@index only, can('permissions.view') — no store/update/destroy",
+    "phase": 6,
+    "priority": "P0",
+    "depends_on": [
+      "P6-C7"
+    ],
+    "status": "DONE",
+    "note": "Phase 6 Group C2, shipped 2026-09-29. Read-only by design: a permission row that no can() call references grants nothing, so a UI that creates one only makes it look real."
+  },
+  {
+    "id": "P6-C9",
+    "task": "UpdateUserAction — users.assign_roles check before syncRoles",
+    "phase": 6,
+    "priority": "P0",
+    "depends_on": [
+      "P6-C5"
+    ],
+    "status": "DONE",
+    "note": "Phase 6 Group C3, shipped 2026-09-29. The array_key_exists guard on the roles branch was left alone as instructed. The check ships in AssignRolesAction (C11), not here — with the check in each caller the create path was protected and the update path was not, so a caller holding only users.update could make any account a superadmin (measured: PUT /users/{victim} with roles:[superadmin] returned 302 and the victim became superadmin)."
+  },
+  {
+    "id": "P6-C10",
+    "task": "CreateUserAction — same check, admin path only; self-registration stays ungated",
+    "phase": 6,
+    "priority": "P0",
+    "depends_on": [
+      "P6-C5"
+    ],
+    "status": "DONE",
+    "note": "Phase 6 Group C3, shipped 2026-09-29. The self-registration path (defaultRolesForSelfRegistration) is deliberately not permission-gated: it is not an admin action and its role is server-side, not client-supplied. Check lives in AssignRolesAction (C11)."
+  },
+  {
+    "id": "P6-C11",
+    "task": "AssignRolesAction — the single path to syncRoles, last-superadmin guard, before/after audit",
+    "phase": 6,
+    "priority": "P0",
+    "depends_on": [
+      "P6-B5"
+    ],
+    "status": "DONE",
+    "note": "Phase 6 Group C3, shipped 2026-09-29. DB::transaction, resolve names via RoleLookup::findMany() (skip unknown rather than throw — a hard failure on a stale form is worse; fewer roles than names IS the skip), count superadmins before/after and throw LastSuperadminException if the result is zero, syncRoles, audit user.roles_assigned with both lists. Granting superadmin additionally requires the causer to already be one, or a delegated admin could mint a second. The count guard is a MINIMUM of one, not exactly one — the spec says zero, so enforcing exactly-one would be a change of requirement, not a fix. 2026-09-30: name resolution was one RoleLookup::find() per name, so a 20-role payload cost 28 queries; findMany() brings it to 9 (a4b33ab). Pinned by RbacPerformanceTest::test_assigning_roles_costs_the_same_at_one_and_at_twenty."
+  },
+  {
+    "id": "P6-C12",
+    "task": "LastSuperadminException — web redirect with error flash, API 409 JSON",
+    "phase": 6,
+    "priority": "P0",
+    "depends_on": [
+      "P6-C11"
+    ],
+    "status": "DONE",
+    "note": "Phase 6 Group C3, shipped 2026-09-29. Rendered in bootstrap/app.php."
+  },
+  {
+    "id": "P6-C13",
+    "task": "AssignRolesRequest",
+    "phase": 6,
+    "priority": "P0",
+    "depends_on": [
+      "P6-C11"
+    ],
+    "status": "DONE",
+    "note": "Phase 6 Group C3, 2026-09-29. MERGED, not built: the class was created as specced then deleted. No route ever referenced it, so the users.assign_roles check lived in a class nothing could reach. The check and the guard-scoped role resolution now live in AssignRolesAction, which both write paths call. Role payloads are still validated before they reach it, by CreateUserRequest/UpdateUserRequest. A standalone role-assignment endpoint was not needed — role editing is the picker on the existing user forms."
+  },
+  {
+    "id": "P6-C14",
+    "task": "CreateUserRequest::authorize() — can('users.create') on the admin path only",
+    "phase": 6,
+    "priority": "P0",
+    "depends_on": [
+      "P6-C5"
+    ],
+    "status": "DONE",
+    "note": "Phase 6 Group C4, shipped 2026-09-30 in 015d6c3. RegisterController uses the separate public RegisterRequest, which stays true — a self-registering user holds no permission, so reusing this request would lock registration out entirely."
+  },
+  {
+    "id": "P6-C15",
+    "task": "UpdateUserRequest::authorize() — can('users.update') plus a narrow self-edit exception",
+    "phase": 6,
+    "priority": "P0",
+    "depends_on": [
+      "P6-C5"
+    ],
+    "status": "DONE",
+    "note": "Phase 6 Group C4, shipped 2026-09-30 in 015d6c3. The self exception applies only when the target IS the caller and the payload carries no roles key; keys are compared as strings so a null user cannot match. Pinned by test_a_user_cannot_escalate_by_editing_their_own_profile."
+  },
+  {
+    "id": "P6-C16",
+    "task": "SystemSettingRequest::authorize() — can('settings.manage')",
+    "phase": 6,
+    "priority": "P0",
+    "depends_on": [
+      "P6-C5"
+    ],
+    "status": "DONE",
+    "note": "Phase 6 Group C4, shipped 2026-09-30 in 015d6c3. Was return true unconditionally — part of the RBAC-006 escalation (a zero-permission user could POST /settings)."
+  },
+  {
+    "id": "P6-C17",
+    "task": "BulkUserRequest::authorize() — map the requested action to its own permission",
+    "phase": 6,
+    "priority": "P0",
+    "depends_on": [
+      "P6-C5"
+    ],
+    "status": "DONE",
+    "note": "Phase 6 Group C4, shipped 2026-09-30 in 015d6c3, EXTENDED: extracted to the App\\Http\\Requests\\Concerns\\AuthorizesBulkAction trait and adopted by BulkRoleRequest too, which is what closed P6C1-005. One BULK_ACTIONS map plus an entity prefix, so a new action is added once and both bars get it; an unmapped action fails closed because authorize() runs before rules()."
+  },
+  {
+    "id": "P6-C18",
+    "task": "UserPolicy — viewAny/view/create/update/delete/forceDelete/restore delegating to users.*",
+    "phase": 6,
+    "priority": "P0",
+    "depends_on": [
+      "P6-C5"
+    ],
+    "status": "DONE",
+    "note": "Phase 6 Group C4, shipped 2026-09-30 in 015d6c3. The four pre-existing state methods (unlock/activate/deactivate/lock) are kept exactly as they were — their 409 preconditions are business rules, not authorization. NOTE: the state methods are still not CALLED on the user state routes, which carry no gate at all. That is P6-D1/D2, tracked as P6C4-001/002."
+  },
+  {
+    "id": "P6-C-GATE",
+    "task": "Gate C — every role/permission route reachable and authorized, zero-perm 403, sync proven, last-superadmin held",
+    "phase": 6,
+    "priority": "P0",
+    "depends_on": [
+      "P6-C1",
+      "P6-C18"
+    ],
+    "status": "DONE",
+    "note": "MET 2026-09-30. Evidence, per clause: 403 on all admin read routes — GateCAuthorizationTest::test_a_user_with_no_permissions_gets_403_on_every_admin_read_route; 403 on all five role write routes — RoleManagementTest::test_a_user_with_no_permissions_cannot_write_roles + test_a_user_with_no_permissions_cannot_reach_the_trash_endpoints; role sync (add/replace/empty-clears/absent-untouched) — AssignRolesActionTest (8) + UserRoleEditTest (7); last-superadmin — test_stripping_the_last_superadmin_is_refused + test_the_refusal_leaves_the_superadmin_in_place; regression suite green — 505 passed / 1657 assertions, 1 risky (pre-existing). Gate C is a GROUP C gate: the seven ungated user state routes and api.v1.settings.index are P6-D1/D2 and remain open."
   },
   {
     "id": "FEAT-001",
@@ -1093,7 +1571,7 @@ observers for audit. See `docs/base/architecture/application-components.md` §Ac
     "priority": "P0",
     "depends_on": [],
     "status": "DONE",
-    "note": "API: throttle:login (5/min), throttle:forgot-password (3/min), throttle:resend-verification (5/hour). Shared keys via LoginThrottle::key() (identifier+IP). Web forms POST to API endpoints \u2192 shared throttle."
+    "note": "API: throttle:login (5/min), throttle:forgot-password (3/min), throttle:resend-verification (5/hour). Shared keys via LoginThrottle::key() (identifier+IP). Web forms POST to API endpoints → shared throttle."
   },
   {
     "id": "ROUTE-004",
@@ -1102,6 +1580,6 @@ observers for audit. See `docs/base/architecture/application-components.md` §Ac
     "priority": "P1",
     "depends_on": [],
     "status": "DONE",
-    "note": "Added route grouping table and brute force throttle table to phase-3-audit-breakdown.md \u00a71."
+    "note": "Added route grouping table and brute force throttle table to phase-3-audit-breakdown.md §1."
   }
 ]```

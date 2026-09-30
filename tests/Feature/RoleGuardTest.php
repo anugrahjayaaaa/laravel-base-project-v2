@@ -8,6 +8,7 @@ use App\Http\Requests\System\SystemSettingRequest;
 use App\Models\RoleLookup;
 use App\Models\SystemSetting;
 use App\Models\User;
+use App\Support\SystemRole;
 use Database\Seeders\RoleSeeder;
 use Database\Seeders\SystemSettingSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -38,8 +39,29 @@ class RoleGuardTest extends TestCase
     {
         parent::setUp();
         $this->seed(RoleSeeder::class);
+        // PermissionSeeder too: the role/permission matrix (RBAC-004) lives there,
+        // so without it the admin role carries no rows and every can() is false.
+        $this->seed(\Database\Seeders\PermissionSeeder::class);
         $this->seed(SystemSettingSeeder::class);
-        $this->actingAs(User::factory()->create(), 'web');
+        // Admin role: the users create/edit forms are gated on users.create /
+        // users.update (P6-D1), and this suite renders them.
+        $actor = User::factory()->create();
+        $actor->assignRole(RoleLookup::find('admin'));
+        $this->actingAs($actor, 'web');
+    }
+
+    /**
+     * A causer holding users.assign_roles.
+     *
+     * P6-C10 made the admin path of CreateUserAction permission-gated, so a
+     * direct call with a `roles` key and no causer is now refused — which is the
+     * behaviour, not a test to work around.
+     */
+    private function admin(): \App\Models\User
+    {
+        return \App\Models\User::factory()->create()->assignRole(
+            \App\Models\RoleLookup::find(SystemRole::SUPERADMIN)
+        );
     }
 
     public function test_the_resolver_survives_a_mutated_auth_default(): void
@@ -48,13 +70,28 @@ class RoleGuardTest extends TestCase
         auth()->shouldUse('sanctum');
         $this->assertSame('sanctum', config('auth.defaults.guard'), 'precondition');
 
-        // Spatie intersects the default with the guards a User can use, so the
-        // raw config lies here and the resolver does not.
-        $this->assertSame(
-            Guard::getDefaultName(User::class),
-            RoleLookup::guard()
-        );
+        // The invariant is that the resolver does not MOVE, not that it agrees
+        // with Spatie's own resolver.
+        //
+        // It used to be phrased as `RoleLookup::guard() === Guard::getDefaultName()`,
+        // which was true only because `sanctum` was not a declared guard: the
+        // intersection could then only ever return `web`. Declaring `sanctum` in
+        // config/auth.php — which it must be, or Spatie's Role::users() cannot
+        // resolve a model class inside a withCount() subquery on a token request
+        // — made Spatie return `sanctum`, and every role query filtered on a
+        // guard no role is stored under.
+        //
+        // So RoleLookup::guard() now reads the session guard from config instead
+        // of asking Spatie, and the assertion is that it is unchanged by a
+        // request. Agreement with Spatie is checked in the User model, which
+        // overrides getDefaultGuardName() to delegate here.
+        $this->assertSame('web', RoleLookup::guard());
         $this->assertContains(RoleLookup::guard(), Guard::getNames(User::class)->all());
+
+        // And the whole point: the model's own permission checks follow, which
+        // is what a token request actually depends on.
+        $user = User::factory()->create();
+        $this->assertSame('web', (fn () => $this->getDefaultGuardName())->call($user));
     }
 
     public function test_the_seeder_writes_roles_on_the_resolved_guard(): void
@@ -86,6 +123,8 @@ class RoleGuardTest extends TestCase
         $offered = RoleLookup::assignable()->pluck('name');
 
         $this->assertSame($offered->unique()->values()->all(), $offered->values()->all());
+        // assignable() is guard-scoped only — it does not filter by viewer, so
+        // superadmin is still here. Visibility is visibleTo()'s job.
         $this->assertSame(['admin', 'superadmin', 'user'], $offered->all());
     }
 
@@ -100,7 +139,7 @@ class RoleGuardTest extends TestCase
             'username' => 'guardtest',
             'email' => 'guardtest@example.com',
             'roles' => ['admin'],
-        ], 'QaTest#2026x');
+        ], 'QaTest#2026x', causer: $this->admin());
 
         $assigned = $user->roles;
 
@@ -132,7 +171,7 @@ class RoleGuardTest extends TestCase
         // resolved guard, so this is the name a real submission carries.
         $this->assertTrue(Validator::make(
             ['registration_default_role' => 'user'],
-            app(SystemSettingRequest::class)->rules()
+            (new SystemSettingRequest())->rules()
         )->passes());
 
         // Now make `user` exist only on another guard. The rule is scoped, so
@@ -142,7 +181,7 @@ class RoleGuardTest extends TestCase
         Role::create(['name' => 'user', 'guard_name' => $guard === 'web' ? 'api' : 'web']);
 
         $this->assertFalse(
-            Validator::make(['registration_default_role' => 'user'], app(SystemSettingRequest::class)->rules())->passes(),
+            Validator::make(['registration_default_role' => 'user'], (new SystemSettingRequest())->rules())->passes(),
             'a role that exists only on another guard must not validate'
         );
     }
@@ -154,7 +193,9 @@ class RoleGuardTest extends TestCase
         $view = app(SystemSettingController::class)->index();
         $roles = $view->getData()['roles'];
 
-        $this->assertSame(['admin', 'superadmin', 'user'], array_values($roles->all()));
+        // The viewer here is not a superadmin, so `superadmin` is not offered.
+        // The point of the test is that each name appears ONCE, not which names.
+        $this->assertSame(['admin', 'user'], array_values($roles->all()));
     }
 
     public function test_the_user_forms_offer_each_role_name_once(): void
@@ -167,7 +208,10 @@ class RoleGuardTest extends TestCase
         // is rendered. Reading getData() off the controller's return value
         // asserts nothing about what the page is given.
         $admin = User::factory()->create(['is_active' => true]);
-        $admin->assignRole(Role::create(['name' => 'webadmin', 'guard_name' => RoleLookup::guard()]));
+        // The seeded admin, not a hand-made 'webadmin' role: the users forms are
+        // gated on users.create / users.update, and a role with no permission
+        // rows satisfies neither.
+        $admin->assignRole(RoleLookup::find('admin'));
 
         foreach (['create', 'show'] as $method) {
             $page = $this->actingAs($admin)->get(
@@ -175,7 +219,9 @@ class RoleGuardTest extends TestCase
             );
             $page->assertOk();
 
-            foreach (RoleLookup::assignable()->pluck('name') as $name) {
+            // visibleTo(), because that is what the picker is fed: this viewer is
+            // not a superadmin, so superadmin is not one of the offered names.
+            foreach (RoleLookup::visibleTo($admin)->pluck('name') as $name) {
                 $page->assertSee($name);
             }
         }

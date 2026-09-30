@@ -21,7 +21,15 @@ class CreateUserTest extends TestCase
 
         $this->app->make(\Spatie\Permission\PermissionRegistrar::class)->forgetCachedPermissions();
 
-        $adminRole = Role::create(['name' => 'admin']);
+        // Seeded, not hand-made: the admin role's permissions come from
+        // PermissionSeeder (RBAC-004), and `Role::create(['name' => 'admin'])`
+        // produced a role with no rows, which now fails every users.* gate.
+        $this->seed(\Database\Seeders\RoleSeeder::class);
+        $this->seed(\Database\Seeders\PermissionSeeder::class);
+
+        $adminRole = Role::where('name', 'admin')
+            ->where('guard_name', \App\Models\RoleLookup::guard())
+            ->firstOrFail();
 
         $admin = User::factory()->create([
             'name' => 'Admin',

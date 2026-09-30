@@ -3,6 +3,9 @@
 namespace Tests\Feature\User;
 
 use App\Models\User;
+use App\Support\SystemRole;
+use Database\Seeders\PermissionSeeder;
+use Database\Seeders\RoleSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
@@ -14,7 +17,14 @@ class UserLifecycleTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+
+        // Same reason as UserStateWebTest: the API state routes are gated, and
+        // this suite acted in as a role-less user.
+        $this->seed(RoleSeeder::class);
+        $this->seed(PermissionSeeder::class);
+
         $this->admin = User::factory()->create(['is_active' => true]);
+        $this->admin->assignRole(SystemRole::SUPERADMIN);
         Sanctum::actingAs($this->admin, ['*']);
     }
 

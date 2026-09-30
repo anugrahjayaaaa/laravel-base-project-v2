@@ -66,6 +66,8 @@
         </div>
     </div>
 
+    @include('layouts.partials.alerts')
+
     @if (session('status'))
         <div class="alert alert-success alert-dismissible fade show mb-3" role="alert">
             <i class="fas fa-circle-check me-1"></i>
@@ -75,7 +77,7 @@
     @endif
 
     <div class="card border-0 shadow-sm mb-4">
-        <div class="card-header users-card-header bg-transparent border-bottom py-2">
+        <div class="card-header index-card-header bg-transparent border-bottom py-2">
             <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
                 <div class="d-flex flex-nowrap overflow-auto pe-2" style="scrollbar-width: none;">
                     <ul class="nav nav-pills flex-nowrap overflow-auto pb-2 gap-2"
@@ -110,9 +112,11 @@
                         </li>
                     </ul>
                 </div>
-                <a href="{{ route('users.create') }}" class="btn btn-primary d-inline-flex align-items-center gap-2">
-                    <i class="bi bi-person-plus-fill"></i> Create User
-                </a>
+                @can('users.create')
+                    <a href="{{ route('users.create') }}" class="btn btn-primary d-inline-flex align-items-center gap-2">
+                        <i class="bi bi-person-plus-fill"></i> Create User
+                    </a>
+                @endcan
             </div>
         </div>
         <div class="card-body p-4">
@@ -136,13 +140,16 @@
                     <span class="text-muted fs-7">Selected: <strong id="bulkCount">0</strong></span>
                     <select id="bulkAction" class="form-select form-select-sm d-inline-block" style="width:auto">
                         <option value="">-- Action --</option>
-                        <option value="delete">Move to Trash</option>
-                        <option value="force_delete">Permanent Delete</option>
-                        <option value="restore">Restore</option>
-                        <option value="lock">Lock</option>
-                        <option value="unlock">Unlock</option>
-                        <option value="activate">Activate</option>
-                        <option value="deactivate">Deactivate</option>
+                        {{-- One @can per action: the server re-checks whatever is
+                             posted, this only keeps the caller from being offered
+                             something they would be refused. --}}
+                        @can('users.delete')<option value="delete">Move to Trash</option>@endcan
+                        @can('users.force_delete')<option value="force_delete">Permanent Delete</option>@endcan
+                        @can('users.restore')<option value="restore">Restore</option>@endcan
+                        @can('users.lock')<option value="lock">Lock</option>@endcan
+                        @can('users.unlock')<option value="unlock">Unlock</option>@endcan
+                        @can('users.activate')<option value="activate">Activate</option>@endcan
+                        @can('users.deactivate')<option value="deactivate">Deactivate</option>@endcan
                     </select>
                     <button type="button" class="btn btn-sm btn-primary" id="bulkApplyBtn">Apply</button>
                     <button type="button" class="btn btn-sm btn-outline-secondary" id="bulkClearBtn">Clear</button>
@@ -202,49 +209,63 @@
                                         class="d-flex align-items-center justify-content-end gap-1 flex-wrap flex-md-nowrap">
                                         {!! $editBtn($user) !!}
                                         @if ($user->trashed())
-                                            <x-ui.confirm-action :action="route('users.restore', $user)" method="POST"
-                                                action-type="restore" :item-name="$user->name" label="Restore"
-                                                title="Restore" class="btn btn-sm btn-outline-success">
-                                                <i class="fas fa-rotate-left"></i>
-                                            </x-ui.confirm-action>
-                                            <x-ui.confirm-action :action="route('users.force-delete', $user)" method="DELETE"
-                                                action-type="force_delete" :item-name="$user->name"
-                                                label="Permanent Delete" title="Permanent Delete"
-                                                class="btn btn-sm btn-danger">
-                                                <i class="fas fa-trash"></i>
-                                            </x-ui.confirm-action>
+                                            @can('users.restore')
+                                                <x-ui.confirm-action :action="route('users.restore', $user)" method="POST"
+                                                    action-type="restore" :item-name="$user->name" label="Restore"
+                                                    title="Restore" class="btn btn-sm btn-outline-success">
+                                                    <i class="fas fa-rotate-left"></i>
+                                                </x-ui.confirm-action>
+                                            @endcan
+                                            @can('users.force_delete')
+                                                <x-ui.confirm-action :action="route('users.force-delete', $user)" method="DELETE"
+                                                    action-type="force_delete" :item-name="$user->name"
+                                                    label="Permanent Delete" title="Permanent Delete"
+                                                    class="btn btn-sm btn-danger">
+                                                    <i class="fas fa-trash"></i>
+                                                </x-ui.confirm-action>
+                                            @endcan
                                         @else
                                             @if ($currentStatus === 'active' && $status->value === 'active')
-                                                <x-ui.confirm-action :action="route('users.deactivate', $user)" method="POST"
-                                                    action-type="deactivate" :item-name="$user->name" label="Deactivate"
-                                                    title="Deactivate" class="btn btn-sm btn-outline-warning">
-                                                    <i class="fas fa-user-slash"></i>
-                                                </x-ui.confirm-action>
-                                                <x-ui.confirm-action :action="route('users.lock', $user)" method="POST"
-                                                    action-type="lock" :item-name="$user->name" label="Lock"
-                                                    title="Lock Account" class="btn btn-sm btn-outline-warning">
-                                                    <i class="fas fa-lock"></i>
-                                                </x-ui.confirm-action>
+                                                @can('users.deactivate')
+                                                    <x-ui.confirm-action :action="route('users.deactivate', $user)" method="POST"
+                                                        action-type="deactivate" :item-name="$user->name" label="Deactivate"
+                                                        title="Deactivate" class="btn btn-sm btn-outline-warning">
+                                                        <i class="fas fa-user-slash"></i>
+                                                    </x-ui.confirm-action>
+                                                @endcan
+                                                @can('users.lock')
+                                                    <x-ui.confirm-action :action="route('users.lock', $user)" method="POST"
+                                                        action-type="lock" :item-name="$user->name" label="Lock"
+                                                        title="Lock Account" class="btn btn-sm btn-outline-warning">
+                                                        <i class="fas fa-lock"></i>
+                                                    </x-ui.confirm-action>
+                                                @endcan
                                             @elseif ($currentStatus === 'inactive' && $status->value === 'inactive')
-                                                <x-ui.confirm-action :action="route('users.activate', $user)" method="POST"
-                                                    action-type="activate" :item-name="$user->name" label="Activate"
-                                                    title="Activate" class="btn btn-sm btn-outline-success">
-                                                    <i class="fas fa-user-check"></i>
-                                                </x-ui.confirm-action>
+                                                @can('users.activate')
+                                                    <x-ui.confirm-action :action="route('users.activate', $user)" method="POST"
+                                                        action-type="activate" :item-name="$user->name" label="Activate"
+                                                        title="Activate" class="btn btn-sm btn-outline-success">
+                                                        <i class="fas fa-user-check"></i>
+                                                    </x-ui.confirm-action>
+                                                @endcan
                                             @elseif ($currentStatus === 'locked' && $status->value === 'locked')
-                                                <x-ui.confirm-action :action="route('users.unlock', $user)" method="POST"
-                                                    action-type="unlock" :item-name="$user->name" label="Unlock"
-                                                    title="Unlock Account" class="btn btn-sm btn-outline-success">
-                                                    <i class="fas fa-lock-open"></i>
-                                                </x-ui.confirm-action>
+                                                @can('users.unlock')
+                                                    <x-ui.confirm-action :action="route('users.unlock', $user)" method="POST"
+                                                        action-type="unlock" :item-name="$user->name" label="Unlock"
+                                                        title="Unlock Account" class="btn btn-sm btn-outline-success">
+                                                        <i class="fas fa-lock-open"></i>
+                                                    </x-ui.confirm-action>
+                                                @endcan
                                             @endif
 
                                             @if ($currentStatus !== 'trashed')
-                                                <x-ui.confirm-action :action="route('users.destroy', $user)" method="DELETE"
-                                                    action-type="delete" :item-name="$user->name" label="Delete"
-                                                    title="Delete" class="btn btn-sm btn-outline-danger">
-                                                    <i class="fas fa-trash"></i>
-                                                </x-ui.confirm-action>
+                                                @can('users.delete')
+                                                    <x-ui.confirm-action :action="route('users.destroy', $user)" method="DELETE"
+                                                        action-type="delete" :item-name="$user->name" label="Delete"
+                                                        title="Delete" class="btn btn-sm btn-outline-danger">
+                                                        <i class="fas fa-trash"></i>
+                                                    </x-ui.confirm-action>
+                                                @endcan
                                             @endif
                                         @endif
                                     </div>

@@ -3,6 +3,7 @@
 namespace App\Actions\V1\User;
 
 use App\Models\User;
+use App\Support\LastSuperadmin;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
@@ -68,5 +69,10 @@ class DeactivateUserAction
 
             throw new ValidationException($validator);
         }
+
+        // An inactive superadmin cannot log in, so deactivating the last one
+        // leaves nobody able to administer the app — the same lockout the role
+        // guard in AssignRolesAction prevents, reached by a different column.
+        LastSuperadmin::guard($user, __('deactivated'));
     }
 }

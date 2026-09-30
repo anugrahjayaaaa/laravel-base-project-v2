@@ -70,14 +70,14 @@
 
 || ID | Scenario | Category | Feature | Status |
 ||----|----------|----------|---------|--------|
-|| QA-RBAC-001 | Verify role permission changes propagate to users | Functional | Role permissions | PLANNED |
-|| QA-RBAC-002 | Verify user inherits role permissions | Functional | Role permissions | PLANNED |
-|| QA-RBAC-003 | Verify cannot delete last superadmin | Security | Superadmin | PLANNED |
-|| QA-RBAC-004 | Verify cannot deactivate last superadmin | Security | Superadmin | PLANNED |
-|| QA-RBAC-005 | Verify superadmin bypasses auth where explicitly allowed | Authorization | Superadmin | PLANNED |
-|| QA-RBAC-006 | Verify superadmin does NOT bypass every boundary | Security | Superadmin | PLANNED |
-|| QA-RBAC-007 | Verify registration default role is 'user' | Authorization | Registration | PLANNED |
-|| QA-RBAC-008 | Verify public cannot select admin/superadmin role | Security | Registration | PLANNED |
+|| QA-RBAC-001 | Verify role permission changes propagate to users | Functional | Role permissions | DONE | DONE (2026-09-30) — `RbacRoleSyncTest::test_the_role_change_is_audited_with_before_and_after` — edit a user's roles, confirm the `user.roles_assigned` activity row records before AND after. Manual: change a user's role, check the audit log
+|| QA-RBAC-002 | Verify user inherits role permissions | Functional | Role permissions | DONE | DONE (2026-09-30) — `RbacRoleSyncTest::test_changing_the_role_changes_what_the_account_can_do` + `test_the_sync_writes_nothing_to_the_user_permission_pivot` — the role change moves `can()` and leaves `model_has_permissions` at 0 rows (ADR-004). Manual: give a user `staff`, confirm they gain users.view with no direct permission row
+|| QA-RBAC-003 | Verify cannot delete last superadmin | Security | Superadmin | DONE | DONE (2026-09-30) — `LastSuperadminGuardTest::test_the_last_superadmin_cannot_be_removed` (soft-deleted case). NOTE: this was BROKEN until Group E — deleting the account bypassed the role guard entirely; confirmed exploitable down to zero superadmins, now fixed. Manual: as a non-superadmin holding users.delete, try to delete the only superadmin — refused, account intact
+|| QA-RBAC-004 | Verify cannot deactivate last superadmin | Security | Superadmin | DONE | DONE (2026-09-30) — `LastSuperadminGuardTest` deactivated case + `test_the_bulk_path_cannot_remove_the_last_superadmin` + `test_the_api_cannot_deactivate_the_last_superadmin` (409 LAST_SUPERADMIN). NOTE: also BROKEN until Group E, and the bulk bar bypassed the action via a raw UPDATE. Manual: deactivate the only superadmin via row button, bulk dropdown and API — all three refused
+|| QA-RBAC-005 | Verify superadmin bypasses auth where explicitly allowed | Authorization | Superadmin | DONE | DONE (2026-09-30) — Sidebar/route cases in `GateDUiGatingTest` + `RbacAuthorizationMatrixTest` — a superadmin reaches every gated screen. Mechanism is `Gate::before` (AuthServiceProvider), documented in `docs/base/security/authorization.md`. Manual: sign in as superadmin, confirm /users, /roles, /permissions, /settings all open
+|| QA-RBAC-006 | Verify superadmin does NOT bypass every boundary | Security | Superadmin | DONE | DONE (2026-09-30) — The bypass is scoped, not total: `SuperadminVisibilityTest` (a delegated admin still cannot grant superadmin, even WITH confirm_superadmin), `LastSuperadminGuardTest` (E5 binds superadmins too), `RoleManagementTest::test_a_system_role_permissions_cannot_be_edited` (even a superadmin cannot strip `admin`'s set). Manual: as superadmin, try to demote the last superadmin — refused
+|| QA-RBAC-007 | Verify registration default role is 'user' | Authorization | Registration | DONE | DONE (2026-09-30) — `RbacRoleSyncTest::test_a_create_without_roles_lands_on_the_default_role` — an admin create with no `roles` key lands on the configured default, not on no role. Manual: create a user leaving roles empty, confirm they hold `user`
+|| QA-RBAC-008 | Verify public cannot select admin/superadmin role | Security | Registration | DONE | DONE (2026-09-30) — `RegisterTest` + `RbacPentestTest::test_roles_cannot_be_smuggled_through_the_profile_endpoint` — a self-registering account cannot select a role and cannot acquire one later via a mass-assigned field. Manual: register, then PUT /profile with roles[]=superadmin — refused
 
 ### API QA
 

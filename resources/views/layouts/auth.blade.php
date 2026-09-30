@@ -7,8 +7,13 @@
     <title>{{ $title ?? config('app.name', 'Laravel') }}</title>
     <link rel="stylesheet" href="{{ asset('vendor/bootstrap/css/bootstrap.min.css') }}">
     <link rel="stylesheet" href="{{ asset('vendor/adminlte/css/adminlte.min.css') }}">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    {{-- Self-hosted, like bootstrap and adminlte above. Off a CDN these two cost
+         730 ms of blocking CSS before first paint on a warm connection, and ten
+         remote font files behind them (4.4 s if fetched serially) — so a slow CDN
+         held the whole page back, not just the icons. No integrity attribute: it
+         only applies to subresources fetched from a third party. --}}
+    <link rel="stylesheet" href="{{ asset('vendor/fontawesome/fontawesome.min.css') }}">
+    <link rel="stylesheet" href="{{ asset('vendor/bootstrap-icons/bootstrap-icons.min.css') }}">
     <link rel="stylesheet" href="{{ asset('vendor/theme.css') }}?v={{ filemtime(public_path('vendor/theme.css')) }}">
     <style>
         :root {
