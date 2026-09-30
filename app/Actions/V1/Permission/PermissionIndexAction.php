@@ -73,8 +73,8 @@ class PermissionIndexAction
             // Matches the bare name and the resource on its own, so "users" and
             // "view" both find rows — people type the fragment, not the dotted
             // name they see in the table.
-            ->when($search !== '', fn($query) => $query->where(
-                fn($inner) => $inner
+            ->when($search !== '', fn ($query) => $query->where(
+                fn ($inner) => $inner
                     ->where('name', 'like', '%' . $search . '%')
                     ->orWhere('name', 'like', $search . '.%')
             ))

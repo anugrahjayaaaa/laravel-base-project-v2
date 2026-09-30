@@ -38,7 +38,7 @@ class AssignRolesAction
             $this->authorizeRoleAssignment($causer);
 
             $roles = collect($roleNames)
-                ->map(fn(string $name) => RoleLookup::find($name))
+                ->map(fn (string $name) => RoleLookup::find($name))
                 ->filter()
                 ->all();
 
@@ -93,7 +93,7 @@ class AssignRolesAction
     private function guardSuperadminGrant(?User $causer, array $roles): void
     {
         $grantingSuperadmin = collect($roles)
-            ->contains(fn($role): bool => $role->name === SystemRole::SUPERADMIN);
+            ->contains(fn ($role): bool => $role->name === SystemRole::SUPERADMIN);
 
         if (! $grantingSuperadmin || $causer?->hasRole(SystemRole::SUPERADMIN) === true) {
             return;
@@ -123,7 +123,7 @@ class AssignRolesAction
         }
 
         $stillSuperadmin = collect($roles)
-            ->contains(fn($role): bool => $role->name === SystemRole::SUPERADMIN);
+            ->contains(fn ($role): bool => $role->name === SystemRole::SUPERADMIN);
 
         if ($stillSuperadmin) {
             return;
