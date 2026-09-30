@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\User;
 
+use App\Http\Requests\Concerns\NormalizesRolePayload;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
@@ -9,6 +10,8 @@ use Illuminate\Foundation\Http\FormRequest;
  */
 class CreateUserRequest extends FormRequest
 {
+    use NormalizesRolePayload;
+
     /**
      * Creating a user is an admin action.
      *

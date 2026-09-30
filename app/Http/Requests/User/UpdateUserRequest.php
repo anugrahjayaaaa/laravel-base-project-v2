@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\User;
 
+use App\Http\Requests\Concerns\NormalizesRolePayload;
 use App\Models\SystemSetting;
 use App\Enums\UserStatusEnum;
 use Illuminate\Foundation\Http\FormRequest;
@@ -13,6 +14,8 @@ use Illuminate\Validation\ValidationException;
  */
 class UpdateUserRequest extends FormRequest
 {
+    use NormalizesRolePayload;
+
     /**
      * `users.update`, or a self-profile edit.
      *
