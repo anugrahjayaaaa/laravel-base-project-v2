@@ -55,6 +55,57 @@ class NoCdnStylesheetsTest extends TestCase
     }
 
     /**
+     * The reason this class exists after the first attempt at it.
+     *
+     * Stripping the legacy `url(...ttf)` references out of a minified stylesheet
+     * leaves their `format("truetype")` descriptors behind as orphans:
+     *
+     *     src:url(fa-solid-900.woff2) format("woff2") format("truetype")
+     *
+     * A `format()` with no `url()` beside it is an unknown descriptor, so the
+     * whole `@font-face` block is invalid and the browser discards it — the
+     * stylesheet loads, every rule applies, and no icon renders. Every check
+     * that only looks for remote URLs passed on that broken file: the fonts
+     * existed, they were all local, and nothing 404'd.
+     *
+     * So assert the shapes that actually decide whether the icons draw.
+     */
+    public function test_a_vendored_stylesheet_has_no_orphaned_font_descriptors(): void
+    {
+        $root = public_path('vendor');
+
+        $css = [
+            'fontawesome/fontawesome.min.css',
+            'bootstrap-icons/bootstrap-icons.min.css',
+        ];
+
+        foreach ($css as $file) {
+            $contents = file_get_contents($root.'/'.$file);
+
+            preg_match_all('/src:([^;}]+)/i', $contents, $blocks);
+
+            $this->assertNotEmpty($blocks[1], "{$file} has no @font-face src to check");
+
+            foreach ($blocks[1] as $src) {
+                $urls = preg_match_all('/url\(/i', $src);
+                $formats = preg_match_all('/format\(/i', $src);
+
+                $this->assertSame(
+                    $urls,
+                    $formats,
+                    "{$file} has an orphaned font descriptor — a format() with no url() beside it:\n{$src}"
+                );
+
+                $this->assertGreaterThan(
+                    0,
+                    $urls,
+                    "{$file} has a format() but no url() at all:\n{$src}"
+                );
+            }
+        }
+    }
+
+    /**
      * A vendored stylesheet that 404s renders unstyled, silently — no test
      * fails, no exception is raised. Asserting the files exist is the only
      * thing standing between a bad vendor fetch and a broken admin panel.
