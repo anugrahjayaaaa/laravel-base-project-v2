@@ -2,7 +2,6 @@
 
 namespace Tests\Feature;
 
-use App\Models\RoleLookup;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -39,6 +38,18 @@ class ConfirmActionUsageTest extends TestCase
         // seeder's row for the same (name, guard).
         $admin->assignRole(\App\Models\RoleLookup::find('admin'));
 
+        // Every seeded role is a SYSTEM role, and roles/index.blade.php hides the
+        // delete trigger behind `@unless ($role->is_system)` — a system role can
+        // never be trashed. Without one custom role the page renders no triggers
+        // at all and this test would pass on an empty array, which is exactly the
+        // failure it exists to catch.
+        if (\App\Models\RoleLookup::find('Custom Role') === null) {
+            \App\Models\Role::create([
+                'name' => 'Custom Role',
+                'guard_name' => \App\Models\RoleLookup::guard(),
+            ]);
+        }
+
         return $admin;
     }
 
@@ -51,6 +62,17 @@ class ConfirmActionUsageTest extends TestCase
             'user index' => ['users.index', 'active', 'delete'],
             'user detail' => ['users.show', 'active', 'delete'],
             'sessions' => ['sessions', 'active', 'logout_all'],
+            // Phase 6D: the role pages went ungated by this test because they
+            // shipped after it was written. They are where a mistyped
+            // data-action-type does the most damage — a delete_role button
+            // falling back to a user's delete copy would promise to trash an
+            // account instead of a role.
+            'roles index' => ['roles.index', 'active', 'delete_role'],
+            // The catalogue is read-only: it renders the seeded permissions and
+            // offers no mutating trigger at all. The data-provider test still
+            // asserts the hand-built-trigger ban covers it, which is the part that
+            // matters — nothing on that page may bypass the component.
+            'permissions index' => ['permissions.index', 'active', '__none__'],
         ];
     }
 
@@ -83,11 +105,14 @@ class ConfirmActionUsageTest extends TestCase
             );
         }
 
-        $this->assertContains(
-            $expectedType,
-            array_column($this->triggers($html), 'data-action-type'),
-            "the {$page} page must still offer {$expectedType}"
-        );
+        // A read-only page is allowed to render no triggers at all.
+        if ($expectedType !== '__none__') {
+            $this->assertContains(
+                $expectedType,
+                array_column($this->triggers($html), 'data-action-type'),
+                "the {$page} page must still offer {$expectedType}"
+            );
+        }
     }
 
     /**

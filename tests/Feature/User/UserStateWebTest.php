@@ -3,6 +3,9 @@
 namespace Tests\Feature\User;
 
 use App\Models\User;
+use App\Support\SystemRole;
+use Database\Seeders\PermissionSeeder;
+use Database\Seeders\RoleSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -14,11 +17,22 @@ class UserStateWebTest extends TestCase
     {
         parent::setUp();
         $this->withoutMiddleware(\App\Http\Middleware\VerifyCsrfToken::class);
+
+        $this->seed(RoleSeeder::class);
+        $this->seed(PermissionSeeder::class);
+
         $this->admin = User::factory()->create([
             'name' => 'Admin',
             'email' => 'admin@example.com',
             'is_active' => true,
         ]);
+        // The four toggles are gated on users.activate/deactivate/lock/unlock
+        // (P6-D). This suite creates a user with NO role at all and calls it
+        // "admin", so every request came back 403 — they had only ever passed
+        // because the endpoints had no gate. Granting the four permissions this
+        // suite actually exercises; UserStateAuthorizationTest covers the refusal.
+        $this->admin->assignRole(SystemRole::SUPERADMIN);
+
         $this->actingAs($this->admin, 'web');
     }
 
