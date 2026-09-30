@@ -1,7 +1,6 @@
 <?php
 
 use App\Models\User;
-use Illuminate\Http\Middleware\Authenticate;
 use Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful;
 
 return [
