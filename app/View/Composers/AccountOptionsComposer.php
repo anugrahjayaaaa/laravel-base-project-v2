@@ -39,6 +39,11 @@ class AccountOptionsComposer
             // visibleTo, not assignable: the superadmin role is hidden from a
             // viewer who is not one, so it cannot be picked off this list.
             'roles' => RoleLookup::visibleTo(auth()->user()),
+            // Whether the superadmin confirmation block belongs on the page at
+            // all. True only for a viewer who is already one, because
+            // visibleTo() hides the role from everyone else — so this is the
+            // same fact the view was deriving by scanning $roles for the name.
+            'superadminAssignable' => RoleLookup::viewerIsSuperAdmin(auth()->user()),
             'allowUsernameChange' => SystemSetting::getBool('allow_username_change', true),
             'allowEmailChange' => SystemSetting::getBool('allow_email_change', true),
             'usernameCooldownDays' => SystemSetting::getInt('username_change_cooldown_days', 30),

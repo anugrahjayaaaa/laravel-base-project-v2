@@ -50,15 +50,22 @@
         send one — otherwise the guard silently makes superadmin unassignable
         through the UI, which is a lockout wearing a safety feature.
 
-        Rendered only when superadmin is actually among the assignable roles,
-        and only for a caller who may assign roles at all: an admin who cannot
-        assign roles never sees this block, so the field cannot become a
-        side-channel.
+        Rendered whenever the viewer is a superadmin — which is also when
+        superadmin appears in $roles at all, since visibleTo() hides it from
+        everyone else. The whole picker is inside @can('users.assign_roles'),
+        so a caller who cannot assign roles never sees this block and the
+        field cannot become a side-channel.
+
+        Shown on both add and remove, and shown whether or not the account
+        being edited currently holds the role: the guard fires on the CHANGE,
+        so a user who does not hold it yet still needs to be able to tick it.
+        Gating this on the current selection would hide the control precisely
+        when it is needed.
 
         `old()` re-checks it so a refused save does not silently untick the box
         and make the retry impossible.
     --}}
-    @if (collect($roles)->contains(fn ($role) => $role->name === \App\Support\SystemRole::SUPERADMIN))
+    @if ($superadminAssignable ?? false)
         <div class="form-check mt-2 pt-2 border-top">
             <input class="form-check-input" type="checkbox" name="confirm_superadmin" value="1"
                 id="confirm_superadmin" {{ old('confirm_superadmin') ? 'checked' : '' }}>
