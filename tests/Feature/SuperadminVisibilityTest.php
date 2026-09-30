@@ -62,7 +62,10 @@ class SuperadminVisibilityTest extends TestCase
     {
         $target = User::factory()->create();
 
-        app(AssignRolesAction::class)->run($target, [SystemRole::SUPERADMIN], $this->superadmin);
+        // Confirmed — this is the legitimate grant E5 requires a deliberate
+        // signal for. Without the flag it is refused, which is the point of the
+        // neighbouring test, not a failure of this one.
+        app(AssignRolesAction::class)->run($target, [SystemRole::SUPERADMIN], $this->superadmin, true);
 
         $this->assertTrue($target->fresh()->hasRole(SystemRole::SUPERADMIN));
     }

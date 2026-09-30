@@ -9,11 +9,13 @@ use App\Actions\V1\Role\UpdateRoleAction;
 use App\Models\Role;
 use App\Models\RoleLookup;
 use App\Models\User;
+use App\Support\SystemRole;
 use Database\Seeders\PermissionSeeder;
 use Database\Seeders\RoleSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
+use PHPUnit\Framework\Attributes\DataProvider;
 use RuntimeException;
 use Spatie\Permission\Models\Permission;
 use Tests\TestCase;
@@ -113,19 +115,91 @@ class RoleManagementTest extends TestCase
         // `ignore($this->role)` is what makes this pass: the name field is
         // resubmitted unchanged, so a rule that forgot to ignore the role would
         // reject every save of every role.
-        $role = RoleLookup::find('admin');
+        //
+        // Deliberately an ORDINARY role. This used to edit `admin`, which is
+        // legal under no circumstances now — a system role's permissions are
+        // code-defined and P6-E3 refuses the payload (see
+        // test_a_system_role_permissions_cannot_be_edited_below). The purpose
+        // here is the unique-rule ignore, which has nothing to do with system
+        // roles, so it is asserted against a role the edit may touch.
+        $role = Role::create([
+            'name' => 'Support Agent',
+            'guard_name' => RoleLookup::guard(),
+        ]);
         $keep = Permission::query()->first();
         $drop = Permission::query()->skip(1)->first();
 
         $this->actingAs($this->admin)
             ->put(route('roles.update', $role), [
-                'name' => 'admin',
+                'name' => 'Support Agent',
                 'permissions' => [(string) $keep->id],
             ])
             ->assertSessionHasNoErrors();
 
         $this->assertSame([$keep->id], $role->fresh()->permissions->pluck('id')->all());
         $this->assertFalse($role->fresh()->permissions->contains('id', $drop->id));
+    }
+
+    /**
+     * P6-E3: the role matrix is one POST away from emptying a system role.
+     *
+     * Submit no checkboxes and `syncPermissions([])` strips every permission
+     * from the row — silently, with an audit row recording a successful save.
+     * For `superadmin` that is the whole admin panel, gone by one form post.
+     */
+    #[DataProvider('systemRoleProvider')]
+    public function test_a_system_role_permissions_cannot_be_edited(string $name): void
+    {
+        $role = RoleLookup::find($name);
+        $before = $role->fresh()->permissions->pluck('id')->all();
+
+        $this->actingAs($this->admin)
+            ->from(route('roles.index'))
+            ->put(route('roles.update', $role), [
+                'name' => $name,
+                // An empty matrix: the exact payload that strips the role.
+                'permissions' => [],
+            ])
+            ->assertSessionHasErrors('permissions');
+
+        $this->assertSame(
+            $before,
+            $role->fresh()->permissions->pluck('id')->all(),
+            "the {$name} permission set was modified by a refused request"
+        );
+    }
+
+    /**
+     * A partial payload counts too — the guard is about the ROLE being a system
+     * one, not about how much of it the caller is trying to change.
+     */
+    public function test_a_system_role_cannot_have_one_permission_swapped(): void
+    {
+        $role = RoleLookup::find(SystemRole::ADMIN);
+        $before = $role->fresh()->permissions->pluck('id')->all();
+        $swap = Permission::query()->first();
+
+        $this->actingAs($this->admin)
+            ->from(route('roles.index'))
+            ->put(route('roles.update', $role), [
+                'name' => SystemRole::ADMIN,
+                'permissions' => [(string) $swap->id],
+            ])
+            ->assertSessionHasErrors('permissions');
+
+        $this->assertSame($before, $role->fresh()->permissions->pluck('id')->all());
+    }
+
+    /**
+     * @return array<string, array{0: string}>
+     */
+    public static function systemRoleProvider(): array
+    {
+        return [
+            'superadmin' => [SystemRole::SUPERADMIN],
+            'admin' => [SystemRole::ADMIN],
+            'user' => [SystemRole::USER],
+        ];
     }
 
     public function test_a_system_role_cannot_be_renamed(): void

@@ -73,7 +73,11 @@ class AssignRolesActionTest extends TestCase
 
         $this->expectException(LastSuperadminException::class);
 
-        $this->action->run($superadmin, [SystemRole::USER], $superadmin);
+        // Confirmed, so E5's confirmation guard is satisfied and the exception
+        // that arrives is the LAST-SUPERADMIN one this test is about. Without
+        // the flag it would be refused earlier for a different reason and
+        // would pass for the wrong one.
+        $this->action->run($superadmin, [SystemRole::USER], $superadmin, true);
     }
 
     public function test_the_refusal_leaves_the_superadmin_in_place(): void
@@ -82,7 +86,7 @@ class AssignRolesActionTest extends TestCase
         $superadmin->assignRole(SystemRole::SUPERADMIN);
 
         try {
-            $this->action->run($superadmin, [SystemRole::USER], $superadmin);
+            $this->action->run($superadmin, [SystemRole::USER], $superadmin, true);
         } catch (LastSuperadminException) {
             // Expected. The point of this test is what is left behind.
         }
@@ -98,7 +102,9 @@ class AssignRolesActionTest extends TestCase
         $second = $this->user();
         $second->assignRole(SystemRole::SUPERADMIN);
 
-        $this->action->run($second, [SystemRole::ADMIN], $this->causer());
+        // Confirmed: a deliberate demotion of one of two is allowed, which is
+        // exactly what E5's confirmation is FOR.
+        $this->action->run($second, [SystemRole::ADMIN], $this->causer(), true);
 
         $this->assertTrue($first->fresh()->hasRole(SystemRole::SUPERADMIN));
         $this->assertFalse($second->fresh()->hasRole(SystemRole::SUPERADMIN));
