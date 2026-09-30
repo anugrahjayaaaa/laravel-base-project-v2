@@ -117,6 +117,8 @@ This list is the single source of truth; the seeder, the route gates, the
 | `roles.create` | create form + store |
 | `roles.update` | edit form + update (rename + sync permissions) |
 | `roles.delete` | delete a non-system role |
+| `roles.force_delete` | permanent delete from trash — **added by C1**, not in the original list |
+| `roles.restore` | restore from trash — **added by C1**, not in the original list |
 | `roles.assign_permissions` | **the permission checkbox matrix on a role form** |
 
 ### permissions (catalogue)
@@ -130,7 +132,11 @@ This list is the single source of truth; the seeder, the route gates, the
 | `settings.view` | settings page read |
 | `settings.manage` | settings page write (POST/PUT) |
 
-**19 permissions, seeded.** `audit.*` and `features.*` were planned here and
+**21 permissions, seeded** (11 users + 7 roles + 1 permissions + 2 settings).
+The original list was 19; C1 added `roles.force_delete` and `roles.restore` when
+it shipped the trash tab, because a restore and a permanent delete are not
+`roles.update` — see `docs/base/features/roles-permissions.md` §Role Lifecycle.
+`audit.*` and `features.*` were planned here and
 are **deliberately not seeded** — the audit viewer is Phase 10 and feature flags
 are Phase 7, and neither has a route, controller or view today. A permission
 nothing checks is a row in the permissions UI that looks meaningful and grants

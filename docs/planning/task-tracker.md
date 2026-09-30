@@ -590,7 +590,7 @@ genuinely open and are the real D1/D2 work.
       "P0-004"
     ],
     "status": "DONE",
-    "note": "2026-09-28: Group B. PermissionCatalog (19 permissions across users/roles/permissions/settings) + PermissionSeeder. audit.* and features.* intentionally excluded — no feature behind them. Seeder prunes permissions dropped from the catalogue, which firstOrCreate alone would not do."
+    "note": "2026-09-28: Group B. PermissionCatalog + PermissionSeeder. audit.* and features.* intentionally excluded — no feature behind them. Seeder prunes permissions dropped from the catalogue, which firstOrCreate alone would not do. 2026-09-30 correction: the catalogue is 21, not the 19 measured on 2026-09-28 — C1 added roles.force_delete and roles.restore with the trash tab. The count in the other Group B notes is left as written because it records what that commit actually measured."
   },
   {
     "id": "RBAC-005",
@@ -725,7 +725,7 @@ genuinely open and are the real D1/D2 work.
       "P6-B4"
     ],
     "status": "DONE",
-    "note": "Phase 6 Group B, shipped 2026-09-28. Verified: 19 permissions, superadmin 0 rows + can() true, admin 19, user 0, db:seed x2 idempotent, full suite 420 passed. Six deviations from the spec recorded in docs/planning/phase-6-rbac.md §Group B — two fixed real bugs (seeder only ever added, so a permission removed from the catalogue stayed forever; SuperAdminSeeder never assigned its role, which Gate::before turned into a total lockout). audit.* and features.* deliberately not seeded — no feature behind them (Phase 10 / Phase 7)."
+    "note": "Phase 6 Group B, shipped 2026-09-28. Verified at that commit: 19 permissions, superadmin 0 rows + can() true, admin 19, user 0, db:seed x2 idempotent, full suite 420 passed. Six deviations from the spec recorded in docs/planning/phase-6-rbac.md §Group B — two fixed real bugs (seeder only ever added, so a permission removed from the catalogue stayed forever; SuperAdminSeeder never assigned its role, which Gate::before turned into a total lockout). audit.* and features.* deliberately not seeded — no feature behind them (Phase 10 / Phase 7). LATER: the catalogue is 21 since C1 added roles.force_delete and roles.restore; the 19 above is what this commit measured."
   },
   {
     "id": "P6-B2",
@@ -736,7 +736,7 @@ genuinely open and are the real D1/D2 work.
       "P6-B1"
     ],
     "status": "DONE",
-    "note": "Phase 6 Group B, shipped 2026-09-28. Verified: 19 permissions, superadmin 0 rows + can() true, admin 19, user 0, db:seed x2 idempotent, full suite 420 passed. Six deviations from the spec recorded in docs/planning/phase-6-rbac.md §Group B — two fixed real bugs (seeder only ever added, so a permission removed from the catalogue stayed forever; SuperAdminSeeder never assigned its role, which Gate::before turned into a total lockout). audit.* and features.* deliberately not seeded — no feature behind them (Phase 10 / Phase 7)."
+    "note": "Phase 6 Group B, shipped 2026-09-28. Verified at that commit: 19 permissions, superadmin 0 rows + can() true, admin 19, user 0, db:seed x2 idempotent, full suite 420 passed. Six deviations from the spec recorded in docs/planning/phase-6-rbac.md §Group B — two fixed real bugs (seeder only ever added, so a permission removed from the catalogue stayed forever; SuperAdminSeeder never assigned its role, which Gate::before turned into a total lockout). audit.* and features.* deliberately not seeded — no feature behind them (Phase 10 / Phase 7). LATER: the catalogue is 21 since C1 added roles.force_delete and roles.restore; the 19 above is what this commit measured."
   },
   {
     "id": "P6-B3",
@@ -747,7 +747,7 @@ genuinely open and are the real D1/D2 work.
       "P6-B1"
     ],
     "status": "DONE",
-    "note": "Phase 6 Group B, shipped 2026-09-28. Verified: 19 permissions, superadmin 0 rows + can() true, admin 19, user 0, db:seed x2 idempotent, full suite 420 passed. Six deviations from the spec recorded in docs/planning/phase-6-rbac.md §Group B — two fixed real bugs (seeder only ever added, so a permission removed from the catalogue stayed forever; SuperAdminSeeder never assigned its role, which Gate::before turned into a total lockout). audit.* and features.* deliberately not seeded — no feature behind them (Phase 10 / Phase 7)."
+    "note": "Phase 6 Group B, shipped 2026-09-28. Verified at that commit: 19 permissions, superadmin 0 rows + can() true, admin 19, user 0, db:seed x2 idempotent, full suite 420 passed. Six deviations from the spec recorded in docs/planning/phase-6-rbac.md §Group B — two fixed real bugs (seeder only ever added, so a permission removed from the catalogue stayed forever; SuperAdminSeeder never assigned its role, which Gate::before turned into a total lockout). audit.* and features.* deliberately not seeded — no feature behind them (Phase 10 / Phase 7). LATER: the catalogue is 21 since C1 added roles.force_delete and roles.restore; the 19 above is what this commit measured."
   },
   {
     "id": "P6-B4",
@@ -758,7 +758,7 @@ genuinely open and are the real D1/D2 work.
       "P6-A1"
     ],
     "status": "DONE",
-    "note": "Phase 6 Group B, shipped 2026-09-28. Verified: 19 permissions, superadmin 0 rows + can() true, admin 19, user 0, db:seed x2 idempotent, full suite 420 passed. Six deviations from the spec recorded in docs/planning/phase-6-rbac.md §Group B — two fixed real bugs (seeder only ever added, so a permission removed from the catalogue stayed forever; SuperAdminSeeder never assigned its role, which Gate::before turned into a total lockout). audit.* and features.* deliberately not seeded — no feature behind them (Phase 10 / Phase 7)."
+    "note": "Phase 6 Group B, shipped 2026-09-28. Verified at that commit: 19 permissions, superadmin 0 rows + can() true, admin 19, user 0, db:seed x2 idempotent, full suite 420 passed. Six deviations from the spec recorded in docs/planning/phase-6-rbac.md §Group B — two fixed real bugs (seeder only ever added, so a permission removed from the catalogue stayed forever; SuperAdminSeeder never assigned its role, which Gate::before turned into a total lockout). audit.* and features.* deliberately not seeded — no feature behind them (Phase 10 / Phase 7). LATER: the catalogue is 21 since C1 added roles.force_delete and roles.restore; the 19 above is what this commit measured."
   },
   {
     "id": "P6-B5",
@@ -769,7 +769,7 @@ genuinely open and are the real D1/D2 work.
       "P6-B4"
     ],
     "status": "DONE",
-    "note": "Phase 6 Group B, shipped 2026-09-28. Verified: 19 permissions, superadmin 0 rows + can() true, admin 19, user 0, db:seed x2 idempotent, full suite 420 passed. Six deviations from the spec recorded in docs/planning/phase-6-rbac.md §Group B — two fixed real bugs (seeder only ever added, so a permission removed from the catalogue stayed forever; SuperAdminSeeder never assigned its role, which Gate::before turned into a total lockout). audit.* and features.* deliberately not seeded — no feature behind them (Phase 10 / Phase 7)."
+    "note": "Phase 6 Group B, shipped 2026-09-28. Verified at that commit: 19 permissions, superadmin 0 rows + can() true, admin 19, user 0, db:seed x2 idempotent, full suite 420 passed. Six deviations from the spec recorded in docs/planning/phase-6-rbac.md §Group B — two fixed real bugs (seeder only ever added, so a permission removed from the catalogue stayed forever; SuperAdminSeeder never assigned its role, which Gate::before turned into a total lockout). audit.* and features.* deliberately not seeded — no feature behind them (Phase 10 / Phase 7). LATER: the catalogue is 21 since C1 added roles.force_delete and roles.restore; the 19 above is what this commit measured."
   },
   {
     "id": "P6-B6",
@@ -780,7 +780,7 @@ genuinely open and are the real D1/D2 work.
       "P6-B1"
     ],
     "status": "DONE",
-    "note": "Phase 6 Group B, shipped 2026-09-28. Verified: 19 permissions, superadmin 0 rows + can() true, admin 19, user 0, db:seed x2 idempotent, full suite 420 passed. Six deviations from the spec recorded in docs/planning/phase-6-rbac.md §Group B — two fixed real bugs (seeder only ever added, so a permission removed from the catalogue stayed forever; SuperAdminSeeder never assigned its role, which Gate::before turned into a total lockout). audit.* and features.* deliberately not seeded — no feature behind them (Phase 10 / Phase 7)."
+    "note": "Phase 6 Group B, shipped 2026-09-28. Verified at that commit: 19 permissions, superadmin 0 rows + can() true, admin 19, user 0, db:seed x2 idempotent, full suite 420 passed. Six deviations from the spec recorded in docs/planning/phase-6-rbac.md §Group B — two fixed real bugs (seeder only ever added, so a permission removed from the catalogue stayed forever; SuperAdminSeeder never assigned its role, which Gate::before turned into a total lockout). audit.* and features.* deliberately not seeded — no feature behind them (Phase 10 / Phase 7). LATER: the catalogue is 21 since C1 added roles.force_delete and roles.restore; the 19 above is what this commit measured."
   },
   {
     "id": "P6-B7",
@@ -793,7 +793,7 @@ genuinely open and are the real D1/D2 work.
       "P6-B6"
     ],
     "status": "DONE",
-    "note": "Phase 6 Group B, shipped 2026-09-28. Verified: 19 permissions, superadmin 0 rows + can() true, admin 19, user 0, db:seed x2 idempotent, full suite 420 passed. Six deviations from the spec recorded in docs/planning/phase-6-rbac.md §Group B — two fixed real bugs (seeder only ever added, so a permission removed from the catalogue stayed forever; SuperAdminSeeder never assigned its role, which Gate::before turned into a total lockout). audit.* and features.* deliberately not seeded — no feature behind them (Phase 10 / Phase 7)."
+    "note": "Phase 6 Group B, shipped 2026-09-28. Verified at that commit: 19 permissions, superadmin 0 rows + can() true, admin 19, user 0, db:seed x2 idempotent, full suite 420 passed. Six deviations from the spec recorded in docs/planning/phase-6-rbac.md §Group B — two fixed real bugs (seeder only ever added, so a permission removed from the catalogue stayed forever; SuperAdminSeeder never assigned its role, which Gate::before turned into a total lockout). audit.* and features.* deliberately not seeded — no feature behind them (Phase 10 / Phase 7). LATER: the catalogue is 21 since C1 added roles.force_delete and roles.restore; the 19 above is what this commit measured."
   },
   {
     "id": "P6-B8",
@@ -804,7 +804,7 @@ genuinely open and are the real D1/D2 work.
       "P6-B7"
     ],
     "status": "DONE",
-    "note": "Phase 6 Group B, shipped 2026-09-28. Verified: 19 permissions, superadmin 0 rows + can() true, admin 19, user 0, db:seed x2 idempotent, full suite 420 passed. Six deviations from the spec recorded in docs/planning/phase-6-rbac.md §Group B — two fixed real bugs (seeder only ever added, so a permission removed from the catalogue stayed forever; SuperAdminSeeder never assigned its role, which Gate::before turned into a total lockout). audit.* and features.* deliberately not seeded — no feature behind them (Phase 10 / Phase 7)."
+    "note": "Phase 6 Group B, shipped 2026-09-28. Verified at that commit: 19 permissions, superadmin 0 rows + can() true, admin 19, user 0, db:seed x2 idempotent, full suite 420 passed. Six deviations from the spec recorded in docs/planning/phase-6-rbac.md §Group B — two fixed real bugs (seeder only ever added, so a permission removed from the catalogue stayed forever; SuperAdminSeeder never assigned its role, which Gate::before turned into a total lockout). audit.* and features.* deliberately not seeded — no feature behind them (Phase 10 / Phase 7). LATER: the catalogue is 21 since C1 added roles.force_delete and roles.restore; the 19 above is what this commit measured."
   },
   {
     "id": "P6-C1",
