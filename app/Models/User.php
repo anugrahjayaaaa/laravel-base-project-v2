@@ -31,6 +31,27 @@ class User extends Authenticatable implements MustVerifyEmail
     use SoftDeletes;
 
     /**
+     * The guard Spatie reads permissions under, pinned to the deployment.
+     *
+     * Spatie resolves this as `config('auth.defaults.guard')` intersected with
+     * the guards this model can authenticate under. That default is MUTATED per
+     * request: Sanctum's token resolution calls `Auth::shouldUse('sanctum')`, so
+     * on any API request it resolves `sanctum` while the roles and permissions
+     * are stored under `web`. Every `can()`, `hasRole()` and permission query
+     * then reads an empty map — and because `Gate::before` calls `hasRole()`,
+     * even the superadmin bypass quietly returns false.
+     *
+     * The permission guard is a property of the installation, not of the
+     * request, so it is asked of RoleLookup (which reads the session guard from
+     * config) rather than derived from ambient auth state. Same answer for a
+     * browser session and for a token.
+     */
+    protected function getDefaultGuardName(): string
+    {
+        return RoleLookup::guard();
+    }
+
+    /**
      * Get the attributes that should be cast.
      *
      * @return array<string, string>

@@ -52,6 +52,25 @@ return [
                 'precision' => 0,
             ],
         ],
+
+        // Named guard for token authentication.
+        //
+        // Sanctum's own `auth:sanctum` middleware calls Auth::shouldUse('sanctum')
+        // once a token authenticates, which makes 'sanctum' the runtime default
+        // guard for the rest of the request. Spatie's Role::users() falls back to
+        // `config('auth.defaults.guard')` when the Role is not fully hydrated —
+        // which is exactly what happens inside a withCount() subquery — and
+        // getModelForGuard() returns NULL for a guard that is not declared here.
+        // The relation then dies with "Class name must be a valid object or a
+        // string".
+        //
+        // It only ever worked because the web default guard happens to be
+        // declared. Any code path that counts a role's users while a Sanctum
+        // token is the active guard hits it — so it was latent, not absent.
+        'sanctum' => [
+            'driver' => 'sanctum',
+            'provider' => 'users',
+        ],
     ],
 
     /*

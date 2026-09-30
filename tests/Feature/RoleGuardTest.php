@@ -70,13 +70,28 @@ class RoleGuardTest extends TestCase
         auth()->shouldUse('sanctum');
         $this->assertSame('sanctum', config('auth.defaults.guard'), 'precondition');
 
-        // Spatie intersects the default with the guards a User can use, so the
-        // raw config lies here and the resolver does not.
-        $this->assertSame(
-            Guard::getDefaultName(User::class),
-            RoleLookup::guard()
-        );
+        // The invariant is that the resolver does not MOVE, not that it agrees
+        // with Spatie's own resolver.
+        //
+        // It used to be phrased as `RoleLookup::guard() === Guard::getDefaultName()`,
+        // which was true only because `sanctum` was not a declared guard: the
+        // intersection could then only ever return `web`. Declaring `sanctum` in
+        // config/auth.php — which it must be, or Spatie's Role::users() cannot
+        // resolve a model class inside a withCount() subquery on a token request
+        // — made Spatie return `sanctum`, and every role query filtered on a
+        // guard no role is stored under.
+        //
+        // So RoleLookup::guard() now reads the session guard from config instead
+        // of asking Spatie, and the assertion is that it is unchanged by a
+        // request. Agreement with Spatie is checked in the User model, which
+        // overrides getDefaultGuardName() to delegate here.
+        $this->assertSame('web', RoleLookup::guard());
         $this->assertContains(RoleLookup::guard(), Guard::getNames(User::class)->all());
+
+        // And the whole point: the model's own permission checks follow, which
+        // is what a token request actually depends on.
+        $user = User::factory()->create();
+        $this->assertSame('web', (fn () => $this->getDefaultGuardName())->call($user));
     }
 
     public function test_the_seeder_writes_roles_on_the_resolved_guard(): void

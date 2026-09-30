@@ -15,14 +15,30 @@ use Spatie\Permission\Guard;
  * `where('name', ...)->first()` return whichever row came first — possibly one
  * no permission check ever consults.
  *
- * `config('auth.defaults.guard')` is the wrong thing to read here: it is
- * mutated per request (`Sanctum::actingAs()` calls `Auth::shouldUse('sanctum')`),
- * and Spatie does not take it at face value. It intersects the default with the
- * guards the model can actually authenticate under, so it resolves `web` even
- * while the default reads `sanctum`. Reading the config directly therefore
- * disagreed with the very permission checks the roles are meant to feed.
- * Guard::getDefaultName() is the resolver Spatie itself uses, so asking it
- * cannot drift.
+ * ## Why this no longer asks Spatie
+ *
+ * Both obvious answers are wrong, and between them they hid a crash.
+ *
+ * `config('auth.defaults.guard')` is MUTATED per request: Sanctum's token
+ * resolution calls `Auth::shouldUse('sanctum')`, which rewrites that key. So it
+ * answers "how did this request authenticate", not "which guard are the roles
+ * stored under" — two different questions, and the second one is a constant.
+ *
+ * `Guard::getDefaultName()` intersects that mutated default with the guards the
+ * model can use, which is Spatie's own resolver and therefore cannot drift from
+ * Spatie's checks. That was the previous implementation and it looked right
+ * precisely because `sanctum` was not a declared guard: the intersection could
+ * only ever return `web`. Declaring `sanctum` in config/auth.php — which it must
+ * be, or Spatie's Role::users() cannot resolve a model class inside a
+ * withCount() subquery on a token request and dies with "Class name must be a
+ * valid object or a string" — made the intersection return `sanctum` instead.
+ * Every role query then filtered on `guard_name = 'sanctum'` and matched zero
+ * rows, on the API only.
+ *
+ * So the guard is read from the session-guard configuration: a property of the
+ * deployment, identical for a browser session and a token, and unaffected by
+ * anything a request does. Guard::getDefaultName() remains the fallback for a
+ * project configured without a session guard at all.
  */
 class RoleLookup
 {
@@ -32,6 +48,12 @@ class RoleLookup
      */
     public static function guard(): string
     {
+        foreach ((array) config('auth.guards') as $name => $config) {
+            if (($config['driver'] ?? null) === 'session') {
+                return $name;
+            }
+        }
+
         return Guard::getDefaultName(User::class);
     }
 

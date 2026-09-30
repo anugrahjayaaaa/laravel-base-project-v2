@@ -19,6 +19,7 @@ use Illuminate\Http\Exceptions\ThrottleRequestsException;
 use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 return Application::configure(basePath: dirname(__DIR__))
@@ -50,99 +51,112 @@ return Application::configure(basePath: dirname(__DIR__))
         );
 
         $exceptions->renderable(function (Throwable $e, Request $request) {
-        if ($e instanceof TokenMismatchException) {
-            return response()->json([
-                'message' => 'CSRF token mismatch.',
-                'code' => 'CSRF_TOKEN_MISMATCH',
-            ], 419);
-        }
-
-        // A conflict, not a server fault: the payload was well-formed, it just
-        // asked for something the app must not do. Handled ahead of the blanket
-        // API handler below, which would otherwise turn it into a 500.
-        if ($e instanceof LastSuperadminException) {
-            if ($request->is('api/*') || $request->expectsJson()) {
+            if ($e instanceof TokenMismatchException) {
                 return response()->json([
-                    'message' => $e->getMessage(),
-                    'code' => 'LAST_SUPERADMIN',
-                ], 409);
+                    'message' => 'CSRF token mismatch.',
+                    'code' => 'CSRF_TOKEN_MISMATCH',
+                ], 419);
             }
 
-            return back()->with('error', $e->getMessage());
-        }
+            // A conflict, not a server fault: the payload was well-formed, it just
+            // asked for something the app must not do. Handled ahead of the blanket
+            // API handler below, which would otherwise turn it into a 500.
+            if ($e instanceof LastSuperadminException) {
+                if ($request->is('api/*') || $request->expectsJson()) {
+                    return response()->json([
+                        'message' => $e->getMessage(),
+                        'code' => 'LAST_SUPERADMIN',
+                    ], 409);
+                }
 
-        if ($request->is('api/*') && ! config('app.debug')) {
-        if ($e instanceof ValidationException) {
-            return response()->json([
-                'message' => 'Validation failed.',
-                'code' => 'VALIDATION_ERROR',
-                'errors' => $e->errors(),
-            ], 422);
-        }
-
-        if ($e instanceof AuthenticationException) {
-            return response()->json([
-                'message' => 'Unauthenticated.',
-                'code' => 'UNAUTHENTICATED',
-            ], 401);
-        }
-
-        if ($e instanceof InvalidSignatureException) {
-            // Unsigned URL (no signature param) → controller would reject token as fake/missing → 400
-            // Tampered signed URL (has signature param) → 403
-            if ($request->has('signature')) {
-                return response()->json([
-                    'message' => 'Invalid signature.',
-                    'code' => 'INVALID_SIGNATURE',
-                ], 403);
+                return back()->with('error', $e->getMessage());
             }
 
-            return response()->json([
-                'message' => 'Invalid or missing verification token.',
-                'code' => 'INVALID_TOKEN',
-            ], 400);
-        }
+            if ($request->is('api/*') && ! config('app.debug')) {
+                if ($e instanceof ValidationException) {
+                    return response()->json([
+                        'message' => 'Validation failed.',
+                        'code' => 'VALIDATION_ERROR',
+                        'errors' => $e->errors(),
+                    ], 422);
+                }
 
-        if ($e instanceof HttpResponseException) {
-            return null;
-        }
+                if ($e instanceof AuthenticationException) {
+                    return response()->json([
+                        'message' => 'Unauthenticated.',
+                        'code' => 'UNAUTHENTICATED',
+                    ], 401);
+                }
 
-        // Without this, an authorization failure on an api/* route falls through
-        // to the blanket 500 below — the caller is told the server broke rather
-        // than that they are not allowed, and a 403-based client cannot tell
-        // "retry later" from "never". Must sit above that handler.
-        if ($e instanceof AuthorizationException || $e instanceof AccessDeniedHttpException) {
-            return response()->json([
-                'message' => $e->getMessage() ?: 'This action is unauthorized.',
-                'code' => 'FORBIDDEN',
-            ], 403);
-        }
+                if ($e instanceof InvalidSignatureException) {
+                    // Unsigned URL (no signature param) → controller would reject token as fake/missing → 400
+                    // Tampered signed URL (has signature param) → 403
+                    if ($request->has('signature')) {
+                        return response()->json([
+                            'message' => 'Invalid signature.',
+                            'code' => 'INVALID_SIGNATURE',
+                        ], 403);
+                    }
 
-        if ($e instanceof ModelNotFoundException) {
-            return response()->json([
-                'message' => 'Resource not found.',
-                'code' => 'NOT_FOUND',
-            ], 404);
-        }
+                    return response()->json([
+                        'message' => 'Invalid or missing verification token.',
+                        'code' => 'INVALID_TOKEN',
+                    ], 400);
+                }
 
-        if ($e instanceof NotFoundHttpException) {
-            return response()->json([
-                'message' => 'Resource not found.',
-                'code' => 'NOT_FOUND',
-            ], 404);
-        }
+                if ($e instanceof HttpResponseException) {
+                    return null;
+                }
 
-        if ($e instanceof ThrottleRequestsException) {
-            return response()->json([
-                'message' => 'Too many requests.',
-                'code' => 'RATE_LIMITED',
-            ], 429);
-        }
+                // Without this, an authorization failure on an api/* route falls through
+                // to the blanket 500 below — the caller is told the server broke rather
+                // than that they are not allowed, and a 403-based client cannot tell
+                // "retry later" from "never". Must sit above that handler.
+                if ($e instanceof AuthorizationException || $e instanceof AccessDeniedHttpException) {
+                    return response()->json([
+                        'message' => $e->getMessage() ?: 'This action is unauthorized.',
+                        'code' => 'FORBIDDEN',
+                    ], 403);
+                }
 
-        return response()->json([
-            'message' => 'Server Error.',
-            'code' => 'SERVER_ERROR',
-        ], 500);
-    }
-});
+                // abort(403) throws a plain HttpException, not AccessDeniedHttpException,
+                // so the branch above does not catch it and it reached the blanket 500 —
+                // telling an API caller the server broke when the truth is they are not
+                // allowed. Matched on the status code rather than the class so any other
+                // abort(4xx) gets the same treatment instead of each one being a new
+                // instance to remember here.
+                if ($e instanceof HttpException && $e->getStatusCode() >= 400 && $e->getStatusCode() < 500) {
+                    return response()->json([
+                        'message' => $e->getMessage() ?: 'Request could not be completed.',
+                        'code' => 'HTTP_ERROR',
+                    ], $e->getStatusCode());
+                }
+
+                if ($e instanceof ModelNotFoundException) {
+                    return response()->json([
+                        'message' => 'Resource not found.',
+                        'code' => 'NOT_FOUND',
+                    ], 404);
+                }
+
+                if ($e instanceof NotFoundHttpException) {
+                    return response()->json([
+                        'message' => 'Resource not found.',
+                        'code' => 'NOT_FOUND',
+                    ], 404);
+                }
+
+                if ($e instanceof ThrottleRequestsException) {
+                    return response()->json([
+                        'message' => 'Too many requests.',
+                        'code' => 'RATE_LIMITED',
+                    ], 429);
+                }
+
+                return response()->json([
+                    'message' => 'Server Error.',
+                    'code' => 'SERVER_ERROR',
+                ], 500);
+            }
+        });
     })->create();
