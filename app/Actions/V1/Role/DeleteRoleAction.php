@@ -3,6 +3,8 @@
 namespace App\Actions\V1\Role;
 
 use App\Models\Role;
+use App\Models\RoleLookup;
+use App\Models\SystemSetting;
 use App\Models\User;
 use App\Support\SystemRole;
 use Illuminate\Support\Facades\DB;
@@ -31,10 +33,25 @@ use Illuminate\Validation\ValidationException;
  * absent from `$user->roles`, `hasRole()`, and every `can()` without a single
  * change at the call sites.
  *
- * ponytail: no "reassign to a default role" mode. A user who loses a role keeps
- * whatever else they hold; inventing a fallback role here would be a second
- * writer for `registration_default_role` (SystemSetting) and would silently grant
- * access nobody asked for. Add it when an app actually needs the behaviour.
+ * **Landing someone on no role at all is not a neutral outcome.** A user with
+ * zero roles holds zero permissions, so every gated screen 403s and the sidebar
+ * empties — they can still log in, but the account is inert and nothing in the
+ * UI says why. Retiring a role therefore falls back to
+ * `registration_default_role` for exactly the people the revocation left with
+ * nothing: the same value self-registration uses, read through the same
+ * `SystemSetting` accessor, so there is one answer to "what does a new account
+ * get" rather than two.
+ *
+ * This replaces the earlier decision to leave those accounts empty. That was
+ * defensible while the only way to hold no role was a human ticking every box
+ * off — a deliberate act with a visible result. Trashing a role is not
+ * deliberate at the level of the individual: one admin action silently strips
+ * access from N people who never saw the role picker.
+ *
+ * superadmin is never granted as the fallback. It is the one role whose grant
+ * is restricted to superadmin actors by `AssignRolesAction`, and a side effect
+ * of a role deletion is not an actor anyone authorised. If the configured
+ * default is somehow superadmin, the account is left empty rather than promoted.
  */
 class DeleteRoleAction
 {
@@ -53,7 +70,9 @@ class DeleteRoleAction
         $this->validate($role, $force);
 
         DB::transaction(function () use ($role, $causer): void {
-            $affected = $role->users()->count();
+            // Read the holders BEFORE the detach — afterwards the relation is
+            // empty and there is no way to ask who was affected.
+            $holders = $role->users()->get();
 
             // First, so the pivot rows are gone even if the soft delete below is
             // the thing that fails. Spatie skips this on a non-force delete.
@@ -61,16 +80,69 @@ class DeleteRoleAction
 
             $role->delete();
 
+            $reassigned = $this->reassignDefaultTo($holders);
+
             // Inside the transaction (DEP-003). `revoked_users` is the whole point
             // of the audit row: "a role was trashed" is not actionable during an
             // incident, "these 12 accounts lost report access" is.
             $role->audit('role.deleted', $causer, [
-                'revoked_users' => $affected,
+                'revoked_users' => $holders->count(),
+                'reassigned_to_default' => $reassigned,
                 'revoked_permissions' => $role->permissions()->count(),
             ]);
         });
 
         return $role;
+    }
+
+    /**
+     * Put anyone the revocation left with no roles at all onto the default.
+     *
+     * Only accounts that would otherwise be left with NOTHING. A holder who
+     * still has another role keeps it — trashing one role must not silently
+     * rewrite somebody who is still perfectly well covered.
+     *
+     * Roles are assigned directly rather than through AssignRolesAction: that
+     * action exists to police an actor-supplied grant, and this is a system
+     * consequence with no payload. Routing it through would mean the
+     * users.assign_roles check firing on a role deletion, and the
+     * last-superadmin counter running against a user who is not being demoted.
+     * The superadmin guard is still honoured explicitly, below.
+     *
+     * @param  \Illuminate\Database\Eloquent\Collection<int, User>  $holders
+     * @return int  How many accounts were moved onto the fallback
+     */
+    private function reassignDefaultTo($holders): int
+    {
+        $default = SystemSetting::getString('registration_default_role', SystemRole::USER);
+
+        // Never promote as a side effect. If the configured default is
+        // superadmin, leave the account empty rather than hand out the one role
+        // whose grant is restricted to superadmin actors.
+        if ($default === '' || $default === SystemRole::SUPERADMIN) {
+            return 0;
+        }
+
+        $role = RoleLookup::find($default);
+
+        if ($role === null) {
+            return 0;
+        }
+
+        $reassigned = 0;
+
+        foreach ($holders as $user) {
+            // Re-read from the database: the relation on $user may be a stale
+            // pre-detach snapshot, and the question is what they hold NOW.
+            if ($user->fresh()->roles()->exists()) {
+                continue;
+            }
+
+            $user->assignRole($role);
+            $reassigned++;
+        }
+
+        return $reassigned;
     }
 
     /**
