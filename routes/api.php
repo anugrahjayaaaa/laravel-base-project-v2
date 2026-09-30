@@ -9,7 +9,9 @@ use App\Http\Controllers\Api\V1\Auth\PasswordResetController;
 use App\Http\Controllers\Api\V1\Auth\RegisterController;
 use App\Http\Controllers\Api\V1\Auth\VerifyEmailController;
 use App\Http\Controllers\Api\V1\Auth\ResendVerificationController;
+use App\Http\Controllers\Api\V1\Permission\PermissionController;
 use App\Http\Controllers\Api\V1\ProfileController;
+use App\Http\Controllers\Api\V1\Role\RoleController;
 use App\Http\Controllers\Api\V1\SessionController;
 use App\Http\Controllers\Api\V1\SystemSettingController;
 use App\Http\Controllers\Api\V1\User\UserController;
@@ -108,6 +110,27 @@ Route::prefix('v1')->group(function () {
         // Same reasoning as the web bulk route: the permission depends on the
         // requested action, so AuthorizesBulkAction decides. See routes/web.php.
         Route::post('/users/bulk-action', [UserController::class, 'bulkAction'])->name('api.v1.users.bulk-action')->middleware('throttle:bulk-action');
+
+        // Role management — was browser-only, which meant a non-browser client
+        // could administer users but could not administer the roles those users
+        // hold. Same actions and Form Requests as the web controller, so the
+        // system-role guards (P6-E3) apply here without being restated.
+        //
+        // `restore` and `force-delete` take an int rather than the model: the
+        // default binding only finds LIVE rows, and a trashed role is the only
+        // thing either endpoint accepts. The controllers use onlyTrashed().
+        Route::get('/roles', [RoleController::class, 'index'])->name('api.v1.roles.index')->can('roles.view');
+        Route::post('/roles', [RoleController::class, 'store'])->name('api.v1.roles.store')->can('roles.create');
+        Route::get('/roles/{role}', [RoleController::class, 'show'])->name('api.v1.roles.show')->can('roles.view');
+        Route::put('/roles/{role}', [RoleController::class, 'update'])->name('api.v1.roles.update')->can('roles.update');
+        Route::delete('/roles/{role}', [RoleController::class, 'destroy'])->name('api.v1.roles.destroy')->can('roles.delete');
+        Route::post('/roles/{role}/restore', [RoleController::class, 'restore'])->name('api.v1.roles.restore')->can('roles.restore');
+        Route::delete('/roles/{role}/force', [RoleController::class, 'forceDelete'])->name('api.v1.roles.force-delete')->can('roles.force_delete');
+
+        // Permission catalogue — read-only by design (P6-C7). Index only, on
+        // purpose: the catalogue is defined in code, so a write endpoint would
+        // be new behaviour rather than an API surface for existing behaviour.
+        Route::get('/permissions', [PermissionController::class, 'index'])->name('api.v1.permissions.index')->can('permissions.view');
     });
 
     // ---------------------------------------------------------------------------
