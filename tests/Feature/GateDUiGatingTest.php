@@ -139,7 +139,10 @@ class GateDUiGatingTest extends TestCase
      */
     public function test_the_sidebar_shows_exactly_what_the_permissions_allow(): void
     {
-        $staff = $this->userWith(['users.view', 'users.update', 'settings.manage']);
+        // settings.view, not settings.manage: the sidebar item is gated on what
+        // may SEE the page. Asserting manage here passed for the wrong reason —
+        // it matched the footer link, which is now gone.
+        $staff = $this->userWith(['users.view', 'users.update', 'settings.view']);
 
         $this->actingAs($staff, 'web');
 

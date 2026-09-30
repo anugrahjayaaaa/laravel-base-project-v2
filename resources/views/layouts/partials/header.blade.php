@@ -40,8 +40,11 @@
             </a>
           </li>
           <li>
-            <a class="dropdown-item" href="{{ Route::has('settings.preferences') ? route('settings.preferences') : '#' }}">
-              <i class="fas fa-gear me-2"></i> Settings
+            {{-- Was 'Settings' pointing at settings.preferences, a route that
+                 does not exist — so it silently rendered a dead '#'. Sessions is
+                 self-service and always reachable, like Profile. --}}
+            <a class="dropdown-item" href="{{ route('sessions') }}">
+              <i class="fas fa-laptop me-2"></i> Sessions
             </a>
           </li>
           <li><hr class="dropdown-divider"></li>
