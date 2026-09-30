@@ -470,6 +470,72 @@ in exactly 10 places, all internal, and `PermissionIndexActionTest` already
 pins behaviour. Revisit if a third action appears and the inconsistency starts
 costing a reader.
 
+### Adversarial (6D) — measured 2026-09-30, `GateD6DPentestTest` (22 tests)
+
+**No finding. Every 6D gate holds under a sibling-permission attack.**
+
+The gate suites that already existed test the 6D routes two ways: a caller with
+**no** permissions (`GateCAuthorizationTest`), and a caller with `users.view`
+(`UserStateAuthorizationTest`). Both are easy, and neither is the attack 6D
+opened. D1/D2 put four *sibling* permissions — `users.activate` /
+`deactivate` / `lock` / `unlock` — on four buttons that render on the same row
+of the same page, behind four URLs in the same family. The realistic caller is
+an operations account legitimately given `users.deactivate` who then tries
+`users.lock`: the delegated slice quietly widened.
+
+That gap is invisible to the existing decoy. A route written
+`->can('users.view')` instead of `->can('users.deactivate')` passes every test
+in the repo. `GateD6DPentestTest` attacks each gate with a decoy drawn from the
+same family and asserts the **state did not move**, not merely that a 403 came
+back.
+
+| Attack | Held | Refused | State after |
+|---|---|---|---|
+| `POST /users/{id}/lock` | `users.deactivate` | 403 | `is_locked` unchanged |
+| `POST /users/{id}/deactivate` | `users.lock` | 403 | `is_active` unchanged |
+| `POST /users/{id}/unlock` | `users.activate` | 403 | `is_locked` unchanged |
+| `POST /users/{id}/activate` | `users.unlock` | 403 | `is_active` unchanged |
+| `POST /users/{id}/deactivate` | `users.delete` | 403 | `is_active` unchanged |
+| the same five on the **API** (D2) | as above | 403 | unchanged |
+| `POST /settings` | `settings.view` | 403 | setting unwritten |
+| `PUT /api/v1/settings` | `settings.view` | 403 `FORBIDDEN` | setting unwritten |
+| `POST /users/bulk-action` × all 7 actions | a rotating sibling | 403 | row present, not locked, not inactive |
+| anonymous, 6D routes | — | 302 → `login` | nothing moved |
+
+**Two layers, proven separately.** Neutering the route-level `->can()` on
+`POST /settings` left the test **green** — `SystemSettingRequest::authorize()`
+caught it. Only breaking both turned it red. The route gate there is defence in
+depth, and this is the first time that has been shown rather than assumed.
+
+**Every gate was neutered and watched to fail.** Counts are failures observed
+with one sabotage in place, all restored afterwards:
+
+| Sabotage | Red |
+|---|---|
+| 4 web state toggles remapped to a sibling permission | 4 |
+| the 4 API state toggles (D2), same swap | 4 |
+| `settings.update` route gate → `settings.view` | 0 — the FormRequest held |
+| …plus `SystemSettingRequest::authorize()` | 1 |
+| bulk map collapsed to `users.delete` | 2 |
+| bulk map collapsed to `users.lock` | 1 |
+| bulk map collapsed to `users.activate` | 2 |
+| `AppMenuComposer` stops filtering (D3) | 1 |
+
+The bulk provider was widened mid-pass for a real reason: its first version
+only caught a collapse to `users.delete`, because that was the sole family its
+four decoys differed from. A map that sent everything to `users.lock` stayed
+green. It now attacks all seven actions with a rotating sibling, and each of
+the three collapse targets above is caught.
+
+**One trap worth recording for whoever extends this.** Sanctum's
+`Guard::__invoke` resolves `config('sanctum.guard', 'web')` **before** it reads
+the `Authorization` header. A live `actingAs(..., 'web')` session therefore
+outranks a bearer token, and an API request in the same test method silently
+authenticates as the *session* user. This produced a 403 that read exactly like
+a working gate — `Auth::guard('sanctum')->id()` was the session user, not the
+token's. It cost a false finding on the first probe pass. Each API case now
+runs in a method with no `actingAs()`.
+
 ### Performance — measured 2026-09-30 (P6-E10, Group C surfaces), sidebar re-measured 2026-09-30 after P6-D3
 
 SQLite, warm permission cache, `RefreshDatabase`. Counts are per HTTP request,
@@ -725,7 +791,7 @@ sidebar items and can reach exactly those three areas.
 | P6-E6 | Confirm modal copy for E4/E5 — add `remove_superadmin` key to `ACTION_CONFIG` (`variant: 'danger'`, names the account) | E4 | tiny |
 | P6-E7 | `tests/Feature/RbacAuthorizationMatrixTest.php` — the brief's two cases, as tests: **User A** role `user`, zero permissions → 403 on `/users`, `/settings`, `/roles`, `/permissions`; 200 on `/dashboard`, `/profile`, `/sessions`; sidebar HTML contains no `Users`, `Roles`, `Settings` link. **User B** role `staff` with `users.view` + `users.update` + `settings.manage` → 200 on `/users` + `/settings`; 403 on `/roles`; sidebar contains `Users` + `Settings`, not `Roles` | D | medium |
 | P6-E8 | `tests/Feature/RbacRoleSyncTest.php` — user A `user` → change to `staff` → `$user->fresh()->can('users.view')` is true and `can('roles.view')` is false; the DB shows no row in `model_has_permissions` (role-derived, ADR-004, no physical copy); replace roles swaps; `roles => []` clears; **omitting** `roles` leaves them untouched; a payload naming a non-existent role is rejected with a validation error | C9 | medium |
-| P6-E9 | `tests/Feature/RbacPentestTest.php` — replay the RBAC-006 exploit list verbatim: every request in the table at the top of this doc, as a zero-permission user, web **and** API, expecting 403. Plus: mass-assignment of `roles` on `PUT /profile` (self endpoint) must not assign roles; `PUT /users/{other}` with `roles[]=superadmin` must 403; `POST /settings` with a valid `settings.manage` holder still requires CSRF | D, C | medium |
+| P6-E9 | `tests/Feature/RbacPentestTest.php` — replay the RBAC-006 exploit list verbatim: every request in the table at the top of this doc, as a zero-permission user, web **and** API, expecting 403. Plus: mass-assignment of `roles` on `PUT /profile` (self endpoint) must not assign roles; `PUT /users/{other}` with `roles[]=superadmin` must 403; `POST /settings` with a valid `settings.manage` holder still requires CSRF | D, C | medium | **DONE, zero-permission half** — the exploit replay runs as a caller with nothing. **Superseded on the 6D surface by `GateD6DPentestTest`**, which attacks with a SIBLING permission instead — see § Adversarial (6D) |
 | P6-E10 | Performance check — `PermissionCatalog::all()` and the matrix view add **zero** queries per row (`assertQueryCount` or Telescope-free manual count): roles index uses `withCount`, permissions index uses `withCount('roles')`, the sidebar composer makes at most one permission-cache read per request (package cache is on; `Gate::before` does `hasRole` on an already-loaded relation, not a fresh query). Record the numbers in the phase report | C, D | small | **DONE (2026-09-30, re-measured after D3/D5/D7/D8)** — every Group C **and** every 6D surface measured and pinned by `RbacPerformanceTest` (13 tests); numbers in `phase-6-rbac.md` § Performance. No regression anywhere: the roles index is flat at 5 queries from 10 rows to 100, and three warm `can()` calls cost 0. One real N+1 found and fixed on the way (`a4b33ab`). The sidebar half is no longer blocked: the composer now runs 5 `can()` gates and still costs 0 queries, and the D5/D6/D7 view gates cost 0 per row (3 total for 11 users). Both are asserted absolutely rather than as a delta, because `perPage` caps the row count and Spatie resolves from one global cache. The D7 role picker is the exception and IS a delta (5 queries at 4 roles, 5 at 34 — the one 6D collection not capped by a page size), and the create/show/settings pages are pinned absolutely at 2/5/3. Every gate was sabotaged and confirmed to turn its test red before restore — reasoning and evidence in § Performance |
 | P6-E11 | Docs — update `docs/base/features/roles-permissions.md` (fill the permission table, mark seeded roles with real sets, resolve the `guard_name` open question from §Seeding Strategy: `RoleLookup::guard()`), `docs/base/security/authorization.md` (Gate::before is the superadmin mechanism), `docs/planning/task-tracker.md` (RBAC-001..006 → DONE with group refs), `docs/planning/progress.md` (phase 6 row), `docs/planning/qa-tracker.md` (QA-RBAC-* rows → DONE with the manual scenario each one covers) | A–E | medium |
 | P6-E12 | Full regression — `php artisan test` green, `npm run build` clean, `vendor/bin/pint --test` clean. Every pre-existing user test that calls a now-gated endpoint gets a permission grant in `setUp()`, not a deleted assertion | A–E | medium |
