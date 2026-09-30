@@ -66,7 +66,12 @@ class CreateUserAction
             if (array_key_exists('roles', $data)) {
                 // No permission check here: AssignRolesAction holds it, so C9 and
                 // C10 cannot drift apart.
-                $user = $this->assignRolesAction->run($user, $data['roles'], $causer);
+                $user = $this->assignRolesAction->run(
+                    $user,
+                    $data['roles'],
+                    $causer,
+                    filter_var($data['confirm_superadmin'] ?? false, FILTER_VALIDATE_BOOLEAN)
+                );
             } else {
                 // findMany(), not find() in a loop: the default set is short
                 // today but it is data, and a second default role would make

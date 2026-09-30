@@ -64,7 +64,16 @@ class UpdateUserAction
         // and an empty array is a deliberate "remove them all" — array_key_exists
         // tells those two apart where isset() cannot.
         if (array_key_exists('roles', $data)) {
-            $user = $this->assignRolesAction->run($user, $data['roles'] ?? [], $causer);
+            $user = $this->assignRolesAction->run(
+                $user,
+                $data['roles'] ?? [],
+                $causer,
+                // P6-E5: only a payload that explicitly confirmed it may add or
+                // remove superadmin. The cast matters — an unchecked HTML
+                // checkbox is absent, and a hidden "0" arrives as the string
+                // "0", which is falsy but NOT false.
+                filter_var($data['confirm_superadmin'] ?? false, FILTER_VALIDATE_BOOLEAN)
+            );
         }
 
         return $user->fresh();

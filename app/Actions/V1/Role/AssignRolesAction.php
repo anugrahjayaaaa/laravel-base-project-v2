@@ -22,13 +22,15 @@ class AssignRolesAction
      *
      * @param  array<int, string>  $roleNames  Names to sync; unknown names are skipped
      * @param  User|null           $causer     Who to attribute the audit record to
+     * @param  bool                $confirmed  The payload carried `confirm_superadmin`
      * @return User
      *
      * @throws LastSuperadminException When the sync would leave zero superadmins
+     * @throws AuthorizationException When superadmin is added or removed without confirmation
      */
-    public function run(User $user, array $roleNames, ?User $causer = null): User
+    public function run(User $user, array $roleNames, ?User $causer = null, bool $confirmed = false): User
     {
-        return DB::transaction(function () use ($user, $roleNames, $causer): User {
+        return DB::transaction(function () use ($user, $roleNames, $causer, $confirmed): User {
             $before = $user->roles->pluck('name')->all();
 
             // A name with no role on this guard is skipped rather than thrown on:
@@ -46,6 +48,7 @@ class AssignRolesAction
                 ->values()
                 ->all();
 
+            $this->guardSuperadminChange($causer, $before, $roles, $confirmed);
             $this->guardSuperadminGrant($causer, $roles);
             $this->guardLastSuperadmin($user, $before, $roles);
 
@@ -81,6 +84,50 @@ class AssignRolesAction
         }
 
         throw new AuthorizationException(__('You do not have permission to assign roles.'));
+    }
+
+    /**
+     * Require an explicit confirmation to add OR remove the superadmin role.
+     *
+     * P6-E5. The existing checks answer WHO may do it (superadmin only, per
+     * `guardSuperadminGrant`) and whether it would strand the app (per
+     * `guardLastSuperadmin`). Neither answers whether the caller INTENDED it,
+     * and intent is the part a mis-clicked checkbox or a stray `roles` key in
+     * an unrelated form post gets wrong. Adding superadmin is the most
+     * consequential grant in the application; it should cost one deliberate
+     * extra field, not ride along with a role list someone was editing.
+     *
+     * Applied to REMOVAL as well as addition, because the dangerous direction is
+     * not symmetric: a demotion is how an account quietly loses the ability to
+     * undo whatever demoted it. Both directions change whether a superadmin
+     * exists, so both need the same deliberate signal.
+     *
+     * Only fires on an actual CHANGE. A payload that submits `superadmin` for a
+     * user who already holds it, or omits it for a user who does not, alters
+     * nothing and is not the confirm flow's business — otherwise every ordinary
+     * save of a superadmin's own form would need the extra field.
+     *
+     * @param  array<int, string>  $before  Current role names
+     * @param  array<int, \App\Models\Role>  $roles  Roles about to be applied
+     *
+     * @throws AuthorizationException
+     */
+    private function guardSuperadminChange(?User $causer, array $before, array $roles, bool $confirmed): void
+    {
+        $hadIt = in_array(SystemRole::SUPERADMIN, $before, true);
+
+        $wantsIt = collect($roles)
+            ->contains(fn ($role): bool => $role->name === SystemRole::SUPERADMIN);
+
+        if ($hadIt === $wantsIt || $confirmed) {
+            return;
+        }
+
+        throw new AuthorizationException(
+            $wantsIt
+                ? __('Granting the superadmin role requires an explicit confirmation.')
+                : __('Removing the superadmin role requires an explicit confirmation.')
+        );
     }
 
     /**

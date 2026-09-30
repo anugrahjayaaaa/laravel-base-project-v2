@@ -31,6 +31,11 @@ class CreateUserRequest extends FormRequest
             'username' => ['required', 'string', 'max:50', 'alpha_dash', 'unique:users,username'],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
             'roles' => ['nullable', 'array'],
+            // P6-E5. Boolean, and deliberately NOT a `required` rule: the
+            // confirmation is demanded by AssignRolesAction only when the sync
+            // actually adds or removes superadmin, so an ordinary role edit
+            // does not have to carry a field it has no use for.
+            'confirm_superadmin' => ['nullable', 'boolean'],
             'roles.*' => ['string', 'exists:roles,name'],
         ];
     }

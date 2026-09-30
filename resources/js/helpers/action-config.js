@@ -71,6 +71,22 @@ export const ACTION_CONFIG = {
         variant: 'warning',
         icon: 'bi bi-person-slash'
     },
+    // P6-E6. The server refuses to add or remove superadmin without a
+    // deliberate confirmation (AssignRolesAction::guardSuperadminChange), so
+    // the copy has to say what is being confirmed — a generic "are you sure?"
+    // would be the wrong prompt for a change this permanent.
+    remove_superadmin: {
+        title: 'Remove Superadmin',
+        msg: 'Remove the superadmin role from <b>__ITEM__</b>? They will immediately lose every permission in the system and will not be able to undo this. If they are the last superadmin, the change is refused.',
+        variant: 'danger',
+        icon: 'bi bi-shield-exclamation'
+    },
+    grant_superadmin: {
+        title: 'Grant Superadmin',
+        msg: 'Give <b>__ITEM__</b> the superadmin role? They will hold every permission in the system, including the ability to grant it to others.',
+        variant: 'danger',
+        icon: 'bi bi-shield-fill-check'
+    },
     delete_role: {
         title: 'Move Role to Trash',
         msg: 'Move <b>__ITEM__</b> to trash? The role stops granting anything immediately and is removed from every user holding it. It can be restored, but those users are not re-assigned automatically.',

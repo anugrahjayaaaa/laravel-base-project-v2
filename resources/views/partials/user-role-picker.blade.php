@@ -43,5 +43,36 @@
     @error('roles')
         <div class="invalid-feedback d-block">{{ $message }}</div>
     @enderror
+
+    {{--
+        P6-E5. AssignRolesAction refuses to add OR remove superadmin unless the
+        payload carries an explicit confirmation, so the form has to be able to
+        send one — otherwise the guard silently makes superadmin unassignable
+        through the UI, which is a lockout wearing a safety feature.
+
+        Rendered only when superadmin is actually among the assignable roles,
+        and only for a caller who may assign roles at all: an admin who cannot
+        assign roles never sees this block, so the field cannot become a
+        side-channel.
+
+        `old()` re-checks it so a refused save does not silently untick the box
+        and make the retry impossible.
+    --}}
+    @if (collect($roles)->contains(fn ($role) => $role->name === \App\Support\SystemRole::SUPERADMIN))
+        <div class="form-check mt-2 pt-2 border-top">
+            <input class="form-check-input" type="checkbox" name="confirm_superadmin" value="1"
+                id="confirm_superadmin" {{ old('confirm_superadmin') ? 'checked' : '' }}>
+            <label class="form-check-label small text-danger" for="confirm_superadmin">
+                <i class="bi bi-shield-exclamation me-1"></i>
+                Confirm granting or removing the <strong>superadmin</strong> role
+            </label>
+            <div class="form-text">
+                Required whenever this save adds or removes superadmin. Tick it deliberately.
+            </div>
+            @error('confirm_superadmin')
+                <div class="invalid-feedback d-block">{{ $message }}</div>
+            @enderror
+        </div>
+    @endif
 </div>
 @endcan
