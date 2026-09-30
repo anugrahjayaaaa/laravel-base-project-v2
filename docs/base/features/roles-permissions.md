@@ -1,13 +1,16 @@
 # Roles & Permissions
 
-> **Status: 🟡 IN PROGRESS (Phase 6).** Implemented: Group A (UI), Group B
-> (permission catalogue + seeders + `Gate::before`), Group C1 (role management
-> web — CRUD, soft delete with revocation, trash tab, restore, permanent delete,
-> bulk actions). Not yet implemented: C3 (role assignment sync, the brief's core
-> case), C4 (ungated `authorize()` returns — including
-> `BulkRoleRequest::authorize()` which currently returns `true`), D (route /
-> menu / button `can:` gates), E (API surface). Gate C is **not** met.
-> See `docs/planning/phase-6-rbac.md` § C1 audit notes and `docs/planning/progress.md`.
+> **Status: 🟡 IN PROGRESS (Phase 6).** Implemented and audited: Group A (UI),
+> Group B (permission catalogue + seeders + `Gate::before`), Group C1 (role
+> management web — CRUD, soft delete with revocation, trash tab, restore,
+> permanent delete, bulk actions), Group C2 (permission catalogue, read-only),
+> Group C3 (role assignment sync — the brief's core case), Group C4 (the ungated
+> `authorize()` returns, including the `BulkRoleRequest` blanket `true` that
+> arrived with C1's bulk work). **Gate C is met** — 505 tests / 1657 assertions.
+> Not yet implemented: D (route / menu / button `can:` gates — the seven ungated
+> user state routes and `api.v1.settings.index` are tracked as P6C4-001..005),
+> E (system-role protection tests, the 403 matrix, API pentest replay, docs).
+> See `docs/planning/phase-6-rbac.md` § C4 and `docs/planning/progress.md`.
 
 ## Strategy
 
@@ -167,15 +170,18 @@ settings.manage          (manage operational settings)
 settings.view            (view settings)
 ```
 
-## Management UI (Phase 6 Group A — read-only until Group C/D)
+## Management UI (Phase 6 Groups A + C1/C2 — full CRUD since 2026-09-29)
 
-Shipped and audited 2026-09-28.
+Shipped and audited 2026-09-28 (Group A reads), extended 2026-09-29/30.
 
 | Page | Route | Controller | Write path |
 |---|---|---|---|
-| Roles | `GET /roles` → `roles.index` | `Web\V1\RoleController@index` | none yet (P6-C5) |
-| Create Role | `GET /roles/create` → `roles.create` | `Web\V1\RoleController@create` | none yet |
-| Edit Role | `GET /roles/{role}/edit` → `roles.edit` | `Web\V1\RoleController@edit` | none yet (P6-C5) |
+| Roles | `GET /roles` → `roles.index` | `Web\V1\RoleController@index` | — (read; `can:roles.view`) |
+| Create Role | `GET /roles/create` → `roles.create` | `Web\V1\RoleController@create` | `POST /roles` → `roles.store` (`StoreRoleRequest`) |
+| Edit Role | `GET /roles/{role}/edit` → `roles.edit` | `Web\V1\RoleController@edit` | `PUT /roles/{role}` → `roles.update` (`UpdateRoleRequest`) |
+| — delete | — | `RoleController@destroy` | `DELETE /roles/{role}` → `roles.destroy` (`DeleteRoleRequest`) |
+| — trash / restore / force | — | `RoleController@restore` / `@forceDelete` | `POST /roles/{id}/restore`, `DELETE /roles/{id}/force` |
+| — bulk | — | `RoleController@bulkAction` | `POST /roles/bulk-action` (`BulkRoleRequest`) |
 | Permissions | `GET /permissions` → `permissions.index` | `Web\V1\PermissionController@index` | **none by design** |
 
 The roles index carries a search filter and sortable Name / Users / Permissions
@@ -184,20 +190,23 @@ above the table, the Create Role button right-aligned in the card header.
 Sorting is whitelisted in the controller (`RoleController::SORTABLE`) because
 the value reaches `orderBy`.
 
-The permissions catalogue is deliberately read-only: a permission row that no
+The permission catalogue is deliberately read-only: a permission row that no
 `can()` call references grants nothing, so a UI that creates one only makes it
 look real. Permissions are seeded from the catalogue (P6-B1/P6-B3).
 
-**These four routes still carry no `can:` gate.** They shipped in Group A before
-the permissions existed, and a gate on a non-existent permission denies everyone
-— superadmin included. **Group B seeded the catalogue, so the blocker is gone
-and P6-D1 can now gate them** with `can:roles.view` / `can:roles.create` /
-`can:roles.update` / `can:roles.delete` / `can:permissions.view`. Until it does,
-any authenticated user can reach these four pages. That window is tracked, not
-an oversight.
+**The four read routes are now gated.** They shipped in Group A before the
+permissions existed, and a gate on a non-existent permission denies everyone —
+superadmin included. Group B seeded the catalogue, so the blocker was gone and
+Group C2 closed them with `can:roles.view` / `can:roles.create` /
+`can:roles.update` / `can:permissions.view`. The five **write** routes still
+carry no `can:` on the route itself, but each is gated by its own Form Request
+on the same `roles.*` permission, so a zero-permission user is refused either
+way — `RoleManagementTest` asserts 403 on all five. Route-level gates on the
+writes are defence in depth and land at P6-D1.
 
-**No save path yet.** The create/edit forms post to `roles.index` and the delete
-trigger posts to `roles.index`; both land on real endpoints at P6-C5 / P6-C6.
+**Save paths exist.** Group C1 gave the create/edit forms and the delete trigger
+real endpoints (`roles.store`, `roles.update`, `roles.destroy`) in place of the
+`roles.index` placeholders Group A left behind.
 
 **System roles** (`superadmin`, `admin`, `user`) are answered by
 `App\Support\SystemRole` — the single place that knows the list. The views read
