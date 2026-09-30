@@ -17,11 +17,26 @@ use Illuminate\Validation\Rule;
 class UpdateRoleRequest extends FormRequest
 {
     /**
-     * Only a caller holding roles.update may open the endpoint.
+     * roles.update renames a role. roles.assign_permissions rewrites what that
+     * role grants — a different power, and the only one here that can escalate
+     * the caller (grant a role they do not hold themselves, or edit superadmin).
+     *
+     * They were one permission in practice, because nothing checked the second:
+     * the matrix rendered unconditionally and `permissions` was accepted from
+     * anyone who could open the form. So `roles.assign_permissions` existed in
+     * the catalogue, appeared in the permissions UI, and gated nothing at all.
+     *
+     * Renaming without the permission stays allowed. Only a posted permission
+     * set is refused, so the form still works for a rename-only admin.
      */
     public function authorize(): bool
     {
-        return $this->user()?->can('roles.update') ?? false;
+        if (! ($this->user()?->can('roles.update') ?? false)) {
+            return false;
+        }
+
+        return ! $this->has('permissions')
+            || ($this->user()?->can('roles.assign_permissions') ?? false);
     }
 
     public function rules(): array

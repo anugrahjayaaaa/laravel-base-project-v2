@@ -18,11 +18,20 @@ use Illuminate\Validation\Rule;
 class StoreRoleRequest extends FormRequest
 {
     /**
-     * Only a caller holding roles.create may open the endpoint.
+     * roles.create makes the role; roles.assign_permissions decides what it
+     * grants. Creating a role that grants nothing is harmless, handing one
+     * `superadmin` is not — so the two are separate checks, for the same reason
+     * UpdateRoleRequest splits them: an admin who may name a role but not
+     * distribute permissions can still create an empty one.
      */
     public function authorize(): bool
     {
-        return $this->user()?->can('roles.create') ?? false;
+        if (! ($this->user()?->can('roles.create') ?? false)) {
+            return false;
+        }
+
+        return ! $this->has('permissions')
+            || ($this->user()?->can('roles.assign_permissions') ?? false);
     }
 
     public function rules(): array

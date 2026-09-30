@@ -8,7 +8,17 @@
     Checkboxes post IDS, so the save action must cast them to int before
     syncPermissions — spatie resolves a string as a permission NAME and throws.
     Re-checked from old() so a validation failure keeps the admin's selection.
+
+    The whole matrix is inside @can('roles.assign_permissions') INCLUDING the
+    name="permissions[]" inputs. Same contract as the user role picker: the
+    request refuses a posted permission set without that permission, so a form
+    that hid only the checkboxes would post nothing — fine. A form that hid only
+    the SAVE button would post the whole set — escalation through a rename.
+    Neither the @can nor the request is optional: the view keeps a rename-only
+    admin from being offered a control the server refuses, and the request is
+    what actually stops a hand-rolled POST.
 --}}
+@can('roles.assign_permissions')
 <div class="mt-3">
     <label class="form-label">Permissions</label>
     @if (count($permissions) === 0)
@@ -42,3 +52,4 @@
         <div class="invalid-feedback d-block">{{ $message }}</div>
     @enderror
 </div>
+@endcan
