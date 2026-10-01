@@ -195,6 +195,32 @@ render.
 | P7-B4 | `database/seeders/FeatureFlagSeeder.php` — activates every catalogue slug when absent; deactivates **only** when config says `disabled => true`. Idempotent; never blanket-activates, so a flag an operator turned off stays off across a reseed | ✅ DONE |
 | P7-B5 | Registered in `DatabaseSeeder` | ✅ DONE |
 | P7-B6 | `tests/Feature/FeatureFlagCatalogTest.php` | ✅ DONE |
+| P7-B7 | Audit pass — 8 tests verified green, seeder non-destructiveness proven live, `stores` block diffed against vendor. See § Group B audit below | ✅ DONE |
+
+**Group B audit (2026-10-01).** Audited against the code and the database, not
+the plan. Group B holds; nothing in progress, nothing blocking.
+
+| Check | Result |
+|---|---|
+| `FeatureCatalog::isActive()` is the only reader | Confirmed by grep — the sole two callers are `FeatureIndexAction` and `FeatureToggleAction`. No second implementation can drift |
+| Every flag declares `label`/`group`/`description` | 8/8 each. No consumer relies on a default |
+| Published `stores` block vs vendor | `diff` reports IDENTICAL, so the `PENNANT_STORE` env wiring the deploy reads is intact |
+| Seeder is idempotent | Ran live: operator deactivated `pulse`, reseeded, `pulse` stayed `false` and the row count held at 8 — an operator's decision survives a reseed, which is the whole point |
+| `Feature::stored()` returns a flat name list | Ran live: 8 names, correct type. It is a `@method` annotation on the facade (`Feature.php:26`) forwarding to the driver's `CanListStoredFeatures`, not a real method — safe, but a Pennant major could drop it without a signature error |
+| `resolveScopeUsing('global')` present | Yes. Load-bearing: without it Pennant scopes per user and the page would show one person's answer as the installation's |
+
+**Two gaps, neither a defect.** `disabled => true` is implemented and tested but
+**unused** — all 8 flags are plain. Correct today: a config-disabled flag needs
+its route gated first (Group C), or it 404s for everyone with no way back but a
+deploy. And no test pins the slug count; `assertSame(count(slugs()), $rows)`
+compares the store against config, so adding a flag passes and accidentally
+deleting one still fails. A hardcoded 8 would break on every legitimate addition.
+
+**`FeatureFlagSeeder` uses `activate()`, not `activateForEveryone()`** — measured,
+not assumed. The database driver implements "all scopes" as
+`setForAllScopes` → `where(name)->update()`, which on a flag with no row matches
+nothing and writes nothing, silently. That is every flag this seeder exists to
+create. `activate()` resolves the scope and inserts.
 
 **Load-bearing detail.** `FeatureCatalog::isActive()` is the single reader, and it
 returns `false` when config says `disabled => true` *before* consulting the store.

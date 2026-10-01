@@ -173,6 +173,7 @@ Detail: `docs/planning/phase-6-rbac.md` § Group A and § C4.
 | P7-B4 | `FeatureFlagSeeder` — idempotent, never blanket-activates | 7 | P0 | P7-B2, B3 | DONE |
 | P7-B5 | Register in `DatabaseSeeder` | 7 | P1 | P7-B4 | DONE |
 | P7-B6 | `FeatureFlagCatalogTest` | 7 | P0 | P7-B4 | DONE |
+| P7-B7 | Group B audit — seeder non-destructiveness proven live, `stores` block diffed vs vendor | 7 | P1 | P7-B1..B6 | DONE |
 | P7-D1 | Seed `features.view` / `features.manage` in `PermissionCatalog` | 7 | P0 | P7-B3 | DONE |
 | P7-D2 | `FeatureIndexAction` — grouped rows + 4 counters, resolved once | 7 | P0 | P7-B3 | DONE |
 | P7-D3 | `FeatureToggleAction` — activate/deactivate, flush, audit `feature.toggled` | 7 | P0 | P7-D2 | DONE |
@@ -1191,6 +1192,15 @@ genuinely open and are the real D1/D2 work.
     "depends_on": ["P7-B4"],
     "status": "DONE",
     "note": "Phase 7 Group B, shipped b72a5f6. Verified again 2026-10-01 with the route and UI suites: 30 tests / 174 assertions green."
+  },
+  {
+    "id": "P7-B7",
+    "task": "Group B audit — seeder non-destructiveness proven live, stores block diffed vs vendor",
+    "phase": 7,
+    "priority": "P1",
+    "depends_on": ["P7-B1", "P7-B2", "P7-B3", "P7-B4", "P7-B5", "P7-B6"],
+    "status": "DONE",
+    "note": "Audit 2026-10-01, against the code and the database. Group B holds. Verified: FeatureCatalog::isActive() is the only reader (grep — the sole two callers are FeatureIndexAction and FeatureToggleAction, so no second implementation can drift); all 8 flags declare label/group/description 8/8 with no default relied on; the published stores block diffs IDENTICAL against vendor, so the PENNANT_STORE env wiring deploy reads is intact; seeder non-destructiveness proven by RUNNING it — deactivated pulse, reseeded, pulse stayed false and the row count held at 8 (flag restored afterwards); Feature::stored() returns 8 names live. Two gaps, neither a defect: disabled => true is implemented and tested but unused, correct today because a config-disabled flag needs its route gated first (Group C) or it 404s for everyone with no way back but a deploy; and no test pins the slug count, because assertSame(count(slugs()), rows) compares store against config — adding a flag passes, accidentally deleting one still fails, and a hardcoded 8 would break on every legitimate addition. Also recorded: the seeder uses activate() not activateForEveryone() because the database driver implements all-scopes as setForAllScopes -> where(name)->update(), which matches nothing and silently writes nothing on a flag with no row — which is every flag this seeder exists to create."
   },
   {
     "id": "P7-D1",

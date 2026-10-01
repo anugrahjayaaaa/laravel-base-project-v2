@@ -33,6 +33,7 @@ Phase 7 — Feature Availability & Feature Flags: IN PROGRESS
 - Group A (UI): ✅ DONE (`9545bce`) — index view, metric strip, grouped table, `feature-toggle` component, render gate
 - Group A audit: ✅ DONE — `align-middle` on all five `<th>`, and `ConfirmActionUsageTest` extended to see the `<input>` switch (it matched `<button\b` only, so the switch was never checked at all). Both sabotage-verified. Closed P7-E3 early
 - Group B (catalogue + activation): ✅ DONE (`b72a5f6`) — `config/pennant.php` (8 flags), `FeatureCatalog`, `FeatureFlagSeeder`, global scope
+- Group B audit: ✅ DONE — seeder non-destructiveness proven by running it (operator's `pulse=off` survived a reseed, row count held at 8), `stores` block diffed IDENTICAL against vendor, `isActive()` confirmed the only reader. Two non-defect gaps recorded: `disabled => true` is unused until routes are gated, and the slug count is deliberately unpinned. Closed P7-B7
 - Group D1–D6 (permissions, index/toggle actions, controller, web routes, sidebar item): ✅ DONE (`e538c49`)
 - Group C (enforcement middleware): ⬜ NOT STARTED — no `EnsureFeatureIsEnabled`, no `feature:` alias in `bootstrap/app.php`
 - Group D7–D10 (route matrix on `web.php` + `api.php`, menu filter, menu test): ⬜ NOT STARTED
