@@ -33,8 +33,55 @@ Pennant** (`laravel/pennant`):
 See [Pennant Stores](#pennant-stores) for store configuration and the
 [Storage Migration](#storage-migration) section for migration details.
 
-Actual feature-specific flags are NOT implemented in Phase 1 — they are added
-by future feature phases when a feature requires one.
+Actual feature-specific flags arrive in **Phase 7** — see
+[Flag Catalogue (Phase 7)](#flag-catalogue-phase-7).
+
+## Flag Catalogue (Phase 7)
+
+Flags are declared in `config/pennant.php`, not stored with labels and
+descriptions in the database. A flag's identity and its human copy are code, like
+a permission name in `PermissionCatalog` — a DB row nothing reads is a trap.
+
+Eight flags ship today, across four module groups: `users`, `roles`,
+`permissions`, `settings`, `translations`, `sessions`, `activity_logs`, `pulse`.
+
+`registration` is deliberately **not** a flag. `registration_enabled` is already a
+`system_settings` row read at all four entry points, so a flag for it would be two
+writers for one question and whichever ran last would win with neither knowing.
+
+### Declaring a flag is not activating it
+
+**This is the trap worth knowing.** With the `database` store, `Feature::active()`
+resolves against a row in `features`. **No row → false, fail-closed.** A flag
+added to config and wired to a route produces a route that 404s for everyone,
+superadmin included, until it is activated:
+
+```
+php artisan tinker --execute="Laravel\Pennant\Feature::activate('users');"
+```
+
+Every flag therefore needs **both** a config entry **and** an activation.
+`FeatureFlagSeeder` makes that non-forgettable: it activates any catalogue slug
+with no row, and deactivates **only** where config says `disabled => true`. It
+never blanket-activates, so a flag an operator turned off stays off across a
+reseed.
+
+Scope is forced global via `Feature::resolveScopeUsing(fn () => 'global')`.
+Without it Pennant scopes per authenticated user, and the management page becomes
+a lie — it would show one person's flags as though they were the installation's.
+
+Read a flag through `FeatureCatalog::isActive($slug)`, never
+`Feature::active()` directly: it consults config first, so `disabled => true`
+wins over a row an operator set earlier.
+
+### Management UI
+
+`/features` (`can('features.view')`), toggling via
+`POST /features/{feature}/toggle` (`can('features.manage')`). A viewer without
+`features.manage` sees status badges rather than disabled switches — a control
+that looks editable and silently discards input is worse than an absent one.
+Every toggle audits `feature.toggled` with `from`/`to`, reading the old value
+**before** the write.
 
 ## Use Cases
 
@@ -66,8 +113,24 @@ if (! Feature::active('new-dashboard')) {
 ```
 
 Feature availability is separate from authorization:
-- A feature may be available but the user lacks permission → 403 Forbidden.
-- A feature may be unavailable even with permission → 404 or feature disabled response.
+- A feature may be available but the user lacks permission → **403 Forbidden**.
+- A feature may be unavailable even with permission → **404 Not Found**.
+
+**404, not 400 — settled.** Pennant's own `EnsureFeaturesAreActive` middleware
+aborts **400**, which is wrong here: 400 says "your request is malformed", sending
+an integrator hunting a bug in their own code when in fact the server declined to
+serve it. 403 says "you are not allowed", which invites an escalation request —
+the wrong answer for a flag an operator turned off. 404 says "no such resource",
+so the client stops asking. A kill switch exists so a module *disappears*.
+
+Three places in this repo already answer 404 for a disabled capability:
+`AuthController` (`abort_unless($registration_enabled, 404)`) and the matching
+API controller. Pennant is the outlier and is not aliased.
+
+**No `features.manage` bypass.** A flag off 404s the route for everyone,
+managers included; a manager re-enables from `/features` first. A kill switch
+superadmin can walk through is not a kill switch, and "the feature is off but the
+CEO can still see it" is a state nobody asked for.
 
 ## Permission Integration
 

@@ -153,9 +153,10 @@ See [Soft Delete Strategy](../data/soft-delete.md) for the full convention.
 
 ### Feature Flags
 
-Phase 1 includes a feature-flag package foundation (installation +
-configuration + initial reusable UI conventions). See
-[Feature Availability](./feature-flags.md).
+Phase 1 shipped the foundation (installation + configuration + initial reusable
+UI conventions). Phase 7 adds the flag catalogue, the `/features` management page
+and the enforcement middleware. See
+[Feature Availability](../features/feature-flags.md).
 
 ### AdminLTE Installation Strategy
 
