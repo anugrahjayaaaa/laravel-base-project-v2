@@ -45,6 +45,16 @@ through to Laravel's default `{message, errors}` while only the four Auth
 requests carried it, and no test covered the difference. Inheritance removes
 the possibility of forgetting it.
 
+**Write a new Request by extending the base, never `FormRequest` directly.** The
+direct parent is an error, not a shortcut: reaching past the base silently drops
+the 422 contract, which is what the seventeen endpoints were doing. See
+[error-contract.md](../api/error-contract.md) for the body.
+
+Both rules are enforced by `tests/Arch/RequestVersioningTest`, which asserts that
+only `BaseFormRequest` sits at the Requests root, that no subtree other than
+`V1/` exists beside it, and that every concrete Request extends the base.
+`tests/Feature/Api/V1/ValidationErrorContractTest` pins the response body.
+
 ## Test Naming
 
 | Aspect | Convention |
