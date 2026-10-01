@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Web\V1\Auth\AuthController;
 use App\Http\Controllers\Web\V1\DashboardController;
+use App\Http\Controllers\Web\V1\FeatureController;
 use App\Http\Controllers\Web\V1\PermissionController;
 use App\Http\Controllers\Web\V1\ProfileController;
 use App\Http\Controllers\Web\V1\RoleController;
@@ -163,4 +164,20 @@ Route::middleware(['auth:web,sanctum', 'verified', 'password.change.required', '
     Route::delete('/roles/{role}/force', [RoleController::class, 'forceDelete'])->name('roles.force-delete')->can('roles.force_delete');
 
     Route::get('/permissions', [PermissionController::class, 'index'])->name('permissions.index')->can('permissions.view');
+
+    // ---------------------------------------------------------------------------
+    // Feature flags — Phase 7.
+    //
+    // The management page, NOT the enforcement. Nothing here is gated on
+    // `feature:{slug}`: that middleware (P7-C1/C2) goes on the routes of the
+    // modules being controlled, and putting it here would mean the page that
+    // re-enables a flag disappears with it — leaving no way back.
+    //
+    // `enabled` rides as a query param because the confirm modal posts a form
+    // to a fixed URL (confirmation-modal.js sets form.action, nothing else).
+    // That is why the switch in pages/features/index is a trigger and not an
+    // auto-submitting input.
+    // ---------------------------------------------------------------------------
+    Route::get('/features', [FeatureController::class, 'index'])->name('features.index')->can('features.view');
+    Route::post('/features/{feature}/toggle', [FeatureController::class, 'toggle'])->name('features.toggle')->can('features.manage');
 });

@@ -153,6 +153,13 @@ class AppMenuComposer
                         'route' => 'translations.index',
                         'active' => 'translations.*',
                     ],
+                    [
+                        'label' => 'Feature Flags',
+                        'icon' => 'fas fa-toggle-on',
+                        'route' => 'features.index',
+                        'active' => 'features.*',
+                        'permission' => 'features.view',
+                    ],
                 ],
             ],
             [

@@ -430,7 +430,10 @@ class RbacUiRenderTest extends TestCase
         // comparison compare a stale list against a fresh one.
         $asc = $this->get(route('permissions.index', ['sort' => 'name', 'direction' => 'asc']))
             ->viewData('permissions')->pluck('name')->all();
-        $this->assertSame('permissions.view', $asc[0]);
+        // `features.manage` now sorts first — the `features` group arrived with
+        // the flags routes. Pinned by hand rather than computed, so a catalogue
+        // that changes shape has to be looked at.
+        $this->assertSame('features.manage', $asc[0]);
 
         $desc = $this->get(route('permissions.index', ['sort' => 'name', 'direction' => 'desc']))
             ->viewData('permissions')->pluck('name')->all();

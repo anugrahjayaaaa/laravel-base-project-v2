@@ -65,11 +65,16 @@ class PermissionCatalog
         'settings.manage',
     ];
 
-    // ponytail: no `audit.*` or `features.*` yet — the audit viewer is Phase 10
-    // and feature flags are Phase 7, and there is no route, controller or view
-    // for either today. A permission nothing checks is a row that lies in the
-    // permissions UI and grants nothing. Add each group in the same commit that
-    // adds the page it guards.
+    /** @var array<int, string> */
+    private const FEATURES = [
+        'features.view',
+        'features.manage',
+    ];
+
+    // ponytail: no `audit.*` yet — the audit viewer is Phase 10 and there is no
+    // route, controller or view behind it today. A permission nothing checks is
+    // a row that lies in the permissions UI and grants nothing. Add each group
+    // in the same commit that adds the page it guards.
 
     /**
      * Every permission name the application defines.
@@ -83,6 +88,7 @@ class PermissionCatalog
             ...self::ROLES,
             ...self::PERMISSIONS,
             ...self::SETTINGS,
+            ...self::FEATURES,
         ];
     }
 
