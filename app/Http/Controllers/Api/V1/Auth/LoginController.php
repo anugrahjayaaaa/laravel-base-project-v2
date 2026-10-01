@@ -2,10 +2,10 @@
 
 namespace App\Http\Controllers\Api\V1\Auth;
 
-use App\Actions\V1\Auth\AuthenticateUserAction;
+use App\Actions\V1\Auth\AuthAuthenticateAction;
 use App\Auth\LoginThrottle;
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Auth\LoginRequest;
+use App\Http\Requests\V1\Auth\LoginRequest;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 
@@ -19,13 +19,13 @@ class LoginController extends Controller
      *
      * @param  LoginRequest  $request
      * @param  LoginThrottle  $throttle
-     * @param  AuthenticateUserAction  $action
+     * @param  AuthAuthenticateAction  $action
      * @return JsonResponse
      */
     public function __invoke(
         LoginRequest $request,
         LoginThrottle $throttle,
-        AuthenticateUserAction $action,
+        AuthAuthenticateAction $action,
     ): JsonResponse {
         $data = $request->validated();
         $identifier = $data['identifier'];

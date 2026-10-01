@@ -2,12 +2,12 @@
 
 namespace Tests\Benchmark;
 
-use App\Actions\V1\User\ActivateUserAction;
-use App\Actions\V1\User\DeactivateUserAction;
-use App\Actions\V1\User\DeleteUserAction;
-use App\Actions\V1\User\LockUserAction;
-use App\Actions\V1\User\RestoreUserAction;
-use App\Actions\V1\User\UnlockUserAction;
+use App\Actions\V1\User\UserActivateAction;
+use App\Actions\V1\User\UserDeactivateAction;
+use App\Actions\V1\User\UserDeleteAction;
+use App\Actions\V1\User\UserLockAction;
+use App\Actions\V1\User\UserRestoreAction;
+use App\Actions\V1\User\UserUnlockAction;
 use App\Actions\V1\User\UserIndexAction;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -75,7 +75,7 @@ class UserManagementBenchmark extends TestCase
     public function test_2_deactivate_user(): void
     {
         $user = User::factory()->create(['is_active' => true, 'email_verified_at' => now()]);
-        $action = app(DeactivateUserAction::class);
+        $action = app(UserDeactivateAction::class);
 
         $this->measure('Deactivate User', function () use ($action, $user) {
             $action->run($user, $this->admin);
@@ -86,7 +86,7 @@ class UserManagementBenchmark extends TestCase
     public function test_3_lock_user(): void
     {
         $user = User::factory()->create(['is_active' => true, 'is_locked' => false]);
-        $action = app(LockUserAction::class);
+        $action = app(UserLockAction::class);
 
         $this->measure('Lock User', function () use ($action, $user) {
             $action->run($user);
@@ -97,7 +97,7 @@ class UserManagementBenchmark extends TestCase
     public function test_4_soft_delete_user(): void
     {
         $user = User::factory()->create(['is_active' => true]);
-        $action = app(DeleteUserAction::class);
+        $action = app(UserDeleteAction::class);
 
         $this->measure('Soft Delete User', function () use ($action, $user) {
             $action->run($user, $this->admin);
@@ -108,7 +108,7 @@ class UserManagementBenchmark extends TestCase
     public function test_5_activate_user(): void
     {
         $user = User::factory()->create(['is_active' => false]);
-        $action = app(ActivateUserAction::class);
+        $action = app(UserActivateAction::class);
 
         $this->measure('Activate User', function () use ($action, $user) {
             $action->run($user);
@@ -119,7 +119,7 @@ class UserManagementBenchmark extends TestCase
     public function test_6_unlock_user(): void
     {
         $user = User::factory()->create(['is_locked' => true]);
-        $action = app(UnlockUserAction::class);
+        $action = app(UserUnlockAction::class);
 
         $this->measure('Unlock User', function () use ($action, $user) {
             $action->run($user);
@@ -131,7 +131,7 @@ class UserManagementBenchmark extends TestCase
     {
         $user = User::factory()->create();
         $user->delete();
-        $action = app(RestoreUserAction::class);
+        $action = app(UserRestoreAction::class);
 
         $this->measure('Restore User', function () use ($action, $user) {
             $action->run($user);

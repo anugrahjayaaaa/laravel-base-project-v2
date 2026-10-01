@@ -16,7 +16,7 @@ use Tests\TestCase;
 /**
  * Trashing a role must not leave its holders stranded on no role at all.
  *
- * `DeleteRoleAction` deassigns the role from everyone holding it, which is
+ * `RoleDeleteAction` deassigns the role from everyone holding it, which is
  * deliberate: Spatie skips `detach()` on a soft delete, so without the explicit
  * call the pivot rows would survive and a later `restore()` would silently hand
  * the role — and every permission it carries — straight back.
@@ -174,7 +174,7 @@ class RoleRevocationFallbackTest extends TestCase
     /**
      * superadmin is never handed out as a side effect.
      *
-     * Its grant is restricted to superadmin actors by AssignRolesAction, and a
+     * Its grant is restricted to superadmin actors by RoleAssignAction, and a
      * role deletion is not an actor anyone authorised. If the configured default
      * is somehow superadmin, the account stays empty rather than being promoted.
      */

@@ -2,7 +2,6 @@
 
 namespace Tests\Unit;
 
-use App\Models\SystemSetting;
 use App\Support\PasswordPolicy;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;

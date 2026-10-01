@@ -5,7 +5,7 @@
 ```
 app/
 ├── Actions/          # Application/business logic (use cases) — single-operation classes
-│                       # Naming: VerbNoun (e.g. ChangePasswordAction). One public method.
+│                       # Naming: VerbNoun (e.g. AuthChangePasswordAction). One public method.
 │                       # Extract when non-trivial (>~10 lines) OR shared across ≥2 controllers.
 │                       # Mutations log audit within the action itself.
 ├── Http/
@@ -13,9 +13,12 @@ app/
 │   │   ├── Api/
 │   │   │   └── V1/     # API V1 controllers
 │   │   └── Web/         # Web controllers (optional UI)
-│   ├── Requests/         # Form requests (validation + auth)
+│   ├── Requests/         # Form requests only — nothing else lives here
+│   │   ├── BaseFormRequest.php   # shared validation-failure contract
+│   │   └── V1/{Domain}/         # Requests/{Version}/{Domain}/{Class}Request.php
 │   ├── Resources/        # API resources (serialization) — use only when non-trivial
 │   └── Middleware/       # Cross-cutting request boundaries
+├── Concerns/         # Traits shared across layers (App\Concerns)
 ├── Models/           # Persistence models
 ├── Policies/         # Authorization decisions
 ├── Events/           # Domain/application events
@@ -59,13 +62,47 @@ Code structured as:
 ```
 Controllers/Api/V1/
 Controllers/Api/V2/
-Requests/Api/V1/
-Requests/Api/V2/
+Controllers/Web/V1/
+Requests/V1/            # shared by Web and Api — no channel segment
+Requests/V2/
 Resources/Api/V1/
 Resources/Api/V2/
 ```
 
 Application/domain logic may be shared when behavior is identical.
+
+**Why `Requests/` has no channel segment.** A Form Request is consumed by both
+channels (`StoreRoleRequest` is used by `Web/V1/RoleController` and
+`Api/V1/Role/RoleController`). Putting it under `Requests/Api/` would make the
+path lie about its own contents. The channel segment appears only where output
+is genuinely channel-specific: Resources serialize JSON for the API, and
+Controllers have two separate sets of HTTP entry points.
+
+## Where Shared Code Goes
+
+A folder holds one kind of thing. When shared behaviour was needed by the Form
+Requests it was placed inside `Requests/`, which produced `Requests/Concerns/`
+and `Requests/Traits/` holding three traits across two folders — the same idea
+filed twice, in the wrong place.
+
+| Kind | Location | Example |
+|------|----------|---------|
+| Behaviour only an HTTP Request uses | `Http/Requests/V1/{Domain}/` | `CreateUserRequest` |
+| Behaviour shared across layers | `Concerns/` | `AuthorizesBulkAction` |
+| Behaviour only Actions use | `Actions/Concerns/` | `PersistsRole` |
+
+So the test is not "what calls it" but "what is it tied to": a trait overriding
+`authorize()` or `prepareForValidation()` is tied to Form Requests, but the fact
+that only Requests call it does not make it part of Requests. Traits that could
+serve an Action or a Controller belong in `app/Concerns/`.
+
+Two naming rules fall out of this:
+
+- One name for one idea. `Traits/` and `Concerns/` are the same word; pick
+  `Concerns/`, which is what `Actions/`, `Jobs/` and `Models/` already use.
+- No folder should carry a prefix-free copy of a pattern that lives elsewhere.
+  Four `Concerns/` directories inside four layers is fine — they are scoped to
+  that layer. `Http/Requests/Traits/` was neither.
 
 ## Blade / UI Structure
 

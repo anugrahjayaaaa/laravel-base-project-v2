@@ -1,8 +1,8 @@
 {{--
     Action errors on an index page.
 
-    A button-driven action has no field to attach a message to. DeleteRoleAction
-    puts its refusal on 'name' and DeleteUserAction on 'email', the redirect goes
+    A button-driven action has no field to attach a message to. RoleDeleteAction
+    puts its refusal on 'name' and UserDeleteAction on 'email', the redirect goes
     back to the index, and the index renders neither — so the browser lands on a
     page that looks exactly as it did before, and "the modal opened, clicked
     confirm, nothing happened" is the whole of what the user can observe. The

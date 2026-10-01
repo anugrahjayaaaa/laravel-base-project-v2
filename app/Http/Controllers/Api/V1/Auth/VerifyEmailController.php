@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1\Auth;
 
-use App\Actions\V1\Auth\VerifyEmailAction;
+use App\Actions\V1\Auth\AuthVerifyEmailAction;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
@@ -17,10 +17,10 @@ class VerifyEmailController extends Controller
      * Verify the user's email address.
      *
      * @param  Request  $request
-     * @param  VerifyEmailAction  $action
+     * @param  AuthVerifyEmailAction  $action
      * @return JsonResponse
      */
-    public function __invoke(Request $request, VerifyEmailAction $action): JsonResponse
+    public function __invoke(Request $request, AuthVerifyEmailAction $action): JsonResponse
     {
         // Not gated on email_verification_mode: the mode decides who may send a
         // link, not who may use one. See Web\V1\Auth\AuthController::verifyEmail.

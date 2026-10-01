@@ -10,21 +10,21 @@
 | ID | Task | Status |
 |----|------|--------|
 | AUTH-004 | LoginFormRequest (identifier+password, anti-enumeration) | **DONE** |
-| AUTH-005 | LoginController → AuthenticateUserAction | **DONE** |
+| AUTH-005 | LoginController → AuthAuthenticateAction | **DONE** |
 | AUTH-006 | Login + email verification tests (57 tests, 149 assertions) | **DONE** |
 | AUTH-007 | Failed login tracking (LoginThrottle + FailedLoginAttempt) | **DONE** |
 | AUTH-008 | Temporary lock enforcement | **DONE** |
 | AUTH-009 | Logout (current device) | **DONE** |
 | AUTH-010 | Logout-all-devices | **DONE** |
 
-**Architecture:** Login flow uses `AuthenticateUserAction` (throttle + findUser + account state). Controllers are thin orchestrators — API returns JSON, Web returns redirect. Audit logged by controller with channel.
+**Architecture:** Login flow uses `AuthAuthenticateAction` (throttle + findUser + account state). Controllers are thin orchestrators — API returns JSON, Web returns redirect. Audit logged by controller with channel.
 
 **Action Classes implemented:**
-- `AuthenticateUserAction` — login flow
-- `SendPasswordResetLinkAction` — forgot password
-- `ResetPasswordAction` — password reset
-- `VerifyEmailAction` — email verification
-- `UnlockUserAction` — admin unlock
+- `AuthAuthenticateAction` — login flow
+- `AuthSendResetLinkAction` — forgot password
+- `AuthResetPasswordAction` — password reset
+- `AuthVerifyEmailAction` — email verification
+- `UserUnlockAction` — admin unlock
 
 **Traits removed:** `AuthenticatesUsers`, `HandlesUserLookup`, `HandlesLockCheck`, `HandlesPasswordResetFlow` — logic moved to Actions.
 
@@ -49,13 +49,13 @@
 
 | ID | Task | Status |
 |----|------|--------|
-| AUTH-011a | VerifyEmailController → VerifyEmailAction | **COMPLIANT** — action handles markEmailAsVerified; controller adds mode check + audit |
-| AUTH-011b | ResendVerificationController → ResendVerificationAction | **COMPLIANT** — action handles send notification + rate limit; controller adds mode check + audit |
+| AUTH-011a | VerifyEmailController → AuthVerifyEmailAction | **COMPLIANT** — action handles markEmailAsVerified; controller adds mode check + audit |
+| AUTH-011b | ResendVerificationController → AuthResendVerificationAction | **COMPLIANT** — action handles send notification + rate limit; controller adds mode check + audit |
 
 **Implementation (verified):**
-- `AuthenticateUserAction::checkEmailVerification()` — single source of truth; blocks all modes except `disabled`; returns `UNVERIFIED_EMAIL` error
-- `VerifyEmailAction` — `markEmailAsVerified()` + check already verified
-- `ResendVerificationAction` — rate limited (3600s window), generic success, user enumeration safe
+- `AuthAuthenticateAction::checkEmailVerification()` — single source of truth; blocks all modes except `disabled`; returns `UNVERIFIED_EMAIL` error
+- `AuthVerifyEmailAction` — `markEmailAsVerified()` + check already verified
+- `AuthResendVerificationAction` — rate limited (3600s window), generic success, user enumeration safe
 - `AuthControllergin` — catch UNVERIFIED_EMAIL → redirect verify-email page
 - `AuthControllerrifyEmail` — verify email via signed link → redirect verify-email page + flash
 - `AuthControllersendVerification` — resend via form email input → action send email
@@ -76,17 +76,17 @@
 ||| `app/Models/FailedLoginAttempt.php` | Model for `failed_login_attempts` table; `nextLockoutMinutes()` progressive calc | AUTH-007 |
 ||| `database/migrations/…_create_failed_login_attempts_table.php` | Table migration | AUTH-007 |
 ||| `app/Http/Middleware/EnsurePasswordChangeRequired.php` | Blocks access when `must_change_password` or `password_expires_at` past; exempts password.change/verification/email.resend/logout; 403 JSON or 302 redirect | Phase 3 middleware |
-||| `app/Actions/Auth/AuthenticateUserAction.php` | Login flow: throttle check + user lookup + account state check | AUTH-005 |
-||| `app/Actions/Auth/SendPasswordResetLinkAction.php` | Forgot password: lock check + send link + audit | AUTH-012 |
-||| `app/Actions/Auth/ResetPasswordAction.php` | Reset password: lock check + Password::reset + audit | AUTH-013 |
-||| `app/Actions/Auth/VerifyEmailAction.php` | Email verification: mark verified + check already verified | AUTH-011a |
-||| `app/Actions/Auth/UnlockUserAction.php` | Admin unlock: is_locked=false + throttle reset | (Phase 4/5 overlap) |
-||| `app/Actions/Auth/ChangePasswordAction.php` | Shared password-change logic: validate current, history check, hash, expiration, revoke tokens, activity log | PWD-002/AUTH-014 |
-||| `app/Http/Controllers/Api/V1/Auth/LoginController.php` | API login → AuthenticateUserAction, JSON response | AUTH-005 |
-||| `app/Http/Controllers/Api/V1/Auth/PasswordForgotController.php` | Forgot-password → SendPasswordResetLinkAction | AUTH-012 |
-||| `app/Http/Controllers/Api/V1/Auth/PasswordResetController.php` | Reset-password → ResetPasswordAction | AUTH-013 |
-||| `app/Http/Controllers/Api/V1/Auth/VerifyEmailController.php` | API verify email → VerifyEmailAction | AUTH-011a |
-||| `app/Http/Controllers/Api/V1/Auth/UnlockController.php` | Admin unlock → UnlockUserAction | (Phase 4/5 overlap) |
+||| `app/Actions/Auth/AuthAuthenticateAction.php` | Login flow: throttle check + user lookup + account state check | AUTH-005 |
+||| `app/Actions/Auth/AuthSendResetLinkAction.php` | Forgot password: lock check + send link + audit | AUTH-012 |
+||| `app/Actions/Auth/AuthResetPasswordAction.php` | Reset password: lock check + Password::reset + audit | AUTH-013 |
+||| `app/Actions/Auth/AuthVerifyEmailAction.php` | Email verification: mark verified + check already verified | AUTH-011a |
+||| `app/Actions/Auth/UserUnlockAction.php` | Admin unlock: is_locked=false + throttle reset | (Phase 4/5 overlap) |
+||| `app/Actions/Auth/AuthChangePasswordAction.php` | Shared password-change logic: validate current, history check, hash, expiration, revoke tokens, activity log | PWD-002/AUTH-014 |
+||| `app/Http/Controllers/Api/V1/Auth/LoginController.php` | API login → AuthAuthenticateAction, JSON response | AUTH-005 |
+||| `app/Http/Controllers/Api/V1/Auth/PasswordForgotController.php` | Forgot-password → AuthSendResetLinkAction | AUTH-012 |
+||| `app/Http/Controllers/Api/V1/Auth/PasswordResetController.php` | Reset-password → AuthResetPasswordAction | AUTH-013 |
+||| `app/Http/Controllers/Api/V1/Auth/VerifyEmailController.php` | API verify email → AuthVerifyEmailAction | AUTH-011a |
+||| `app/Http/Controllers/Api/V1/Auth/UnlockController.php` | Admin unlock → UserUnlockAction | (Phase 4/5 overlap) |
 ||| `app/Http/Controllers/Api/V1/Auth/LogoutController.php` | API logout: delete current token + audit | AUTH-009 |
 ||| `app/Http/Controllers/Api/V1/Auth/LogoutAllController.php` | API logout-all: delete all tokens + audit | AUTH-010 |
 ||| `app/Http/Controllers/Web/V1/Auth/AuthControllerp` | Web auth: view rendering + login/logout logic + forgot/reset password + audit trail | UI-AUTH-002 |
@@ -194,14 +194,14 @@ Web audit uses `$this->audit()` from base Controller (same as API).
 
 **`app/Actions/` — single-operation classes**
 - One public method (`run()` or `__invoke()`)
-- Naming: `VerbNoun` (e.g. `ChangePasswordAction`, `SendResetLink`, `RevokeUserTokens`)
+- Naming: `VerbNoun` (e.g. `AuthChangePasswordAction`, `SendResetLink`, `RevokeUserTokens`)
 - Extract when **either** the operation is non-trivial (>~10 lines of logic beyond
   simple delegation) **OR** the logic is shared across ≥2 controllers.
 - Do NOT wrap a single trivial model call in an Action — inline it in the controller.
 - Mutations that perform writes log audit within the action itself (the action has
   full context: causer, subject, properties). This keeps audit co-located with the
   mutation.
-- Already has: `ChangePasswordAction`
+- Already has: `AuthChangePasswordAction`
 
 **`app/Services/` — cohesive domain objects + external integrations**
 - Naming: `NounService` (e.g. `HealthCheckService`, `AuditService`, `EmailService`)
@@ -227,10 +227,10 @@ Web audit uses `$this->audit()` from base Controller (same as API).
 
 | Operation | Where it lives | Reason |
 |-----------|---------------|--------|
-|| Login (authenticate + issue token + update last_activity) | **AuthenticateUserAction** | Unified action: throttle + findUser + accountState + emailVerification (UNVERIFIED_EMAIL for all modes except disabled). Strict — no Sanctum token or session for unverified users. |
-|| Verify email | **VerifyEmailAction** — Web + API delegate | Shared action: markEmailAsVerified; controller adds mode check + audit. |
-|| Resend verification | **ResendVerificationAction** — Web + API delegate | Shared action: rate limit + send notification; controller adds mode check + audit. |
-|| Password change | **Action** (`ChangePasswordAction`) — already done | Complex: history check, revocation, audit. Shared pattern. |
+|| Login (authenticate + issue token + update last_activity) | **AuthAuthenticateAction** | Unified action: throttle + findUser + accountState + emailVerification (UNVERIFIED_EMAIL for all modes except disabled). Strict — no Sanctum token or session for unverified users. |
+|| Verify email | **AuthVerifyEmailAction** — Web + API delegate | Shared action: markEmailAsVerified; controller adds mode check + audit. |
+|| Resend verification | **AuthResendVerificationAction** — Web + API delegate | Shared action: rate limit + send notification; controller adds mode check + audit. |
+|| Password change | **Action** (`AuthChangePasswordAction`) — already done | Complex: history check, revocation, audit. Shared pattern. |
 || Forgot/reset password | **Controller directly** — already done | Uses Laravel `Password` facade; thin wrapper. |
 || Unlock user | **Controller directly** — already done | Uses `LoginThrottle` dependency. |
 
@@ -265,8 +265,8 @@ Phase 3 splits into 5 groups. Each group is a self-contained batch that can be i
 
 | ID | Task | Depends On | Est. | Notes |
 |----|------|-----------|------|-------|
-| AUTH-011a | **VerifyEmailController** — verify email via signed link; `VerifyEmailAction` shared; controller adds mode check + audit | AUTH-006 | small | Route already wired: `GET /api/v1/auth/email/verify/{id}/{hash}` with `signed` middleware | **COMPLIANT** |
-| AUTH-011b | **ResendVerificationController** — resend via `ResendVerificationAction`; throttle; audit | AUTH-006 | small | Route already wired: `POST /api/v1/auth/email/resend` | **COMPLIANT** |
+| AUTH-011a | **VerifyEmailController** — verify email via signed link; `AuthVerifyEmailAction` shared; controller adds mode check + audit | AUTH-006 | small | Route already wired: `GET /api/v1/auth/email/verify/{id}/{hash}` with `signed` middleware | **COMPLIANT** |
+| AUTH-011b | **ResendVerificationController** — resend via `AuthResendVerificationAction`; throttle; audit | AUTH-006 | small | Route already wired: `POST /api/v1/auth/email/resend` | **COMPLIANT** |
 | — | **Verification tests** — signed link, rate limit, valid link, already verified, resend | AUTH-011a, AUTH-011b | small | 57 tests pass | **COMPLIANT** |
 
 **[QUEUE] Group C queue-eligible:** Resend verification email can be queued via Notification on-demand queue. Controlled by `QUEUE_CONNECTION`: if `sync` → sends immediately; if `database`/`redis` → queued. Implementation: `$user->notify(new VerifyEmailNotification())->onQueue()` — but only if the notification supports it. Jaya to decide if this is worth the complexity for Phase 3 or defer to Phase 9 (Notifications).
@@ -278,9 +278,9 @@ Phase 3 splits into 5 groups. Each group is a self-contained batch that can be i
 ||| UI-AUTH-001 | **Login page** — `resources/views/pages/auth/login.blade.php` | UI-001 (done) | **COMPLIANT** | AdminLTE auth layout, @csrf, old(), @error, flash messages, double-click prevention |
 ||| UI-AUTH-002 | **AuthController— `App\Http\Controllers\Web\V1\Auth\AutAuthController-AUTH-001 | **COMPLIANT** | Thin controller, delegates to Actions, audit trail |
 ||| UI-AUTH-003 | **Forgot password page** — `resources/views/pages/auth/forgot-password.blade.php` | UI-AUTH-001 | **COMPLIANT** | @csrf, old(email), @error, flash success |
-||| UI-AUTH-004 | **Web ForgotPasswordController** — POST `/forgot-password` | UI-AUTH-003 | **COMPLIANT** | SendPasswordResetLinkAction, try-catch mail failure |
+||| UI-AUTH-004 | **Web ForgotPasswordController** — POST `/forgot-password` | UI-AUTH-003 | **COMPLIANT** | AuthSendResetLinkAction, try-catch mail failure |
 ||| UI-AUTH-005 | **Reset password page** — `resources/views/pages/auth/reset-password.blade.php` | UI-AUTH-001 | **COMPLIANT** | @csrf, old(email), @error password |
-||| UI-AUTH-006 | **Web ResetPasswordController** — POST `/reset-password` | UI-AUTH-005 | **COMPLIANT** | ResetPasswordAction, audit `auth.password_reset_completed` |
+||| UI-AUTH-006 | **Web ResetPasswordController** — POST `/reset-password` | UI-AUTH-005 | **COMPLIANT** | AuthResetPasswordAction, audit `auth.password_reset_completed` |
 ||| UI-AUTH-007 | **Email verification notice** — `resources/views/pages/auth/verify-email.blade.php` | UI-AUTH-001 | **COMPLIANT** | Dual mode, @csrf, old(email), double-click prevention |
 ||| UI-AUTH-008 | **Web auth routes** — grouped public/guest/auth | UI-AUTH-002..007 | **COMPLIANT** | verified middleware, throttle:resend-verification |
 ||| UI-AUTH-009 | **Web auth tests** — 61 tests, 161 assertions | UI-AUTH-002..008 | **COMPLIANT** | Login, logout, forgot, reset, verify, resend, rate limit, mail failure |
@@ -347,14 +347,14 @@ The Phase 3 implementation breakdown is complete. The phase-level status remains
 | AUTH-007 | PLANNED (Phase 5) | **DONE** (Phase 3) | Code exists: LoginThrottle + FailedLoginAttempt + migration |
 | AUTH-008 | PLANNED (Phase 5) | **DONE** (Phase 3) | Code exists: LoginThrottle::isLocked/recordFailed/clearIfExpired |
 | AUTH-004 | DONE | DONE | LoginFormRequest exists and is used by Web/API login |
-| AUTH-005 | DONE | DONE | AuthenticateUserAction exists and is used by Web/API login |
+| AUTH-005 | DONE | DONE | AuthAuthenticateAction exists and is used by Web/API login |
 | AUTH-006 | DONE | DONE | Sanctum token/session creation is implemented |
 | AUTH-009 | DONE | DONE | LogoutController exists |
 | AUTH-010 | DONE | DONE | LogoutAllController exists |
-| AUTH-011 | DONE | DONE | VerifyEmailAction + ResendVerificationAction exist |
-| AUTH-012 | DONE | DONE | SendPasswordResetLinkAction exists |
-| AUTH-013 | DONE | DONE | ResetPasswordAction exists |
-| AUTH-014 | DONE | DONE | ChangePasswordAction exists and Phase 5 lifecycle wiring is complete |
+| AUTH-011 | DONE | DONE | AuthVerifyEmailAction + AuthResendVerificationAction exist |
+| AUTH-012 | DONE | DONE | AuthSendResetLinkAction exists |
+| AUTH-013 | DONE | DONE | AuthResetPasswordAction exists |
+| AUTH-014 | DONE | DONE | AuthChangePasswordAction exists and Phase 5 lifecycle wiring is complete |
 | RATE-001 | PLANNED (Phase 5) | **DONE** (Phase 3) | RateLimiter defined in AuthServiceProvider — 4 limiters: login (5/min), forgot-password (3/min), reset-password (3/min), resend-verification (5/hour) |
 | RATE-002 | PLANNED (Phase 5) | **DONE** (Phase 3) | Rate limit tests — HTTP 429 verified: login (5), forgot (3), reset (3), resend web (6), resend API (6) |
 

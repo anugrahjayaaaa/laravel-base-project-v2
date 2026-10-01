@@ -2,19 +2,19 @@
 
 namespace App\Http\Controllers\Api\V1\Role;
 
-use App\Actions\V1\Role\CreateRoleAction;
-use App\Actions\V1\Role\DeleteRoleAction;
-use App\Actions\V1\Role\ForceDeleteRoleAction;
-use App\Actions\V1\Role\IndexRoleAction;
-use App\Actions\V1\Role\RestoreRoleAction;
-use App\Actions\V1\Role\UpdateRoleAction;
+use App\Actions\V1\Role\RoleCreateAction;
+use App\Actions\V1\Role\RoleDeleteAction;
+use App\Actions\V1\Role\RoleForceDeleteAction;
+use App\Actions\V1\Role\RoleIndexAction;
+use App\Actions\V1\Role\RoleRestoreAction;
+use App\Actions\V1\Role\RoleUpdateAction;
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Role\DeleteRoleRequest;
-use App\Http\Requests\Role\ForceDeleteRoleRequest;
-use App\Http\Requests\Role\RestoreRoleRequest;
-use App\Http\Requests\Role\RoleQueryRequest;
-use App\Http\Requests\Role\StoreRoleRequest;
-use App\Http\Requests\Role\UpdateRoleRequest;
+use App\Http\Requests\V1\Role\DeleteRoleRequest;
+use App\Http\Requests\V1\Role\ForceDeleteRoleRequest;
+use App\Http\Requests\V1\Role\RestoreRoleRequest;
+use App\Http\Requests\V1\Role\RoleQueryRequest;
+use App\Http\Requests\V1\Role\StoreRoleRequest;
+use App\Http\Requests\V1\Role\UpdateRoleRequest;
 use App\Http\Resources\Api\V1\Role\RoleResource;
 use App\Models\Role;
 use App\Models\RoleLookup;
@@ -40,12 +40,12 @@ use Illuminate\Http\Request;
 class RoleController extends Controller
 {
     public function __construct(
-        private readonly IndexRoleAction $indexAction,
-        private readonly CreateRoleAction $createAction,
-        private readonly UpdateRoleAction $updateAction,
-        private readonly DeleteRoleAction $deleteAction,
-        private readonly RestoreRoleAction $restoreAction,
-        private readonly ForceDeleteRoleAction $forceDeleteAction,
+        private readonly RoleIndexAction $indexAction,
+        private readonly RoleCreateAction $createAction,
+        private readonly RoleUpdateAction $updateAction,
+        private readonly RoleDeleteAction $deleteAction,
+        private readonly RoleRestoreAction $restoreAction,
+        private readonly RoleForceDeleteAction $forceDeleteAction,
     ) {
     }
 

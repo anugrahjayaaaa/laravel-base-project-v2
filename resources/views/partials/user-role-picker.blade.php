@@ -7,7 +7,7 @@
 
     The hidden input is load-bearing, not a form idiom. An unchecked checkbox
     sends NOTHING, so unchecking every box posts no `roles` key at all — and
-    UpdateUserAction reads `array_key_exists('roles', $data)` to tell "the admin
+    UserUpdateAction reads `array_key_exists('roles', $data)` to tell "the admin
     removed them all" apart from "this caller never sent roles". Without the
     hidden input the two are indistinguishable and removing every role silently
     does nothing. It must come BEFORE the checkboxes: PHP takes the LAST value
@@ -15,7 +15,7 @@
 
     The whole picker sits inside @can('users.assign_roles'), INCLUDING the hidden
     input. That is what makes hiding it safe: a caller without the permission
-    posts no `roles` key at all, which UpdateUserAction reads as "leave the roles
+    posts no `roles` key at all, which UserUpdateAction reads as "leave the roles
     alone". Rendering the hidden input outside the @can would post `roles: ['']`
     → normalised to `roles: []` → and silently strip every role from the account
     as a side effect of saving an unrelated field. The gate would look right and
@@ -45,7 +45,7 @@
     @enderror
 
     {{--
-        P6-E5. AssignRolesAction refuses to add OR remove superadmin unless the
+        P6-E5. RoleAssignAction refuses to add OR remove superadmin unless the
         payload carries an explicit confirmation, so the form has to be able to
         send one — otherwise the guard silently makes superadmin unassignable
         through the UI, which is a lockout wearing a safety feature.

@@ -5,7 +5,6 @@ namespace Tests\Feature\Web\V1\Auth;
 use App\Models\FailedLoginAttempt;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\URL;
 use Tests\TestCase;
@@ -173,64 +172,64 @@ class AuthControllerTest extends TestCase
     }
 
     public function test_web_protected_route_redirects_unauthenticated(): void
-        {
-            $response = $this->get('/dashboard');
-            $response->assertRedirect('/login');
-        }
+    {
+        $response = $this->get('/dashboard');
+        $response->assertRedirect('/login');
+    }
 
-        public function test_web_forgot_password_handles_mail_failure(): void
-           {
-               \Password::shouldReceive('sendResetLink')
-                   ->andThrow(new \Exception('Mail service down'));
+    public function test_web_forgot_password_handles_mail_failure(): void
+    {
+        \Password::shouldReceive('sendResetLink')
+            ->andThrow(new \Exception('Mail service down'));
 
-               $user = User::factory()->create();
+        $user = User::factory()->create();
 
-               $response = $this->from('/forgot-password')
-                   ->post('/forgot-password', [
-                       'email' => $user->email,
-                   ]);
+        $response = $this->from('/forgot-password')
+            ->post('/forgot-password', [
+                'email' => $user->email,
+            ]);
 
-               $response->assertRedirectBack()
-                   ->assertSessionHasErrors('email');
-           }
+        $response->assertRedirectBack()
+            ->assertSessionHasErrors('email');
+    }
 
-           public function test_web_failed_login_creates_db_record(): void
-               {
-                   $user = User::factory()->create();
+    public function test_web_failed_login_creates_db_record(): void
+    {
+        $user = User::factory()->create();
 
-                   $this->from('/login')
-                       ->post('/login', [
-                           'identifier' => $user->email,
-                           'password' => 'wrongpassword',
-                       ]);
+        $this->from('/login')
+            ->post('/login', [
+                'identifier' => $user->email,
+                'password' => 'wrongpassword',
+            ]);
 
-                   $this->assertDatabaseHas('failed_login_attempts', [
-                       'identifier' => $user->email,
-                       'ip_address' => '127.0.0.1',
-                   ]);
-               }
+        $this->assertDatabaseHas('failed_login_attempts', [
+            'identifier' => $user->email,
+            'ip_address' => '127.0.0.1',
+        ]);
+    }
 
-               public function test_web_login_locked_shows_duration(): void
-               {
-                   FailedLoginAttempt::create([
-                       'identifier' => 'locked@example.com',
-                       'ip_address' => '127.0.0.1',
-                       'attempts' => 5,
-                       'lock_count' => 1,
-                       'locked_until' => now()->addMinutes(5),
-                   ]);
+    public function test_web_login_locked_shows_duration(): void
+    {
+        FailedLoginAttempt::create([
+            'identifier' => 'locked@example.com',
+            'ip_address' => '127.0.0.1',
+            'attempts' => 5,
+            'lock_count' => 1,
+            'locked_until' => now()->addMinutes(5),
+        ]);
 
-                   $response = $this->from('/login')
-                       ->post('/login', [
-                           'identifier' => 'locked@example.com',
-                           'password' => 'wrong',
-                       ]);
+        $response = $this->from('/login')
+            ->post('/login', [
+                'identifier' => 'locked@example.com',
+                'password' => 'wrong',
+            ]);
 
-                   $response->assertRedirect('/login')
-                       ->assertSessionHasErrors('identifier');
-               }
+        $response->assertRedirect('/login')
+            ->assertSessionHasErrors('identifier');
+    }
 
-           public function test_web_login_rate_limited_after_5_attempts(): void
+    public function test_web_login_rate_limited_after_5_attempts(): void
     {
         $user = User::factory()->create();
 
@@ -283,4 +282,4 @@ class AuthControllerTest extends TestCase
     }
 
     // Mail failure test for resend requires notification sender mocking — not feasible
-    }
+}

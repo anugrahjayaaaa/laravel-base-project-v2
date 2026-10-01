@@ -135,7 +135,7 @@ class UserStateAuthorizationTest extends TestCase
             'is_locked' => false,
         ]);
 
-        // LockUserAction refuses an INACTIVE user ("activate the user first"), so
+        // UserLockAction refuses an INACTIVE user ("activate the user first"), so
         // the deactivate case is what flips is_active, and the lock case must
         // start from an active account or it throws instead of locking.
         if ($permission === 'users.deactivate') {

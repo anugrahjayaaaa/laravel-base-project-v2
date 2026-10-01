@@ -2,22 +2,22 @@
 
 namespace App\Http\Controllers\Web\V1\Auth;
 
-use App\Actions\V1\Auth\AuthenticateUserAction;
-use App\Actions\V1\Auth\ListUserSessionsAction;
-use App\Actions\V1\Auth\LogoutAllDevicesAction;
-use App\Actions\V1\Auth\ResendVerificationAction;
-use App\Actions\V1\Auth\SendPasswordResetLinkAction;
-use App\Actions\V1\Auth\ResetPasswordAction;
-use App\Actions\V1\Auth\VerifyEmailAction;
-use App\Actions\V1\User\CreateUserAction;
+use App\Actions\V1\Auth\AuthAuthenticateAction;
+use App\Actions\V1\Auth\AuthListSessionsAction;
+use App\Actions\V1\Auth\AuthLogoutAllDevicesAction;
+use App\Actions\V1\Auth\AuthResendVerificationAction;
+use App\Actions\V1\Auth\AuthSendResetLinkAction;
+use App\Actions\V1\Auth\AuthResetPasswordAction;
+use App\Actions\V1\Auth\AuthVerifyEmailAction;
+use App\Actions\V1\User\UserCreateAction;
 use App\Models\SystemSetting;
 use App\Models\User;
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Auth\LoginRequest;
-use App\Http\Requests\Auth\PasswordForgotRequest;
-use App\Http\Requests\Auth\PasswordResetRequest;
-use App\Http\Requests\Auth\RegisterRequest;
-use App\Http\Requests\Auth\ResendVerificationRequest;
+use App\Http\Requests\V1\Auth\LoginRequest;
+use App\Http\Requests\V1\Auth\PasswordForgotRequest;
+use App\Http\Requests\V1\Auth\PasswordResetRequest;
+use App\Http\Requests\V1\Auth\RegisterRequest;
+use App\Http\Requests\V1\Auth\ResendVerificationRequest;
 use App\Auth\LoginThrottle;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -29,10 +29,10 @@ use Illuminate\Support\Facades\Password;
 class AuthController extends Controller
 {
     /**
-     * @param  ListUserSessionsAction  $listSessionsAction
+     * @param  AuthListSessionsAction  $listSessionsAction
      */
     public function __construct(
-        private readonly ListUserSessionsAction $listSessionsAction,
+        private readonly AuthListSessionsAction $listSessionsAction,
     ) {
     }
 
@@ -60,10 +60,10 @@ class AuthController extends Controller
      *
      * @param  LoginRequest  $request
      * @param  LoginThrottle  $throttle
-     * @param  AuthenticateUserAction  $action
+     * @param  AuthAuthenticateAction  $action
      * @return \Illuminate\Http\RedirectResponse
      */
-    public function login(LoginRequest $request, LoginThrottle $throttle, AuthenticateUserAction $action)
+    public function login(LoginRequest $request, LoginThrottle $throttle, AuthAuthenticateAction $action)
     {
         $data = $request->validated();
         $identifier = $data['identifier'];
@@ -140,10 +140,10 @@ class AuthController extends Controller
      *
      * @param  PasswordForgotRequest  $request
      * @param  LoginThrottle  $throttle
-     * @param  SendPasswordResetLinkAction  $action
+     * @param  AuthSendResetLinkAction  $action
      * @return \Illuminate\Http\RedirectResponse
      */
-    public function sendPasswordResetLink(PasswordForgotRequest $request, LoginThrottle $throttle, SendPasswordResetLinkAction $action)
+    public function sendPasswordResetLink(PasswordForgotRequest $request, LoginThrottle $throttle, AuthSendResetLinkAction $action)
     {
         $data = $request->validated();
         $email = $data['email'];
@@ -191,10 +191,10 @@ class AuthController extends Controller
      *
      * @param  PasswordResetRequest  $request
      * @param  LoginThrottle  $throttle
-     * @param  ResetPasswordAction  $action
+     * @param  AuthResetPasswordAction  $action
      * @return \Illuminate\Http\RedirectResponse
      */
-    public function resetUserPassword(PasswordResetRequest $request, LoginThrottle $throttle, ResetPasswordAction $action)
+    public function resetUserPassword(PasswordResetRequest $request, LoginThrottle $throttle, AuthResetPasswordAction $action)
     {
         $data = $request->validated();
         $email = $data['email'];
@@ -239,10 +239,10 @@ class AuthController extends Controller
     /**
      * Verify the user's email address.
      *
-     * @param  VerifyEmailAction  $action
+     * @param  AuthVerifyEmailAction  $action
      * @return \Illuminate\Http\RedirectResponse
      */
-    public function verifyEmail(VerifyEmailAction $action)
+    public function verifyEmail(AuthVerifyEmailAction $action)
     {
         // Deliberately not gated on email_verification_mode. That setting decides
         // who may SEND a verification link, not who may use one. A link already
@@ -279,11 +279,11 @@ class AuthController extends Controller
     /**
      * Resend a verification email to the user.
      *
-     * @param  ResendVerificationAction  $action
+     * @param  AuthResendVerificationAction  $action
      * @param  ResendVerificationRequest  $request
      * @return \Illuminate\Http\RedirectResponse
      */
-    public function resendVerification(ResendVerificationAction $action, ResendVerificationRequest $request)
+    public function resendVerification(AuthResendVerificationAction $action, ResendVerificationRequest $request)
     {
         $mode = SystemSetting::getString('email_verification_mode', 'public');
 
@@ -334,10 +334,10 @@ class AuthController extends Controller
      * out with a less clear message.
      *
      * @param  RegisterRequest  $request
-     * @param  CreateUserAction  $action
+     * @param  UserCreateAction  $action
      * @return \Illuminate\Http\RedirectResponse
      */
-    public function register(RegisterRequest $request, CreateUserAction $action)
+    public function register(RegisterRequest $request, UserCreateAction $action)
     {
         abort_unless(SystemSetting::getBool('registration_enabled', false), 404);
 
@@ -377,10 +377,10 @@ class AuthController extends Controller
      * Log out all devices for the current user.
      *
      * @param  Request  $request
-     * @param  LogoutAllDevicesAction  $action
+     * @param  AuthLogoutAllDevicesAction  $action
      * @return \Illuminate\Http\RedirectResponse
      */
-    public function logoutAllDevices(Request $request, LogoutAllDevicesAction $action)
+    public function logoutAllDevices(Request $request, AuthLogoutAllDevicesAction $action)
     {
         $user = $request->user();
         $action->run($user);

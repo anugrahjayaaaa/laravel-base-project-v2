@@ -207,7 +207,7 @@ class SystemSettingKeyConsistencyTest extends TestCase
             'email_change_cooldown_days',
         ];
 
-        $request = new \App\Http\Requests\System\SystemSettingRequest();
+        $request = new \App\Http\Requests\V1\System\SystemSettingRequest();
         $rules = $request->rules();
 
         foreach ($expectedRules as $key) {

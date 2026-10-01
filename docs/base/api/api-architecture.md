@@ -11,8 +11,9 @@ Version relevant application code:
 ```
 Controllers/Api/V1/
 Controllers/Api/V2/
-Requests/Api/V1/
-Requests/Api/V2/
+Controllers/Web/V1/
+Requests/V1/            # shared by Web and Api — no channel segment
+Requests/V2/
 Resources/Api/V1/
 Resources/Api/V2/
 ```

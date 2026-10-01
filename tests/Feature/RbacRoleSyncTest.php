@@ -15,7 +15,7 @@ use Tests\TestCase;
 /**
  * P6-E8 — the role sync contract, end to end over HTTP.
  *
- * `AssignRolesActionTest` covers the action directly. This drives the endpoint,
+ * `RoleAssignActionTest` covers the action directly. This drives the endpoint,
  * because the interesting failures live in the seams the action cannot see: the
  * `roles` key being absent versus empty, the validation rule on unknown names,
  * and the physical shape of the permission pivot afterwards.

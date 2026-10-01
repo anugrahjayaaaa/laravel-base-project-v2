@@ -2,9 +2,9 @@
 
 namespace App\Http\Controllers\Api\V1\Auth;
 
-use App\Actions\V1\User\CreateUserAction;
+use App\Actions\V1\User\UserCreateAction;
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Auth\RegisterRequest;
+use App\Http\Requests\V1\Auth\RegisterRequest;
 use App\Models\SystemSetting;
 use Illuminate\Http\JsonResponse;
 
@@ -21,10 +21,10 @@ class RegisterController extends Controller
      * Create a self-registered account and email a verification link.
      *
      * @param  RegisterRequest  $request
-     * @param  CreateUserAction  $action
+     * @param  UserCreateAction  $action
      * @return JsonResponse
      */
-    public function __invoke(RegisterRequest $request, CreateUserAction $action): JsonResponse
+    public function __invoke(RegisterRequest $request, UserCreateAction $action): JsonResponse
     {
         // A disabled feature is a 404 on the web, where the route has no meaning
         // at all. An API client gets the same answer so it cannot probe for the

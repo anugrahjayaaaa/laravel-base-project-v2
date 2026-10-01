@@ -132,7 +132,7 @@ class EmailVerificationModeTest extends TestCase
     }
 
     /**
-     * The gate lives in AdminResendVerificationAction, so the API endpoint and
+     * The gate lives in UserAdminResendVerificationAction, so the API endpoint and
      * the web form cannot drift apart. This is the caller that had no gate at
      * all before: the web controller refused, the API one sent anyway.
      */

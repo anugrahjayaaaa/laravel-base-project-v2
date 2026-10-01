@@ -2,7 +2,7 @@
 
 namespace Tests\Feature;
 
-use App\Actions\V1\User\CreateUserAction;
+use App\Actions\V1\User\UserCreateAction;
 use App\Models\SystemSetting;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -23,7 +23,7 @@ class PasswordHistoryTest extends TestCase
 
     public function test_generated_temporary_password_is_not_recorded(): void
     {
-        $action = app(CreateUserAction::class);
+        $action = app(UserCreateAction::class);
 
         $user = $action->run([
             'name' => 'Test User',
@@ -41,7 +41,7 @@ class PasswordHistoryTest extends TestCase
 
     public function test_self_chosen_password_is_recorded(): void
     {
-        $action = app(CreateUserAction::class);
+        $action = app(UserCreateAction::class);
 
         $user = $action->run([
             'name' => 'Test User',

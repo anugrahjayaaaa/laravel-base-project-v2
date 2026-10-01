@@ -2,10 +2,10 @@
 
 namespace App\Http\Controllers\Api\V1\User;
 
-use App\Actions\V1\User\ActivateUserAction;
-use App\Actions\V1\User\DeactivateUserAction;
-use App\Actions\V1\User\LockUserAction;
-use App\Actions\V1\User\UnlockUserAction;
+use App\Actions\V1\User\UserActivateAction;
+use App\Actions\V1\User\UserDeactivateAction;
+use App\Actions\V1\User\UserLockAction;
+use App\Actions\V1\User\UserUnlockAction;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
@@ -17,16 +17,16 @@ use App\Models\User;
 class UserStateController extends Controller
 {
     /**
-     * @param  ActivateUserAction  $activateAction
-     * @param  DeactivateUserAction  $deactivateAction
-     * @param  LockUserAction  $lockAction
-     * @param  UnlockUserAction  $unlockAction
+     * @param  UserActivateAction  $activateAction
+     * @param  UserDeactivateAction  $deactivateAction
+     * @param  UserLockAction  $lockAction
+     * @param  UserUnlockAction  $unlockAction
      */
     public function __construct(
-        private readonly ActivateUserAction $activateAction,
-        private readonly DeactivateUserAction $deactivateAction,
-        private readonly LockUserAction $lockAction,
-        private readonly UnlockUserAction $unlockAction,
+        private readonly UserActivateAction $activateAction,
+        private readonly UserDeactivateAction $deactivateAction,
+        private readonly UserLockAction $lockAction,
+        private readonly UserUnlockAction $unlockAction,
     ) {}
 
     /**

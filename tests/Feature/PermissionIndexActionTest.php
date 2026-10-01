@@ -3,7 +3,6 @@
 namespace Tests\Feature;
 
 use App\Actions\V1\Permission\PermissionIndexAction;
-use App\Models\Role;
 use App\Models\RoleLookup;
 use Database\Seeders\PermissionSeeder;
 use Database\Seeders\RoleSeeder;

@@ -14,7 +14,7 @@ use Tests\TestCase;
 /**
  * POST /api/v1/auth/register
  *
- * Shares RegisterRequest and CreateUserAction with the web form, so these
+ * Shares RegisterRequest and UserCreateAction with the web form, so these
  * assert only what the API contract adds on top.
  */
 class RegisterTest extends TestCase

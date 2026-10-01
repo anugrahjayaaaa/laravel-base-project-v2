@@ -2,10 +2,10 @@
 
 namespace App\Http\Controllers\Api\V1\Auth;
 
-use App\Actions\V1\Auth\SendPasswordResetLinkAction;
+use App\Actions\V1\Auth\AuthSendResetLinkAction;
 use App\Auth\LoginThrottle;
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Auth\PasswordForgotRequest;
+use App\Http\Requests\V1\Auth\PasswordForgotRequest;
 use Illuminate\Http\JsonResponse;
 
 /**
@@ -18,13 +18,13 @@ class PasswordForgotController extends Controller
      *
      * @param  PasswordForgotRequest  $request
      * @param  LoginThrottle  $throttle
-     * @param  SendPasswordResetLinkAction  $action
+     * @param  AuthSendResetLinkAction  $action
      * @return JsonResponse
      */
     public function __invoke(
         PasswordForgotRequest $request,
         LoginThrottle $throttle,
-        SendPasswordResetLinkAction $action,
+        AuthSendResetLinkAction $action,
     ): JsonResponse {
         $data = $request->validated();
         $email = $data['email'];

@@ -2,9 +2,9 @@
 
 namespace Tests\Feature;
 
-use App\Actions\V1\User\CreateUserAction;
+use App\Actions\V1\User\UserCreateAction;
 use App\Http\Controllers\Web\V1\SystemSettingController;
-use App\Http\Requests\System\SystemSettingRequest;
+use App\Http\Requests\V1\System\SystemSettingRequest;
 use App\Models\RoleLookup;
 use App\Models\SystemSetting;
 use App\Models\User;
@@ -53,7 +53,7 @@ class RoleGuardTest extends TestCase
     /**
      * A causer holding users.assign_roles.
      *
-     * P6-C10 made the admin path of CreateUserAction permission-gated, so a
+     * P6-C10 made the admin path of UserCreateAction permission-gated, so a
      * direct call with a `roles` key and no causer is now refused — which is the
      * behaviour, not a test to work around.
      */
@@ -134,7 +134,7 @@ class RoleGuardTest extends TestCase
         // where('name', ...)->first() would return it.
         Role::create(['name' => 'admin', 'guard_name' => 'api']);
 
-        $user = app(CreateUserAction::class)->run([
+        $user = app(UserCreateAction::class)->run([
             'name' => 'Guard Test',
             'username' => 'guardtest',
             'email' => 'guardtest@example.com',
@@ -153,7 +153,7 @@ class RoleGuardTest extends TestCase
         SystemSetting::set('registration_default_role', 'user');
         Role::create(['name' => 'user', 'guard_name' => 'api']);
 
-        $user = app(CreateUserAction::class)->run([
+        $user = app(UserCreateAction::class)->run([
             'name' => 'Self Reg',
             'username' => 'selfreg',
             'email' => 'selfreg@example.com',

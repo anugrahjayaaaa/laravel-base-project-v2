@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\DB;
  * Drop the three password-policy keys that nothing ever read.
  *
  * The /settings form offered "Mixed Case", "Numbers" and "Symbols", and
- * UpdateSystemSettingsAction wrote password_mixed_case / password_numbers /
+ * SystemUpdateSettingsAction wrote password_mixed_case / password_numbers /
  * password_symbols. PasswordPolicy never consulted any of them — it read
  * password_require_upper / _lower / _digit / _symbol, which the form had no
  * control for. So all three switches were inert: an admin could uncheck them,

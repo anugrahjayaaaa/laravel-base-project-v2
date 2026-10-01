@@ -31,7 +31,7 @@
 
 - One focused application operation with a single public method (`run()` or
   `__invoke()`).
-- Naming: `VerbNoun` (e.g. `AuthenticateUserAction`, `ResetPasswordAction`).
+- Naming: `VerbNoun` (e.g. `AuthAuthenticateAction`, `AuthResetPasswordAction`).
 - Extract into an Action when **either**:
   - The operation is non-trivial (>~10 lines of logic beyond simple delegation),
   - **OR** the logic is shared across ≥2 controllers.
@@ -68,7 +68,7 @@
 **Most auth operations in this project are Actions or inline in the controller:**
 - Login, logout, verify email, resend verification: inline in controller
   (thin, use injected dependencies like `LoginThrottle`).
-- Password change: Action (`ChangePasswordAction`) — non-trivial (history check,
+- Password change: Action (`AuthChangePasswordAction`) — non-trivial (history check,
   revocation, audit) and potentially shared.
 - Health checks: Service (`HealthCheckService`) — multiple related checks,
   cohesive domain object.

@@ -35,7 +35,7 @@ class RoleSeeder extends Seeder
         // added in one place and not the others.
         //
         // restore() before firstOrCreate: a system role can never be trashed
-        // (DeleteRoleAction refuses), so this only fires on a row that was
+        // (RoleDeleteAction refuses), so this only fires on a row that was
         // trashed by hand, a seeder edit, or a restored database dump. Without
         // it, firstOrCreate would skip the trashed row and then blow up on the
         // unique index — a reseed that cannot repair its own state.

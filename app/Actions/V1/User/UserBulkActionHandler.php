@@ -53,7 +53,7 @@ class UserBulkActionHandler implements BulkActionHandler
             // NOT a raw UPDATE. Deactivating writes `is_active`, and an inactive
             // superadmin cannot log in — so this column is load-bearing for the
             // last-superadmin invariant. The single-user path enforces it inside
-            // DeactivateUserAction; a bulk `update()` here bypassed that action
+            // UserDeactivateAction; a bulk `update()` here bypassed that action
             // completely, so the same guard the UI enforced was absent from the
             // dropdown one screen above. Routing through the action means the
             // guard lives in one place instead of two.
@@ -147,7 +147,7 @@ class UserBulkActionHandler implements BulkActionHandler
         $users = User::withTrashed()->whereIn('id', $ids)->get();
 
         foreach ($users as $user) {
-            app(DeactivateUserAction::class)->run($user, auth()->user());
+            app(UserDeactivateAction::class)->run($user, auth()->user());
         }
     }
 
@@ -155,7 +155,7 @@ class UserBulkActionHandler implements BulkActionHandler
     {
         $users = User::withTrashed()->whereIn('id', $ids)->get();
         foreach ($users as $user) {
-            app(DeleteUserAction::class)->run($user, auth()->user());
+            app(UserDeleteAction::class)->run($user, auth()->user());
         }
     }
 
@@ -163,7 +163,7 @@ class UserBulkActionHandler implements BulkActionHandler
     {
         $users = User::withTrashed()->whereIn('id', $ids)->get();
         foreach ($users as $user) {
-            app(RestoreUserAction::class)->run($user);
+            app(UserRestoreAction::class)->run($user);
         }
     }
 
@@ -171,7 +171,7 @@ class UserBulkActionHandler implements BulkActionHandler
     {
         $users = User::withTrashed()->whereIn('id', $ids)->get();
         foreach ($users as $user) {
-            app(ForceDeleteUserAction::class)->run($user, auth()->user());
+            app(UserForceDeleteAction::class)->run($user, auth()->user());
         }
     }
 }

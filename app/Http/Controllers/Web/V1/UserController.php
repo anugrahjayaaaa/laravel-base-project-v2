@@ -2,26 +2,26 @@
 
 namespace App\Http\Controllers\Web\V1;
 
-use App\Actions\V1\User\AdminResendVerificationAction;
+use App\Actions\V1\User\UserAdminResendVerificationAction;
 use App\Actions\V1\BulkAction\BulkActionProcessor;
 use App\Actions\V1\User\UserBulkActionHandler;
-use App\Actions\V1\User\CancelEmailChangeAction;
-use App\Actions\V1\User\CreateUserAction;
-use App\Actions\V1\User\DeleteUserAction;
+use App\Actions\V1\User\UserCancelEmailChangeAction;
+use App\Actions\V1\User\UserCreateAction;
+use App\Actions\V1\User\UserDeleteAction;
 use App\Models\FailedLoginAttempt;
-use App\Actions\V1\User\ForceDeleteUserAction;
-use App\Actions\V1\User\RequestEmailChangeAction;
-use App\Actions\V1\User\RestoreUserAction;
-use App\Actions\V1\User\UpdateUserAction;
+use App\Actions\V1\User\UserForceDeleteAction;
+use App\Actions\V1\User\UserRequestEmailChangeAction;
+use App\Actions\V1\User\UserRestoreAction;
+use App\Actions\V1\User\UserUpdateAction;
 use App\Actions\V1\User\UserIndexAction;
-use App\Actions\V1\User\VerifyEmailChangeAction;
+use App\Actions\V1\User\UserVerifyEmailChangeAction;
 use App\Enums\UserStatusEnum;
 use App\Http\Controllers\Controller;
-use App\Http\Requests\User\BulkUserRequest;
-use App\Http\Requests\User\CreateUserRequest;
-use App\Http\Requests\User\EmailChangeRequest;
-use App\Http\Requests\User\UpdateUserRequest;
-use App\Http\Requests\User\UserQueryRequest;
+use App\Http\Requests\V1\User\BulkUserRequest;
+use App\Http\Requests\V1\User\CreateUserRequest;
+use App\Http\Requests\V1\User\EmailChangeRequest;
+use App\Http\Requests\V1\User\UpdateUserRequest;
+use App\Http\Requests\V1\User\UserQueryRequest;
 use App\Models\SystemSetting;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -35,17 +35,17 @@ class UserController extends Controller
 {
     public function __construct(
         private readonly UserIndexAction $indexAction,
-        private readonly CreateUserAction $createAction,
-        private readonly UpdateUserAction $updateAction,
-        private readonly DeleteUserAction $deleteAction,
-        private readonly RestoreUserAction $restoreAction,
-        private readonly ForceDeleteUserAction $forceDeleteAction,
+        private readonly UserCreateAction $createAction,
+        private readonly UserUpdateAction $updateAction,
+        private readonly UserDeleteAction $deleteAction,
+        private readonly UserRestoreAction $restoreAction,
+        private readonly UserForceDeleteAction $forceDeleteAction,
         private readonly BulkActionProcessor $processor,
         private readonly UserBulkActionHandler $userBulkActionHandler,
-        private readonly AdminResendVerificationAction $resendVerificationAction,
-        private readonly RequestEmailChangeAction $requestEmailChangeAction,
-        private readonly CancelEmailChangeAction $cancelEmailChangeAction,
-        private readonly VerifyEmailChangeAction $verifyEmailChangeAction,
+        private readonly UserAdminResendVerificationAction $resendVerificationAction,
+        private readonly UserRequestEmailChangeAction $requestEmailChangeAction,
+        private readonly UserCancelEmailChangeAction $cancelEmailChangeAction,
+        private readonly UserVerifyEmailChangeAction $verifyEmailChangeAction,
     ) {
     }
 

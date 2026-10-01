@@ -2,7 +2,7 @@
 
 namespace Tests\Feature;
 
-use App\Actions\V1\Role\AssignRolesAction;
+use App\Actions\V1\Role\RoleAssignAction;
 use App\Models\Role as AppRole;
 use App\Models\RoleLookup;
 use App\Models\User;
@@ -465,14 +465,14 @@ class RbacPerformanceTest extends TestCase
     /**
      * P6-C11 regression: role resolution was one query per name.
      *
-     * AssignRolesAction mapped the payload through RoleLookup::find(), so
+     * RoleAssignAction mapped the payload through RoleLookup::find(), so
      * assigning 20 roles cost 20 selects — measured at 11 queries for one role
      * and 28 for twenty. findMany() asks for the whole set at once, so the
      * count is now flat. Same delta shape as the page tests: one role vs many.
      */
     public function test_assigning_roles_costs_the_same_at_one_and_at_twenty(): void
     {
-        $assign = app(AssignRolesAction::class);
+        $assign = app(RoleAssignAction::class);
 
         $countFor = function (array $names) use ($assign): int {
             $user = User::factory()->create();
@@ -520,7 +520,7 @@ class RbacPerformanceTest extends TestCase
     {
         $user = User::factory()->create();
 
-        $assign = app(AssignRolesAction::class);
+        $assign = app(RoleAssignAction::class);
 
         // No assertion on the return: the point is that reaching the end of
         // run() at all is the assertion. The old loop filtered a null find();

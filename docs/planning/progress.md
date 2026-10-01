@@ -38,7 +38,7 @@ asked. The bulk deactivate compounded it with a raw `UPDATE` that bypassed the a
 - Group B (permission set + seeders): ✅ DONE (2026-09-28, verified)
 - Group C1 (role management, web): ✅ DONE (2026-09-29, audited) — P6-C1..C6
 - Group C2 (permission catalogue, read-only): ✅ DONE (2026-09-29, audited) — P6-C7/C8; grouping by prefix not built, open decision
-- Group C3 (role assignment sync): ✅ DONE (2026-09-29, audited) — P6-C9..C12; C13 merged into `AssignRolesAction`
+- Group C3 (role assignment sync): ✅ DONE (2026-09-29, audited) — P6-C9..C12; C13 merged into `RoleAssignAction`
 - Group C4 (authorization guards + policy): ✅ DONE — P6-C14..C18. Shipped in `015d6c3`: the four ungated `authorize()` returns are closed, bulk actions map to their own permission via `AuthorizesBulkAction`, and `UserPolicy` delegates the seven CRUD methods to `users.*`. Pinned by `GateCAuthorizationTest` (8 tests)
 
 **Gate C: MET (2026-09-30, re-measured).** All four C groups ship, and the
@@ -47,7 +47,7 @@ negative case is pinned rather than assumed: `GateCAuthorizationTest` asserts a
 (both the other-user and the escalate-my-own-profile shapes), on both bulk bars,
 and on settings write. `RoleManagementTest` pins the same for all five role
 write routes. Role assignment sync is pinned four ways by
-`AssignRolesActionTest` (sync, unknown-name skip, empty-clears, absent-key
+`RoleAssignActionTest` (sync, unknown-name skip, empty-clears, absent-key
 untouched) plus the last-superadmin guard in both directions. Full suite: 505
 passed / 1657 assertions.
 
@@ -74,19 +74,19 @@ never assigned its role.
   `authorize()` checking `roles.create` / `roles.update` / `roles.delete` /
   `roles.restore` / `roles.force_delete`. Unique rules are guard-scoped via
   `RoleLookup::guard()`.
-- `IndexRoleAction` — guard-scoped, `withCount`, `search` before
+- `RoleIndexAction` — guard-scoped, `withCount`, `search` before
   `paginate(10)`, `withQueryString`, and a `trashed` flag that scopes the whole
   query to the trash rather than filtering rows.
-- `CreateRoleAction` / `UpdateRoleAction` — the spec named one `SaveRoleAction`;
+- `RoleCreateAction` / `RoleUpdateAction` — the spec named one `SaveRoleAction`;
   implemented as two verbs sharing an `App\Actions\Concerns\PersistsRole` trait,
   which holds the `DB::transaction`, the `array_map('intval', …)` before
   `syncPermissions` (Spatie resolves a string `'19'` as a permission *named* "19"
   and throws), and the audit write **inside** the transaction per DEP-003. Split
-  the verbs to match `CreateUserAction` / `UpdateUserAction` on the user side.
-- `DeleteRoleAction` — refuses system roles, refuses a populated role unless
+  the verbs to match `UserCreateAction` / `UserUpdateAction` on the user side.
+- `RoleDeleteAction` — refuses system roles, refuses a populated role unless
   `force`, then in ONE transaction: `users()->detach()` → soft delete → audit
-  carrying `revoked_users` / `revoked_permissions`. `RestoreRoleAction` and
-  `ForceDeleteRoleAction` own the other two verbs. The detach is explicit
+  carrying `revoked_users` / `revoked_permissions`. `RoleRestoreAction` and
+  `RoleForceDeleteAction` own the other two verbs. The detach is explicit
   because Spatie's `deleting` hook skips it on a non-force delete, so relying on
   the package would revoke nothing.
 - `RoleController` — thin, 10 methods, resolves route data and delegates.
@@ -205,8 +205,8 @@ Phase 5 Group A (P5-A1 through P5-A9) — Password Policy & Validation UI: ✅ D
 
 - UserIndexAction, UserQueryRequest, thin UserController, index + edit views
 - 8 routes (users.index through users.resend-verification)
-- DeleteUserAction, RestoreUserAction, ForceDeleteUserAction
-- ShowUserAction + edit form, AdminResendVerificationAction
+- UserDeleteAction, UserRestoreAction, UserForceDeleteAction
+- ShowUserAction + edit form, UserAdminResendVerificationAction
 - Tests: UserCrudWebTest + UserExtendedCrudTest + toggle status
 || Phase 4C Group C (P4-C1 through P4-C6) — Activate/Deactivate/Lock/Unlock: DONE ✅ (approved, closed) |
 

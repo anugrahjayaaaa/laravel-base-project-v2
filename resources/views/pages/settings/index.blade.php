@@ -181,7 +181,7 @@
                                 <div class="col-md-6">
                                     <div class="form-check form-switch">
                                         {{-- Without this, an unticked box is simply absent from the
-                                             payload, and UpdateSystemSettingsAction's
+                                             payload, and SystemUpdateSettingsAction's
                                              `?? true` writes it back ON. Every switch here
                                              needs the companion or it can only ever be enabled. --}}
                                         <input type="hidden" name="{{ $key }}" value="0">
