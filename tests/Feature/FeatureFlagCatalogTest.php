@@ -24,8 +24,37 @@ class FeatureFlagCatalogTest extends TestCase
 {
     use RefreshDatabase;
 
+    /**
+     * This class opts OUT of the baseline every other test starts from.
+     *
+     * Tests\TestCase seeds every flag ACTIVE, because the route gates added in
+     * P7-D7/D8 otherwise 403 any test that visits a module page. That baseline
+     * is wrong here: this class exists to assert what an UNSEEDED database does,
+     * so `every_catalogued_flag_resolves_off_until_it_is_seeded` fails against a
+     * seeded one by design.
+     *
+     * A test that needs the seeded baseline sets `$seedFlags = true` first —
+     * four of them call FeatureFlagSeeder themselves. Opting in per test beats
+     * opting out per class: the class default stays the honest empty database.
+     */
+    /**
+     * @var array<int, string> tests that assert an UNSEEDED database
+     */
+    private const EMPTY_STATE_TESTS = [
+        'every_catalogued_flag_resolves_off_until_it_is_seeded',
+    ];
+
+    protected function shouldSeedFeatureFlags(): bool
+    {
+        return ! in_array($this->name(), self::EMPTY_STATE_TESTS, true);
+    }
+
     protected function setUp(): void
     {
+        // The parent seeds every flag ACTIVE. Two tests here must see the honest
+        // empty database instead, and the choice has to be made BEFORE the parent
+        // setUp runs — so it is keyed off the test name rather than a property set
+        // inside the test body, which would run too late.
         parent::setUp();
         $this->seed(\Database\Seeders\RoleSeeder::class);
         $this->seed(\Database\Seeders\PermissionSeeder::class);
