@@ -97,8 +97,10 @@ component.
 
 Shared table conventions:
 - Columns sortable where meaningful (consistent UI pattern)
-- Bulk selection supported where applicable
-- Bulk actions exposed consistently
+- Bulk selection supported where the list has per-row state actions. A list of
+  read-only rows (a permission catalogue, a status view) gets no checkbox column —
+  a selection affordance with nothing to select against is dead UI.
+- Bulk actions exposed consistently — see §Bulk Actions
 - Pagination follows the shared convention — see §Pagination (structure + tokens)
 - Search/filter controls follow shared UI convention
 
@@ -108,6 +110,53 @@ Action buttons in tables:
 - Wrapper: `d-flex align-items-center justify-content-end gap-1 flex-wrap flex-md-nowrap`
 - Button size: `btn-sm` or `px-2 py-1` for compact fit
 - Wrap to vertical stack on mobile (`flex-wrap`), horizontal on desktop (`flex-md-nowrap`)
+
+### Bulk Actions
+
+One bar shape for every list. `#bulkBar` lives in the table `card-header`, stays
+`d-none` until the first checkbox is ticked, and holds the count, the action
+select, and the submit button. The shared driver reads the six attributes below —
+one driver, one markup shape, per-list values only.
+
+```html
+<div id="bulkBar" class="d-none align-items-center gap-2 flex-wrap ms-auto"
+    data-bulk-route="{{ route('roles.bulk-action') }}" data-bulk-field="role_ids[]"
+    data-bulk-noun="role" data-bulk-mixed="delete"
+    data-bulk-states='@json($trashed ? ['trashed' => ['restore', 'force_delete']] : ['active' => ['delete']])'
+    data-bulk-keys='@json(['delete' => 'delete_role', 'restore' => 'restore_role', 'force_delete' => 'force_delete_role'])'>
+    <span class="text-muted fs-7">Selected: <strong id="bulkCount">0</strong></span>
+    <select id="bulkAction" class="form-select form-select-sm d-inline-block" style="width:auto">...</select>
+    <button type="submit" class="btn btn-sm btn-primary">Apply</button>
+</div>
+```
+
+| Attribute | Carries | Rule |
+|---|---|---|
+| `data-bulk-route` | POST endpoint for the bar | Always a `bulk-action` route; one per entity |
+| `data-bulk-field` | the repeated id field name (`role_ids[]`) | Must match what the request validates — a mismatch posts ids the server never reads, and the bar reports success having changed nothing |
+| `data-bulk-noun` | singular noun, for `N selected role(s)` | Singular; the count is interpolated by the driver |
+| `data-bulk-states` | which actions exist per row state | `['active' => [...], 'trashed' => [...]]`. A row's state decides its action set, so one bar serves both the active and trash tabs |
+| `data-bulk-mixed` | the action offered when the selection spans states | See below |
+| `data-bulk-keys` | action → `ACTION_CONFIG` key map | See below |
+
+**`data-bulk-mixed` — a mixed selection gets only the actions safe for every
+selected row.** With 3 active and 2 trashed rows selected, `force_delete` is
+not offered: it is legal for the trashed pair and destructive for the active
+three. The bar falls back to the action named in `data-bulk-mixed` only when it
+is valid for all of them — and if it is not, the bar offers nothing rather than
+guessing. Whitelisting the intersection is the whole rule; an action that appears
+because the first selected row happened to allow it will be applied to rows that
+did not.
+
+**Bulk copy comes from `ACTION_CONFIG` via `data-bulk-keys`, never from raw
+`actionOptions`.** The map is `action => ACTION_CONFIG key`, e.g.
+`delete => delete_role`. The driver looks the key up for `title`/`msg`/`variant`,
+the same way a single-action trigger resolves through `resolveAction()` — so a
+bulk bar and a row button describing the same operation cannot drift apart.
+`actionOptions`/`actionLabels` carry only the option's own text.
+
+Reference implementations: `resources/views/pages/roles/index.blade.php:130`,
+`resources/views/pages/users/index.blade.php`.
 
 ### Badges
 
@@ -264,13 +313,48 @@ Semantic color mapping for confirmation modal variants — MUST be consistent ac
 
 | Variant | Color | Actions |
 |---------|-------|---------|
-| `success` | hijau | activate, unlock, restore |
-| `warning` | orange | deactivate, lock |
+| `success` | hijau | activate, unlock, restore, **enable** |
+| `warning` | orange | deactivate, lock, **disable** |
 | `danger` | merah | delete, permanent delete |
+
+**`disable` is `warning`, not `danger`.** Disabling a feature pauses access; it
+destroys nothing. The rows behind it stay intact and the switch comes back with
+one click, which is exactly what `danger` (delete, permanent delete) tells the
+reader is not true. Painting a kill switch red teaches users to dismiss red
+dialogs — and the one dialog that genuinely cannot be undone stops being read.
+Reversible consequences never wear the irreversible colour.
+
+Feature-flag toggles follow this: `enable => success`, `disable => warning`, in
+both the row switch and the bulk bar.
 
 Single action buttons: `data-variant` MUST match semantic mapping. Button class: `btn-outline-*` for outline style.
 
 Bulk action: `variant` in `actionOptions`/`actionLabels` MUST match semantic mapping.
+
+### Staged Changes
+
+**Not used.** A control must not change visible state before the change is
+stored. The pattern — toggle the switch, mutate the DOM, then POST — was
+rejected in Phase 7: the failure modes are all invisible.
+
+An optimistic toggle that the server then refuses leaves a switch claiming a
+state the database does not hold, and the page has no way to know which of the
+two is the truth. A toggle that fails mid-flight leaves it visually on, so the
+user retries — twice — against a flag that was never activated. Neither is
+recoverable by reloading, because the reload renders the *stored* value, which
+contradicts what they just watched. The fix for each case is the same: don't
+show a state you have not stored.
+
+Any control that wants this behaviour must first write explicit unsaved/dirty
+state guidelines into this section — what the optimistic rendering is, how
+failure rolls back, what the user's next action is, and where the authoritative
+value is shown while it is unresolved. Absent those, the answer stays no.
+
+**Feature flags rely on §Bulk Actions and row-level instant toggles.** A flag
+change goes through the confirmation modal (§Confirmation Modal Convention) and
+submits, so the switch the user sees is always the switch the server rendered.
+A flag list with per-row actions gets §Bulk Actions on top of that, never a
+staged control underneath it.
 
 ## Consistency Rules
 
