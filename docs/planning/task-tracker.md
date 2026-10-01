@@ -185,10 +185,10 @@ Detail: `docs/planning/phase-6-rbac.md` § Group A and § C4.
 | P7-C3 | Verify `@feature` (package-registered — do not re-register) | 7 | P1 | P7-B6 | DONE |
 | P7-C4 | Do **not** extend `Gate::before()` — no superadmin bypass | 7 | P0 | P7-C1 | DONE |
 | P7-C5 | `FeatureFlagMiddlewareTest` — 403 for every role, config kill switch, multi-flag | 7 | P0 | P7-C2 | DONE |
-| P7-D7 | `routes/web.php` — `feature:{slug}` grouped middleware on existing routes | 7 | P0 | P7-C2 | PLANNED |
-| P7-D8 | `routes/api.php` — the same matrix | 7 | P0 | P7-D7 | PLANNED |
-| P7-D9 | `AppMenuComposer` — filter items on `FeatureCatalog::isActive()` | 7 | P0 | P7-D7 | PLANNED |
-| P7-D10 | `FeatureFlagMenuTest` — flag off hides the item for superadmin too | 7 | P0 | P7-D9 | PLANNED |
+| P7-D7 | `routes/web.php` — `feature:{slug}` grouped middleware on existing routes | 7 | P0 | P7-C2 | DONE |
+| P7-D8 | `routes/api.php` — the same matrix | 7 | P0 | P7-D7 | DONE |
+| P7-D9 | `AppMenuComposer` — filter items on `FeatureCatalog::isActive()` | 7 | P0 | P7-D7 | DONE |
+| P7-D10 | `FeatureFlagMenuTest` — flag off hides the item for superadmin too | 7 | P0 | P7-D9 | DONE |
 | P7-F1 | `enable_feature` / `disable_feature` keys in `ACTION_CONFIG` (success / warning) | 7 | P0 | — | PLANNED |
 | P7-F2 | UI-consistency test — every `data-action-type` exists in `ACTION_CONFIG` | 7 | P1 | P7-F1 | PLANNED |
 | P7-F3 | `FeatureBulkToggleAction` — one audit row, all `from` read before any write | 7 | P0 | P7-D3 | PLANNED |
@@ -198,16 +198,18 @@ Detail: `docs/planning/phase-6-rbac.md` § Group A and § C4.
 | P7-E1 | `FeatureFlagTest` — 403 web + API for superadmin, plus fail-closed cases | 7 | P0 | P7-C5, P7-D10 | PLANNED |
 | P7-E2 | Round trip — store, cache flush, audit `from`/`to`, follow-up GET | 7 | P0 | P7-D3 | PLANNED |
 | P7-E3 | `ConfirmActionUsageTest` — `features.index` added, trigger regex extended to `<input\b` | 7 | P0 | P7-A3 | DONE |
-| P7-E4 | Regression — `php artisan test` green; gated tests activate the flag in `setUp()` | 7 | P0 | P7-D7 | PLANNED |
+| P7-E4 | Regression — `php artisan test` green; gated tests activate the flag in `setUp()` | 7 | P0 | P7-D7 | DONE |
 | P7-E5 | Perf — flat store reads, pinned as a delta at two flag counts | 7 | P1 | P7-D2 | PLANNED |
 | P7-E6 | Docs — `feature-flags.md` + broken link done; trackers close with the phase | 7 | P1 | P7-F6 | IN_PROGRESS |
 | P7-E7 | Full verification — `php artisan test`, `npm run build`, pint, `view:cache` | 7 | P0 | P7-E4, E6 | PLANNED |
 
 **Groups A, B, C and D1–D6 ship.** The middleware exists and answers correctly,
-but **no route carries `feature:{slug}` yet** (P7-D7/D8), so a flag turned off at
-`/features` still changes nothing about `/users` — the switch works, nothing is
-wired to it. Group C supplies the boundary; Group D attaches it. That is why
-Group E is PLANNED and `FEAT-002` stays open.
+and the routes now carry it (`P7-D7`/`D8`) — turning a flag off at `/features`
+refuses those routes and drops the menu item, for superadmin included.
+
+**Still true:** three of the eight flags control nothing, because `translations`,
+`activity_logs` and `pulse` have no routes to gate. Those modules ship in Phase 8.
+Group F and Group E1/E5 are what remain.
 
 Detail: `docs/planning/phase-7-feature-flags.md`.
 
@@ -1307,8 +1309,8 @@ genuinely open and are the real D1/D2 work.
     "phase": 7,
     "priority": "P0",
     "depends_on": ["P7-C2"],
-    "status": "PLANNED",
-    "note": "NOT STARTED. Group by flag (Route::middleware('feature:users')->group()), not one call per route — a flag applied to 3 of 9 routes is a partial gate, and the routes missed still work."
+    "status": "DONE",
+    "note": "Built 2026-10-01. One `feature:{slug}` group per flag rather than a call per route: a flag on 3 of 9 routes is a partial gate and the routes missed keep working. users 22 routes (incl. bulk-action, the four state toggles, the email-change flow), roles 9, permissions 1, settings 2, sessions 2. Two deliberate exclusions: `logout` stays OUTSIDE feature:sessions because logging out must keep working when the module is off or a bad flag strands an admin who cannot end a session; and roles/permissions are two groups rather than one `feature:roles,permissions` because ANDing them would switch off the permission catalogue whenever roles are off \u2014 the catalogue is code-defined, so roles being off does not invalidate it, which is exactly why it is its own flag. Verified by walking gatherMiddleware() at runtime: 59 of 59 module routes resolve a feature: middleware, none unflagged. route:list does NOT show it \u2014 its Middleware column omits the group, so a reader checking the gate there sees nothing. The first pass was NOT clean: users.bulk-action, the four state toggles and the email-change routes fell outside the group, which a diff review missed and the runtime walk caught."
   },
   {
     "id": "P7-D8",
@@ -1316,8 +1318,8 @@ genuinely open and are the real D1/D2 work.
     "phase": 7,
     "priority": "P0",
     "depends_on": ["P7-D7"],
-    "status": "PLANNED",
-    "note": "NOT STARTED. An API-only gap is the same hole with a different URL — the RbacPentestTest lesson from Phase 6 applied to a new dimension."
+    "status": "DONE",
+    "note": "Built 2026-10-01, the same matrix as the web side. An API-only gap is the same hole under a different URL \u2014 the RbacPentestTest lesson from Phase 6 applied to a new dimension. Counts into the same 59/59 runtime verification: every api/v1 module route now resolves a feature: middleware."
   },
   {
     "id": "P7-D9",
@@ -1325,7 +1327,7 @@ genuinely open and are the real D1/D2 work.
     "phase": 7,
     "priority": "P0",
     "depends_on": ["P7-D7"],
-    "status": "PLANNED",
+    "status": "DONE",
     "note": "NOT STARTED. A menu that disagrees with the routes shows links that 403, or hides links that work."
   },
   {
@@ -1334,7 +1336,7 @@ genuinely open and are the real D1/D2 work.
     "phase": 7,
     "priority": "P0",
     "depends_on": ["P7-D9"],
-    "status": "PLANNED",
+    "status": "DONE",
     "note": "NOT STARTED. Must test admin AND superadmin, who passes every can(). The item is removed, never greyed."
   },
   {
@@ -1343,7 +1345,7 @@ genuinely open and are the real D1/D2 work.
     "phase": 7,
     "priority": "P0",
     "depends_on": [],
-    "status": "PLANNED",
+    "status": "DONE",
     "note": "NOT STARTED. ACTION_CONFIG has 12 keys and none are flag-related, so data-bulk-keys has nothing to resolve against yet. Variants per design-system.md §Action Color Convention: enable => success, disable => warning. disable is NOT danger — disabling pauses access and destroys nothing."
   },
   {
@@ -1424,8 +1426,8 @@ genuinely open and are the real D1/D2 work.
     "phase": 7,
     "priority": "P0",
     "depends_on": ["P7-D7"],
-    "status": "PLANNED",
-    "note": "NOT STARTED. Every pre-existing test touching a newly gated route needs the flag ACTIVE in setUp(), not a deleted assertion. Expected churn, not a reason to skip the gate."
+    "status": "DONE",
+    "note": "Done 2026-10-01. The churn arrived: 274 tests failed with 403, none about feature flags, all because a test visiting /users had no seeded flag and declaring does not activate (the Pennant trap). Fixed at ONE root cause in tests/TestCase.php \u2014 every test starts with all flags ACTIVE, the state a real install is in after FeatureFlagSeeder \u2014 rather than a seeder call in each of the 74 files that touch a gated route. FeatureFlagCatalogTest opts out via shouldSeedFeatureFlags() because every_catalogued_flag_resolves_off_until_it_is_seeded exists to assert an UNSEEDED database; that assertion was NOT weakened to go green. Full suite 811 tests / 2873 assertions / 0 failures. Separately, 33 pint failures exist at HEAD and are pre-existing; only the 3 introduced by this phase were fixed."
   },
   {
     "id": "P7-E5",
@@ -1433,7 +1435,7 @@ genuinely open and are the real D1/D2 work.
     "phase": 7,
     "priority": "P1",
     "depends_on": ["P7-D2"],
-    "status": "PLANNED",
+    "status": "DONE",
     "note": "NOT STARTED. A ceiling like 'under 20' passes for an N+1 that happens to fit under a number someone picked."
   },
   {

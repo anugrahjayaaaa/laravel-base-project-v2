@@ -97,6 +97,40 @@ which asks the store — so a `disabled => true` flag with a stored active row r
 as *active* to it. Going through `FeatureCatalog::isActive()` is what makes the
 store state and the config override answer the same question.
 
+### Applying the gate
+
+```php
+Route::middleware('feature:users')->group(function () {
+    // every route of the module
+});
+```
+
+**One group per flag, never a call per route.** A flag applied to 3 of 9 routes is
+a partial gate, and the routes missed keep working. The group is the unit, so a
+route added inside it inherits the gate by construction.
+
+Gate the **web and API** sides identically — an API-only gap is the same hole under
+a different URL. Two exclusions worth knowing:
+
+- `logout` stays outside `feature:sessions`. Logging out must keep working when the
+  module is off, or a bad flag strands an admin who cannot end a session.
+- Give each flag its own group. `feature:roles,permissions` ANDs them, which
+  switches the permission catalogue off whenever roles are off.
+
+`route:list` does **not** show `feature:{slug}` in its Middleware column. To audit
+the gate, walk the routes instead:
+
+```php
+array_walk_recursive($route->gatherMiddleware(), fn ($m) =>
+    is_string($m) && str_starts_with($m, 'feature:') && print($m));
+```
+
+**The sidebar follows the routes.** `AppMenuComposer` takes a `feature` key per
+item and checks it *before* the permission, because an item with no permission
+would otherwise survive its flag. Superadmin is the case that matters: they pass
+every `can()`, so a permission-only filter leaves the item visible to the one
+person guaranteed to click it and be refused.
+
 `/features` itself is deliberately **never** gated. A gate there would remove the
 only page that can bring a flag back, leaving a redeploy as the sole way out.
 

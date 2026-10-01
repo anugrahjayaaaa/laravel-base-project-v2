@@ -337,25 +337,53 @@ a typo. `several_flags_must_all_be_active` pins the correct spelling.
 undeclared slug → 403 · `features.manage` holder → still 403 · `disabled => true`
 beats a stored active row · several flags ANDed · `/features` never gated.
 
-**What Group C did NOT do — it is not optional, it is incomplete.** The middleware
-exists and answers correctly, but **no route uses it yet** (`P7-D7`/`D8`). A flag
-turned off at `/features` still changes nothing about `/users`. Group C supplies
-the boundary; Group D attaches it.
+**Group C supplied the boundary, Group D attached it.** The middleware shipped
+first and gated nothing until `P7-D7`/`D8` put it on the routes — the phase was
+deliberately built in that order so the boundary could be proved on its own
+throwaway routes before 59 real ones depended on it.
 
-### Group D (remaining) — Route Gating ⬜ NOT STARTED
+### Group D — Route Gating & Menu ✅ DONE
 
 | ID | Task | Depends | Status |
 |----|------|---------|--------|
-| P7-D7 | `routes/web.php` — apply `->middleware('feature:{slug}')` to the routes that exist: `users.*`, `roles.*`, `permissions.*`, `settings.*`, `translations.*`, `sessions`, `activity-logs.*`, `pulse`. **Group by flag**, not one call per route — `Route::middleware('feature:users')->group()` around the block. A flag on 3 of 9 routes is a partial gate: the routes missed still work | C2 | ⬜ TODO |
-| P7-D8 | `routes/api.php` — **the same matrix**. An API-only gap is the same hole with a different URL; this is the `RbacPentestTest` lesson from Phase 6 applied to a new dimension | D7 | ⬜ TODO |
-| P7-D9 | `AppMenuComposer` — add a `feature` key per item and filter on `FeatureCatalog::isActive()` alongside the existing `permission` filter. A menu that disagrees with the routes shows links that 403, or hides links that work | D7 | ⬜ TODO |
-| P7-D10 | `tests/Feature/FeatureFlagMenuTest.php` — a flag off removes its sidebar item for `admin` **and** superadmin (who passes every `can()`); flag on keeps it | D9 | ⬜ TODO |
+| P7-D7 | `routes/web.php` — one `feature:{slug}` group per flag, not a call per route | C2 | ✅ DONE — 33 routes |
+| P7-D8 | `routes/api.php` — the same matrix | D7 | ✅ DONE — 26 routes |
+| P7-D9 | `AppMenuComposer` — a `feature` key per item, checked **before** `permission` | D7 | ✅ DONE — 7 items |
+| P7-D10 | `tests/Feature/FeatureFlagMenuTest.php` | D9 | ✅ DONE — 9 tests |
 
-**Gate D:** a zero-permission user still gets 403 exactly where they did before
-(no regression on the Phase 6 matrix) · a `features.manage` holder toggles `users`
-off and `/users` immediately 403s for them too · the `activity_logs` sidebar item
-disappears with its flag · `php artisan route:list` shows `feature:{slug}` in the
-Middleware column for every gated route.
+**Gate D: PASSED.** 59 of 59 module routes resolve a `feature:` middleware,
+verified by walking `gatherMiddleware()` at runtime rather than by reading the
+diff. `route:list` does **not** show it — its Middleware column omits the group,
+so a reader checking the gate there sees nothing.
+
+**The first pass was not clean, and that is the finding.** It left
+`users.bulk-action`, the four state toggles and the email-change flow outside the
+group — precisely the partial gate the grouping exists to prevent. A diff review
+missed it; the runtime walk caught it.
+
+**Two deliberate exclusions:**
+
+- `logout` sits **outside** `feature:sessions`. Logging out must keep working when
+  the module is off, or a bad flag strands an admin who cannot end a session.
+- roles and permissions are **two** groups, not one `feature:roles,permissions`.
+  ANDing them would switch off the permission catalogue whenever roles are off.
+  The catalogue is defined in code (P6-C7), so roles being off does not
+  invalidate it — which is exactly why it is its own flag.
+
+**Not gateable yet:** `translations`, `activity_logs` and `pulse` have no routes
+(`Route::has()` is false for the first two; `pulse` is a vendor route). Those
+modules ship in Phase 8, so **three of the eight flags control nothing** until
+then. The menu items carry a `feature` key anyway, so the entries keep working —
+and keep hiding — when the modules land.
+
+**P7-E4 churn happened, and was one root cause.** 274 tests failed with 403 —
+none about feature flags, all because a test visiting `/users` had no seeded flag
+and declaring does not activate. Fixed once in `tests/TestCase.php`: every test
+starts with all flags ACTIVE, which is the state a real install is in after
+`FeatureFlagSeeder`. One file rather than 74.
+`FeatureFlagCatalogTest` opts out via `shouldSeedFeatureFlags()` because
+`every_catalogued_flag_resolves_off_until_it_is_seeded` exists to assert an
+UNSEEDED database; that assertion was not weakened to go green.
 
 ### Group F — Bulk Feature Actions ⬜ NOT STARTED
 
@@ -410,7 +438,7 @@ expensive direction.
 | Vector | Control |
 |---|---|
 | Flag bypass via superadmin | none exists — `EnsureFeatureIsEnabled` will have no `can()` escape hatch (`P7-C1`, `P7-C4`) |
-| Flag bypass via API | the same middleware on `routes/api.php` (`P7-D8`) |
+| Flag bypass via API | covered — the same middleware is on `routes/api.php` (`P7-D8`), verified as part of the 59/59 walk |
 | UI hiding treated as enforcement | `ui-authorization.md` is explicit; the middleware is the boundary and `P7-E1` proves it |
 | Undeclared flag | fail-closed — `isActive()` is `false` for a slug with no row |
 | Silent state change | every toggle audits `feature.toggled` with `from`/`to`, old value read before the write (`P7-D3`) |
@@ -457,7 +485,7 @@ Group A (UI — views only)          — DONE  (9545bce)
 Group B (Catalogue + activation)   — DONE  (b72a5f6)
 Group C (Middleware + Blade)       — C1 → C2 → C3 → C4 → C5      ⬜ NEXT
                                      ↓ Gate C: off => 403 for everyone, superadmin included
-Group D (Route/menu gating)        — D7 → D8 → D9 → D10          ⬜
+Group D (Route/menu gating)        — D7 → D8 → D9 → D10          ✅
                                      ↓ Gate D: matrix holds on web + API + sidebar
 Group F (Bulk feature actions)     — F1 → F2 → F3 → F4 → F5 → F6 ⬜
                                      ↓ Gate F: bulk safe for mixed selections, audited

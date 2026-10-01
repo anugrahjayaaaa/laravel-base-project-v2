@@ -13,7 +13,7 @@
 ||| 4 | User lifecycle & user management | DONE |
 ||| 5 | Password/security lifecycle | DONE — Groups A, B, and C verified |
 | 6 | RBAC & authorization | IN PROGRESS — Groups A (UI) and B (permission set + seeders) DONE; C–E pending |
-| 7 | Feature availability / feature flags | IN PROGRESS — catalogue, management UI, controller, routes, audit (P7-A/B/D1-D6) and the enforcement middleware (Group C) ship. Route matrix not attached yet (P7-D7/D8) |
+| 7 | Feature availability / feature flags | IN PROGRESS — catalogue, management UI, controller, routes, audit (P7-A/B/D1-D6), the enforcement middleware (C) and the route/menu gate (D) all ship. The kill switch is real: a flag off refuses its routes and drops its menu item |
 | 8 | Settings | PLANNED |
 | 9 | Notification/mail/queue | PLANNED |
 | 10 | Audit Trail | PLANNED |
@@ -36,7 +36,7 @@ Phase 7 — Feature Availability & Feature Flags: IN PROGRESS
 - Group B audit: ✅ DONE — seeder non-destructiveness proven by running it (operator's `pulse=off` survived a reseed, row count held at 8), `stores` block diffed IDENTICAL against vendor, `isActive()` confirmed the only reader. Two non-defect gaps recorded: `disabled => true` is unused until routes are gated, and the slug count is deliberately unpinned. Closed P7-B7
 - Group D1–D6 (permissions, index/toggle actions, controller, web routes, sidebar item): ✅ DONE (`e538c49`)
 - Group C (enforcement middleware): ✅ DONE — `EnsureFeatureIsEnabled` (403, no `features.manage` bypass) + the `feature:` alias in `bootstrap/app.php`; 9 tests, three sabotages verified. Pennant's own middleware could not be aliased: it aborts 400, and it resolves through `Feature::active()` so a `disabled => true` kill switch reads as active to it (measured) — status revised 404 → 403 on 2026-10-01
-- Group D7–D10 (route matrix on `web.php` + `api.php`, menu filter, menu test): ⬜ NOT STARTED
+- Group D7–D10 (route matrix + menu gate): ✅ DONE — 59/59 module routes gated (33 web, 26 API), menu filters on the flag before the permission, `FeatureFlagMenuTest` 9 tests. The first pass shipped a partial gate (bulk-action, state toggles, email-change left outside) and was caught by walking `gatherMiddleware()` at runtime, not by reading the diff
 - Group F (bulk feature actions): ⬜ NOT STARTED — needs `enable_feature` / `disable_feature` in `ACTION_CONFIG` first
 - Group E (tests + docs): ⬜ PARTIAL
 
@@ -46,8 +46,8 @@ yet no route carries `feature:{slug}` — so turning a flag off at `/features` s
 changes nothing about `/users`, and the sidebar still links it. Group D7/D8 (route
 matrix on `web.php` and `api.php`) and D9 (menu filter) are the next work.
 
-**Next:** the route matrix (`P7-D7`..`D10`) — Group C shipped the boundary, Group D
-attaches it. Then Group F, then Group E. Full detail:
+**Next:** Group F (bulk enable/disable, incl. the `data-bulk-mixed` rule), then
+Group E1 (end-to-end flag test) and E5 (perf delta). Full detail:
 `docs/planning/phase-7-feature-flags.md`.
 
 ---

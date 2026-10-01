@@ -29,7 +29,7 @@ Auto-generated from codebase scan. Not committed.
 | 21 | Registration (configurable) | ✅ | — | public | features/registration.md | done |
   | 22 | RBAC roles & permissions (Spatie) | ✅ | ✅ | — | features/roles-permissions.md | phase 6 Groups A, B, C1–C4 done; **Gate C met** (2026-09-30). Phase report + docs pending at E11 |
   | 23 | Superadmin protection | ✅ | — | — | features/roles-permissions.md | done — `Gate::before`, seeder role, system-role delete/rename refusals, last-superadmin guard (P6-C11), grant restricted to superadmin actors, role + account visible only to superadmin. Count guard is a minimum of one, not exactly one (spec says zero) |
-| 24 | Feature flags (DB-backed) | — | — | — | features/feature-flags.md | partial — catalogue + `/features` management UI + 403 enforcement middleware ship (P7-A/B/C/D1-D6); the route matrix is not attached yet, so a flag gates nothing until P7-D7/D8 |
+| 24 | Feature flags (DB-backed) | — | — | — | features/feature-flags.md | in progress — catalogue, `/features` management UI, 403 middleware and the route/menu gate all ship (P7-A/B/C/D1-D10). The kill switch is real for users/roles/permissions/settings/sessions; translations, activity_logs and pulse have no routes yet (Phase 8), so those three flags control nothing |
 | 25 | Audit trail (Spatie activitylog) | — | — | — | features/audit-trail.md | done |
 | 26 | Notifications (email + DB) | — | — | — | features/notifications.md | done |
 | 27 | Health check | ✅ | ✅ | — | features/monitoring.md | done |
