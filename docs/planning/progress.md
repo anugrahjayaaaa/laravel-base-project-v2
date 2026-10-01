@@ -13,7 +13,7 @@
 ||| 4 | User lifecycle & user management | DONE |
 ||| 5 | Password/security lifecycle | DONE — Groups A, B, and C verified |
 | 6 | RBAC & authorization | IN PROGRESS — Groups A (UI) and B (permission set + seeders) DONE; C–E pending |
-| 7 | Feature availability / feature flags | PLANNED |
+| 7 | Feature availability / feature flags | IN PROGRESS — catalogue, management UI, controller, routes and audit ship (P7-A1..A4, P7-B1..B6, P7-D1..D6). Enforcement (Group C) not started |
 | 8 | Settings | PLANNED |
 | 9 | Notification/mail/queue | PLANNED |
 | 10 | Audit Trail | PLANNED |
@@ -27,7 +27,31 @@
 
 ## Current Task
 
-Phase 6 — RBAC & Authorization: ✅ COMPLETED / CLOSED (2026-09-30)
+Phase 7 — Feature Availability & Feature Flags: IN PROGRESS
+**The management side ships; the enforcement side does not exist yet.**
+
+- Group A (UI): ✅ DONE (`9545bce`) — index view, metric strip, grouped table, `feature-toggle` component, render gate
+- Group B (catalogue + activation): ✅ DONE (`b72a5f6`) — `config/pennant.php` (8 flags), `FeatureCatalog`, `FeatureFlagSeeder`, global scope
+- Group D1–D6 (permissions, index/toggle actions, controller, web routes, sidebar item): ✅ DONE (`e538c49`)
+- Group C (enforcement middleware): ⬜ NOT STARTED — no `EnsureFeatureIsEnabled`, no `feature:` alias in `bootstrap/app.php`
+- Group D7–D10 (route matrix on `web.php` + `api.php`, menu filter, menu test): ⬜ NOT STARTED
+- Group F (bulk feature actions): ⬜ NOT STARTED — needs `enable_feature` / `disable_feature` in `ACTION_CONFIG` first
+- Group E (tests + docs): ⬜ PARTIAL
+
+**Why the phase is not done, stated plainly:** `FeatureCatalog::isActive()` has
+exactly one caller — the index page's own read. Turning a flag off at `/features`
+changes what that page displays and nothing else; `/users` still answers 200 and
+the sidebar still links it. The system is a UI with a kill switch that does not
+kill. Group C and D7/D8 are what make it one, and they are the next work.
+
+**Next:** Group C (`P7-C1`..`C5`), then the route matrix (`P7-D7`..`D10`), then
+Group F, then Group E. Full detail: `docs/planning/phase-7-feature-flags.md`.
+
+---
+
+## Previous Task
+
+Phase 6 — RBAC & Authorization: COMPLETED / CLOSED (2026-09-30)
 Every gate closed. Full suite 661 passed / 2243 assertions, 0 regressions; pint clean; assets build clean.
 
 One live vulnerability was found and fixed during Group E rather than confirmed absent: the last superadmin could be
