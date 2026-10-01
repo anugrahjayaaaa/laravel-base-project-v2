@@ -33,6 +33,38 @@
 }
 ```
 
+## How a 422 gets this shape
+
+`App\Http\Requests\BaseFormRequest` extends Laravel's `FormRequest` and applies
+`App\Concerns\FormatsApiErrors`, which overrides `failedValidation()`. **Every
+concrete Request extends that base**, so no endpoint opts in and none can be
+left behind:
+
+```
+app/Http/Requests/
+├── BaseFormRequest.php        the contract
+└── V1/{Domain}/…              extends the base
+```
+
+For a web request the same override redirects back with errors and old input
+instead of returning JSON — the branch is on `request()->expectsJson()`.
+
+This shape was documented here long before the code produced it. `FormatsApiErrors`
+was applied per-Request, and only the four Auth requests carried it: the other
+seventeen returned Laravel's default `{message, errors}`, so the same validation
+failure produced two different bodies depending on the endpoint, with no test
+covering the difference. Moving the contract to the base class removed the
+possibility rather than fixing the seventeen.
+
+Enforced by:
+
+- `tests/Arch/RequestVersioningTest` — every Request extends the base
+- `tests/Feature/Api/V1/ValidationErrorContractTest` — the body above, on the
+  User and Role endpoints
+
+When adding a non-validation error path, return the same envelope: `code` plus
+`meta.request_id` and `meta.timestamp`, matching `Controller::respond()`.
+
 ## Standard Error Codes
 
 | Code | HTTP | Description |
