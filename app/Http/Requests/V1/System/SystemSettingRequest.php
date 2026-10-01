@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Requests\System;
+namespace App\Http\Requests\V1\System;
 
 use App\Models\RoleLookup;
 use Illuminate\Foundation\Http\FormRequest;

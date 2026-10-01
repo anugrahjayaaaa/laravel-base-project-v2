@@ -3,7 +3,7 @@
 namespace Tests\Feature;
 
 use App\Actions\V1\System\SystemSettingsUpdateAction;
-use App\Http\Requests\System\SystemSettingRequest;
+use App\Http\Requests\V1\System\SystemSettingRequest;
 use App\Models\SystemSetting;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;

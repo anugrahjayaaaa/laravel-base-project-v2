@@ -4,7 +4,7 @@ namespace App\Http\Controllers\Web\V1;
 
 use App\Actions\V1\Permission\PermissionIndexAction;
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Permission\PermissionQueryRequest;
+use App\Http\Requests\V1\Permission\PermissionQueryRequest;
 use App\Models\Role;
 use App\Models\RoleLookup;
 use Illuminate\Contracts\View\View;

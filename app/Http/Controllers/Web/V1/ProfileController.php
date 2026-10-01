@@ -5,7 +5,7 @@ namespace App\Http\Controllers\Web\V1;
 use App\Actions\V1\Auth\AuthChangePasswordAction;
 use App\Actions\V1\User\UserUpdateAction;
 use App\Http\Controllers\Controller;
-use App\Http\Requests\User\ProfileUpdateRequest;
+use App\Http\Requests\V1\User\ProfileUpdateRequest;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;

@@ -5,7 +5,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Actions\V1\Auth\AuthChangePasswordAction;
 use App\Actions\V1\User\UserUpdateAction;
 use App\Http\Controllers\Controller;
-use App\Http\Requests\User\ProfileUpdateRequest;
+use App\Http\Requests\V1\User\ProfileUpdateRequest;
 use App\Http\Resources\Api\V1\User\UserResource;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;

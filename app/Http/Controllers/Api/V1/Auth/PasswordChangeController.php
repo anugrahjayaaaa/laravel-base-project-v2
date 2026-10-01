@@ -4,7 +4,7 @@ namespace App\Http\Controllers\Api\V1\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Actions\V1\Auth\AuthChangePasswordAction;
-use App\Http\Requests\Auth\PasswordChangeRequest;
+use App\Http\Requests\V1\Auth\PasswordChangeRequest;
 use Illuminate\Http\JsonResponse;
 
 /**

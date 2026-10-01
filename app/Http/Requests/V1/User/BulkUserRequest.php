@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Requests\User;
+namespace App\Http\Requests\V1\User;
 
 use App\Http\Requests\Concerns\AuthorizesBulkAction;
 use App\Models\User;

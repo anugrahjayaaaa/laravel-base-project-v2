@@ -2,7 +2,7 @@
 
 namespace Tests\Feature;
 
-use App\Http\Requests\System\SystemSettingRequest;
+use App\Http\Requests\V1\System\SystemSettingRequest;
 use App\Models\SystemSetting;
 use App\Support\PasswordPolicy;
 use Database\Seeders\RoleSeeder;

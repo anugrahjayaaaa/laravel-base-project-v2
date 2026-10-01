@@ -5,7 +5,7 @@ namespace App\Http\Controllers\Api\V1\Auth;
 use App\Actions\V1\Auth\AuthSendResetLinkAction;
 use App\Auth\LoginThrottle;
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Auth\PasswordForgotRequest;
+use App\Http\Requests\V1\Auth\PasswordForgotRequest;
 use Illuminate\Http\JsonResponse;
 
 /**

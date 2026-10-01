@@ -4,7 +4,7 @@ namespace Tests\Feature;
 
 use App\Actions\V1\User\UserCreateAction;
 use App\Http\Controllers\Web\V1\SystemSettingController;
-use App\Http\Requests\System\SystemSettingRequest;
+use App\Http\Requests\V1\System\SystemSettingRequest;
 use App\Models\RoleLookup;
 use App\Models\SystemSetting;
 use App\Models\User;

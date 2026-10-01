@@ -4,7 +4,7 @@ namespace App\Http\Controllers\Web\V1;
 
 use App\Actions\V1\System\SystemSettingsUpdateAction;
 use App\Http\Controllers\Controller;
-use App\Http\Requests\System\SystemSettingRequest;
+use App\Http\Requests\V1\System\SystemSettingRequest;
 use App\Models\RoleLookup;
 use App\Models\SystemSetting;
 use App\Models\Timezone;

@@ -4,7 +4,7 @@ namespace App\Http\Controllers\Api\V1\Auth;
 
 use App\Actions\V1\Auth\AuthResendVerificationAction;
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Auth\ResendVerificationRequest;
+use App\Http\Requests\V1\Auth\ResendVerificationRequest;
 use App\Models\SystemSetting;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
