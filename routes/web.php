@@ -200,5 +200,10 @@ Route::middleware(['auth:web,sanctum', 'verified', 'password.change.required', '
     // auto-submitting input.
     // ---------------------------------------------------------------------------
     Route::get('/features', [FeatureController::class, 'index'])->name('features.index')->can('features.view');
+    // Not `->can()` here: the permission depends on which action is requested,
+    // so BulkFeatureRequest decides. See routes/web.php users.bulk-action and
+    // the class for why one features.manage gate covers both directions.
+    Route::post('/features/bulk-action', [FeatureController::class, 'bulkAction'])
+        ->name('features.bulk-action')->middleware('throttle:bulk-action');
     Route::post('/features/{feature}/toggle', [FeatureController::class, 'toggle'])->name('features.toggle')->can('features.manage');
 });

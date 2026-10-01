@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers\Web\V1;
 
+use App\Actions\V1\Feature\FeatureBulkToggleAction;
 use App\Actions\V1\Feature\FeatureIndexAction;
 use App\Actions\V1\Feature\FeatureToggleAction;
+use App\Http\Requests\V1\Feature\BulkFeatureRequest;
 use App\Http\Controllers\Controller;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
@@ -28,6 +30,7 @@ class FeatureController extends Controller
     public function __construct(
         private readonly FeatureIndexAction $indexAction,
         private readonly FeatureToggleAction $toggleAction,
+        private readonly FeatureBulkToggleAction $bulkToggleAction,
     ) {
     }
 
@@ -68,6 +71,33 @@ class FeatureController extends Controller
             '%s is now %s.',
             $result['label'],
             $result['to'] ? 'enabled' : 'disabled',
+        ));
+    }
+
+    /**
+     * Set several flags to one state, as a single audited change.
+     *
+     * Authorization lives in BulkFeatureRequest — one `features.manage` gate
+     * covers both directions, since enabling and disabling rewrite the same
+     * store row. See that class for why this is not `AuthorizesBulkAction`.
+     */
+    public function bulkAction(BulkFeatureRequest $request): RedirectResponse
+    {
+        $result = $this->bulkToggleAction->run(
+            $request->slugs(),
+            $request->enabled(),
+            $request->user(),
+        );
+
+        // Reports the REQUEST, not just the rows that moved: "5 requested, 2
+        // were already enabled" is the honest answer, and a bare "5 updated"
+        // overstates what happened when a caller re-submits the same selection.
+        return back()->with('status', sprintf(
+            '%d feature flag(s) are now %s. %d requested, %d already in that state.',
+            count($result['changed']),
+            $result['enabled'] ? 'enabled' : 'disabled',
+            count($result['changed']) + count($result['unchanged']),
+            count($result['unchanged']),
         ));
     }
 
