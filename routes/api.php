@@ -45,9 +45,16 @@ Route::prefix('v1')->group(function () {
     // ---------------------------------------------------------------------------
     Route::middleware(['auth:sanctum', 'verified', 'password.change.required', 'account.state', 'throttle:user-state-actions'])->group(function () {
 
-        // Auth management
+        // Auth management. Same split as web.php: `logout` stays outside the
+        // sessions gate so a bad flag cannot strand a user in a live session,
+        // while `logout-all` is part of the sessions module and is gated. The
+        // two call the same actions and write the same audit events, so an
+        // ungated API route let a client mass-logout every device even with the
+        // module switched off.
         Route::post('/auth/logout', LogoutController::class)->name('api.v1.auth.logout');
-        Route::post('/auth/logout-all', LogoutAllController::class)->name('api.v1.auth.logout-all');
+        Route::middleware('feature:sessions')->group(function () {
+            Route::post('/auth/logout-all', LogoutAllController::class)->name('api.v1.auth.logout-all');
+        });
         Route::post('/auth/email/resend', ResendVerificationController::class)->name('api.v1.auth.email.resend')->middleware('throttle:resend-verification');
 
         // Profile (authenticated user only)

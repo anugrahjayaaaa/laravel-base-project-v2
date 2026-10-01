@@ -220,4 +220,56 @@ class FeatureFlagRouteTest extends TestCase
             );
         }
     }
+
+    /**
+     * The API session matrix must match the web one.
+     *
+     * Both `logout-all` routes call the same action and write the same audit
+     * event. An ungated API twin therefore let a client mass-logout every device
+     * with the sessions module switched off — the web side refused, the API did
+     * not, and nothing recorded that the difference was deliberate.
+     *
+     * Asserted on the route's own middleware rather than by making the call, so
+     * the intent is visible without needing a second logged-out device.
+     */
+    #[Test]
+    public function the_api_logout_all_route_carries_the_sessions_gate(): void
+    {
+        $gated = collect(app('router')->getRoutes())
+            ->filter(fn ($r) => in_array($r->getName(), [
+                'api.v1.auth.logout-all',
+                'sessions.logout-all',
+            ], true))
+            ->mapWithKeys(fn ($r) => [
+                $r->getName() => implode(' ', $r->gatherMiddleware()),
+            ]);
+
+        foreach (['api.v1.auth.logout-all', 'sessions.logout-all'] as $name) {
+            $this->assertArrayHasKey($name, $gated, "route {$name} is missing");
+            $this->assertStringContainsString(
+                'feature:sessions',
+                $gated[$name],
+                "[{$name}] is not gated — the API twin can mass-logout while the module is off"
+            );
+        }
+    }
+
+    /**
+     * `logout` itself must stay reachable with the module off, or a bad flag
+     * strands the user in a session they cannot end.
+     */
+    #[Test]
+    public function logout_stays_reachable_with_the_sessions_module_off(): void
+    {
+        foreach (['logout', 'api.v1.auth.logout'] as $name) {
+            $route = collect(app('router')->getRoutes())->first(fn ($r) => $r->getName() === $name);
+
+            $this->assertNotNull($route, "route {$name} is missing");
+            $this->assertStringNotContainsString(
+                'feature:sessions',
+                implode(' ', $route->gatherMiddleware()),
+                "[{$name}] is gated — a user cannot end their own session"
+            );
+        }
+    }
 }
