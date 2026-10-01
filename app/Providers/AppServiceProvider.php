@@ -32,6 +32,9 @@ class AppServiceProvider extends ServiceProvider
         LengthAwarePaginator::useBootstrap();
 
         view()->composer('layouts.partials.sidebar', AppMenuComposer::class);
+        // The header dropdown carries its own Sessions link, outside $menuGroups,
+        // so it needs the same composer's answer to the same question.
+        view()->composer('layouts.partials.header', AppMenuComposer::class);
         view()->composer('layouts.partials.password-strength', PasswordStrengthComposer::class);
 
         // Roles and the identity-change policy: shared by every page that shows

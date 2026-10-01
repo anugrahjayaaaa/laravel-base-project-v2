@@ -2,6 +2,7 @@
 
 namespace App\View\Composers;
 
+use App\Support\FeatureCatalog;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 use Illuminate\View\View;
@@ -20,6 +21,13 @@ use Illuminate\View\View;
  * authenticated user, and a decorative entry like the Labels group is not a
  * navigation target at all.
  *
+ * An item may also name the feature flag its module is gated on (P7-D9). That
+ * check runs before the permission check and applies either way: a module that
+ * is switched off must vanish from the sidebar for everyone, including a
+ * superadmin who passes every `can()`. Filtering here rather than in the partial
+ * keeps one answer per item — the sidebar and the routes behind it cannot
+ * disagree, which is the failure this class exists to prevent.
+ *
  * An item whose route does not exist is dropped rather than rendered as a dead
  * '#' link, so the menu cannot advertise a screen that was never shipped.
  */
@@ -31,6 +39,12 @@ class AppMenuComposer
     public function compose(View $view): void
     {
         $view->with('menuGroups', $this->visibleGroups());
+
+        // The header dropdown has its own Sessions link, outside $menuGroups.
+        // It reads this rather than calling FeatureCatalog itself, so the sidebar
+        // and the dropdown cannot disagree — a link the routes refuse with 403 is
+        // worse than an absent link, and this is where that starts.
+        $view->with('sessionsVisible', FeatureCatalog::isActive('sessions'));
     }
 
     /**
@@ -60,16 +74,26 @@ class AppMenuComposer
     /**
      * Can the viewer see this menu entry?
      *
-     * Three ways an item survives: it names no permission (Dashboard, Sessions,
-     * the decorative Labels group), it names one the caller holds, or its route
-     * was never shipped — in which case it is dropped, because a link to a screen
-     * that does not exist is worse than an absent link.
+     * Four ways an item survives: its feature flag is active, it names no
+     * permission (Dashboard, Sessions, the decorative Labels group), it names one
+     * the caller holds, or its route was never shipped — in which case it is
+     * dropped, because a link to a screen that does not exist is worse than an
+     * absent link.
+     *
+     * The flag check comes FIRST and applies even to an item with no
+     * permission. Sessions is the case that matters: it carries no permission
+     * (every authenticated user reaches it) but is flagged, so without this the
+     * item would stay on a sidebar whose route now refuses with 403.
      */
     private function visible(array $item): bool
     {
         $route = $item['route'] ?? null;
 
         if ($route && $route !== '#' && ! Route::has($route)) {
+            return false;
+        }
+
+        if (isset($item['feature']) && ! FeatureCatalog::isActive($item['feature'])) {
             return false;
         }
 
@@ -107,6 +131,7 @@ class AppMenuComposer
                         'route' => 'users.index',
                         'active' => 'users.*',
                         'permission' => 'users.view',
+                        'feature' => 'users',
                     ],
                     [
                         'label' => 'Roles',
@@ -114,6 +139,7 @@ class AppMenuComposer
                         'route' => 'roles.index',
                         'active' => 'roles.*',
                         'permission' => 'roles.view',
+                        'feature' => 'roles',
                     ],
                     [
                         'label' => 'Permissions',
@@ -121,6 +147,7 @@ class AppMenuComposer
                         'route' => 'permissions.index',
                         'active' => 'permissions.*',
                         'permission' => 'permissions.view',
+                        'feature' => 'permissions',
                     ],
                 ],
             ],
@@ -132,6 +159,11 @@ class AppMenuComposer
                         'icon' => 'fas fa-binoculars',
                         'route' => 'activity-logs.index',
                         'active' => 'activity-logs.*',
+                        // No route ships yet (P8), so this item is dropped by the
+                        // Route::has check above regardless. The flag key is here
+                        // so the entry keeps working — and keeps hiding — when
+                        // that module lands.
+                        'feature' => 'activity_logs',
                     ],
                     [
                         'label' => 'Settings',
@@ -139,6 +171,7 @@ class AppMenuComposer
                         'route' => 'settings.index',
                         'active' => 'settings.*',
                         'permission' => 'settings.view',
+                        'feature' => 'settings',
                     ],
                     // Reachable by every authenticated user, like Dashboard.
                     [
@@ -146,12 +179,17 @@ class AppMenuComposer
                         'icon' => 'fas fa-laptop',
                         'route' => 'sessions',
                         'active' => 'sessions',
+                        // No permission — every authenticated user reaches it —
+                        // so the flag is the only thing that can hide it.
+                        'feature' => 'sessions',
                     ],
                     [
                         'label' => 'Translations',
                         'icon' => 'fas fa-language',
                         'route' => 'translations.index',
                         'active' => 'translations.*',
+                        // No route ships yet (P8) — dropped by Route::has.
+                        'feature' => 'translations',
                     ],
                     [
                         'label' => 'Feature Flags',
