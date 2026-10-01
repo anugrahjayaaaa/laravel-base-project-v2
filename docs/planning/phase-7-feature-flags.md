@@ -156,6 +156,23 @@ observability is now `laravel/pulse`.
 | P7-A2 | `resources/views/components/ui/feature-toggle.blade.php` — manager → `form-check form-switch` + `<x-ui.confirm-action tag="input">`; non-manager → `<x-ui.badge>`. `role="switch"`, `aria-label`, intended new state in the toggle URL's `enabled` param | ✅ DONE |
 | P7-A3 | `<x-ui.confirm-action>` gains a `tag` prop so a trigger can be `<input type="checkbox">`. The 8 existing button triggers render unchanged | ✅ DONE |
 | P7-A4 | `tests/Feature/FeatureFlagUiRenderTest.php` — render gate for both branches | ✅ DONE |
+| P7-A5 | Audit pass — `align-middle` on all five `<th>` (house convention, was on the `<table>` only), and `ConfirmActionUsageTest` extended to see the `<input>` switch. See § Group A audit below | ✅ DONE |
+
+**Group A audit (2026-10-01).** Audited against the code, not the plan. Group A
+held; two real gaps, both now closed:
+
+| Gap | Fix |
+|---|---|
+| `<th>` had `align-middle` on the `<table>` instead of per-header, unlike users (7), roles (2) and permissions (2) | Added to all five headers. Broke `the_toggle_column_is_centred`, which pinned the exact header string — the assertion was right, so the string was updated, not the fix reverted |
+| The `<input>` switch was **invisible to `ConfirmActionUsageTest`** — the trigger regex matched `<button\b` only, so `confirm-action`'s `tag` prop escaped verification entirely | Regex now `<(?:button\|input)\b`; `features.index` added to the data provider; the `data-action-type` assertion now skips own-copy triggers (which must carry `data-title`) instead of demanding the null default the component deliberately refuses to set. 8 tests → 9 |
+
+While fixing the second, the same bug class showed up in the hand-built-trigger
+ban: its glob covered `views/pages/` only, so a hand-built trigger inside
+`views/components/` would have escaped too. Widened to both.
+
+Both fixes sabotage-verified — reverting the regex turns the suite red on *"the
+features page must still offer its per-flag switches"*, and reverting the glob
+turns it red on the hand-built ban.
 
 **View-data contract** (handed to Group B, never queried by the view):
 
@@ -270,10 +287,10 @@ expensive direction.
 |----|------|---------|--------|
 | P7-E1 | `tests/Feature/FeatureFlagTest.php` — toggle via UI; disabled → 404 web **and** API for a **superadmin**; menu item gone; re-enable restores. Plus the two cases that are not in the brief and are the ones that break: an undeclared slug 404s (fail-closed), and a declared-but-never-activated flag 404s (the Pennant trap) | C, D | ⬜ TODO |
 | P7-E2 | Round trip — POST the toggle URL the Group A switch rendered; assert the new state reached the store, the cache flushed, the audit row exists with correct `from`/`to`, and a follow-up GET reflects it | D3 | ⬜ TODO |
-| P7-E3 | `ConfirmActionUsageTest` — add `features.index`, and **extend the trigger regex to `<input\b`**. It currently matches `<button\b` only (`:153`), so the new switch is never checked at all — which is how `confirm-action`'s `tag` prop escapes verification entirely | A3 | ⬜ TODO |
+| P7-E3 | `ConfirmActionUsageTest` — add `features.index`, and **extend the trigger regex to `<input\b`**. It currently matches `<button\b` only (`:153`), so the new switch is never checked at all — which is how `confirm-action`'s `tag` prop escapes verification entirely | A3 | ✅ DONE (in the Group A audit) |
 | P7-E4 | Regression — `php artisan test` green. Every pre-existing test touching a newly flag-gated route needs the flag **active** in its `setUp()`, not a deleted assertion. This is the expected churn point and is not a reason to skip the gate | D7 | ⬜ TODO |
 | P7-E5 | Performance — assert the index resolves N flags in a flat number of store reads, pinned as a **delta at two flag counts**. A ceiling like "under 20" passes for an N+1 that happens to fit under a number someone picked | D2 | ⬜ TODO |
-| P7-E6 | Docs — `docs/base/features/feature-flags.md` (the phase happened; resolve the 400-vs-404 question; document the activation requirement), `task-tracker.md`, `progress.md`, `feature-tracker.md` row 24, and fix the broken link at `docs/base/ui/ui-architecture.md:158` → file is at `docs/base/features/feature-flags.md` | A–F | ⬜ TODO |
+| P7-E6 | Docs — `docs/base/features/feature-flags.md` (the phase happened; resolve the 400-vs-404 question; document the activation requirement), `task-tracker.md`, `progress.md`, `feature-tracker.md` row 24, and fix the broken link at `docs/base/ui/ui-architecture.md:158` → file is at `docs/base/features/feature-flags.md` | A–F | 🟡 PARTIAL — the two doc items closed in the Group A audit (`feature-flags.md` rewritten: catalogue, activation requirement, 404 settled, no-bypass rule; the `ui-architecture.md` link fixed). Trackers close with the phase. `feature-tracker.md` row 24 still reads "done" while enforcement does not exist |
 | P7-E7 | Full verification — `php artisan test`, `npm run build`, `vendor/bin/pint --test`, `php artisan view:cache` | A–F | ⬜ TODO |
 
 ---

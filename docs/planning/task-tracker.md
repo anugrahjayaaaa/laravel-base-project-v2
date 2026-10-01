@@ -166,6 +166,7 @@ Detail: `docs/planning/phase-6-rbac.md` § Group A and § C4.
 | P7-A2 | `components/ui/feature-toggle.blade.php` — switch for managers, badge for viewers | 7 | P0 | P7-A1 | DONE |
 | P7-A3 | `<x-ui.confirm-action>` `tag` prop — an `<input type="checkbox">` trigger | 7 | P0 | P7-A2 | DONE |
 | P7-A4 | `FeatureFlagUiRenderTest` — render gate for both branches | 7 | P0 | P7-A1..A3 | DONE |
+| P7-A5 | Group A audit — `align-middle` on all five `<th>`; `ConfirmActionUsageTest` extended to `<input` triggers | 7 | P0 | P7-A1..A4 | DONE |
 | P7-B1 | `config/pennant.php` — 8 flags across 4 groups | 7 | P0 | P7-A1 | DONE |
 | P7-B2 | `AppServiceProvider::boot()` — declaration loop + `resolveScopeUsing('global')` | 7 | P0 | P7-B1 | DONE |
 | P7-B3 | `App\Support\FeatureCatalog` — single reader, `isActive()` honours `disabled => true` | 7 | P0 | P7-B1 | DONE |
@@ -195,10 +196,10 @@ Detail: `docs/planning/phase-6-rbac.md` § Group A and § C4.
 | P7-F6 | `FeatureFlagBulkTest` — mixed selection offers only universally safe actions | 7 | P0 | P7-F5 | PLANNED |
 | P7-E1 | `FeatureFlagTest` — 404 web + API for superadmin, plus fail-closed cases | 7 | P0 | P7-C5, P7-D10 | PLANNED |
 | P7-E2 | Round trip — store, cache flush, audit `from`/`to`, follow-up GET | 7 | P0 | P7-D3 | PLANNED |
-| P7-E3 | `ConfirmActionUsageTest` — add `features.index`, extend regex to `<input\b` | 7 | P0 | P7-A3 | PLANNED |
+| P7-E3 | `ConfirmActionUsageTest` — `features.index` added, trigger regex extended to `<input\b` | 7 | P0 | P7-A3 | DONE |
 | P7-E4 | Regression — `php artisan test` green; gated tests activate the flag in `setUp()` | 7 | P0 | P7-D7 | PLANNED |
 | P7-E5 | Perf — flat store reads, pinned as a delta at two flag counts | 7 | P1 | P7-D2 | PLANNED |
-| P7-E6 | Docs — `feature-flags.md`, trackers, fix `ui-architecture.md:158` broken link | 7 | P1 | P7-F6 | PLANNED |
+| P7-E6 | Docs — `feature-flags.md` + broken link done; trackers close with the phase | 7 | P1 | P7-F6 | IN_PROGRESS |
 | P7-E7 | Full verification — `php artisan test`, `npm run build`, pint, `view:cache` | 7 | P0 | P7-E4, E6 | PLANNED |
 
 **Groups A, B, and D1–D6 ship. Group C does not exist yet**, so a flag turned
@@ -1129,6 +1130,15 @@ genuinely open and are the real D1/D2 work.
     "note": "Phase 7 Group A, shipped 9545bce."
   },
   {
+    "id": "P7-A5",
+    "task": "Group A audit — align-middle on all five th, ConfirmActionUsageTest extended to input triggers",
+    "phase": 7,
+    "priority": "P0",
+    "depends_on": ["P7-A1", "P7-A2", "P7-A3", "P7-A4"],
+    "status": "DONE",
+    "note": "Audit 2026-10-01, against the code rather than the plan. Two real gaps. (1) align-middle sat on the <table> instead of per-header, unlike users (7), roles (2) and permissions (2); added to all five. That broke the_toggle_column_is_centred, which pins the exact header string — the assertion was right, so the string was updated rather than the fix reverted. (2) The <input> switch was INVISIBLE to ConfirmActionUsageTest: the trigger regex matched <button\\b only, so confirm-action's tag prop escaped verification entirely. Regex now <(?:button|input)\\b, features.index added to the data provider, and the data-action-type assertion now skips own-copy triggers (which must carry data-title) instead of demanding the null default the component deliberately refuses to set. 8 tests to 9. Same bug class found while fixing it: the hand-built-trigger ban globbed views/pages/ only, so a hand-built trigger in views/components/ would have escaped too — widened to both. Both fixes sabotage-verified."
+  },
+  {
     "id": "P7-B1",
     "task": "config/pennant.php — 8 flags across 4 groups",
     "phase": 7,
@@ -1391,12 +1401,12 @@ genuinely open and are the real D1/D2 work.
   },
   {
     "id": "P7-E3",
-    "task": "ConfirmActionUsageTest — add features.index and extend the trigger regex to <input",
+    "task": "ConfirmActionUsageTest — features.index added and trigger regex extended to <input",
     "phase": 7,
     "priority": "P0",
     "depends_on": ["P7-A3"],
-    "status": "PLANNED",
-    "note": "NOT STARTED. The regex at ConfirmActionUsageTest.php:153 matches <button\\b only, so the new switch is never checked at all — which is exactly how confirm-action's tag prop escapes verification."
+    "status": "DONE",
+    "note": "Closed early, in the Group A audit (P7-A5) rather than at E3 — it was a Group A verification gap, not a Group E one. The regex at :153 matched <button\\b only, so the <input> switch was never checked at all, which is exactly how confirm-action's tag prop escaped verification. Sabotage-verified: reverting the regex turns the suite red naming the per-flag switch assertion."
   },
   {
     "id": "P7-E4",
@@ -1422,8 +1432,8 @@ genuinely open and are the real D1/D2 work.
     "phase": 7,
     "priority": "P1",
     "depends_on": ["P7-F6"],
-    "status": "PLANNED",
-    "note": "NOT STARTED. ui-architecture.md:158 links ./feature-flags.md but the file is at docs/base/features/feature-flags.md."
+    "status": "IN_PROGRESS",
+    "note": "The two doc DEFECTS closed in the Group A audit: feature-flags.md rewritten (Phase 7 catalogue with the 8 flags, the declare-does-not-activate trap, 404 settled against Pennant's 400 with the reasoning, the no-features.manage-bypass rule), and ui-architecture.md:158 relinked from ./feature-flags.md to ../features/feature-flags.md. Remaining: the trackers, which close with the phase, and feature-tracker.md row 24 — it reads 'done' today, which is wrong, because the table existed and nothing used it until Phase 7."
   },
   {
     "id": "P7-E7",
