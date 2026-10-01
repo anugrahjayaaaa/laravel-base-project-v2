@@ -2,7 +2,7 @@
 
 namespace App\Http\Requests\V1\Role;
 
-use Illuminate\Foundation\Http\FormRequest;
+use App\Http\Requests\BaseFormRequest;
 
 /**
  * Validates the roles index query string.
@@ -19,7 +19,7 @@ use Illuminate\Foundation\Http\FormRequest;
  * apart. The action still cannot pass an unchecked value to orderBy — that
  * whitelist is the guard, and it is covered by the injection tests.
  */
-class RoleQueryRequest extends FormRequest
+class RoleQueryRequest extends BaseFormRequest
 {
     public function authorize(): bool
     {

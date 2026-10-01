@@ -2,7 +2,7 @@
 
 namespace App\Http\Requests\V1\Role;
 
-use Illuminate\Foundation\Http\FormRequest;
+use App\Http\Requests\BaseFormRequest;
 
 /**
  * Authorizes role deletion.
@@ -13,7 +13,7 @@ use Illuminate\Foundation\Http\FormRequest;
  * got a 302 with the action's own refusal message instead of a 403, which told
  * an unauthorized caller that the role exists and is a system role.
  */
-class DeleteRoleRequest extends FormRequest
+class DeleteRoleRequest extends BaseFormRequest
 {
     /**
      * Only a caller holding roles.delete may open the endpoint.

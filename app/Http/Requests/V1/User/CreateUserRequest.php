@@ -2,13 +2,13 @@
 
 namespace App\Http\Requests\V1\User;
 
-use App\Http\Requests\Concerns\NormalizesRolePayload;
-use Illuminate\Foundation\Http\FormRequest;
+use App\Concerns\NormalizesRolePayload;
+use App\Http\Requests\BaseFormRequest;
 
 /**
  * Validates new user creation data.
  */
-class CreateUserRequest extends FormRequest
+class CreateUserRequest extends BaseFormRequest
 {
     use NormalizesRolePayload;
 

@@ -3,7 +3,7 @@
 namespace App\Http\Requests\V1\User;
 
 use App\Rules\PasswordStrengthRule;
-use Illuminate\Foundation\Http\FormRequest;
+use App\Http\Requests\BaseFormRequest;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -11,7 +11,7 @@ use Illuminate\Validation\ValidationException;
 /**
  * Validates authenticated user profile updates.
  */
-class ProfileUpdateRequest extends FormRequest
+class ProfileUpdateRequest extends BaseFormRequest
 {
     /**
      * Guest route,token-based authorization via route param.

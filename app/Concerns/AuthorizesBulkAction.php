@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Requests\Concerns;
+namespace App\Concerns;
 
 /**
  * Maps a bulk action to the permission it requires.

@@ -3,7 +3,7 @@
 namespace App\Http\Requests\V1\Role;
 
 use App\Models\RoleLookup;
-use Illuminate\Foundation\Http\FormRequest;
+use App\Http\Requests\BaseFormRequest;
 use Illuminate\Validation\Rule;
 
 /**
@@ -14,7 +14,7 @@ use Illuminate\Validation\Rule;
  * field is readonly in the form and therefore resubmitted unchanged — fail
  * with "name has already been taken" instead of saving.
  */
-class UpdateRoleRequest extends FormRequest
+class UpdateRoleRequest extends BaseFormRequest
 {
     /**
      * roles.update renames a role. roles.assign_permissions rewrites what that

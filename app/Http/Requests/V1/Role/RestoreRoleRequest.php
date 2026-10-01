@@ -2,7 +2,7 @@
 
 namespace App\Http\Requests\V1\Role;
 
-use Illuminate\Foundation\Http\FormRequest;
+use App\Http\Requests\BaseFormRequest;
 
 /**
  * Authorizes restoring a trashed role.
@@ -12,7 +12,7 @@ use Illuminate\Foundation\Http\FormRequest;
  * roles would otherwise be able to re-introduce one from the trash — a privilege
  * grant dressed as a data recovery.
  */
-class RestoreRoleRequest extends FormRequest
+class RestoreRoleRequest extends BaseFormRequest
 {
     /**
      * Only a caller holding roles.restore may open the endpoint.

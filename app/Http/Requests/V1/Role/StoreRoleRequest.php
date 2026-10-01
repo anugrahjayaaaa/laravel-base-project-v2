@@ -3,7 +3,7 @@
 namespace App\Http\Requests\V1\Role;
 
 use App\Models\RoleLookup;
-use Illuminate\Foundation\Http\FormRequest;
+use App\Http\Requests\BaseFormRequest;
 use Illuminate\Validation\Rule;
 
 /**
@@ -15,7 +15,7 @@ use Illuminate\Validation\Rule;
  * this app never assigns and never checks — the same guard collision
  * RoleGuardTest pins for the seeder.
  */
-class StoreRoleRequest extends FormRequest
+class StoreRoleRequest extends BaseFormRequest
 {
     /**
      * roles.create makes the role; roles.assign_permissions decides what it

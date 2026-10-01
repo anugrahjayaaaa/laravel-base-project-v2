@@ -2,12 +2,12 @@
 
 namespace App\Http\Requests\V1\Auth;
 
-use Illuminate\Foundation\Http\FormRequest;
+use App\Http\Requests\BaseFormRequest;
 
 /**
  * Validates login credentials (email/username + password).
  */
-class LoginRequest extends FormRequest
+class LoginRequest extends BaseFormRequest
 {
     /**
      * Determine if the user is authorized to make this request.

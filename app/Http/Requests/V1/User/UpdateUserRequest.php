@@ -2,17 +2,17 @@
 
 namespace App\Http\Requests\V1\User;
 
-use App\Http\Requests\Concerns\NormalizesRolePayload;
+use App\Concerns\NormalizesRolePayload;
 use App\Models\SystemSetting;
 use App\Enums\UserStatusEnum;
-use Illuminate\Foundation\Http\FormRequest;
+use App\Http\Requests\BaseFormRequest;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 /**
  * Validates admin user update data (status, username, email).
  */
-class UpdateUserRequest extends FormRequest
+class UpdateUserRequest extends BaseFormRequest
 {
     use NormalizesRolePayload;
 

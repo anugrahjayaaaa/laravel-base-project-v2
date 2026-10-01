@@ -2,12 +2,12 @@
 
 namespace App\Http\Requests\V1\User;
 
-use Illuminate\Foundation\Http\FormRequest;
+use App\Http\Requests\BaseFormRequest;
 
 /**
  * Validates user list query parameters.
  */
-class UserQueryRequest extends FormRequest
+class UserQueryRequest extends BaseFormRequest
 {
     /**
      * Guest route,always authorized.

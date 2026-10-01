@@ -3,13 +3,13 @@
 namespace App\Http\Requests\V1\System;
 
 use App\Models\RoleLookup;
-use Illuminate\Foundation\Http\FormRequest;
+use App\Http\Requests\BaseFormRequest;
 use Illuminate\Validation\Rule;
 
 /**
  * Validates system setting update payloads.
  */
-class SystemSettingRequest extends FormRequest
+class SystemSettingRequest extends BaseFormRequest
 {
     /**
      * Settings are administrator-only.

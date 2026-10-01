@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Requests\Concerns;
+namespace App\Concerns;
 
 /**
  * Normalises a `roles[]` array that arrived from a checkbox group.

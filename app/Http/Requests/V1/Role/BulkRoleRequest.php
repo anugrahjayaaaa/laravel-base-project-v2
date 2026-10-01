@@ -2,9 +2,9 @@
 
 namespace App\Http\Requests\V1\Role;
 
-use App\Http\Requests\Concerns\AuthorizesBulkAction;
+use App\Concerns\AuthorizesBulkAction;
 use App\Models\Role;
-use Illuminate\Foundation\Http\FormRequest;
+use App\Http\Requests\BaseFormRequest;
 use Illuminate\Validation\Rule;
 
 /**
@@ -14,7 +14,7 @@ use Illuminate\Validation\Rule;
  * rows that are already soft-deleted, and a live-only lookup would report every
  * restore and force-delete ID as invalid.
  */
-class BulkRoleRequest extends FormRequest
+class BulkRoleRequest extends BaseFormRequest
 {
     use AuthorizesBulkAction;
 

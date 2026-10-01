@@ -2,17 +2,14 @@
 
 namespace App\Http\Requests\V1\Auth;
 
-use App\Http\Requests\Traits\FormatsApiErrors;
 use App\Rules\PasswordStrengthRule;
-use Illuminate\Foundation\Http\FormRequest;
+use App\Http\Requests\BaseFormRequest;
 
 /**
  * Shared "change password" validation for Web + API.
  */
-class PasswordChangeRequest extends FormRequest
+class PasswordChangeRequest extends BaseFormRequest
 {
-    use FormatsApiErrors;
-
     /**
      * Must be authenticated to change own password.
      */

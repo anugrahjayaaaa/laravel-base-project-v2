@@ -2,17 +2,14 @@
 
 namespace App\Http\Requests\V1\Auth;
 
-use App\Http\Requests\Traits\FormatsApiErrors;
 use App\Rules\PasswordStrengthRule;
-use Illuminate\Foundation\Http\FormRequest;
+use App\Http\Requests\BaseFormRequest;
 
 /**
  * Shared "reset password" validation for Web + API.
  */
-class PasswordResetRequest extends FormRequest
+class PasswordResetRequest extends BaseFormRequest
 {
-    use FormatsApiErrors;
-
     /**
      * Authorize: guest route, uses one-time token from URL.
      */

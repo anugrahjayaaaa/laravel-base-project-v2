@@ -2,16 +2,13 @@
 
 namespace App\Http\Requests\V1\Auth;
 
-use App\Http\Requests\Traits\FormatsApiErrors;
-use Illuminate\Foundation\Http\FormRequest;
+use App\Http\Requests\BaseFormRequest;
 
 /**
  * Shared "forgot password" validation for Web + API.
  */
-class PasswordForgotRequest extends FormRequest
+class PasswordForgotRequest extends BaseFormRequest
 {
-    use FormatsApiErrors;
-
     /**
      * Guest route,always authorized.
      */

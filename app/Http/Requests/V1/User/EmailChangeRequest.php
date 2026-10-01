@@ -3,13 +3,13 @@
 namespace App\Http\Requests\V1\User;
 
 use App\Models\User;
-use Illuminate\Foundation\Http\FormRequest;
+use App\Http\Requests\BaseFormRequest;
 use Illuminate\Validation\Rule;
 
 /**
  * Validates a new email address for the change-email flow.
  */
-class EmailChangeRequest extends FormRequest
+class EmailChangeRequest extends BaseFormRequest
 {
     /**
      * Your own account, or someone who can edit users.

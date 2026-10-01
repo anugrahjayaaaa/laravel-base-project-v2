@@ -2,12 +2,12 @@
 
 namespace App\Http\Requests\V1\User;
 
-use App\Http\Requests\Concerns\AuthorizesBulkAction;
+use App\Concerns\AuthorizesBulkAction;
 use App\Models\User;
-use Illuminate\Foundation\Http\FormRequest;
+use App\Http\Requests\BaseFormRequest;
 use Illuminate\Validation\Rule;
 
-class BulkUserRequest extends FormRequest
+class BulkUserRequest extends BaseFormRequest
 {
     use AuthorizesBulkAction;
 

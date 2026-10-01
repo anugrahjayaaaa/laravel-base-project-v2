@@ -2,9 +2,8 @@
 
 namespace App\Http\Requests\V1\Auth;
 
-use App\Http\Requests\Traits\FormatsApiErrors;
 use App\Rules\PasswordStrengthRule;
-use Illuminate\Foundation\Http\FormRequest;
+use App\Http\Requests\BaseFormRequest;
 
 /**
  * Validates the self-registration form.
@@ -13,10 +12,8 @@ use Illuminate\Foundation\Http\FormRequest;
  * required because login accepts either one, so an account with neither could
  * never be signed into.
  */
-class RegisterRequest extends FormRequest
+class RegisterRequest extends BaseFormRequest
 {
-    use FormatsApiErrors;
-
     /**
      * Guest route, always authorized.
      */

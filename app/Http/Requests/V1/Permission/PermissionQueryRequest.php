@@ -2,7 +2,7 @@
 
 namespace App\Http\Requests\V1\Permission;
 
-use Illuminate\Foundation\Http\FormRequest;
+use App\Http\Requests\BaseFormRequest;
 
 /**
  * Validates the permission catalogue query string.
@@ -14,7 +14,7 @@ use Illuminate\Foundation\Http\FormRequest;
  * whitelist belongs to PermissionIndexAction::SORTABLE, which applies it as a
  * fallback rather than rejecting the request.
  */
-class PermissionQueryRequest extends FormRequest
+class PermissionQueryRequest extends BaseFormRequest
 {
     public function authorize(): bool
     {

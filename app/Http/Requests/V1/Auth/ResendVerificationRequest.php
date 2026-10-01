@@ -2,12 +2,12 @@
 
 namespace App\Http\Requests\V1\Auth;
 
-use Illuminate\Foundation\Http\FormRequest;
+use App\Http\Requests\BaseFormRequest;
 
 /**
  * Validates email for resending verification code.
  */
-class ResendVerificationRequest extends FormRequest
+class ResendVerificationRequest extends BaseFormRequest
 {
     /**
      * Guest route,always authorized.

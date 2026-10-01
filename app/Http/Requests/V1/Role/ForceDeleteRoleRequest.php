@@ -2,7 +2,7 @@
 
 namespace App\Http\Requests\V1\Role;
 
-use Illuminate\Foundation\Http\FormRequest;
+use App\Http\Requests\BaseFormRequest;
 
 /**
  * Authorizes permanently deleting a trashed role.
@@ -12,7 +12,7 @@ use Illuminate\Foundation\Http\FormRequest;
  * that goes away for good is the one carrying the audit subject. Whoever can
  * un-do a delete should not automatically be able to destroy the record of it.
  */
-class ForceDeleteRoleRequest extends FormRequest
+class ForceDeleteRoleRequest extends BaseFormRequest
 {
     /**
      * Only a caller holding roles.force_delete may open the endpoint.
