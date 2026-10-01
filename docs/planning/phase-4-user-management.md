@@ -12,7 +12,7 @@
 
 - Spatie Permission ^6.0 installed (Phase 6 scope — NOT for Phase 4 use)
 - Action class pattern: `App\Actions\Auth\*` + `App\Actions\User\*`
-- Form Request pattern: `App\Http\Requests\Auth\*` + `App\Http\Requests\User\*`
+- Form Request pattern: `App\Http\Requests\V1\Auth\*` + `App\Http\Requests\V1\User\*`
 - `UserUnlockAction` + `UnlockUserRequest` exist (API only)
 - `AuthChangePasswordAction` action exists — reuse for user password updates
 - `EnsurePasswordChangeRequired` middleware — enforces `must_change_password`

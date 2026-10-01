@@ -59,13 +59,21 @@ Code structured as:
 ```
 Controllers/Api/V1/
 Controllers/Api/V2/
-Requests/Api/V1/
-Requests/Api/V2/
+Controllers/Web/V1/
+Requests/V1/            # shared by Web and Api — no channel segment
+Requests/V2/
 Resources/Api/V1/
 Resources/Api/V2/
 ```
 
 Application/domain logic may be shared when behavior is identical.
+
+**Why `Requests/` has no channel segment.** A Form Request is consumed by both
+channels (`StoreRoleRequest` is used by `Web/V1/RoleController` and
+`Api/V1/Role/RoleController`). Putting it under `Requests/Api/` would make the
+path lie about its own contents. The channel segment appears only where output
+is genuinely channel-specific: Resources serialize JSON for the API, and
+Controllers have two separate sets of HTTP entry points.
 
 ## Blade / UI Structure
 
