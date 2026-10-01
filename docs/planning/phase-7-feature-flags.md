@@ -54,10 +54,10 @@ through is not a kill switch.
 ### Already in place
 - `laravel/pennant: ^1.26` installed + auto-discovered
 - `features` table migrated (`2026_09_15_175615_create_features_table.php`) — Pennant's schema: `name`, `scope`, `value`
-- `@feature` / `@featureany` Blade directives registered by the package (`PennantServiceProvider.php:48-57`)
+- `@feature` / `@featureany` Blade directives registered by the package (`PennantServiceProvider.php:46` and `:54`) — **available but unused.** No view uses either. Nothing is wrong with that: the middleware is the enforcement boundary and the sidebar is the only visibility surface a switched-off module needs, so a conditional block would be a second answer to a question the composer already gives. Recorded so a future reader does not assume the directive is load-bearing.
 - `App\Models\Concerns\Auditable` — `->audit($event, $causer, $properties)`
 - `<x-ui.confirm-action>` + `ACTION_CONFIG` (12 keys), now accepting `tag="input"`
-- `AppMenuComposer` — filters on `permission`, drops items whose route is missing
+- `AppMenuComposer` — filters on `permission` **and** `feature`, drops items whose route is missing (P7-D9)
 - Read-only-when-cannot-manage pattern: `pages/settings/index.blade.php:33` `@can` … `:609` `@endcan`
 - `ConfirmActionUsageTest` — hand-built-trigger ban, `data-action-type` must exist in `ACTION_CONFIG`
 
