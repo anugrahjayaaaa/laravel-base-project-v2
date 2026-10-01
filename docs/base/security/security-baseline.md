@@ -44,7 +44,7 @@ HTTP semantics:
 |------|---------|
 | 401 | Unauthenticated |
 | 403 | Authenticated but forbidden |
-| 404 | Resource/feature intentionally unavailable where appropriate |
+| 404 | Resource does not exist. A disabled feature returns **403**, not 404 |
 
 - Custom error pages for web requests.
 - API errors: consistent JSON structure.

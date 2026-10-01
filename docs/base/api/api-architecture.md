@@ -82,7 +82,7 @@ API response conventions must be consistent and easy for FE/mobile developers to
 HTTP semantics:
 - 401: Unauthenticated
 - 403: Authenticated but forbidden
-- 404: Resource/feature intentionally unavailable where appropriate
+- 404: Resource does not exist. A feature switched off returns **403**, not 404 — the route exists, the module is unavailable. See [Feature Availability](../features/feature-flags.md)
 - Don't expose: stack traces, secrets, internal credentials, infrastructure details.
 
 ## API Documentation
