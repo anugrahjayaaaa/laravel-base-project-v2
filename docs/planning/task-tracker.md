@@ -189,19 +189,22 @@ Detail: `docs/planning/phase-6-rbac.md` § Group A and § C4.
 | P7-D8 | `routes/api.php` — the same matrix | 7 | P0 | P7-D7 | DONE |
 | P7-D9 | `AppMenuComposer` — filter items on `FeatureCatalog::isActive()` | 7 | P0 | P7-D7 | DONE |
 | P7-D10 | `FeatureFlagMenuTest` — flag off hides the item for superadmin too | 7 | P0 | P7-D9 | DONE |
-| P7-F1 | `enable_feature` / `disable_feature` keys in `ACTION_CONFIG` (success / warning) | 7 | P0 | — | PLANNED |
-| P7-F2 | UI-consistency test — every `data-action-type` exists in `ACTION_CONFIG` | 7 | P1 | P7-F1 | PLANNED |
-| P7-F3 | `FeatureBulkToggleAction` — one audit row, all `from` read before any write | 7 | P0 | P7-D3 | PLANNED |
-| P7-F4 | `features.bulk-action` route + `BulkFeatureRequest` via `AuthorizesBulkAction` | 7 | P0 | P7-F3 | PLANNED |
-| P7-F5 | `#bulkBar` on `pages/features/index.blade.php` per §Bulk Actions | 7 | P0 | P7-F1, F4 | PLANNED |
-| P7-F6 | `FeatureFlagBulkTest` — mixed selection offers only universally safe actions | 7 | P0 | P7-F5 | PLANNED |
-| P7-E1 | `FeatureFlagTest` — 403 web + API for superadmin, plus fail-closed cases | 7 | P0 | P7-C5, P7-D10 | PLANNED |
-| P7-E2 | Round trip — store, cache flush, audit `from`/`to`, follow-up GET | 7 | P0 | P7-D3 | PLANNED |
+| P7-F1 | `enable_feature` / `disable_feature` keys in `ACTION_CONFIG` (success / warning) | 7 | P0 | — | DONE |
+| P7-F2 | `BulkActionCopyTest` — every offered action resolves to a dropdown label AND modal copy | 7 | P1 | P7-F1 | DONE |
+| P7-F3 | `FeatureBulkToggleAction` — one audit row, all `from` read before any write | 7 | P0 | P7-D3 | DONE |
+| P7-F4 | `features.bulk-action` route + `BulkFeatureRequest` (NOT `AuthorizesBulkAction`) | 7 | P0 | P7-F3 | DONE |
+| P7-F5 | `#bulkBar` on `pages/features/index.blade.php` per §Bulk Actions | 7 | P0 | P7-F1, F4 | DONE |
+| P7-F6 | `FeatureFlagBulkTest` — mixed selection offers only universally safe actions | 7 | P0 | P7-F5 | DONE |
+| P7-F7 | `AssetBundleFreshnessTest` — built bundle carries the feature actions + select-all selector matches the markup | 7 | P0 | P7-F1, F5 | DONE |
+| P7-F8 | `FeatureSelectAllTest` — real bundle over both page shapes (id and class) | 7 | P0 | P7-F5, F7 | DONE |
+| P7-F9 | `FeatureBulkDropdownTest` — dropdown offers only actions safe for the selection | 7 | P0 | P7-F1, F5 | DONE |
+| P7-E1 | 403 web + API for superadmin, plus fail-closed cases — covered by `FeatureFlagMiddlewareTest` (every role incl. superadmin, `features.manage` holder, undeclared slug, kill switch) + `FeatureFlagRouteTest` (API logout-all gate). The named `FeatureFlagTest.php` was never created; the coverage exists, split by concern | 7 | P0 | P7-C5, P7-D10 | DONE (renamed scope) |
+| P7-E2 | Round trip — `FeatureFlagRouteTest::toggling_flips_the_flag_and_audits_it` (store + audit `from`/`to`), `::the_toggle_forgets_the_resolved_snapshot` (cache flush), `::the_audit_row_records_the_effective_state`. **No follow-up GET** — that half is not asserted | 7 | P0 | P7-D3 | PARTIAL |
 | P7-E3 | `ConfirmActionUsageTest` — `features.index` added, trigger regex extended to `<input\b` | 7 | P0 | P7-A3 | DONE |
 | P7-E4 | Regression — `php artisan test` green; gated tests activate the flag in `setUp()` | 7 | P0 | P7-D7 | DONE |
-| P7-E5 | Perf — flat store reads, pinned as a delta at two flag counts | 7 | P1 | P7-D2 | PLANNED |
+| P7-E5 | Perf — flat store reads, pinned as a delta at two flag counts. Nothing measures store-read counts at two flag counts; `FeatureFlagUiRenderTest::it_renders_and_queries_nothing` only proves the VIEW issues zero queries | 7 | P1 | P7-D2 | TODO |
 | P7-E6 | Docs — `feature-flags.md` + broken link done; trackers close with the phase | 7 | P1 | P7-F6 | IN_PROGRESS |
-| P7-E7 | Full verification — `php artisan test`, `npm run build`, pint, `view:cache` | 7 | P0 | P7-E4, E6 | PLANNED |
+| P7-E7 | Full verification — `php artisan test` (843 passed / 3022 assertions), `npm run build`, `pint --test` on every Group F file (passed; repo-wide pint still fails on 33 PRE-EXISTING files, none in Phase 7), `view:cache`. Only the repo-wide pint debt is open | 7 | P0 | P7-E4, E6 | DONE (pint debt pre-existing) |
 
 **Groups A, B, C and D1–D6 ship.** The middleware exists and answers correctly,
 and the routes now carry it (`P7-D7`/`D8`) — turning a flag off at `/features`
@@ -1310,7 +1313,7 @@ genuinely open and are the real D1/D2 work.
     "priority": "P0",
     "depends_on": ["P7-C2"],
     "status": "DONE",
-    "note": "Built 2026-10-01. One `feature:{slug}` group per flag rather than a call per route: a flag on 3 of 9 routes is a partial gate and the routes missed keep working. users 22 routes (incl. bulk-action, the four state toggles, the email-change flow), roles 9, permissions 1, settings 2, sessions 2. Two deliberate exclusions: `logout` stays OUTSIDE feature:sessions because logging out must keep working when the module is off or a bad flag strands an admin who cannot end a session; and roles/permissions are two groups rather than one `feature:roles,permissions` because ANDing them would switch off the permission catalogue whenever roles are off \u2014 the catalogue is code-defined, so roles being off does not invalidate it, which is exactly why it is its own flag. Verified by walking gatherMiddleware() at runtime: 59 of 59 module routes resolve a feature: middleware, none unflagged. route:list does NOT show it \u2014 its Middleware column omits the group, so a reader checking the gate there sees nothing. The first pass was NOT clean: users.bulk-action, the four state toggles and the email-change routes fell outside the group, which a diff review missed and the runtime walk caught."
+    "note": "Built 2026-10-01. One `feature:{slug}` group per flag rather than a call per route: a flag on 3 of 9 routes is a partial gate and the routes missed keep working. web: users 18 routes (incl. bulk-action, the four state toggles, the email-change flow), roles 9, permissions 1, settings 2, sessions 2. api: users 16, roles 7, permissions 1, settings 2, sessions 1. api.v1.auth.logout-all is gated too — it calls the same action and writes the same audit event as sessions.logout-all, so leaving it open let a client mass-logout every device with the module off. Two deliberate exclusions: `logout` stays OUTSIDE feature:sessions because logging out must keep working when the module is off or a bad flag strands an admin who cannot end a session; and roles/permissions are two groups rather than one `feature:roles,permissions` because ANDing them would switch off the permission catalogue whenever roles are off \u2014 the catalogue is code-defined, so roles being off does not invalidate it, which is exactly why it is its own flag. Verified by walking gatherMiddleware() at runtime: 59 of 59 module routes resolve a feature: middleware, none unflagged. route:list does NOT show it \u2014 its Middleware column omits the group, so a reader checking the gate there sees nothing. The first pass was NOT clean: users.bulk-action, the four state toggles and the email-change routes fell outside the group, which a diff review missed and the runtime walk caught."
   },
   {
     "id": "P7-D8",
@@ -1353,46 +1356,57 @@ genuinely open and are the real D1/D2 work.
     "task": "UI-consistency test — every data-action-type exists in ACTION_CONFIG",
     "phase": 7,
     "priority": "P1",
-    "depends_on": ["P7-F1"],
-    "status": "PLANNED",
-    "note": "NOT STARTED."
-  },
+    "depends_on": [
+        "P7-F1"
+    ],
+    "status": "DONE",
+    "note": "Built 2026-10-01. tests/Feature/BulkActionCopyTest.php cross-checks the RENDERED page against actionOptions and ACTION_CONFIG. Rendered, because the attribute holds @json(...) which is Blade, not JSON, so parsing the template would assert on a string the browser never sees. Both failure modes are silent: populateDropdown skips an action it cannot label, and resolveAction warns and returns null, so a typo renders an empty dropdown with nothing in the console a test run would catch. Also pins enable=>success and disable=>warning in BOTH maps per the Action Color Convention. Sabotage-verified three ways: typo in ACTION_CONFIG, entry removed from actionOptions, variant swapped. Pages leaning on the driver defaults (users) are skipped rather than falsely failed."
+},
   {
     "id": "P7-F3",
     "task": "FeatureBulkToggleAction — one request, one feature.bulk_toggled audit row",
     "phase": 7,
     "priority": "P0",
-    "depends_on": ["P7-D3"],
-    "status": "PLANNED",
-    "note": "NOT STARTED. Every selected slug's `from` must be read before any write, for the same reason as P7-D3."
-  },
+    "depends_on": [
+        "P7-D3"
+    ],
+    "status": "DONE",
+    "note": "Built 2026-10-01. FeatureBulkToggleAction: one transaction, one feature.bulk_toggled row carrying requested + changed + unchanged, every from read BEFORE the first write. Deliberately does not loop FeatureToggleAction, which writes N audit rows and flushes the cache N times for one user action. Validates the whole slug list before touching any flag, so a crafted POST naming one real and one invented slug changes neither."
+},
   {
     "id": "P7-F4",
     "task": "features.bulk-action route + BulkFeatureRequest via AuthorizesBulkAction",
     "phase": 7,
     "priority": "P0",
-    "depends_on": ["P7-F3"],
-    "status": "PLANNED",
-    "note": "NOT STARTED. AuthorizesBulkAction already exists from Phase 6 (P6-C17) and fails closed on an unmapped action."
-  },
+    "depends_on": [
+        "P7-F3"
+    ],
+    "status": "DONE",
+    "note": "Built 2026-10-01. POST features.bulk-action + BulkFeatureRequest. Deliberately does NOT use AuthorizesBulkAction: the trait maps action to prefix.suffix, so delete_feature would demand features.delete_feature, which does not exist. The catalogue has exactly features.view and features.manage, and both directions rewrite the same store row, so one features.manage gate covers both. Minting per-action permissions would create two nobody can hold separately without meaning anything. Route carries throttle:bulk-action and no can(), because the permission depends on the requested action."
+},
   {
     "id": "P7-F5",
     "task": "#bulkBar on pages/features/index.blade.php",
     "phase": 7,
     "priority": "P0",
-    "depends_on": ["P7-F1", "P7-F4"],
-    "status": "PLANNED",
-    "note": "NOT STARTED. Follows design-system.md §Bulk Actions: data-bulk-states {'active':['disable_feature'],'inactive':['enable_feature']}, data-bulk-mixed=disable_feature, data-bulk-field features[]."
-  },
+    "depends_on": [
+        "P7-F1",
+        "P7-F4"
+    ],
+    "status": "DONE",
+    "note": "Built 2026-10-01. #bulkBar outside the module loop, with data-bulk-mixed=disable_feature: on a mixed selection the only action safe for every row is disable, and enabling is the more expensive direction for a kill switch. One bar, not one per card, because the driver binds a single #bulkBar by id."
+},
   {
     "id": "P7-F6",
     "task": "FeatureFlagBulkTest — a mixed selection offers only actions safe for every selected row",
     "phase": 7,
     "priority": "P0",
-    "depends_on": ["P7-F5"],
-    "status": "PLANNED",
-    "note": "NOT STARTED. The expensive direction is an accidental ENABLE, so the mixed-selection case is the one to pin hardest."
-  },
+    "depends_on": [
+        "P7-F5"
+    ],
+    "status": "DONE",
+    "note": "Built 2026-10-01. tests/Feature/FeatureFlagBulkTest.php, 11 tests: one audit row for a multi-flag change; from read before the write; undeclared slug refused over HTTP AND directly against the action, since a queued job or console command never runs the form request; unknown action refused; duplicate slug applied once; unauthorised caller refused; state survives a store re-read. All three sabotage checks passed only after the assertions were tightened: filtering on the bulk event alone hid a stray per-slug row."
+},
   {
     "id": "P7-E1",
     "task": "FeatureFlagTest — 403 on web and API for superadmin, menu hidden, re-enable restores",
@@ -1455,7 +1469,46 @@ genuinely open and are the real D1/D2 work.
     "depends_on": ["P7-E4", "P7-E6"],
     "status": "PLANNED",
     "note": "NOT STARTED."
-  },
+  }
+
+{
+    "id": "P7-F7",
+    "task": "AssetBundleFreshnessTest — the built bundle actually contains the feature actions and matches every page select-all markup",
+    "phase": 7,
+    "priority": "P1",
+    "depends_on": [
+        "P7-F1",
+        "P7-F5"
+    ],
+    "status": "DONE",
+    "note": "Built 2026-10-01, after the bulk dropdown shipped EMPTY. Nothing in PHP can see JavaScript: Blade rendered correct data-bulk-* attributes and all 800+ request tests passed while the browser ran a stale pre-Group-F Vite bundle. Reads app.js THROUGH public/build/manifest.json, because Vite content-hashes filenames and the old bundle stays on disk, so a glob reads whichever file sorts first. Also pins the driver select-all selector against the markup the views actually ship: users and roles use an id, features uses a class because it renders one table per module, and matching only one form silently kills the other pages. Sabotage-verified by pointing the manifest at a stale bundle and by narrowing the selector."
+}
+
+{
+    "id": "P7-F8",
+    "task": "FeatureSelectAllTest — select-all scoped to its own card on the multi-table page",
+    "phase": 7,
+    "priority": "P1",
+    "depends_on": [
+        "P7-F5",
+        "P7-F7"
+    ],
+    "status": "DONE",
+    "note": "Built 2026-10-01. Runs the real bundle over BOTH page shapes in SEPARATE vm contexts. Evaluated in one context they fight over the shared DOM stub and produce flaky results, which is what an earlier attempt did. Catches three regressions distinctly: a class-only selector (users and roles select-all dead), an id-only selector (features select-all dead), and a page-wide select-all (one card header ticking every flag). Sabotage-verified against all three."
+}
+
+{
+    "id": "P7-F9",
+    "task": "FeatureBulkDropdownTest — the dropdown offers only actions safe for the selection",
+    "phase": 7,
+    "priority": "P1",
+    "depends_on": [
+        "P7-F1",
+        "P7-F5"
+    ],
+    "status": "DONE",
+    "note": "Built 2026-10-01. Executes the shipped bundle via vm rather than a reimplementation, so it tests the artifact and not a copy of its logic. Asserts active rows offer disable, inactive rows offer enable, and a MIXED selection offers only the one action safe for all rows. Forces an active/inactive spread first: the baseline seeder activates every flag, so without that the mixed rule is never exercised and a broken driver passes. The PHP side asserts EVERY check line by name plus a blanket no-FAIL check, after an earlier version asserted only the first and so missed a real failure the script had already printed."
+},
   {
     "id": "SET-001",
     "task": "Design settings schema",

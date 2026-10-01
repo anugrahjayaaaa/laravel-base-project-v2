@@ -224,7 +224,7 @@ render.
 
 | ID | Task | Status |
 |----|------|--------|
-| P7-B1 | `config/pennant.php` — 8 flags across 4 groups (Users / Settings / Security / Audit / Monitoring): `users`, `roles`, `permissions`, `settings`, `translations`, `sessions`, `activity_logs`, `pulse`. Published `stores` block kept byte-identical — it carries the `PENNANT_STORE` env wiring deploy reads | ✅ DONE |
+| P7-B1 | `config/pennant.php` — 8 flags across 5 groups (Users / Settings / Security / Audit / Monitoring): `users`, `roles`, `permissions`, `settings`, `translations`, `sessions`, `activity_logs`, `pulse`. Published `stores` block kept byte-identical — it carries the `PENNANT_STORE` env wiring deploy reads | ✅ DONE |
 | P7-B2 | `AppServiceProvider::boot()` — declaration loop over `config('pennant.features')`, plus `Feature::resolveScopeUsing(fn () => 'global')` | ✅ DONE |
 | P7-B3 | `App\Support\FeatureCatalog` — `slugs()`, `all()`, `grouped()`, `find()`, `has()`, `isDisabledInConfig()`, `isActive()`. Same role `PermissionCatalog` plays for permissions: one source, so seeder / menu / view / tests cannot disagree | ✅ DONE |
 | P7-B4 | `database/seeders/FeatureFlagSeeder.php` — activates every catalogue slug when absent; deactivates **only** when config says `disabled => true`. Idempotent; never blanket-activates, so a flag an operator turned off stays off across a reseed | ✅ DONE |
@@ -385,19 +385,22 @@ starts with all flags ACTIVE, which is the state a real install is in after
 `every_catalogued_flag_resolves_off_until_it_is_seeded` exists to assert an
 UNSEEDED database; that assertion was not weakened to go green.
 
-### Group F — Bulk Feature Actions ⬜ NOT STARTED
+### Group F — Bulk Feature Actions ✅ DONE
 
 > Added 2026-10-01. Follows `design-system.md` § Bulk Actions, which documents the
 > shipped `#bulkBar` contract from the users and roles pages.
 
 | ID | Task | Depends | Status |
 |----|------|---------|--------|
-| P7-F1 | `enable_feature` / `disable_feature` keys in `ACTION_CONFIG` (`resources/js/helpers/action-config.js`) — variants per § Action Color Convention: `enable => success`, `disable => warning`. Needed because `data-bulk-keys` resolves copy through `ACTION_CONFIG` and neither key exists yet (12 keys today, none flag-related) | — | ⬜ TODO |
-| P7-F2 | Add `enable_feature` / `disable_feature` to the UI-consistency test that asserts every `data-action-type` exists in `ACTION_CONFIG` | F1 | ⬜ TODO |
-| P7-F3 | `App\Actions\V1\Feature\FeatureBulkToggleAction` — one POST, all selected slugs, one audit entry `feature.bulk_toggled` with the full slug list and per-slug `from`/`to`. **Read all `from` values before writing any** | D3 | ⬜ TODO |
-| P7-F4 | `POST /features/bulk-action` (`features.bulk-action`, `can('features.manage')`) + `App\Http\Requests\V1\Feature\BulkFeatureRequest` using `AuthorizesBulkAction`, which already maps an action to its own permission from Phase 6 | F3 | ⬜ TODO |
-| P7-F5 | `#bulkBar` on `pages/features/index.blade.php`: `data-bulk-states='{"active":["disable_feature"],"inactive":["enable_feature"]}'`, `data-bulk-mixed="disable_feature"`, `data-bulk-keys` from F1, `data-bulk-field="features[]"` | F1, F4 | ⬜ TODO |
-| P7-F6 | `tests/Feature/FeatureFlagBulkTest.php` — bulk enable and disable; mixed selection offers only actions safe for all rows; a slug outside the catalogue is refused; `features.manage` holder only | F5 | ⬜ TODO |
+| P7-F1 | `enable_feature` / `disable_feature` keys in `ACTION_CONFIG` (`resources/js/helpers/action-config.js`) — variants per § Action Color Convention: `enable => success`, `disable => warning`. Needed because `data-bulk-keys` resolves copy through `ACTION_CONFIG` and neither key exists yet (12 keys today, none flag-related) | — | ✅ DONE |
+| P7-F2 | `tests/Feature/BulkActionCopyTest.php` — every action the bulk bar offers must resolve to both a dropdown label (`actionOptions`) and modal copy (`ACTION_CONFIG`). Both miss silently, so a typo renders an empty dropdown with nothing for a test run to catch | F1 | ✅ DONE |
+| P7-F3 | `App\Actions\V1\Feature\FeatureBulkToggleAction` — one POST, all selected slugs, one audit entry `feature.bulk_toggled` with the full slug list and per-slug `from`/`to`. **Read all `from` values before writing any** | D3 | ✅ DONE |
+| P7-F4 | `POST /features/bulk-action` (`features.bulk-action`, `can('features.manage')`) + `App\Http\Requests\V1\Feature\BulkFeatureRequest` — one `features.manage` gate for both directions. **Not** `AuthorizesBulkAction`: the trait maps `action -> <prefix>.<suffix>`, so it would demand a `features.delete_feature` permission that does not exist | F3 | ✅ DONE |
+| P7-F5 | `#bulkBar` on `pages/features/index.blade.php`: `data-bulk-states='{"active":["disable_feature"],"inactive":["enable_feature"]}'`, `data-bulk-mixed="disable_feature"`, `data-bulk-keys` from F1, `data-bulk-field="features[]"` | F1, F4 | ✅ DONE |
+| P7-F6 | `tests/Feature/FeatureFlagBulkTest.php` — bulk enable and disable; mixed selection offers only actions safe for all rows; a slug outside the catalogue is refused; `features.manage` holder only | F5 | ✅ DONE |
+| P7-F7 | `tests/Feature/AssetBundleFreshnessTest.php` — the built bundle must contain the feature actions, and the driver's select-all selector must match every page's markup. Added after the dropdown shipped empty: no PHP test can see JavaScript, so 800+ tests passed while the browser ran a stale bundle | F1, F5 | ✅ DONE |
+| P7-F8 | `tests/Feature/FeatureSelectAllTest.php` — runs the real bundle over both page shapes in separate vm contexts. Proves select-all works on users/roles (id) and features (class, one table per module), and that a card header ticks only its own card | F5, F7 | ✅ DONE |
+| P7-F9 | `tests/Feature/FeatureBulkDropdownTest.php` — the dropdown offers only actions safe for the selection: active→disable, inactive→enable, mixed→only the one safe action. Forces an active/inactive spread, since the seeder activates every flag | F1, F5 | ✅ DONE |
 
 **Gate F:** the bar appears on first tick and clears after submit · a mixed
 selection cannot apply `disable_feature` to an already-active flag's twin ·
@@ -410,7 +413,7 @@ flags selected, only `disable_feature` is safe for all five. Offering
 not mean to touch — and for a kill switch, an accidental enable is the more
 expensive direction.
 
-### Group E — Tests, Verification, Docs ⬜ PARTIAL
+### Group E — Tests, Verification, Docs 🟡 PARTIAL (E1/E2/E4/E7 effectively closed; E5 open)
 
 | ID | Task | Depends | Status |
 |----|------|---------|--------|
@@ -483,13 +486,13 @@ only with the unsaved/dirty guidelines design-system.md § Staged Changes demand
 ```
 Group A (UI — views only)          — DONE  (9545bce)
 Group B (Catalogue + activation)   — DONE  (b72a5f6)
-Group C (Middleware + Blade)       — C1 → C2 → C3 → C4 → C5      ⬜ NEXT
+Group C (Middleware + Blade)       — C1 → C2 → C3 → C4 → C5      ✅
                                      ↓ Gate C: off => 403 for everyone, superadmin included
 Group D (Route/menu gating)        — D7 → D8 → D9 → D10          ✅
                                      ↓ Gate D: matrix holds on web + API + sidebar
-Group F (Bulk feature actions)     — F1 → F2 → F3 → F4 → F5 → F6 ⬜
+Group F (Bulk feature actions)     — F1 → F2 → F3 → F4 → F5 → F6 ✅
                                      ↓ Gate F: bulk safe for mixed selections, audited
-Group E (Tests + docs)             — E1 → E2 → E3 → E4 → E5 → E6 → E7 ⬜
+Group E (Tests + docs)             — E1 E2 E3 E4 E6 E7 ✅ · E5 ⬜  ⬜ NEXT
                                      ↓ Gate E: full regression green
                                      Phase 7 COMPLETE
 ```
