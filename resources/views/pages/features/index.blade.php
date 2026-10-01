@@ -137,11 +137,11 @@
                         </colgroup>
                         <thead>
                             <tr>
-                                <th scope="col">Feature</th>
-                                <th scope="col">Key</th>
-                                <th scope="col">Description</th>
-                                <th scope="col">Status</th>
-                                <th scope="col" class="text-center">Toggle</th>
+                                <th scope="col" class="align-middle">Feature</th>
+                                <th scope="col" class="align-middle">Key</th>
+                                <th scope="col" class="align-middle">Description</th>
+                                <th scope="col" class="align-middle">Status</th>
+                                <th scope="col" class="align-middle text-center">Toggle</th>
                             </tr>
                         </thead>
                         <tbody>

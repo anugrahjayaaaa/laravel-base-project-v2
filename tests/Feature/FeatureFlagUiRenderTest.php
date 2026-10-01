@@ -292,9 +292,12 @@ class FeatureFlagUiRenderTest extends TestCase
         $html = $this->render();
 
         $this->assertStringNotContainsString('text-end', $html, 'the toggle column is right-aligned');
+        // `align-middle` is the house convention on every <th> (users 7, roles 2,
+        // permissions 2) and this header carries it too, so the pinned string
+        // includes it. The count stays 2: two module groups in the fixture.
         $this->assertSame(
             2,
-            substr_count($html, '<th scope="col" class="text-center">Toggle</th>'),
+            substr_count($html, '<th scope="col" class="align-middle text-center">Toggle</th>'),
             'the Toggle header is not centred in every table'
         );
         $this->assertSame(
