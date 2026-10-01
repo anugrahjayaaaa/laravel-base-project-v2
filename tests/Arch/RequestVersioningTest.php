@@ -45,6 +45,12 @@ final class RequestVersioningTest extends TestCase
                 continue;
             }
 
+            // The base class deliberately sits at the root; it is asserted
+            // separately by it_keeps_only_the_base_request_at_the_root().
+            if (! str_contains($file->getPathname(), DIRECTORY_SEPARATOR.'V1'.DIRECTORY_SEPARATOR)) {
+                continue;
+            }
+
             $paths[] = $file->getPathname();
         }
 
@@ -65,8 +71,10 @@ final class RequestVersioningTest extends TestCase
     }
 
     /**
-     * Every versioned Request must live under a V<n> directory and declare a
-     * namespace matching its path.
+     * Every Form Request must live under a V<n> directory and declare a
+     * namespace matching its path. app/Http/Requests holds Form Requests and
+     * nothing else — shared behaviour moved to app/Concerns, so there is no
+     * exempt subtree left here to carve out.
      */
     #[Test]
     #[DataProvider('requestPaths')]
@@ -74,15 +82,64 @@ final class RequestVersioningTest extends TestCase
     {
         $relative = self::relativeToRoot($path);
 
-        if (str_starts_with($relative, 'Concerns/') || str_starts_with($relative, 'Traits/')) {
-            self::assertStringStartsNotWith('V', $relative, "{$relative} must stay unversioned.");
-
-            return;
-        }
-
-        self::assertSame(1, preg_match('#^V\d+/[^/]+/[^/]+\.php$#', $relative),
+        self::assertSame(
+            1,
+            preg_match('#^V\d+/[^/]+/[^/]+\.php$#', $relative),
             "{$relative} is not shaped as V<n>/<Domain>/<Class>.php"
         );
+    }
+
+    /**
+     * The base class is the one exception: it sits at the root and carries the
+     * error contract for every Request below it.
+     */
+    #[Test]
+    public function it_keeps_only_the_base_request_at_the_root(): void
+    {
+        $root = realpath(__DIR__.'/../../app/Http/Requests');
+        self::assertIsString($root);
+
+        $atRoot = array_map(
+            static fn (string $file): string => pathinfo($file, PATHINFO_FILENAME),
+            glob($root.'/*.php') ?: []
+        );
+
+        self::assertSame(
+            ['BaseFormRequest'],
+            $atRoot,
+            'app/Http/Requests may only hold BaseFormRequest at its root.'
+        );
+
+        // The versioned tree is the only subtree allowed under Requests/: a
+        // reintroduced Concerns/ or Traits/ folder would otherwise be skipped
+        // by the data provider and never asserted.
+        self::assertSame(
+            ['V1'],
+            array_values(array_diff(scandir($root) ?: [], ['.', '..', 'BaseFormRequest.php'])),
+            'app/Http/Requests holds only V1/ and the base class; shared behaviour belongs in app/Concerns.'
+        );
+    }
+
+    /**
+     * Every concrete Request extends the base, so the 422 contract cannot be
+     * forgotten by an endpoint that omits the trait.
+     */
+    #[Test]
+    public function it_gives_every_request_the_shared_error_contract(): void
+    {
+        foreach (self::requestPaths() as $paths) {
+            $path = $paths[0];
+
+            if (basename($path) === 'BaseFormRequest') {
+                continue;
+            }
+
+            self::assertStringContainsString(
+                'extends BaseFormRequest',
+                (string) file_get_contents($path),
+                "{$path} must extend BaseFormRequest to inherit the 422 contract."
+            );
+        }
     }
 
     #[Test]
