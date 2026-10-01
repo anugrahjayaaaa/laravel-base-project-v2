@@ -73,6 +73,12 @@ class ConfirmActionUsageTest extends TestCase
             // asserts the hand-built-trigger ban covers it, which is the part that
             // matters — nothing on that page may bypass the component.
             'permissions index' => ['permissions.index', 'active', '__none__'],
+            // Phase 7A: the feature-flag switch is the only <input> trigger, so
+            // it was invisible to a <button>-only scan. Identified by the slug in
+            // its URL rather than by an action key — it brings its own copy, so
+            // demanding a `data-action-type` here would require the very default
+            // the component deliberately refuses to set.
+            'features index' => ['features.index', 'active', '__slug__'],
         ];
     }
 
@@ -84,7 +90,13 @@ class ConfirmActionUsageTest extends TestCase
         string $expectedType
     ): void {
         $admin = $this->admin();
-        $html = $this->actingAs($admin)->get(route($page, $admin))->getContent();
+        // Only the routes that take a parameter get one. Passing $admin to
+        // features.index would append it as `?0=Budi...`, which renders fine
+        // and hides the fact that the page was never addressed by its own name.
+        $url = $page === 'features.index'
+            ? route($page)
+            : route($page, $admin);
+        $html = $this->actingAs($admin)->get($url)->getContent();
 
         $this->assertSame(
             [],
@@ -98,15 +110,40 @@ class ConfirmActionUsageTest extends TestCase
             }
             $this->assertSame('modal', $attributes['data-bs-toggle']);
             $this->assertSame('#confirmModal', $attributes['data-bs-target']);
-            $this->assertContains(
-                $attributes['data-action-type'] ?? '',
-                array_keys($this->actionConfig()),
-                'data-action-type must be a key ACTION_CONFIG has, or the modal falls back to "Confirm"'
-            );
+
+            // A trigger either names an ACTION_CONFIG key or brings its own
+            // copy. `action-type` defaults to null precisely because a default
+            // here would let an omitted attribute claim somebody else's words —
+            // so an absent key is a legitimate branch (the user-form Unlock,
+            // the feature switch), not a gap to fail on. What it must NOT do is
+            // name a key the config does not have.
+            if (array_key_exists('data-action-type', $attributes)) {
+                $this->assertContains(
+                    $attributes['data-action-type'],
+                    array_keys($this->actionConfig()),
+                    'data-action-type must be a key ACTION_CONFIG has, or the modal falls back to "Confirm"'
+                );
+            } else {
+                $this->assertArrayHasKey(
+                    'data-title',
+                    $attributes,
+                    'a trigger with no data-action-type must bring its own title, or the modal opens saying "Confirm"'
+                );
+            }
         }
 
         // A read-only page is allowed to render no triggers at all.
-        if ($expectedType !== '__none__') {
+        if ($expectedType === '__slug__') {
+            // Every trigger here is a flag switch, so the assertion is that a
+            // switch rendered AT ALL — a page whose toggles silently stopped
+            // would otherwise pass on an empty array, which is the failure this
+            // test exists to catch.
+            $this->assertNotSame(
+                [],
+                $this->triggers($html),
+                'the features page must still offer its per-flag switches'
+            );
+        } elseif ($expectedType !== '__none__') {
             $this->assertContains(
                 $expectedType,
                 array_column($this->triggers($html), 'data-action-type'),
@@ -146,11 +183,20 @@ class ConfirmActionUsageTest extends TestCase
     }
 
     /**
-     * @return array<int, string>
+     * Both trigger tags, not just <button>.
+     *
+     * confirm-action grew a `tag` prop so the feature-flag switch could BE an
+     * <input type="checkbox">. A <button>-only regex made every input trigger
+     * invisible to this test — the switch was never checked at all, which is how
+     * the tag prop itself escaped verification. The switch brings its own
+     * title/message (no `action-type`), so the data-action-type assertion is
+     * skipped for it below rather than made to invent a config key.
+     *
+     * @return array<int, array<string, string>>
      */
     private function triggers(string $html): array
     {
-        preg_match_all('/<button\b[^>]*data-bs-target="#confirmModal"[^>]*>/', $html, $matches);
+        preg_match_all('/<(?:button|input)\b[^>]*data-bs-target="#confirmModal"[^>]*>/', $html, $matches);
 
         return array_map(function (string $tag) {
             preg_match_all('/([\w-]+)="([^"]*)"/', $tag, $pairs, PREG_SET_ORDER);
@@ -169,7 +215,7 @@ class ConfirmActionUsageTest extends TestCase
     {
         $offenders = [];
 
-        foreach (glob(resource_path('views/pages/**/*.blade.php')) ?: [] as $file) {
+        foreach (glob(resource_path('views/{pages,components}/**/*.blade.php'), GLOB_BRACE) ?: [] as $file) {
             if (str_contains((string) file_get_contents($file), 'data-bs-target="#confirmModal"')) {
                 $offenders[] = str_replace(resource_path().'/', '', $file);
             }
