@@ -108,6 +108,45 @@
         </div>
     @endif
 
+    {{-- Bulk bar (P7-F5). Outside the loop, once, because bulk-actions.js reads
+         it by id and one bar drives every card's checkboxes.
+
+         `data-bulk-mixed="disable_feature"` is the rule that matters here.
+         With 3 active and 2 inactive flags selected, the ONLY action safe for
+         all five is disable — enabling would flip flags the operator did not
+         mean to touch, and for a kill switch an accidental enable is the more
+         expensive direction. The driver reduces any mixed selection to this one
+         action, so the dropdown cannot offer the wrong one.
+
+         `data-bulk-keys` points the confirm modal at the flag copy in
+         action-config.js; the words "They can be restored later" are about a
+         user, not a module. --}}
+    @if ($manageable && ! empty($featureGroups))
+        <form method="POST" class="d-flex align-items-center" onsubmit="return false;">
+            @csrf
+            {{-- The bar sits ABOVE the module cards here rather than inside a
+                 card-header, so it needs its own bottom margin or it butts
+                 against the first card. On the div, not the form: the driver
+                 toggles `d-none` on `#bulkBar`, so a margin on the form would
+                 leave a gap on every page load with nothing selected. --}}
+            <div id="bulkBar" class="d-none align-items-center gap-2 flex-wrap ms-auto mb-3"
+                data-bulk-route="{{ route('features.bulk-action') }}" data-bulk-field="features[]"
+                data-bulk-noun="feature flag"
+                data-bulk-mixed="disable_feature"
+                data-bulk-states='@json(['active' => ['disable_feature'], 'inactive' => ['enable_feature']])'
+                data-bulk-keys='@json(['enable_feature' => 'enable_feature', 'disable_feature' => 'disable_feature'])'>
+                <span class="text-muted fs-7">Selected: <strong id="bulkCount">0</strong></span>
+                <select id="bulkAction" class="form-select form-select-sm d-inline-block" style="width:auto">
+                    <option value="">-- Action --</option>
+                    <option value="disable_feature">Disable</option>
+                    <option value="enable_feature">Enable</option>
+                </select>
+                <button type="button" class="btn btn-sm btn-primary" id="bulkApplyBtn">Apply</button>
+                <button type="button" class="btn btn-sm btn-outline-secondary" id="bulkClearBtn">Clear</button>
+            </div>
+        </form>
+    @endif
+
     {{-- One card per module, and every card's table pins its columns the same
          way.
 
@@ -129,6 +168,7 @@
                 <div class="table-responsive">
                     <table class="table table-fixed table-hover align-middle mb-0">
                         <colgroup>
+                            <col style="width: 36px">
                             <col style="width: 22%">
                             <col style="width: 18%">
                             <col>
@@ -137,6 +177,10 @@
                         </colgroup>
                         <thead>
                             <tr>
+                                <th scope="col" class="align-middle">
+                                    <input type="checkbox" class="bulk-check-all"
+                                        aria-label="Select every feature flag">
+                                </th>
                                 <th scope="col" class="align-middle">Feature</th>
                                 <th scope="col" class="align-middle">Key</th>
                                 <th scope="col" class="align-middle">Description</th>
@@ -147,6 +191,16 @@
                         <tbody>
                             @foreach ($features as $feature)
                                 <tr>
+                                    <td>
+                                        {{-- data-status is what bulk-actions.js groups by, so
+                                             the dropdown offers the actions valid for the
+                                             selection: an active row offers disable, an
+                                             inactive one offers enable. --}}
+                                        <input type="checkbox" class="bulk-check"
+                                            value="{{ $feature['slug'] }}"
+                                            data-status="{{ $feature['enabled'] ? 'active' : 'inactive' }}"
+                                            aria-label="Select {{ $feature['label'] }}">
+                                    </td>
                                     <td class="fw-medium">{{ $feature['label'] }}</td>
                                     <td><code>{{ $feature['slug'] }}</code></td>
                                     <td class="text-muted">

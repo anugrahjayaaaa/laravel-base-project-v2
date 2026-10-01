@@ -165,6 +165,84 @@ class FeatureFlagUiRenderTest extends TestCase
      * `pages/permissions/index` (2) already make. What is forbidden is the
      * view deriving DATA from the router, which is what the toggle URL is.
      */
+    /**
+     * Every table gets its own select-all, and each covers only its own rows.
+     *
+     * The features index renders one table per module, so a select-all wired to
+     * the page-wide checkbox list ticked every flag on the page: the header
+     * said "select all" and the operator got eight flags instead of the two
+     * they pointed at. Asserting the count per table catches that at the markup
+     * level; the behaviour half is covered by the bundle test.
+     */
+    #[Test]
+    public function each_module_card_has_its_own_scoped_select_all(): void
+    {
+        $html = $this->render();
+
+        preg_match_all('/<table.*?<\/table>/s', $html, $tables);
+
+        $this->assertGreaterThan(1, count($tables[0]), 'expected one table per module group');
+
+        foreach ($tables[0] as $index => $table) {
+            $this->assertSame(
+                1,
+                substr_count($table, 'bulk-check-all'),
+                "table {$index} has no select-all, or more than one"
+            );
+
+            // Rows in this table only.
+            $rows = substr_count($table, 'class="bulk-check"');
+
+            $this->assertGreaterThan(
+                0,
+                $rows,
+                "table {$index} has a select-all but no selectable rows"
+            );
+
+            preg_match_all('/value="([^"]+)"\s*\n?\s*data-status="([^"]+)"/', $table, $flags);
+
+            $this->assertCount(
+                $rows,
+                $flags[1],
+                "table {$index}: every row must carry both a slug and a data-status"
+            );
+        }
+
+        // Across the whole page, no slug appears in two cards. Counted against
+        // the rows actually rendered rather than the full catalogue, because
+        // this fixture declares a small fixed set.
+        preg_match_all('/class="bulk-check"\s*\n?\s*value="([^"]+)"/', $html, $all);
+
+        $slugs = $all[1];
+
+        $this->assertNotEmpty($slugs);
+        $this->assertSame(
+            array_unique($slugs),
+            $slugs,
+            'a flag appears in more than one module card: '.implode(', ', array_diff_assoc($slugs, array_unique($slugs)))
+        );
+        // And the page renders every flag the fixture declared — a card that
+        // silently lost its rows would still pass a per-table count check.
+        // featureGroups is group name => list of feature rows.
+        $declared = [];
+
+        foreach ($this->viewData()['featureGroups'] as $features) {
+            foreach ($features as $feature) {
+                $declared[] = $feature['slug'];
+            }
+        }
+
+        sort($declared);
+        $sorted = $slugs;
+        sort($sorted);
+
+        $this->assertSame(
+            $declared,
+            $sorted,
+            'the page must show every declared flag exactly once'
+        );
+    }
+
     #[Test]
     public function it_never_builds_a_features_route_from_the_view(): void
     {
@@ -173,10 +251,23 @@ class FeatureFlagUiRenderTest extends TestCase
         $source = file_get_contents(resource_path('views/pages/features/index.blade.php'))
             .file_get_contents(resource_path('views/components/ui/feature-toggle.blade.php'));
 
+        // Every per-FLAG URL is handed over by FeatureIndexAction as
+        // `toggle_url`, because building one needs the intended new state and
+        // only the action knows which way the flag is about to move.
         $this->assertDoesNotMatchRegularExpression(
-            '/route\(\s*[\'"]features\./',
+            '/route\(\s*[\'"]features\.(toggle|index)/',
             $source,
-            'a view building a features.* URL is controller logic in a view — the action hands it over'
+            'a view building a per-flag features.* URL is controller logic in a view — the action hands it over'
+        );
+
+        // The bulk bar's route is the documented exception, and it is a
+        // page-level URL, not a per-item one: users and roles bars do exactly
+        // this. Asserted explicitly so widening the pattern above is a
+        // deliberate act rather than an accident.
+        $this->assertStringContainsString(
+            "route('features.bulk-action')",
+            $source,
+            'the bulk bar should point at the bulk-action endpoint'
         );
     }
 
@@ -265,8 +356,9 @@ class FeatureFlagUiRenderTest extends TestCase
             "the tables declare different column widths:\n".implode("\n", $widths)
         );
 
-        // Each pinned column, so a refactor cannot silently drop one.
-        foreach (['width:22%', 'width:18%', 'width:12%'] as $width) {
+        // Each pinned column, so a refactor cannot silently drop one. The 36px
+        // first column is the bulk-select checkbox added by P7-F5.
+        foreach (['width:36px', 'width:22%', 'width:18%', 'width:12%'] as $width) {
             $this->assertStringContainsString($width, $widths[0], "the {$width} column is gone");
         }
         $this->assertSame(
@@ -275,13 +367,31 @@ class FeatureFlagUiRenderTest extends TestCase
             'the Toggle column should match the Status column so the switch sits centred in its own space'
         );
 
-        // One header row per table, with the same five columns in both.
+        // One header row per table, with the same SIX columns in both —
+        // P7-F5 added the bulk-select checkbox column.
+        $columns = 6;
+
         $this->assertSame($tables, substr_count($html, '<thead>'));
         $this->assertSame(
-            $tables * 5,
+            $tables * $columns,
             substr_count($html, '<th scope="col"'),
-            'the tables do not declare the same five columns'
+            "the tables do not declare the same {$columns} columns"
         );
+
+        // The body follows the header: one selectable checkbox per flag row,
+        // and each one carries the state the bulk driver groups by. A row with
+        // no data-status is read as 'active' by the driver, so a mixed
+        // selection would silently offer the wrong action.
+        preg_match_all('/<input[^>]*class="bulk-check"[^>]*>/', $html, $boxes);
+        $this->assertNotEmpty($boxes[0], 'no row carries a bulk-select checkbox');
+
+        foreach ($boxes[0] as $box) {
+            $this->assertMatchesRegularExpression(
+                '/data-status="(active|inactive)"/',
+                $box,
+                'a bulk checkbox has no data-status, so the driver cannot group the selection'
+            );
+        }
     }
 
     /**
@@ -438,6 +548,7 @@ class FeatureFlagUiRenderTest extends TestCase
             'totalFeatures' => 0,
             'enabledCount' => 0,
             'disabledCount' => 0,
+            'manageable' => true,
         ])->render();
 
         $this->assertStringContainsString('No feature flags are declared.', $html);
