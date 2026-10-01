@@ -6,7 +6,7 @@
 > route + menu, management UI, audit trail.
 > Dependency chain: A → B → C → D → E. A cannot skip to C.
 > Decisions locked 2026-10-01: **engine = Laravel Pennant** (no custom table),
-> **disabled flag → 404**, **permissions = `features.view` / `features.manage`**,
+> **disabled flag → 403**, **permissions = `features.view` / `features.manage`**,
 > **no staged changes** (see `design-system.md` § Staged Changes).
 
 ---
@@ -16,24 +16,36 @@
 Domain-driven global module availability system. A flag governs whether a module
 exists for this installation, not whether a given user may use it.
 
-**Enforcement.** A disabled feature returns **HTTP 404 Not Found** on web and API
-routes. Not 403, not 400 — the endpoint is meant to be invisible, so a client that
-stumbles onto it gets "no such resource" and stops asking, rather than an
-escalation invitation. Three sources in-repo already say 404:
-`docs/base/features/feature-flags.md:70`, `routes/web.php:43-44`, and
-`abort_unless(registration_enabled, 404)` in `AuthController.php:320`/`:342`.
+**Enforcement.** A disabled feature returns **HTTP 403 Forbidden** on web and API
+routes. Not 400 — that blames the caller's request, which was well-formed. Not 404
+— that claims the route does not exist, which is false and produces a support
+trail of "this page 404s intermittently". 403 states the one true thing: the
+server understood and will not serve it, and it is what `can:` and
+`CheckAccountState` already return, so one status means "you may not have this"
+across the whole admin. Settled 2026-10-01, changing an earlier 404.
+
+**The cost, stated plainly.** 403 does not distinguish *module killed* from *no
+permission* from *account disabled*. A client needing that distinction must ask
+`/features` (never gated) rather than infer it from the status. Deliberate: an
+operator-facing admin gains little from obscurity, and a flag's existence was
+never secret.
 
 **The matrix.**
 
 | | Flag active | Flag inactive |
 |---|---|---|
-| **User has permission** | access allowed | **404** — the module does not exist |
-| **User lacks permission** | 403 (permission is the answer) | **404** — same for everyone, including superadmin |
+| **User has permission** | access allowed | **403** — refused, for everyone including superadmin |
+| **User lacks permission** | 403 (permission is the answer) | **403** — same status, reached earlier |
 
 The two questions are independent and answered in this order: the flag decides
-whether the endpoint exists, the permission decides whether *this* user gets in.
+whether the endpoint is served, the permission decides whether *this* user gets in.
 There is no `features.manage` bypass — a kill switch a superadmin can walk
 through is not a kill switch.
+
+> Inconsistency to note: `AuthController` still 404s `registration`
+> (`abort_unless(registration_enabled, 404)` at `:320`/`:342`), a *setting*-gated
+> feature rather than a flag-gated one. Left as is — changing it is out of this
+> phase's scope, but the two gates no longer answer alike.
 
 ---
 
@@ -67,10 +79,10 @@ other. Dropped as a consequence, not deferred:
 | `App\Models\Feature` + Observer / `Cache::rememberForever` busting | **dropped** — Pennant owns persistence and request-level resolution |
 | `FeatureManager::isEnabled()` / `Feature::isEnabled($key)` helper | **dropped** — `FeatureCatalog::isActive($slug)` is the one reader, and it is what makes `disabled => true` a kill switch |
 | `FeatureSeeder` | **shipped** as `FeatureFlagSeeder`, keyed off config instead of a table |
-| `EnsureFeatureIsEnabled` middleware | **kept, rewritten** — own class, 404 not 400 (Decision 2) |
+| `EnsureFeatureIsEnabled` middleware | **kept, rewritten** — own class, 403 not 400 (Decision 2) |
 | Register `@feature` | **dropped** — already registered by the package; re-registering silently overrides it |
 
-### Decision 2 — 404, not 400 (LOCKED 2026-10-01)
+### Decision 2 — 403, not 400 (LOCKED 2026-10-01; 404 → 403 revised 2026-10-01)
 
 Pennant ships the middleware this phase needs, with one wrong default:
 
@@ -84,17 +96,40 @@ return static::$respondUsing
 | Status | Meaning in HTTP | What a client does | Truthful for a disabled module? |
 |---|---|---|---|
 | **400** | the request itself is malformed | retry, fix the payload, log a bug | **no** — it was well-formed; the server declined to serve it |
-| **403** | authenticated, understood, not allowed | retry with different credentials | **no** — nobody is forbidden; the resource does not exist |
-| **404** | no such resource | stop asking, fall back, do not retry | **yes** — the module is invisible, and that is the intent |
+| **404** | no such resource | stop asking, fall back, do not retry | **no** — the route does exist; the server is refusing it |
+| **403** | authenticated, understood, not allowed | fall back, show a refusal | **yes** — and it is what the rest of the admin already returns |
 
 400 says "you built the request wrong", sending an integrator hunting a bug in
-their own code that is not there. 403 says "you are not allowed", inviting an
-escalation request — the wrong answer for a flag an operator turned off.
+their own code that is not there. 404 says "this never existed", producing a
+support trail of "the page 404s intermittently" for a route that is right there.
+403 says the one true thing: understood, and not serving.
+
+**Revised 2026-10-01 from 404.** The earlier lock argued for invisibility. Two
+things changed the answer. First, 403 is what `can:` and `CheckAccountState`
+already return, so a single status carries one meaning across the admin and an
+integrator needs no lookup table of which refusal is which. Second, the obscurity
+404 bought was never worth much here — this is an operator-facing console and a
+flag's existence was never a secret. The price paid is that *module killed*, *no
+permission* and *account disabled* now share a status; a client that must tell
+them apart asks `/features`, which stays ungated.
 
 The cost is 5 duplicated lines. Aliasing Pennant's and overriding it globally
 would change the response on every other route using it. `ponytail:` the
 duplication is deliberate — a different *response*, not duplicate logic. Revisit
 if Pennant ever supports per-middleware responses.
+
+The second reason to own the class is independent of status and was found later:
+**Pennant cannot read `disabled => true`** (measured, `P7-C1`).
+
+```php
+config(['pennant.features.users.disabled' => true]);
+FeatureCatalog::isActive('users')    => false   ← the answer we want
+Feature::active('users')            => true    ← Pennant's view
+Feature::someAreInactive(['users'])  => false   ← what its middleware sees
+```
+
+So aliasing Pennant's class would leave the config kill switch inert on every
+gated route — a second reason, and the stronger one.
 
 ### Decision 3 — permission names (LOCKED 2026-10-01)
 
@@ -121,7 +156,7 @@ confirmation modal plus § Bulk Actions instead.
 
 With the `database` driver, `Feature::active($slug)` resolves against a row in
 `features`. **No row → false, fail-closed.** A flag added to `config/pennant.php`
-and wired to a route produces a route that 404s for everyone — superadmin
+and wired to a route produces a route that refuses for everyone — superadmin
 included — until someone activates it:
 
 ```
@@ -211,7 +246,7 @@ the plan. Group B holds; nothing in progress, nothing blocking.
 
 **Two gaps, neither a defect.** `disabled => true` is implemented and tested but
 **unused** — all 8 flags are plain. Correct today: a config-disabled flag needs
-its route gated first (Group C), or it 404s for everyone with no way back but a
+its route gated first (Group C), or it refuses for everyone with no way back but a
 deploy. And no test pins the slug count; `assertSame(count(slugs()), $rows)`
 compares the store against config, so adding a flag passes and accidentally
 deleting one still fails. A hardcoded 8 would break on every legitimate addition.
@@ -246,26 +281,66 @@ flags as though they were the installation's.
 
 ## Remaining — Group C and the rest of D, E
 
-### Group C — Enforcement Middleware ⬜ NOT STARTED
+### Group C — Enforcement Middleware ✅ DONE
 
-> Goal: a disabled flag makes the endpoint **invisible** (404) and the menu item
-> **absent**, for every user including superadmin. Nothing in this group exists yet.
+> Goal: a disabled flag makes the endpoint **invisible** (403) and the menu item
+> **absent**, for every user including superadmin.
 
 | ID | Task | Depends | Status |
 |----|------|---------|--------|
-| P7-C1 | `App\Http\Middleware\EnsureFeatureIsEnabled` — `handle($request, $next, string ...$features)`; any `FeatureCatalog::isActive()` false → `abort(404)`. **No `features.manage` bypass.** Fail-closed by construction: an unknown slug is `false`. Own class, not Pennant's, per Decision 2 | B | ⬜ TODO |
-| P7-C2 | Register the alias in `bootstrap/app.php`: `'feature' => EnsureFeatureIsEnabled::class`. Until this line exists, `->middleware('feature:{slug}')` fails with "Route middleware [feature] not defined" | C1 | ⬜ TODO |
-| P7-C3 | `@feature` / `@endfeature` — **already registered** by the package. This task is verification, not code. **Do not re-register** — a second `Blade::if('feature')` silently overrides the package's | B6 | ⬜ TODO |
-| P7-C4 | Do **not** extend `Gate::before()`. Flags are a kill switch, permissions are authorization; a disabled module must 404, and `Gate::before` returning `true` for superadmin would keep a killed module reachable | C1 | ⬜ TODO |
-| P7-C5 | `tests/Feature/FeatureFlagMiddlewareTest.php` — flag off → 404 on web **and** API for anonymous / `user` / `admin` / **superadmin**; flag on → passes; unknown slug → 404; `features.manage` holder → still 404 | C2 | ⬜ TODO |
+| P7-C1 | `App\Http\Middleware\EnsureFeatureIsEnabled` — `handle($request, $next, string ...$features)`; any `FeatureCatalog::isActive()` false → `abort(403)`. **No `features.manage` bypass.** Fail-closed by construction: an unknown slug is `false` | B | ✅ DONE |
+| P7-C2 | Registered as `'feature'` in `bootstrap/app.php` | C1 | ✅ DONE |
+| P7-C3 | `@feature` / `@endfeature` — **already registered** by the package (`PennantServiceProvider.php:46`, `:54`). Verified, not re-registered | B6 | ✅ DONE |
+| P7-C4 | `Gate::before()` deliberately NOT extended — no superadmin bypass | C1 | ✅ DONE |
+| P7-C5 | `tests/Feature/FeatureFlagMiddlewareTest.php` — 9 tests | C2 | ✅ DONE |
 
-**Gate C:** off → 404 for superadmin on web and API · on → passes · unknown slug
-→ 404 · `features.manage` holder still 404 · `@feature` block absent when disabled.
+**Why Pennant's own middleware cannot be aliased.** Two reasons, both measured
+rather than read off the docs:
 
-**Why this group is not optional.** Right now `FeatureCatalog::isActive()` has one
-caller: the management page's own read. A flag turned off at `/features` changes
-what the page displays and nothing else — `/users` still answers 200, the sidebar
-still links it. The flag system is a UI until C1 and D6 land.
+```php
+// Pennant resolves through Feature::active(), which asks the store.
+config(['pennant.features.users.disabled' => true]);
+FeatureCatalog::isActive('users')    => false   ← the correct answer
+Feature::active('users')            => true    ← Pennant's view
+Feature::someAreInactive(['users'])  => false   ← what its middleware sees
+```
+
+A `disabled => true` flag with a stored `true` row reads as ACTIVE to Pennant, so
+aliasing its class would leave the config kill switch inert on every gated route.
+It also aborts **400** (Decision 2). One class, ~10 lines of body, both reasons
+settled — the duplication is a different *answer*, not duplicate logic.
+
+**`Gate::before()` is untouched.** It returns `true` for superadmin and `null`
+otherwise. A flag off refuses everyone, managers included; a manager re-enables
+from `/features` first, which is why that page is deliberately left ungated.
+
+**Multi-flag syntax — the alias is written ONCE.** Laravel splits a middleware's
+parameters on the *first* colon and then on commas (`Pipeline.php:241`):
+
+| Written | Resolves to | Result |
+|---|---|---|
+| `feature:users,roles` | `['users', 'roles']` | correct — ANDed |
+| `feature:users,feature:roles` | `['users', 'feature:roles']` | 403, always — `'feature:roles'` is an undeclared slug |
+
+The second form fails closed, so it looks like a working kill switch rather than
+a typo. `several_flags_must_all_be_active` pins the correct spelling.
+
+**Sabotage-verified.** Each guard fails loudly when removed:
+
+| Sabotage | Result |
+|---|---|
+| Add a `features.manage` bypass | 7 assertions red, naming the role |
+| `abort(403)` → `abort(400)` | 7 assertions red |
+| Read `Feature::active()` instead of `isActive()` | red: *"the kill switch is decorative"* |
+
+**Gate C: PASSED.** Off → 403 for admin **and** superadmin · on → passes ·
+undeclared slug → 403 · `features.manage` holder → still 403 · `disabled => true`
+beats a stored active row · several flags ANDed · `/features` never gated.
+
+**What Group C did NOT do — it is not optional, it is incomplete.** The middleware
+exists and answers correctly, but **no route uses it yet** (`P7-D7`/`D8`). A flag
+turned off at `/features` still changes nothing about `/users`. Group C supplies
+the boundary; Group D attaches it.
 
 ### Group D (remaining) — Route Gating ⬜ NOT STARTED
 
@@ -273,12 +348,12 @@ still links it. The flag system is a UI until C1 and D6 land.
 |----|------|---------|--------|
 | P7-D7 | `routes/web.php` — apply `->middleware('feature:{slug}')` to the routes that exist: `users.*`, `roles.*`, `permissions.*`, `settings.*`, `translations.*`, `sessions`, `activity-logs.*`, `pulse`. **Group by flag**, not one call per route — `Route::middleware('feature:users')->group()` around the block. A flag on 3 of 9 routes is a partial gate: the routes missed still work | C2 | ⬜ TODO |
 | P7-D8 | `routes/api.php` — **the same matrix**. An API-only gap is the same hole with a different URL; this is the `RbacPentestTest` lesson from Phase 6 applied to a new dimension | D7 | ⬜ TODO |
-| P7-D9 | `AppMenuComposer` — add a `feature` key per item and filter on `FeatureCatalog::isActive()` alongside the existing `permission` filter. A menu that disagrees with the routes shows links that 404, or hides links that work | D7 | ⬜ TODO |
+| P7-D9 | `AppMenuComposer` — add a `feature` key per item and filter on `FeatureCatalog::isActive()` alongside the existing `permission` filter. A menu that disagrees with the routes shows links that 403, or hides links that work | D7 | ⬜ TODO |
 | P7-D10 | `tests/Feature/FeatureFlagMenuTest.php` — a flag off removes its sidebar item for `admin` **and** superadmin (who passes every `can()`); flag on keeps it | D9 | ⬜ TODO |
 
 **Gate D:** a zero-permission user still gets 403 exactly where they did before
 (no regression on the Phase 6 matrix) · a `features.manage` holder toggles `users`
-off and `/users` immediately 404s for them too · the `activity_logs` sidebar item
+off and `/users` immediately 403s for them too · the `activity_logs` sidebar item
 disappears with its flag · `php artisan route:list` shows `feature:{slug}` in the
 Middleware column for every gated route.
 
@@ -311,12 +386,12 @@ expensive direction.
 
 | ID | Task | Depends | Status |
 |----|------|---------|--------|
-| P7-E1 | `tests/Feature/FeatureFlagTest.php` — toggle via UI; disabled → 404 web **and** API for a **superadmin**; menu item gone; re-enable restores. Plus the two cases that are not in the brief and are the ones that break: an undeclared slug 404s (fail-closed), and a declared-but-never-activated flag 404s (the Pennant trap) | C, D | ⬜ TODO |
+| P7-E1 | `tests/Feature/FeatureFlagTest.php` — toggle via UI; disabled → 403 web **and** API for a **superadmin**; menu item gone; re-enable restores. Plus the two cases that are not in the brief and are the ones that break: an undeclared slug 403s (fail-closed), and a declared-but-never-activated flag 403s (the Pennant trap) | C, D | ⬜ TODO |
 | P7-E2 | Round trip — POST the toggle URL the Group A switch rendered; assert the new state reached the store, the cache flushed, the audit row exists with correct `from`/`to`, and a follow-up GET reflects it | D3 | ⬜ TODO |
 | P7-E3 | `ConfirmActionUsageTest` — add `features.index`, and **extend the trigger regex to `<input\b`**. It currently matches `<button\b` only (`:153`), so the new switch is never checked at all — which is how `confirm-action`'s `tag` prop escapes verification entirely | A3 | ✅ DONE (in the Group A audit) |
 | P7-E4 | Regression — `php artisan test` green. Every pre-existing test touching a newly flag-gated route needs the flag **active** in its `setUp()`, not a deleted assertion. This is the expected churn point and is not a reason to skip the gate | D7 | ⬜ TODO |
 | P7-E5 | Performance — assert the index resolves N flags in a flat number of store reads, pinned as a **delta at two flag counts**. A ceiling like "under 20" passes for an N+1 that happens to fit under a number someone picked | D2 | ⬜ TODO |
-| P7-E6 | Docs — `docs/base/features/feature-flags.md` (the phase happened; resolve the 400-vs-404 question; document the activation requirement), `task-tracker.md`, `progress.md`, `feature-tracker.md` row 24, and fix the broken link at `docs/base/ui/ui-architecture.md:158` → file is at `docs/base/features/feature-flags.md` | A–F | 🟡 PARTIAL — the two doc items closed in the Group A audit (`feature-flags.md` rewritten: catalogue, activation requirement, 404 settled, no-bypass rule; the `ui-architecture.md` link fixed). Trackers close with the phase. `feature-tracker.md` row 24 still reads "done" while enforcement does not exist |
+| P7-E6 | Docs — `docs/base/features/feature-flags.md` (the phase happened; resolve the 400-vs-403 question; document the activation requirement), `task-tracker.md`, `progress.md`, `feature-tracker.md` row 24, and fix the broken link at `docs/base/ui/ui-architecture.md:158` → file is at `docs/base/features/feature-flags.md` | A–F | 🟡 PARTIAL — the two doc items closed in the Group A audit (`feature-flags.md` rewritten: catalogue, activation requirement, 403 settled, no-bypass rule; the `ui-architecture.md` link fixed). Trackers close with the phase. `feature-tracker.md` row 24 still reads "done" while enforcement does not exist |
 | P7-E7 | Full verification — `php artisan test`, `npm run build`, `vendor/bin/pint --test`, `php artisan view:cache` | A–F | ⬜ TODO |
 
 ---
@@ -327,7 +402,7 @@ expensive direction.
 |---|---|
 | Store read per flag per request | `FeatureCatalog::isActive()` goes through one reader and the index resolves once in `FeatureIndexAction`, never in a Blade loop (`P7-D2`, `P7-E5`) |
 | Sidebar cost | the composer runs once per request; after D9 it calls `isActive()` per item, in-memory after the first read |
-| Middleware ordering | `feature:` must run **after** `auth`. Inside the authenticated group that is automatic. On a public route an unauthenticated 404 reveals the flag exists — acceptable, the flag's existence is not a secret, but noted |
+| Middleware ordering | `feature:` must run **after** `auth`. Inside the authenticated group that is automatic. On a public route an unauthenticated 403 reveals the flag exists — acceptable, the flag's existence is not a secret, but noted |
 | Bulk toggles | one request, one audit row, all `from` values read before any write (`P7-F3`) |
 
 ## Security Notes
@@ -352,7 +427,7 @@ permission name — a DB row nothing reads is a trap. Revisit only if a tenant o
 plugin needs runtime-defined flags.
 ```
 ```
-ponytail: no features.manage bypass. A flag off 404s for everyone, managers
+ponytail: no features.manage bypass. A flag off refuses everyone, managers
 included; a manager re-enables from /features first. Revisit if a named
 requirement needs a manager to inspect a killed module.
 ```
@@ -363,7 +438,7 @@ does not author. Revisit with the catalogue above.
 ```
 ```
 ponytail: one middleware class rather than Pennant's EnsureFeaturesAreActive.
-Two classes, one line of duplicated logic, and the difference is 400 vs 404 — a
+Two classes, one line of duplicated logic, and the difference is 400 vs 403 — a
 response this repo already uses for the same case. Revisit if Pennant ever lets
 one middleware answer per feature.
 ```
@@ -381,7 +456,7 @@ only with the unsaved/dirty guidelines design-system.md § Staged Changes demand
 Group A (UI — views only)          — DONE  (9545bce)
 Group B (Catalogue + activation)   — DONE  (b72a5f6)
 Group C (Middleware + Blade)       — C1 → C2 → C3 → C4 → C5      ⬜ NEXT
-                                     ↓ Gate C: off => 404 for everyone, superadmin included
+                                     ↓ Gate C: off => 403 for everyone, superadmin included
 Group D (Route/menu gating)        — D7 → D8 → D9 → D10          ⬜
                                      ↓ Gate D: matrix holds on web + API + sidebar
 Group F (Bulk feature actions)     — F1 → F2 → F3 → F4 → F5 → F6 ⬜

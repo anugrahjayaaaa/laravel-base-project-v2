@@ -53,7 +53,7 @@ writers for one question and whichever ran last would win with neither knowing.
 
 **This is the trap worth knowing.** With the `database` store, `Feature::active()`
 resolves against a row in `features`. **No row → false, fail-closed.** A flag
-added to config and wired to a route produces a route that 404s for everyone,
+added to config and wired to a route produces a route that refuses for everyone,
 superadmin included, until it is activated:
 
 ```
@@ -73,6 +73,32 @@ a lie — it would show one person's flags as though they were the installation'
 Read a flag through `FeatureCatalog::isActive($slug)`, never
 `Feature::active()` directly: it consults config first, so `disabled => true`
 wins over a row an operator set earlier.
+
+### Enforcement
+
+Routes are gated with the `feature:` alias, which maps to
+`App\Http\Middleware\EnsureFeatureIsEnabled`:
+
+```php
+Route::middleware(['auth', 'feature:users'])->group(function () {
+    // ...
+});
+```
+
+Any inactive flag → `abort(403)`. Variadic, so several flags are ANDed — and the
+alias is written **once**: `feature:users,roles`. Repeating it
+(`feature:users,feature:roles`) resolves the second entry to the literal string
+`'feature:roles'`, an undeclared slug, which fails closed into a 403 that looks
+exactly like a working kill switch.
+
+**Why this project's own middleware rather than Pennant's.** Two reasons, both
+measured: Pennant's aborts **400**, and it resolves through `Feature::active()`,
+which asks the store — so a `disabled => true` flag with a stored active row reads
+as *active* to it. Going through `FeatureCatalog::isActive()` is what makes the
+store state and the config override answer the same question.
+
+`/features` itself is deliberately **never** gated. A gate there would remove the
+only page that can bring a flag back, leaving a redeploy as the sole way out.
 
 ### Management UI
 
@@ -102,8 +128,8 @@ use Laravel\Pennant\Feature;
 
 // Define a feature (in a feature class or via Pennant::define)
 // Check in application/controller code — enforcement boundary
-if (! Feature::active('new-dashboard')) {
-    abort(404);
+if (! FeatureCatalog::isActive('new-dashboard')) {
+    abort(403);
 }
 
 // Blade (UX only — backend must still enforce)
@@ -114,20 +140,43 @@ if (! Feature::active('new-dashboard')) {
 
 Feature availability is separate from authorization:
 - A feature may be available but the user lacks permission → **403 Forbidden**.
-- A feature may be unavailable even with permission → **404 Not Found**.
+- A feature may be unavailable even with permission → **403 Forbidden**.
 
-**404, not 400 — settled.** Pennant's own `EnsureFeaturesAreActive` middleware
-aborts **400**, which is wrong here: 400 says "your request is malformed", sending
-an integrator hunting a bug in their own code when in fact the server declined to
-serve it. 403 says "you are not allowed", which invites an escalation request —
-the wrong answer for a flag an operator turned off. 404 says "no such resource",
-so the client stops asking. A kill switch exists so a module *disappears*.
+**403 — settled 2026-10-01** (this was 404 until then). A disabled module is
+refused exactly the way an unpermitted one is.
 
-Three places in this repo already answer 404 for a disabled capability:
-`AuthController` (`abort_unless($registration_enabled, 404)`) and the matching
-API controller. Pennant is the outlier and is not aliased.
+| Status | Truthful for a disabled module? |
+|---|---|
+| **400** | **no** — the request was well-formed; the server declined to serve it |
+| **404** | **no** — the route does exist; 404 produces a "this 404s intermittently" support trail |
+| **403** | **yes** — understood, and not serving it |
 
-**No `features.manage` bypass.** A flag off 404s the route for everyone,
+403 is also what `can:` and `CheckAccountState` already return, so one status
+carries one meaning across the whole admin. The cost: *module killed*, *no
+permission* and *account disabled* share a status — a client needing to tell them
+apart asks `/features` (never gated) rather than inferring from the code.
+
+**Why not Pennant's middleware.** Two reasons, the second decisive:
+
+1. It aborts **400**.
+2. It **cannot read `disabled => true`** — it resolves through `Feature::active()`,
+   which asks the store:
+
+   ```php
+   config(['pennant.features.users.disabled' => true]);
+   FeatureCatalog::isActive('users')    => false   ← correct
+   Feature::active('users')            => true    ← Pennant's view
+   Feature::someAreInactive(['users'])  => false   ← what its middleware sees
+   ```
+
+   Aliasing it would leave the config kill switch inert on every gated route.
+   `App\Http\Middleware\EnsureFeatureIsEnabled` goes through
+   `FeatureCatalog::isActive()` so store state and config override agree.
+
+`AuthController` still 404s `registration` (`abort_unless($registration_enabled, 404)`)
+— a *setting*-gated feature, deliberately left as it was.
+
+**No `features.manage` bypass.** A flag off refuses the route for everyone,
 managers included; a manager re-enables from `/features` first. A kill switch
 superadmin can walk through is not a kill switch, and "the feature is off but the
 CEO can still see it" is a state nobody asked for.
