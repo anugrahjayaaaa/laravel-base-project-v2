@@ -19,6 +19,36 @@
 | Imports | Short import only — no FQCN in code bodies |
 | Views | No FQCN, no model queries, no service calls in Blade — supply them as view data |
 | Action classes | `{Domain}{Operation}Action` — see [Action Naming](#action-naming-domain-first) |
+
+## Form Request Layout
+
+| Aspect | Convention |
+|--------|-----------|
+| Path | `app/Http/Requests/V1/{Domain}/{Class}Request.php` |
+| Namespace | `App\Http\Requests\V1\{Domain}` |
+| Parent | `App\Http\Requests\BaseFormRequest` — every concrete Request |
+| Shared behaviour | `app/Concerns/`, namespace `App\Concerns` |
+
+`app/Http/Requests/` holds Form Requests and nothing else. Traits that support
+them live in `app/Concerns/` alongside `Actions/Concerns/`, `Jobs/Concerns/`
+and `Models/Concerns/` — one place for the pattern, not four.
+
+There is **no channel segment** (`Requests/Api/V1/`) because a Form Request is
+consumed by both channels: `StoreRoleRequest` is injected by
+`Web/V1/RoleController` and `Api/V1/Role/RoleController`.
+
+**The error contract lives on the base class, not on each Request.** Validation
+failures return `{message, errors, code, meta}` — the same `code` and
+`meta.request_id` / `meta.timestamp` that `Controller::respond()` emits on
+success. Applying `FormatsApiErrors` per-Request let 17 of 21 endpoints fall
+through to Laravel's default `{message, errors}` while only the four Auth
+requests carried it, and no test covered the difference. Inheritance removes
+the possibility of forgetting it.
+
+## Test Naming
+
+| Aspect | Convention |
+|--------|-----------|
 | Test classes | `{Subject}Test` — mirror the class under test 1:1 |
 | DI properties | camelCase, never the class name (`$indexAction`, not `$IndexAction`) |
 
