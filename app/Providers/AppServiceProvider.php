@@ -14,6 +14,7 @@ use Illuminate\Support\ServiceProvider;
 use Illuminate\Pagination\Paginator;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\RateLimiter;
+use Laravel\Pennant\Feature;
 
 /**
  * Application service provider.
@@ -57,6 +58,35 @@ class AppServiceProvider extends ServiceProvider
         });
 
         User::observe(UserObserver::class);
+
+        // Feature flags: one definition per catalogue entry.
+        //
+        // The resolver returns FALSE, and that is the load-bearing part.
+        // Pennant asks the resolver only when the store has no row for a flag,
+        // so `false` makes an unseeded flag read as OFF — fail-closed, which
+        // is what `FeatureFlagCatalogTest::every_catalogued_flag_resolves_off_
+        // until_it_is_seeded` pins. Returning `true` here (the obvious
+        // "features are on by default") inverts that: a flag added to config
+        // would be live before anyone seeded it, and the kill switch would
+        // depend on the seeder having run.
+        //
+        // Measured, because it is not obvious from the docs: when a row DOES
+        // exist, the store wins and the resolver is ignored. So `disabled =>
+        // true` cannot be expressed here — a stored `true` would survive it.
+        // That key is honoured by the project's own readers
+        // (FeatureIndexAction now, EnsureFeatureIsEnabled at P7-C1), which is
+        // the only place a flag's effective state is decided.
+        //
+        // Scope is forced global. Pennant defaults to the authenticated user,
+        // which would make each flag per-account — then the management page
+        // would show one user's answer and write it for everyone, and the
+        // sidebar would disagree with the routes depending on who asked. A
+        // kill switch is one switch.
+        Feature::resolveScopeUsing(fn () => 'global');
+
+        foreach (array_keys(config('pennant.features', [])) as $slug) {
+            Feature::define($slug, fn (): bool => false);
+        }
 
         // Both are reachable from the API, so both need the JSON branch too.
         $throttle = app(LoginThrottle::class);
