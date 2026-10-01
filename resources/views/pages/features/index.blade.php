@@ -164,7 +164,7 @@
                                     <td class="text-center">
                                         <x-ui.feature-toggle
                                             :feature="$feature"
-                                            :manageable="auth()->user()?->can('features.manage') ?? false" />
+                                            :manageable="$manageable" />
                                     </td>
                                 </tr>
                             @endforeach

@@ -39,7 +39,7 @@ class FeatureController extends Controller
         $this->authorize($request, 'features.view');
 
         return view('pages.features.index', [
-            ...$this->indexAction->run(),
+            ...$this->indexAction->run($request->user()),
         ]);
     }
 

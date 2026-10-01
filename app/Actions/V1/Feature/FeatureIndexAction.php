@@ -2,6 +2,7 @@
 
 namespace App\Actions\V1\Feature;
 
+use App\Models\User;
 use App\Support\FeatureCatalog;
 use Illuminate\Support\Facades\Cache;
 
@@ -36,14 +37,27 @@ class FeatureIndexAction
     /**
      * The flags grouped by module, with their current state and toggle URLs.
      *
+     * `manageable` is resolved here rather than asked in the view. The view
+     * reads variables and nothing else — the same rule that puts `toggle_url`
+     * in this class — and this was the one binding still calling
+     * `auth()->user()?->can()` inline, the only such call in the view layer.
+     *
+     * The viewer is a parameter, not a `request()` lookup inside the action:
+     * every sibling action takes its actors explicitly, and an action that
+     * reaches for the container cannot be told which user it is acting for.
+     *
+     * It stays OUT of the cached snapshot on purpose: the answer depends on the
+     * viewer, and a cached one would show the first caller's rights to everyone.
+     *
      * @return array{
      *     featureGroups: array<string, array<int, array<string, mixed>>>,
      *     totalFeatures: int,
      *     enabledCount: int,
-     *     disabledCount: int
+     *     disabledCount: int,
+     *     manageable: bool
      * }
      */
-    public function run(): array
+    public function run(?User $viewer = null): array
     {
         $snapshot = Cache::remember(
             'feature_flags.resolved',
@@ -72,6 +86,7 @@ class FeatureIndexAction
             'totalFeatures' => $snapshot['total'],
             'enabledCount' => $snapshot['enabled'],
             'disabledCount' => $snapshot['disabled'],
+            'manageable' => $viewer?->can('features.manage') ?? false,
         ];
     }
 
