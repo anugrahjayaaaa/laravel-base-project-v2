@@ -99,6 +99,9 @@ class FeatureFlagUiRenderTest extends TestCase
             'totalFeatures' => $flags->count(),
             'enabledCount' => $flags->where('enabled', true)->count(),
             'disabledCount' => $flags->where('enabled', false)->count(),
+            // Supplied by FeatureIndexAction, from the acting user. A test that
+            // wants the other branch overrides it via render().
+            'manageable' => true,
         ];
     }
 
@@ -107,13 +110,19 @@ class FeatureFlagUiRenderTest extends TestCase
      * gets `errors` from ShareErrorsFromSession, and a bare render would fail
      * on a line every page shares.
      *
-     * No `$manageable` argument: the view asks `auth()->user()?->can()` itself,
-     * so manageability is decided by the signed-in role, never by the caller.
+     * `$manageable` arrives as data rather than being asked inside the view —
+     * `FeatureIndexAction` resolves it from the viewer. That is the convention
+     * `GateDUiGatingTest::test_no_view_asks_the_gate_itself` enforces, and it
+     * means a test states which branch it is rendering rather than arranging a
+     * signed-in user to produce it.
      */
-    private function render(): string
+    private function render(bool $manageable = true): string
     {
-        return view('pages.features.index', array_merge(['errors' => new ViewErrorBag()], $this->viewData()))
-            ->render();
+        return view('pages.features.index', array_merge(
+            ['errors' => new ViewErrorBag()],
+            $this->viewData(),
+            ['manageable' => $manageable],
+        ))->render();
     }
 
     /**
@@ -393,7 +402,7 @@ class FeatureFlagUiRenderTest extends TestCase
             'precondition: the user role must not hold features.manage'
         );
 
-        $html = $this->render();
+        $html = $this->render(manageable: false);
 
         $this->assertSame([], $this->switches($html), 'a viewer was given an editable switch');
         $this->assertStringNotContainsString('form-check form-switch', $html);
@@ -410,7 +419,7 @@ class FeatureFlagUiRenderTest extends TestCase
 
         $this->assertStringNotContainsString(
             'You can view these flags but not change them.',
-            $this->render()
+            $this->render(manageable: true)
         );
     }
 
