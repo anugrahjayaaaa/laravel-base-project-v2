@@ -10,8 +10,7 @@ Monitoring
 ├── Application Logs
 ├── Security Logs
 ├── Server Logs
-├── Telescope
-├── Periscope (Telescope companion UI)
+├── Laravel Pulse (runtime metrics dashboard)
 └── System Health
 ```
 
@@ -48,22 +47,20 @@ Monitoring
 - Answers: **What happened at the infrastructure level?**
 - Retention: configured by infra team (separate policy)
 
-## Telescope (Purpose: Laravel technical debugging)
- - Laravel Telescope — technical debugging.
+## Laravel Pulse (Purpose: runtime metrics dashboard)
+ - First-party metrics dashboard at `/pulse`: queue depth, cache behaviour,
+   exception rate, slow requests, scheduler history.
+ - Records aggregates, not per-request payloads.
  - Intended for technical users only (developers, DevOps, SRE, technical admins).
  - NOT a replacement for Audit Trail or Application Logs.
- - Do not merge Telescope with Audit Trail concerns.
- - Retention: 7 days (auto-purge)
-
-## Periscope (Purpose: Telescope companion UI)
- - Browsing, filtering, and searching Telescope's existing data (requests,
-   exceptions, queries, jobs, mail, notifications, cache, events, logs).
- - Does NOT replace Telescope — reads the same `telescope_entries` data.
- - Accessible at `/periscope`.
- - Inherits Telescope's authorization via `Telescope::check($request)`.
- - No separate auth, gate, role, or migration — reads Telescope's tables.
- - Excludes its own requests from Telescope watchers to avoid noise.
- - Retention: follows Telescope's 7-day auto-purge.
+ - Do not merge Pulse with Audit Trail concerns.
+ - Replaced `laravel/telescope` + `periscope/periscope` (commit `85384b4`).
+ - Access requires the `pulse` feature flag AND the `pulse.view` permission.
+   See [monitoring.md](../features/monitoring.md) § Access — two independent gates.
+ - Retention: Pulse's own retention configuration.
+ - Not a request-level debugger. Slow-query diagnosis goes through the MySQL slow
+   log and `EXPLAIN`, not Pulse — see
+   [implementation-roadmap.md](../../planning/implementation-roadmap.md).
 
 ### System Health (Purpose: Operational status)
 - Application health check endpoints.
@@ -74,14 +71,13 @@ Monitoring
 
 ## Important Separation
 
-- Telescope is the data collector and primary debugging dashboard.
-- Periscope is a companion UI that reads Telescope's existing data.
+- Pulse is the runtime metrics dashboard, gated by flag + permission.
 - Audit Trail is for non-technical operational/security users.
 - Security Logs are distinct from Application Logs — security events must
   be queryable independently for incident response.
 - Application Logs are distinct from Server Logs — application-level events
   must be separable from infrastructure-level events.
-- Telescope and Periscope must not be merged with Audit Trail concerns.
+- Pulse must not be merged with Audit Trail concerns.
 
 ## Correlation ID
 
@@ -98,6 +94,6 @@ propagation strategy.
 
 ## ADR References
 
-- ADR-008: Audit Trail vs Telescope separation
+- ADR-008: Audit Trail vs Technical Observability separation
 - ADR-013: Application Logging Strategy
-- DEP-004: Telescope for Technical Observability (Telescope + Periscope)
+- DEP-004: Laravel Pulse for Technical Observability

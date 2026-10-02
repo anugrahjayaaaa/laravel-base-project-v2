@@ -20,9 +20,8 @@ Prefer Laravel-native functionality when appropriate.
 Use established packages for capabilities better provided by mature ecosystem solutions:
 - RBAC → Spatie Permission (`spatie/laravel-permission`)
 - Audit → Spatie Activitylog (`spatie/laravel-activitylog`)
-- Telescope → Laravel Telescope (`laravel/telescope`)
+- Runtime metrics → Laravel Pulse (`laravel/pulse`)
 - Feature flags → Laravel Pennant (`laravel/pennant`)
-- Telescope companion UI → Periscope (`seanbarton/laravel-periscope`) — reads Telescope data, inherits auth
 - API Authentication → Laravel Sanctum (`laravel/sanctum`)
 - API Documentation → Scramble (`dedoc/scramble`)
 

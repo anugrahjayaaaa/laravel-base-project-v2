@@ -26,6 +26,12 @@ class AuthAuthenticateAction
         string $ip,
         LoginThrottle $throttle,
     ): array {
+        // Resolved up front, and separately from findUser() on purpose. A
+        // failed login has no authenticated user to attribute the row to, yet
+        // it must still name who was targeted — an audit that cannot say which
+        // account was tried is not useful for the incident it exists for.
+        $subject = User::where('email', $identifier)->orWhere('username', $identifier)->first();
+
         $throttleError = $this->checkThrottle($identifier, $ip, $throttle);
 
         if ($throttleError) {
@@ -36,6 +42,20 @@ class AuthAuthenticateAction
 
         if (! $user) {
             $lockedSeconds = $throttle->recordFailed($identifier, $ip, $user);
+
+            // No audit row when the identifier is not an account: there is no
+            // model to hang one on, and `failed_login_attempts` already holds
+            // this exact attempt keyed by identifier and IP — the same fact in a
+            // table designed for it. Writing a subject-less row here would be
+            // that fact a second time, in the wrong shape.
+            $subject?->audit('auth.login_failed', null, ['identifier' => $identifier]);
+
+            if ($lockedSeconds > 0) {
+                $subject?->audit('auth.account_locked', null, [
+                    'identifier' => $identifier,
+                    'lock_duration_seconds' => $lockedSeconds,
+                ]);
+            }
 
             return ['error' => ['message' => 'Invalid credentials.', 'status' => 401], 'lockedSeconds' => $lockedSeconds];
         }

@@ -2,6 +2,7 @@
 
 namespace Tests;
 
+use App\Models\SystemSetting;
 use Database\Seeders\FeatureFlagSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
@@ -14,6 +15,28 @@ abstract class TestCase extends BaseTestCase
         parent::setUp();
 
         $this->seedFeatureFlags();
+    }
+
+    /**
+     * Drop the settings cache between tests.
+     *
+     * `SystemSetting` reads through `Cache::rememberForever`, and
+     * `RefreshDatabase` rolls the database back but not the cache — so a value
+     * one test writes is still there for the next one. That is not theoretical:
+     * `RegistrationDefaultRoleTest` clears `registration_default_role`, and
+     * `RbacRoleSyncTest` then created an account on no role at all and failed
+     * only when the whole `--filter=Role` suite ran together. A test asserting
+     * against a leaked value passes alone and fails in CI, which is the worst
+     * way for a test to be wrong.
+     *
+     * One line in the shared base rather than a `bustCache()` call per test file:
+     * the leak is a property of the base trait, so the fix belongs beside it.
+     */
+    protected function tearDown(): void
+    {
+        SystemSetting::bustCache();
+
+        parent::tearDown();
     }
 
     /**

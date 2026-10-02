@@ -32,8 +32,6 @@ class PasswordChangeController extends Controller
             newPassword: $data['password'],
         );
 
-        $this->audit('auth.password_changed', $user, $user);
-
         return response()->json([
             'data' => ['message' => 'Password changed successfully.'],
             'meta' => [

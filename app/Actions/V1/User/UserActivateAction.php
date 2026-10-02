@@ -16,15 +16,25 @@ class UserActivateAction
     /**
      * Activate the user.
      *
-     * @param  User   $user
+     * @param  User       $user
+     * @param  User|null  $causer  Who to attribute the audit record to
      * @return array  ['user' => User]
      */
-    public function run(User $user): array
+    public function run(User $user, ?User $causer = null): array
     {
         $this->validate($user);
 
-        DB::transaction(function () use ($user) {
+        DB::transaction(function () use ($user, $causer) {
             $user->update(['is_active' => true, 'is_locked' => false]);
+
+            // target_id/target_email are redundant with the subject, and
+            // deliberately so: the activity list filters on properties, and a
+            // state row that only carried a subject id could not be searched by
+            // the address it affected.
+            $user->audit('user.activated', $causer, [
+                'target_id' => $user->id,
+                'target_email' => $user->email,
+            ]);
         });
 
         return ['user' => $user];

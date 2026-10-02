@@ -46,17 +46,26 @@ class UserBulkActionHandler implements BulkActionHandler
      */
     public function executeBulk(string $action, array $ids): void
     {
+        // Every branch loops an action that writes its own audit row, and none
+        // of them writes its column directly any more.
+        //
+        // The three state operations used to be `User::whereIn(...)->update()`.
+        // That made them the last user mutations with no action behind them, and
+        // the two consequences followed from that: the guards the row buttons
+        // enforced were absent from the bulk bar (locking an inactive user,
+        // activating a locked one), and the only record of the change was an
+        // aggregate row the controller wrote after this returned — outside the
+        // transaction, carrying no properties, naming no target. One code path
+        // now serves both entry points.
+        //
+        // `getValidItems()` has already narrowed each selection to users the
+        // matching action accepts, so a loop cannot trip the action's own guard:
+        // lock admits only active users, activate only inactive ones (a locked
+        // user resolves to LOCKED, which precedes INACTIVE in the enum).
         match ($action) {
-            'lock' => User::whereIn('id', $ids)->update(['is_locked' => true]),
-            'unlock' => User::whereIn('id', $ids)->update(['is_locked' => false]),
-            'activate' => User::whereIn('id', $ids)->update(['is_active' => true, 'is_locked' => false]),
-            // NOT a raw UPDATE. Deactivating writes `is_active`, and an inactive
-            // superadmin cannot log in — so this column is load-bearing for the
-            // last-superadmin invariant. The single-user path enforces it inside
-            // UserDeactivateAction; a bulk `update()` here bypassed that action
-            // completely, so the same guard the UI enforced was absent from the
-            // dropdown one screen above. Routing through the action means the
-            // guard lives in one place instead of two.
+            'lock' => $this->lockUsers($ids),
+            'unlock' => $this->unlockUsers($ids),
+            'activate' => $this->activateUsers($ids),
             'deactivate' => $this->deactivateUsers($ids),
             'delete' => $this->deleteUsers($ids),
             'restore' => $this->restoreUsers($ids),
@@ -67,12 +76,20 @@ class UserBulkActionHandler implements BulkActionHandler
     /**
      * Get the technical audit event name.
      *
+     * Empty, and no longer per-action: every branch of `executeBulk` loops an
+     * action that writes its own `user.*` row per subject inside its own
+     * transaction, so an aggregate row here would name the same subjects a
+     * second time and add none of the properties the action recorded.
+     *
+     * `lock`, `unlock` and `activate` used to be the exception — they wrote
+     * their column directly, so nothing else recorded them. Now they are not.
+     *
      * @param  string  $action
      * @return string
      */
     public function getAuditEvent(string $action): string
     {
-        return "user.{$action}";
+        return '';
     }
 
     /**
@@ -144,34 +161,110 @@ class UserBulkActionHandler implements BulkActionHandler
      */
     private function deactivateUsers(array $ids): void
     {
-        $users = User::withTrashed()->whereIn('id', $ids)->get();
-
-        foreach ($users as $user) {
-            app(UserDeactivateAction::class)->run($user, auth()->user());
-        }
+        // `invalidateSessions: false` because `BulkActionProcessor` already
+        // calls `batchInvalidateSessions()` for every action in
+        // `getSessionInvalidationActions()` — once for the whole selection, in
+        // two queries. The action would otherwise delete the same sessions per
+        // user on top of that.
+        $this->eachUser($ids, fn (User $user, User $causer) => app(UserDeactivateAction::class)
+            ->run($user, $causer, invalidateSessions: false));
     }
 
+    /**
+     * Lock each user through `UserLockAction`.
+     *
+     * `invalidateSessions: false` for the same reason as `deactivateUsers` —
+     * the processor already batch-invalidates for `lock`.
+     *
+     * @param  array<int>  $ids
+     */
+    private function lockUsers(array $ids): void
+    {
+        $this->eachUser($ids, fn (User $user, User $causer) => app(UserLockAction::class)
+            ->run($user, $causer, invalidateSessions: false));
+    }
+
+    /**
+     * Unlock each user through `UserUnlockAction`.
+     *
+     * No session invalidation, and none is needed: unlocking restores access
+     * rather than revoking it, and `lock` is not in
+     * `getSessionInvalidationActions()` — so the token and session a lock
+     * killed are not resurrected here.
+     *
+     * @param  array<int>  $ids
+     */
+    private function unlockUsers(array $ids): void
+    {
+        $this->eachUser($ids, fn (User $user, User $causer) => app(UserUnlockAction::class)
+            ->run($user, $causer));
+    }
+
+    /**
+     * Activate each user through `UserActivateAction`.
+     *
+     * Clears `is_locked` as well as setting `is_active`, exactly as the raw
+     * `update()` this replaced did — the action owns the column pair, so the
+     * bulk bar and the row button cannot drift apart on it.
+     *
+     * @param  array<int>  $ids
+     */
+    private function activateUsers(array $ids): void
+    {
+        $this->eachUser($ids, fn (User $user, User $causer) => app(UserActivateAction::class)
+            ->run($user, $causer));
+    }
+
+    /**
+     * Trash each user through `UserDeleteAction`.
+     *
+     * @param  array<int>  $ids
+     */
     private function deleteUsers(array $ids): void
     {
-        $users = User::withTrashed()->whereIn('id', $ids)->get();
-        foreach ($users as $user) {
-            app(UserDeleteAction::class)->run($user, auth()->user());
-        }
+        $this->eachUser($ids, fn (User $user, User $causer) => app(UserDeleteAction::class)
+            ->run($user, $causer));
     }
 
+    /**
+     * Restore each user through `UserRestoreAction`.
+     *
+     * @param  array<int>  $ids
+     */
     private function restoreUsers(array $ids): void
     {
-        $users = User::withTrashed()->whereIn('id', $ids)->get();
-        foreach ($users as $user) {
-            app(UserRestoreAction::class)->run($user);
-        }
+        $this->eachUser($ids, fn (User $user, User $causer) => app(UserRestoreAction::class)
+            ->run($user, causer: $causer));
     }
 
+    /**
+     * Permanently remove each user through `UserForceDeleteAction`.
+     *
+     * @param  array<int>  $ids
+     */
     private function forceDeleteUsers(array $ids): void
     {
+        $this->eachUser($ids, fn (User $user, User $causer) => app(UserForceDeleteAction::class)
+            ->run($user, $causer));
+    }
+
+    /**
+     * Run one action per selected user, attributing every record to the caller.
+     *
+     * One loop for all seven branches. They differed only in which action they
+     * called, and six near-identical copies of fetch-then-loop is how three of
+     * them ended up bypassing the actions entirely.
+     *
+     * @param  array<int>  $ids
+     * @param  callable(User, User): mixed  $callback
+     */
+    private function eachUser(array $ids, callable $callback): void
+    {
         $users = User::withTrashed()->whereIn('id', $ids)->get();
+        $causer = auth()->user();
+
         foreach ($users as $user) {
-            app(UserForceDeleteAction::class)->run($user, auth()->user());
+            $callback($user, $causer);
         }
     }
 }

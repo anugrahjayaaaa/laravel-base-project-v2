@@ -16,12 +16,13 @@ class UserRequestEmailChangeAction
     /**
      * Set pending email and send verification notification.
      *
-     * @param  User   $user
-     * @param  string $newEmail
+     * @param  User       $user
+     * @param  string     $newEmail
+     * @param  User|null  $causer  Who to attribute the audit record to
      */
-    public function run(User $user, string $newEmail): void
+    public function run(User $user, string $newEmail, ?User $causer = null): void
     {
-        DB::transaction(function () use ($user, $newEmail) {
+        DB::transaction(function () use ($user, $newEmail, $causer) {
             $token = Str::random(64);
 
             $user->update([
@@ -31,6 +32,10 @@ class UserRequestEmailChangeAction
             ]);
 
             Notification::send($user->fresh(), new ChangeEmailVerificationNotification($newEmail, $token));
+
+            if ($causer !== null) {
+                $user->audit('user.email_change_requested', $causer, ['pending_email' => $newEmail]);
+            }
         });
     }
 }

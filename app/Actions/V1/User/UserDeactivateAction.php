@@ -26,11 +26,20 @@ class UserDeactivateAction
     {
         $this->validate($user, $causer);
 
-        DB::transaction(function () use ($user, $invalidateSessions) {
+        DB::transaction(function () use ($user, $causer, $invalidateSessions) {
             $user->update(['is_active' => false]);
             if ($invalidateSessions) {
                 $this->invalidateSessions($user);
             }
+
+            // target_id/target_email are redundant with the subject, and
+            // deliberately so: the activity list filters on properties, and a
+            // state row that only carried a subject id could not be searched by
+            // the address it affected.
+            $user->audit('user.deactivated', $causer, [
+                'target_id' => $user->id,
+                'target_email' => $user->email,
+            ]);
         });
 
         return ['user' => $user];

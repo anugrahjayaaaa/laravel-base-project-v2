@@ -18,6 +18,9 @@ class BulkRoleRequest extends BaseFormRequest
 {
     use AuthorizesBulkAction;
 
+    /** The roles table paginates at 10; a bulk selection can never exceed it. */
+    public const MAX_SELECTION = 10;
+
     protected function bulkEntityPrefix(): string
     {
         return 'roles';
@@ -27,12 +30,26 @@ class BulkRoleRequest extends BaseFormRequest
     {
         return [
             'action' => ['required', 'string', Rule::in(self::bulkActions())],
-            'role_ids' => ['required', 'array', 'min:1'],
+            // Capped at the page size for the same reason as BulkUserRequest:
+            // the select-all is scoped to the rendered table, so the UI cannot
+            // reach past it, and the API sharing this request should not be able
+            // to hand the handler an unbounded id list.
+            'role_ids' => ['required', 'array', 'min:1', 'max:'.self::MAX_SELECTION],
             'role_ids.*' => ['integer', function (string $attribute, mixed $value, \Closure $fail): void {
                 if (! Role::withTrashed()->whereKey($value)->exists()) {
                     $fail("The selected role (ID: {$value}) is invalid.");
                 }
             }],
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        return [
+            'role_ids.max' => 'You can act on at most :max roles at a time.',
         ];
     }
 }

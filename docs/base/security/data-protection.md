@@ -68,7 +68,7 @@ Define retention separately for:
 - Application logs
 - Server logs
 - Security logs
-- Telescope
+- Laravel Pulse
 - Sessions
 - Revoked tokens
 - Password history

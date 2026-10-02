@@ -27,7 +27,8 @@ class UserStateController extends Controller
         private readonly UserDeactivateAction $deactivateAction,
         private readonly UserLockAction $lockAction,
         private readonly UserUnlockAction $unlockAction,
-    ) {}
+    ) {
+    }
 
     /**
      * Activate a user.
@@ -38,9 +39,7 @@ class UserStateController extends Controller
      */
     public function activate(Request $request, User $user): JsonResponse
     {
-        $this->activateAction->run($user);
-
-        $user->audit('user.activated', $request->user(), ['target_id' => $user->id, 'target_email' => $user->email]);
+        $this->activateAction->run($user, $request->user());
 
         return $this->success('User activated successfully.');
     }
@@ -56,8 +55,6 @@ class UserStateController extends Controller
     {
         $this->deactivateAction->run($user, $request->user());
 
-        $user->audit('user.deactivated', $request->user(), ['target_id' => $user->id, 'target_email' => $user->email]);
-
         return $this->success('User deactivated successfully.');
     }
 
@@ -70,9 +67,7 @@ class UserStateController extends Controller
      */
     public function lock(Request $request, User $user): JsonResponse
     {
-        $this->lockAction->run($user);
-
-        $user->audit('user.locked', $request->user(), ['target_id' => $user->id, 'target_email' => $user->email]);
+        $this->lockAction->run($user, $request->user());
 
         return $this->success('User locked successfully.');
     }
@@ -86,9 +81,7 @@ class UserStateController extends Controller
      */
     public function unlock(Request $request, User $user): JsonResponse
     {
-        $this->unlockAction->run($user, $request->ip(), $request);
-
-        $user->audit('user.unlocked', $request->user(), ['target_id' => $user->id, 'target_email' => $user->email]);
+        $this->unlockAction->run($user, $request->user(), request()->ip(), request());
 
         return $this->success('User unlocked successfully.');
     }

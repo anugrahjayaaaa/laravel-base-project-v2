@@ -27,7 +27,7 @@ installed and verified against `composer.lock`.
 || API Auth | Sanctum | `laravel/sanctum` | Required | P0 | Through Auth layer |
 || RBAC | Spatie Permission | `spatie/laravel-permission` | Required | P0 | Through Authorization layer |
 || Audit Trail | Spatie Activitylog | `spatie/laravel-activitylog` | Required | P0 | Prefer Audit abstraction |
-|| Technical Observability | Telescope + Periscope | `laravel/telescope` + `seanbarton/laravel-periscope` | Required | P1 | Restricted (technical users) |
+|| Technical Observability | Laravel Pulse | `laravel/pulse` | Required | P1 | Restricted (technical users) |
 || Feature Flags | Laravel Pennant | `laravel/pennant` | Required | P1 | Through Feature facade |
 || API Documentation | Scramble | `dedoc/scramble` | Planned | P1 | Documentation only |
 || Queue (default backend) | Laravel Queue | Native | Core | P0 | Through Queue facade |
@@ -42,8 +42,7 @@ installed and verified against `composer.lock`.
 - [Laravel Sanctum](#laravel-sanctum)
 - [Spatie Laravel Permission](#spatie-laravel-permission)
 - [Spatie Laravel Activitylog](#spatie-laravel-activitylog)
-- [Laravel Telescope](#laravel-telescope)
-- [Laravel Periscope (Telescope Companion)](#laravel-periscope-telescope-companion)
+- [Laravel Pulse](#laravel-pulse)
 - [Laravel Pennant](#laravel-pennant)
 - [API Documentation](#api-documentation)
 - [Redis Compatibility](#redis-compatibility)
@@ -369,7 +368,7 @@ Audit Trail answers: **WHO did WHAT to WHICH resource?**
 Audit Trail is NOT the same as:
 - Application Logs (WHAT happened technically) — see [logging.md](../infrastructure/logging.md)
 - Server Logs (infrastructure-level)
-- Telescope (HOW Laravel runtime behaved)
+- Pulse (runtime health metrics)
 - Technical monitoring (debugging)
 
 This separation is codified in ADR-008 and
@@ -481,140 +480,94 @@ Actions call the abstraction, never Activitylog directly.
 
 ---
 
-## Laravel Telescope
+## Laravel Pulse
 
-|| Field | Value |
-||-------|-------|
-|| Composer package | `laravel/telescope` |
-|| Status | Required |
-|| Priority | P1 |
-||| Architecture area | Monitoring / Observability (Phase 11 `MONITOR-001`) |
-||| Package constraint | `^5.0` (Laravel 13 compatible) |
+| Field | Value |
+|-------|-------|
+| Composer package | `laravel/pulse` |
+| Status | Required |
+| Priority | P1 |
+| Architecture area | Monitoring / Observability (Phase 11 `MONITOR-001`) |
+| Package constraint | `^1.8` (Laravel 13 compatible) |
 
 ### Purpose
 
-Technical/runtime observability of the Laravel application:
+Runtime metrics dashboard for the Laravel application:
 
-- Requests
-- Exceptions
-- Queries
-- Jobs
-- Commands
-- Mail
-- Notifications
-- Cache
-- Events
-- Logs
-- Runtime investigation
+- Queue throughput, depth, and job failures
+- Cache hit rate and slow operations
+- Exception rate and slowest requests
+- Scheduler run history
+- Application uptime and error budget
 
 ### Audience
 
-Telescope is intended for **technical users**:
+Pulse is intended for **technical users**:
 
 - Developers
 - Technical administrators
 - DevOps / SRE
 - Authorized super administrators
 
-Telescope is NOT for non-technical operational/security users — those use the
+Pulse is NOT for non-technical operational/security users — those use the
 Audit Trail. This separation is ADR-008.
 
-### Why Telescope
+### Why Pulse
 
-Telescope is Laravel's first-party technical debugging tool. It provides
-deep runtime introspection with zero custom instrumentation. Reimplementing
-its functionality (query logging, job tracing, exception capture) by hand
-would duplicate substantial effort and is not appropriate for a foundation
-project.
+Pulse is Laravel's first-party metrics dashboard. It provides the production
+health signals this project actually needs with zero custom instrumentation.
+It replaced `laravel/telescope` + `seanbarton/laravel-periscope` in commit
+`85384b4`; see
+[DEP-004](../architecture/decision-records/DEP-004-laravel-pulse-observability.md)
+for the reasoning.
+
+**What Pulse is not:** a request-level debugger. Slow-query diagnosis goes
+through the MySQL slow log and `EXPLAIN`, not Pulse — see `observability.md`
+and the Phase 11 ladder in `implementation-roadmap.md`.
 
 ### Security / Production Requirements
 
-- Telescope must be **disabled in production** unless explicitly enabled for
-  an authorized technical user.
-- Telescope route access is gated via a `Gate::allowIf` check in
-  `TelescopeServiceProvider` — only `web` env or users with a designated
-  permission may access it.
-- Telescope data retention: 7 days (`retention.telescope.days`), auto-purge.
-- Telescope must NOT replace the Audit Trail. Telescope records technical
-  traces; Audit Trail records business/security accountability.
+- `/pulse` requires **both** the `pulse` feature flag and the `pulse.view`
+  permission. The flag is the deploy-time kill switch; the permission is
+  per-role.
+- Pulse defines its own `viewPulse` gate as `environment('local')`;
+  `AuthServiceProvider` overrides it with `$user->can('pulse.view')`.
+- `Gate::before` is untouched — superadmin keeps access with no permission row.
+- `pulse.view` must not be granted to a non-technical role: the dashboard
+  exposes queue internals and exception traces.
+- Pulse must NOT replace the Audit Trail. Pulse records runtime metrics;
+  Audit Trail records business/security accountability.
 
 ### How It Integrates
 
-- Installed via Composer at Phase 1 (`FOUND-007`).
-- `TELLESCOPE_ENABLED=false` in production by default.
-- Access controlled via `TelescopeServiceProvider::gate()`.
-- Data retention managed via Telescope's config + the retention job
-  (`RETAIN-001`).
+- Installed via Composer (`composer.json`, `require` — production
+  observability, not a dev-only tool).
+- Routes auto-registered at `/pulse` by the vendor, in the `pulse` middleware
+  group.
+- Flag enforced via `feature:pulse` in `pulse.middleware` (`config/pulse.php`).
+- Permission enforced via the `viewPulse` gate in `AuthServiceProvider`.
+- Sidebar entry in `AppMenuComposer`, carrying both the permission and the flag.
+- Data lands in Pulse's own `pulse_*` tables, ingested on a schedule.
+- Retention managed by Pulse's own config.
 
 ### Maintenance / Upgrade Considerations
 
-- Telescope version must track the Laravel framework version.
-- Telescope's migrations create its own tables — review before major upgrades.
-- Disable Telescope in production unless actively debugging.
+- Pulse is first-party and tracks the Laravel framework version.
+- `laravel/pulse` publishes migrations (`pulse_tables`) — review before major
+  upgrades.
+- Unlike Telescope there is no manual prune step to remember.
 
 ### Testing Implications
 
-- Telescope must not be loaded in the test environment (performance).
-- Tests should set `TELLESCOPE_ENABLED=false` in `phpunit.xml`.
+- Disable Pulse in the test environment (recording is overhead).
+- `tests/Feature/PulsePermissionGateTest.php` and
+  `tests/Feature/PulseFeatureGateTest.php` cover the two gates.
 
 ### Application-Level Abstraction
 
-Telescope is a **technical tool**, not an application dependency. Application
-code must NOT depend on Telescope APIs. Telescope observes the application;
-the application does not call Telescope.
-
----
-
-## Laravel Periscope (Telescope Companion)
-
-||| Field | Value |
-|||-------|-------|
-||| Composer package | `seanbarton/laravel-periscope` |
-||| Status | Required (companion to Telescope) |
-||| Priority | P1 |
-||| Architecture area | Monitoring / Observability |
-||| Package constraint | `^0.3` (Laravel 13 compatible) |
-
-### Purpose
-
-Periscope is a **companion UI** for browsing, filtering, and searching
-Telescope's existing data (requests, exceptions, queries, jobs, mail,
-notifications, cache, events, logs). It does NOT replace Telescope — it
-augments it with a streamlined interface for technical debugging.
-
-- Telescope remains the data collector and primary dashboard (`/telescope`).
-- Periscope provides an additional dashboard (`/periscope`) that reads the
-  same `telescope_entries` table.
-- Periscope inherits Telescope's authorization via `Telescope::check($request)`.
-- No separate auth, gate, role, policy, or migration.
-- Periscope excludes its own requests from Telescope watchers and auto-disables
-  debugbar on dashboard routes (default package behavior).
-
-### How It Integrates
-
-- Installed via Composer alongside Telescope.
-- Routes auto-registered at `/periscope` (configurable via `PERISCOPE_PATH`).
-- Authorization middleware calls `Telescope::check($request)` — identical
-  mechanism to Telescope's `/telescope` route.
-- Reads Telescope's `telescope_entries` and `telescope_entries_tags` tables —
-  no new database tables or migrations.
-- `PERISCOPE_ENABLED=false` to disable in production or when Telescope is off.
-
-### Architecture
-
-- Telescope = data collector + primary debugging dashboard.
-- Periscope = companion UI for browsing/filtering/searching that data.
-- Both are technical tools for technical users only.
-- Neither replaces the Audit Trail (business/security accountability).
-- This separation is codified in DEP-004 (Telescope) and `observability.md`.
-
-### Security Considerations
-
-- Periscope access is gated by the same Telescope authorization mechanism.
-- Periscope reads Telescope's data — no additional data exposure beyond what
-  Telescope already provides.
-- Disable Periscope in production if Telescope is disabled (set
-  `PERISCOPE_ENABLED=false`).
+Pulse is a **technical tool**, not an application dependency. Application
+code must NOT depend on Pulse APIs. Pulse observes the application;
+the application does not call Pulse.
 
 ---
 
@@ -868,7 +821,7 @@ foundation:
 
 - Laravel structured logging (`storage/logs/laravel-YYYY-MM-DD.log`)
 - Correlation/request IDs (every log entry)
-- Telescope (development/technical debugging)
+- Pulse (production runtime metrics)
 - Exception handling (centralized, safe responses)
 - Health check endpoint (`/api/v1/health`)
 

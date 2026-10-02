@@ -270,6 +270,66 @@
                 "description": "Change password for authenticated user."
               },
               "response": []
+            },
+            {
+              "name": "Register",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/{{api_version}}/auth/register",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "{{api_version}}",
+                    "auth",
+                    "register"
+                  ]
+                },
+                "description": "Self-registration. Answers the same way whether or not the address is an account, and only works while registration_enabled is on.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"New User\",\n  \"username\": \"newuser{{$timestamp}}\",\n  \"email\": \"newuser{{$timestamp}}@example.com\",\n  \"password\": \"Password123!\",\n  \"password_confirmation\": \"Password123!\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Unlock Account",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/{{api_version}}/users/{{target_user_id}}/unlock",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "{{api_version}}",
+                    "users",
+                    "{{target_user_id}}",
+                    "unlock"
+                  ]
+                },
+                "description": "Clear a lockout. Needs users.unlock; records the attempt against the rate limiter."
+              },
+              "response": []
             }
           ]
         },
@@ -466,6 +526,829 @@
                   ]
                 },
                 "description": "Restore soft-deleted user."
+              },
+              "response": []
+            },
+            {
+              "name": "Bulk Action",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{token}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/{{api_version}}/users/bulk-action",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "{{api_version}}",
+                    "users",
+                    "bulk-action"
+                  ]
+                },
+                "description": "action is one of delete, force_delete, restore, lock, unlock, activate, deactivate \u2014 and each needs its own permission. Capped at 10 ids: the bulk bar cannot select past one page, and the API shares that ceiling.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"action\": \"deactivate\",\n  \"user_ids\": [\n    1,\n    2,\n    3\n  ]\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Activate User",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{token}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/{{api_version}}/users/{{target_user_id}}/activate",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "{{api_version}}",
+                    "users",
+                    "{{target_user_id}}",
+                    "activate"
+                  ]
+                },
+                "description": ""
+              },
+              "response": []
+            },
+            {
+              "name": "Deactivate User",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{token}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/{{api_version}}/users/{{target_user_id}}/deactivate",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "{{api_version}}",
+                    "users",
+                    "{{target_user_id}}",
+                    "deactivate"
+                  ]
+                },
+                "description": ""
+              },
+              "response": []
+            },
+            {
+              "name": "Lock User",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{token}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/{{api_version}}/users/{{target_user_id}}/lock",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "{{api_version}}",
+                    "users",
+                    "{{target_user_id}}",
+                    "lock"
+                  ]
+                },
+                "description": ""
+              },
+              "response": []
+            },
+            {
+              "name": "Unlock User",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{token}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/{{api_version}}/users/{{target_user_id}}/unlock",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "{{api_version}}",
+                    "users",
+                    "{{target_user_id}}",
+                    "unlock"
+                  ]
+                },
+                "description": ""
+              },
+              "response": []
+            },
+            {
+              "name": "Resend Verification",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{token}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/{{api_version}}/users/{{target_user_id}}/resend-verification",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "{{api_version}}",
+                    "users",
+                    "{{target_user_id}}",
+                    "resend-verification"
+                  ]
+                },
+                "description": "Re-send the address confirmation. Rate limited per user."
+              },
+              "response": []
+            },
+            {
+              "name": "Request Email Change",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{token}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/{{api_version}}/users/{{target_user_id}}/request-email-change",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "{{api_version}}",
+                    "users",
+                    "{{target_user_id}}",
+                    "request-email-change"
+                  ]
+                },
+                "description": "Starts a confirmed email change; the new address is not applied until the signed link is followed.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"changed{{$timestamp}}@example.com\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Cancel Email Change",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{token}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/{{api_version}}/users/{{target_user_id}}/cancel-email-change",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "{{api_version}}",
+                    "users",
+                    "{{target_user_id}}",
+                    "cancel-email-change"
+                  ]
+                },
+                "description": "Abandon a pending email change before it is confirmed."
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Roles",
+          "item": [
+            {
+              "name": "List Roles",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{token}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/{{api_version}}/roles",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "{{api_version}}",
+                    "roles"
+                  ]
+                },
+                "description": "Paginated, filtered to the roles this viewer may see \u2014 the superadmin role is hidden from anyone who cannot administer it."
+              },
+              "response": []
+            },
+            {
+              "name": "Create Role",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{token}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/{{api_version}}/roles",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "{{api_version}}",
+                    "roles"
+                  ]
+                },
+                "description": "A system role cannot be created or renamed; the action refuses with 422.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"custom-role{{$timestamp}}\",\n  \"permissions\": [\n    \"users.view\",\n    \"roles.view\"\n  ]\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Show Role",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{token}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/{{api_version}}/roles/{{role_id}}",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "{{api_version}}",
+                    "roles",
+                    "{{role_id}}"
+                  ]
+                },
+                "description": "Applies the same visibility filter as the listing, so this is not a way to read a role by id that the list hides."
+              },
+              "response": []
+            },
+            {
+              "name": "Update Role",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{token}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/{{api_version}}/roles/{{role_id}}",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "{{api_version}}",
+                    "roles",
+                    "{{role_id}}"
+                  ]
+                },
+                "description": "Replaces the permission set when \"permissions\" is present; omit the key to leave the existing set alone.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"permissions\": [\n    \"users.view\",\n    \"users.create\"\n  ]\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Delete Role",
+              "request": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{token}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/{{api_version}}/roles/{{role_id}}",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "{{api_version}}",
+                    "roles",
+                    "{{role_id}}"
+                  ]
+                },
+                "description": "Moves to trash. Pass force:true to purge instead."
+              },
+              "response": []
+            },
+            {
+              "name": "Restore Role",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{token}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/{{api_version}}/roles/{{role_id}}/restore",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "{{api_version}}",
+                    "roles",
+                    "{{role_id}}",
+                    "restore"
+                  ]
+                },
+                "description": ""
+              },
+              "response": []
+            },
+            {
+              "name": "Force Delete Role",
+              "request": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{token}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/{{api_version}}/roles/{{role_id}}/force",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "{{api_version}}",
+                    "roles",
+                    "{{role_id}}",
+                    "force"
+                  ]
+                },
+                "description": "Permanently removes a trashed role."
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Profile",
+          "item": [
+            {
+              "name": "Get Profile",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{token}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/{{api_version}}/profile",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "{{api_version}}",
+                    "profile"
+                  ]
+                },
+                "description": "The signed-in user."
+              },
+              "response": []
+            },
+            {
+              "name": "Update Profile",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{token}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/{{api_version}}/profile",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "{{api_version}}",
+                    "profile"
+                  ]
+                },
+                "description": "Self-service edit. current_password is required alongside password, and username/email changes respect the cooldown settings.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"Updated Name\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Settings",
+          "item": [
+            {
+              "name": "Get Settings",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{token}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/{{api_version}}/settings",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "{{api_version}}",
+                    "settings"
+                  ]
+                },
+                "description": "Every setting key with its current value."
+              },
+              "response": []
+            },
+            {
+              "name": "Update Settings",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{token}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/{{api_version}}/settings",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "{{api_version}}",
+                    "settings"
+                  ]
+                },
+                "description": "Partial update \u2014 send only the keys you mean to change. One transaction with its audit row: a mid-write failure applies nothing.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"password_history_count\": 5,\n  \"password_min_length\": 12\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Feature Flags",
+          "item": [
+            {
+              "name": "Toggle Feature",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{token}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/{{api_version}}/features/{{feature}}/toggle",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "{{api_version}}",
+                    "features",
+                    "{{feature}}",
+                    "toggle"
+                  ]
+                },
+                "description": "features.manage. Deliberately carries no feature: middleware \u2014 gating this route on a flag means switching that flag off deletes the only way to switch it back on.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"enabled\": true\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Bulk Toggle Features",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{token}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/{{api_version}}/features/bulk-action",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "{{api_version}}",
+                    "features",
+                    "bulk-action"
+                  ]
+                },
+                "description": "One features.manage gate covers both directions; turning a module off is not a lesser privilege than turning it on. Reports changed and unchanged separately, so re-submitting the same selection does not overstate.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"action\": \"disable_feature\",\n  \"features\": [\n    \"pulse\"\n  ]\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Permissions",
+          "item": [
+            {
+              "name": "List Permissions",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{token}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/{{api_version}}/permissions",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "{{api_version}}",
+                    "permissions"
+                  ]
+                },
+                "description": "Read-only catalogue, defined in code. There is no write endpoint: the names are what roles are built from."
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Sessions",
+          "item": [
+            {
+              "name": "List Sessions",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{token}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/{{api_version}}/sessions",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "{{api_version}}",
+                    "sessions"
+                  ]
+                },
+                "description": "Active sessions for this user."
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Health",
+          "item": [
+            {
+              "name": "Health Check",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/{{api_version}}/health",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "{{api_version}}",
+                    "health"
+                  ]
+                },
+                "description": "Unauthenticated liveness probe."
               },
               "response": []
             }

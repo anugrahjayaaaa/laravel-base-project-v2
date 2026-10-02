@@ -11,7 +11,7 @@ audiences and must not be conflated:
 | Application Logs | WHAT happened technically (app errors, warnings, info) | Developers, ops | Application code via `Log::` |
 | Security Logs | Security-relevant events (failed login, lock, rate-limit) | Security team | Application code via `Log::` |
 | Server Logs | WHAT happened at infrastructure level | SRE, infra team | Nginx/PHP-FPM/system |
-| Telescope | HOW the Laravel runtime behaved | Developers | Laravel Telescope |
+| Laravel Pulse | How healthy the Laravel runtime is | Developers, SREs | Laravel Pulse |
 
 - **Audit Trail ≠ Application Logs.** Audit records a mutation. Application
   logs record operational events (success, failure, exceptions).
@@ -262,7 +262,7 @@ for debugging (IDs, status, reason codes), never credentials or secrets.
 || Application logs | 30 days | `retention.application_logs.days` |
 || Security logs | 90 days | `retention.security_logs.days` |
 || Audit logs | Indefinite | `retention.audit_logs.days` |
-|| Telescope data | 7 days | `retention.telescope.days` |
+|| Pulse data | Pulse's own retention config | `laravel/pulse` |
 
 Application logs and Audit Trail retention are **separate policies**. See
 [retention.md](../operations/retention.md) for the full schedule and enforcement.
@@ -285,4 +285,4 @@ See [QA Tracker](../../planning/qa-tracker.md) — Logging QA section.
 ## ADR References
 
 - ADR-013: Application Logging Strategy
-- ADR-008: Audit Trail vs Telescope separation
+- ADR-008: Audit Trail vs Technical Observability separation

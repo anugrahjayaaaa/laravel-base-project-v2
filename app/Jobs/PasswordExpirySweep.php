@@ -11,6 +11,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -61,11 +62,18 @@ class PasswordExpirySweep implements ShouldQueue
 
                 foreach ($users as $user) {
                     if (PasswordExpiry::isExpired($user)) {
-                        $user->update(['must_change_password' => true]);
+                        // One transaction per user: the flag and its audit row
+                        // are one fact. As two unguarded statements a failure
+                        // between them left must_change_password set with no
+                        // record of why, or a row claiming a flag that rolled
+                        // back. The inactivity sweep had the same shape.
+                        DB::transaction(function () use ($user): void {
+                            $user->update(['must_change_password' => true]);
+
+                            $this->audit($user, 'auth.password_expiry.sweep');
+                        });
 
                         $flagged++;
-
-                        $this->audit($user, 'auth.password_expiry.sweep');
                     }
                 }
             });

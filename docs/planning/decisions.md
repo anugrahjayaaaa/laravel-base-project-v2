@@ -64,7 +64,7 @@
 
 **Context**: Audit Trail (business/security accountability), Application Logs
 (technical behavior), Security Logs (security-relevant events), Server Logs
-(infrastructure), and Telescope (technical debugging) serve different audiences
+(infrastructure), and Pulse (runtime metrics) serve different audiences
 and purposes. Without a clear contract, teams conflate them, log sensitive data,
 fail to correlate failures across layers, and create false audit records on
 transaction rollback.
@@ -80,15 +80,15 @@ transaction rollback.
    password reset activity, security policy violations). May overlap with Audit
    Trail events but retained separately for security monitoring.
 4. **Server Logs** — infrastructure level (Nginx/PHP-FPM). Managed by infra.
-5. **Telescope** — HOW Laravel runtime behaved (technical debugging only).
+5. **Laravel Pulse** — HOW healthy the Laravel runtime is (metrics only).
 
-Audit Trail is the primary audit mechanism (non-technical users). Telescope is
+Audit Trail is the primary audit mechanism (non-technical users). Pulse is
 for technical debugging only. Do not merge concerns. Audit source of truth =
 mutation caller, not observers.
 
 **Consequences**: Two separate systems for audit and technical observability.
 Security logs retain separately from application logs. Audit records stored in
-audit table with full metadata. Telescoped logs are technical only. Audit source
+audit table with full metadata. Pulse metrics are technical only. Audit source
 of truth = mutation caller. Security Logs have shorter retention than audit
 (see retention.md).
 
@@ -130,7 +130,7 @@ of truth = mutation caller. Security Logs have shorter retention than audit
 ## ADR-013: Application Logging Strategy
 
 **Status**: Accepted
-**Context**: Audit Trail, Application Logs, Server Logs, and Telescope serve
+**Context**: Audit Trail, Application Logs, Server Logs, and Pulse serve
 distinct audiences. Without a clear contract, teams conflate them, log
 sensitive data, fail to correlate failures across layers, and create false
 audit records on transaction rollback. Laravel also does not log
@@ -144,7 +144,7 @@ invisible in monitoring.
 2. **Application Logs** — WHAT happened technically (errors, warnings, info).
    Structured, event-named, always include correlation ID.
 3. **Server Logs** — infrastructure level (Nginx/PHP-FPM). Managed by infra.
-4. **Telescope** — HOW Laravel runtime behaved (technical debugging only).
+4. **Laravel Pulse** — HOW healthy the Laravel runtime is (metrics only).
 Failures are classified: expected (validation, authn, authz, rate limit,
 business rule → warning/info) vs unexpected (DB exception, uncaught error,
 queue failure → error). Transactions log rollback explicitly and never
@@ -158,7 +158,7 @@ controller). Stable event/action names. Structured context envelope
 message, duration_ms, environment, timestamp). See
 `docs/base/infrastructure/logging.md`.
 **Related**: FOUND-008 (correlation ID middleware), AUDIT-001/AUDIT-003
-(audit in Actions), MONITOR-001 (Telescope), RETAIN-001
+(audit in Actions), MONITOR-001 (Pulse), RETAIN-001
 
 ## ADR-014: System role protection
 
@@ -271,7 +271,14 @@ dependency for AdminLTE is introduced. The exact version is recorded in
 
 ## ADR-020: Telescope stays installed on production, gated off by default
 
-**Status**: Accepted
+**Status**: **SUPERSEDED** 2026-10-02 — the subject no longer exists. Replaced
+by the Pulse gating described in
+[implementation-roadmap.md](implementation-roadmap.md) § Phase 11 and
+[DEP-004](../base/architecture/decision-records/DEP-004-laravel-pulse-observability.md).
+Kept as the record of why the prod-gating problem was taken seriously: the
+"forgotten `.env` key records every request" failure mode is exactly what the
+`pulse` feature flag now prevents, by putting the toggle in a database-backed
+store instead of an env var.
 
 **Context**: ADR-008 classifies Telescope as a technical debugging tool, not an
 audit or monitoring mechanism. The original intent was fast slow-query

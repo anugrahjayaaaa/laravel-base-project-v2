@@ -32,19 +32,9 @@ class PasswordForgotController extends Controller
         $result = $action->run($email, $ip, $request, $throttle);
 
         if (isset($result['error'])) {
-            $this->audit('auth.password_reset_requested', $result['user'], $result['user'], [
-                'ip' => $ip,
-            ]);
-
             return response()->json([
                 'message' => 'If the email exists, a reset link has been sent.',
             ], 200);
-        }
-
-        if ($result['user']) {
-            $this->audit('auth.password_reset_requested', $result['user'], $result['user'], [
-                'ip' => $ip,
-            ]);
         }
 
         return response()->json([

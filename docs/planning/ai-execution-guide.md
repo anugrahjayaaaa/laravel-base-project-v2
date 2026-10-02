@@ -93,9 +93,8 @@
     requires it (Sanctum through Auth abstraction, Activitylog through Audit
     abstraction, Spatie Permission through Gate/Policy).
 
-26. **Telescope, Periscope, and Scramble are not application dependencies** —
-    Telescope is a technical tool (disabled in production), Periscope is a
-    companion UI for Telescope, Scramble is dev-only. Application code must
+26. **Pulse and Scramble are not application dependencies** — Pulse is a
+    technical tool (gated by flag + permission), Scramble is dev-only. Application code must
     never import/depend on them.
 
 27. **Redis is an infrastructure option, not an application dependency.** Use

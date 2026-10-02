@@ -119,10 +119,11 @@ class RoleController extends Controller
     /**
      * Apply one action to many roles from the index bulk bar.
      *
-     * No bulkAudit() call, unlike UserController::bulkAction: every role action
-     * already writes its own activity row (role.deleted carries revoked_users
-     * and revoked_permissions), so an aggregate row here would duplicate the
-     * subjects without adding the properties that make the log useful.
+     * No audit call here, and no call in `UserController::bulkAction` either:
+     * every role and user bulk action loops an action that writes its own row
+     * (role.deleted carries revoked_users and revoked_permissions), so an
+     * aggregate row would duplicate the subjects without adding the properties
+     * that make the log useful.
      */
     public function bulkAction(BulkRoleRequest $request): RedirectResponse
     {

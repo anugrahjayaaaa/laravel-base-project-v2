@@ -150,6 +150,28 @@ person guaranteed to click it and be refused.
 `/features` itself is deliberately **never** gated. A gate there would remove the
 only page that can bring a flag back, leaving a redeploy as the sole way out.
 
+### Management API
+
+Both management routes are also exposed over the API, sharing the same actions
+and the same `BulkFeatureRequest`, so the `features.manage` gate and the
+undeclared-slug refusal cannot drift between channels:
+
+| Route | Gate |
+|---|---|
+| `POST /api/v1/features/{feature}/toggle` | `can('features.manage')`, plus the check in the controller |
+| `POST /api/v1/features/bulk-action` | `BulkFeatureRequest::authorize()`; `throttle:bulk-action` |
+
+**Neither route carries `feature:` middleware, and neither ever may.** The
+middleware goes on the routes of the modules being *controlled*. Putting it on
+the flag management API means switching a flag off deletes the only way to
+switch it back on — the module disables its own recovery. `FeatureFlagApiTest`
+walks every declared slug in turn for exactly this: switch it off, then switch
+it back on through the API. A test that checked one slug would pass while the
+group was gated on some other flag.
+
+There is deliberately no API `index`. The catalogue is eight slugs of config,
+and a caller cleared to toggle a flag can name the one it wants.
+
 ### Management UI
 
 `/features` (`can('features.view')`), toggling via

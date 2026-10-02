@@ -22,7 +22,10 @@ class SystemSettingController extends Controller
     }
 
     /**
-     * Update system settings and record the acting user in the audit log.
+     * Update system settings.
+     *
+     * The audit record is written by the action, not here — see
+     * `SystemSettingsUpdateAction`.
      *
      * Partial on purpose: an API client sends the keys it wants to change, and
      * a key it left out must survive the call. Only the web form — which posts
@@ -31,11 +34,7 @@ class SystemSettingController extends Controller
      */
     public function update(SystemSettingRequest $request, SystemSettingsUpdateAction $action): JsonResponse
     {
-        $data = $request->validated();
-
-        $action->run($data, partial: true);
-
-        $this->audit('system_setting.updated', SystemSetting::query()->firstOrFail(), $request->user(), $data);
+        $action->run($request->validated(), partial: true, causer: $request->user());
 
         return $this->respond('Settings updated successfully.', 200, SystemSetting::getAll());
     }

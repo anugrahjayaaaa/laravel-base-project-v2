@@ -70,18 +70,23 @@ class RoleBulkActionHandler implements BulkActionHandler
     /**
      * Get the technical audit event name.
      *
-     * The per-role actions already write `role.deleted` / `role.restored` /
-     * `role.force_deleted` with the revoked-user counts, so this handler does
-     * NOT add a second aggregate row — the subjects and the properties are
-     * already in the log, one row per role, which is the granularity an incident
-     * review needs. See RoleController::bulkAction.
+     * Returns an empty string deliberately. The per-role actions already write
+     * `role.deleted` / `role.restored` / `role.force_deleted` with the
+     * revoked-user counts, so an aggregate row would be a second record of one
+     * bulk click — and one whose subject is nobody. The controller skips the
+     * aggregate write on a falsy event, and the role controllers do not call
+     * `auditBulk()` at all, so nothing reads this value today; it stays empty so
+     * that if a caller ever does, it adds no row rather than a duplicate.
+     *
+     * This is the same mechanism `UserBulkActionHandler` uses, and the reason it
+     * returns `''` for exactly the operations whose action audits itself.
      *
      * @param  string  $action
      * @return string
      */
     public function getAuditEvent(string $action): string
     {
-        return "role.bulk.{$action}";
+        return '';
     }
 
     /**

@@ -8,7 +8,7 @@
 
 The Base Project requires an Audit Trail — a record of WHO did WHAT to
 WHICH resource and WHEN. This is distinct from application logs (technical
-WHAT), server logs (infrastructure), and Telescope (runtime HOW). The audit
+WHAT), server logs (infrastructure), and Laravel Pulse (runtime health). The audit
 trail must be:
 - Read-only in the UI
 - Permission-gated for view/export
@@ -30,7 +30,7 @@ application-level `Audit` abstraction layer.
 - **Custom audit table**: A `audits` table with manual inserts in Actions.
   Activitylog provides the same schema with less code and better
   causer/subject tracking. Custom implementation would duplicate this.
-- **Laravel Telescope logs**: Telescope records technical traces, not
+- **Laravel Pulse**: records runtime metrics (queue, cache, exceptions), not
   business-security accountability. Different audience and purpose.
   Explicitly not a substitute (ADR-008).
 - **Laravel Pulse**: Provides metrics/monitoring for queues, caches,
@@ -55,6 +55,11 @@ established audit package rather than building from scratch."
   mutation, **before the COMMIT**, and only persist if the transaction commits
   successfully. The `Audit` abstraction enforces this by being called from
   within the Action/Service layer inside the transaction scope.
+- **Who writes them**: the Action that performs the mutation. Controllers
+  orchestrate and MUST NOT add an audit call for a mutation an Action already
+  performs — that is a duplicate record for one mutation. See
+  [Action-First Audit Logging Standard](../application-boundaries.md#action-first-audit-logging-standard)
+  for the full rule, including bulk mutations.
 - Sensitive data (passwords, tokens) must be scrubbed before storing in
   `properties` — the abstraction handles this.
 - Version constraint: `^4.8` (NOT v5, which requires PHP 8.4+).

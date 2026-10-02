@@ -26,7 +26,8 @@ class UserStateController extends Controller
         private readonly UserDeactivateAction $deactivateAction,
         private readonly UserLockAction $lockAction,
         private readonly UserUnlockAction $unlockAction,
-    ) {}
+    ) {
+    }
 
     /**
      * Activate a user.
@@ -36,9 +37,7 @@ class UserStateController extends Controller
      */
     public function activate(User $user): RedirectResponse
     {
-        $this->activateAction->run($user);
-
-        $user->audit('user.activated', auth()->user(), ['target_id' => $user->id, 'target_email' => $user->email]);
+        $this->activateAction->run($user, auth()->user());
 
         return back()->with('status', 'User activated successfully.');
     }
@@ -53,8 +52,6 @@ class UserStateController extends Controller
     {
         $this->deactivateAction->run($user, auth()->user());
 
-        $user->audit('user.deactivated', auth()->user(), ['target_id' => $user->id, 'target_email' => $user->email]);
-
         return back()->with('status', 'User deactivated successfully.');
     }
 
@@ -66,9 +63,7 @@ class UserStateController extends Controller
      */
     public function lock(User $user): RedirectResponse
     {
-        $this->lockAction->run($user);
-
-        $user->audit('user.locked', auth()->user(), ['target_id' => $user->id, 'target_email' => $user->email]);
+        $this->lockAction->run($user, auth()->user());
 
         return back()->with('status', 'User locked successfully.');
     }
@@ -81,9 +76,7 @@ class UserStateController extends Controller
      */
     public function unlock(User $user): RedirectResponse
     {
-        $this->unlockAction->run($user, request()->ip(), request());
-
-        $user->audit('user.unlocked', auth()->user(), ['target_id' => $user->id, 'target_email' => $user->email]);
+        $this->unlockAction->run($user, auth()->user(), request()->ip(), request());
 
         return back()->with('status', 'User unlocked successfully.');
     }

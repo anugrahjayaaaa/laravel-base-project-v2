@@ -16,19 +16,29 @@ class UserLockAction
     /**
      * Lock the user.
      *
-     * @param  User   $user
-     * @param  bool   $invalidateSessions
+     * @param  User       $user
+     * @param  User|null  $causer  Who to attribute the audit record to
+     * @param  bool       $invalidateSessions
      * @return array  ['user' => User]
      */
-    public function run(User $user, bool $invalidateSessions = true): array
+    public function run(User $user, ?User $causer = null, bool $invalidateSessions = true): array
     {
         $this->validate($user);
 
-        DB::transaction(function () use ($user, $invalidateSessions) {
+        DB::transaction(function () use ($user, $causer, $invalidateSessions) {
             $user->update(['is_locked' => true]);
             if ($invalidateSessions) {
                 $this->invalidateSessions($user);
             }
+
+            // target_id/target_email are redundant with the subject, and
+            // deliberately so: the activity list filters on properties, and a
+            // state row that only carried a subject id could not be searched by
+            // the address it affected.
+            $user->audit('user.locked', $causer, [
+                'target_id' => $user->id,
+                'target_email' => $user->email,
+            ]);
         });
 
         return ['user' => $user];

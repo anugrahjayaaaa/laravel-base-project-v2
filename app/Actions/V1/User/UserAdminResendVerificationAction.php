@@ -15,11 +15,12 @@ class UserAdminResendVerificationAction
     /**
      * Resend the verification email to the user.
      *
-     * @param  User   $user
-     * @param  string $ip
+     * @param  User       $user
+     * @param  string     $ip
+     * @param  User|null  $causer  Who to attribute the audit record to
      * @return array
      */
-    public function run(User $user, string $ip): array
+    public function run(User $user, string $ip, ?User $causer = null): array
     {
         // The single gate for both the web and the API caller. `disabled` means
         // nobody may send, whoever is asking — gating only the controller left
@@ -45,6 +46,15 @@ class UserAdminResendVerificationAction
 
         $user->sendEmailVerificationNotification();
         RateLimiter::hit($key, 3600);
+
+        // No transaction here and deliberately none added: nothing in the
+        // database changed, so there is no state to roll back and a record that
+        // outlived a rollback would be the only thing a transaction could buy.
+        // A refusal above returns before this line, so the row only ever records
+        // an email that actually went out.
+        if ($causer !== null) {
+            $user->audit('user.verification_resent', $causer);
+        }
 
         return ['user' => $user];
     }

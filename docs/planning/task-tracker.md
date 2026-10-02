@@ -58,7 +58,7 @@
 || FOUND-004 | Install Sanctum for API auth | 1 | P0 | FOUND-001 | DONE |
 || FOUND-005 | Install Spatie Permission (RBAC) | 1 | P0 | FOUND-001 | DONE |
 || FOUND-006 | Install audit package (e.g. spatie/laravel-activitylog) | 1 | P0 | FOUND-001 | DONE |
-|| FOUND-007 | Install Telescope | 1 | P0 | FOUND-001 | DONE |
+|| FOUND-007 | Install Laravel Pulse (was Telescope) | 1 | P0 | FOUND-001 | DONE |
 | FOUND-008 | Create correlation/request ID middleware | 1 | P0 | FOUND-001 | DONE |
 | FOUND-009 | Set up PSR-12 linting (PHP CS Fixer) | 1 | P1 | FOUND-001 | DONE |
 | FOUND-010 | Configure health check endpoint | 1 | P1 | FOUND-001 | DONE |
@@ -75,10 +75,18 @@
 | TABLE-001 | Shared table conventions (sortable, filterable, bulk actions, pagination) | 1 | P2 | UI-003 | DONE |
 || FLAG-001 | Feature flag package foundation | 1 | P1 | FOUND-003 | DONE |
 
-**Audit pattern (cross-phase convention):** All mutations log audit at the mutation
-site — Action self-logs when logic is complex/shared; Controller logs directly
-(using `$this->audit()` helper on base Controller) for thin operations. No model
-observers for audit. See `docs/base/architecture/application-components.md` §Action/Service.
+**Audit pattern (cross-phase convention):** ✅ DONE — every mutation is audited
+by the **Action that performs it**, inside that action's own transaction, via
+`Auditable::audit()`: `$model->audit($event, $causer, $properties)`. Controllers
+only orchestrate and MUST NOT call `audit()` for a mutation an action performs.
+HTTP context (`source`, `ip`, `user_agent`) is captured automatically by
+`Auditable::audit()`; callers pass only event-specific properties and may
+override `source` (a job passes `system`). No model observers. See
+`docs/base/architecture/application-boundaries.md` §
+Action-First Audit Logging Standard and `docs/base/features/audit-trail.md`.
+
+Migrated: User, System, Role, Feature (already compliant), Auth web + API.
+Remaining: AUD-006 (Profile) — the last caller of `Controller::audit()`.
 
 ---
 
@@ -1825,7 +1833,7 @@ genuinely open and are the real D1/D2 work.
   },
   {
     "id": "MONITOR-001",
-    "task": "Integrate Telescope + Periscope companion UI",
+    "task": "Integrate Laravel Pulse (was Telescope + Periscope)",
     "phase": 1,
     "priority": "P1",
     "depends_on": [
@@ -1836,12 +1844,12 @@ genuinely open and are the real D1/D2 work.
       "monitoring.md",
       "observability.md",
       "overview.md",
-      "DEP-004-telescope-technical-observability.md"
+      "DEP-004-laravel-pulse-observability.md"
     ],
     "tests": [
-      "PeriscopeFoundationTest"
+      "PulseFeatureGateTest"
     ],
-    "note": "Telescope installed at FOUND-007 (Phase 1). Periscope v0.3 added as companion UI reading the same Telescope data via Telescope::check(); inherits Telescope authorization. No separate auth/gate/migration."
+    "note": "Telescope at FOUND-007 plus Periscope v0.3 as a companion UI, both removed in commit 85384b4 in favour of Laravel Pulse ^1.8 (DEP-004). The pulse feature flag gates /pulse through pulse.middleware (b08b8b4), verified by PulseFeatureGateTest. The pulse.view permission + viewPulse gate override is PLANNED in docs/planning/phase-11-monitoring-observability.md."
   },
   {
     "id": "MONITOR-002",

@@ -75,7 +75,11 @@ class ProfileController extends Controller
             newPassword: $data['password'],
         );
 
-        $this->audit('auth.password_changed', $user, $user);
+        // No audit here: AuthChangePasswordAction writes
+        // `auth.password_changed` inside its own transaction. It used to be
+        // written again right here, which meant two rows for one password
+        // change and the second one outside the transaction that reverted the
+        // password on failure.
 
         return redirect()->route('profile.show')
             ->with('status', 'Password changed successfully.');
@@ -101,13 +105,22 @@ class ProfileController extends Controller
                 currentPassword: $data['current_password'],
                 newPassword: $data['password'],
             );
-            $this->audit('auth.password_changed', $user, $user);
         }
 
-        $this->audit('user.profile_updated', $user, $user);
+        // No audit calls here. One profile save can move the name, the username,
+        // the email and the password, and those belong to three different
+        // actions:
+        //
+        // - UserUpdateAction          `user.profile_updated`, and
+        //                             `user.email_change_requested` when the
+        //                             email moved — inside its transaction.
+        // - AuthChangePasswordAction  `auth.password_changed` — inside its own.
+        //
+        // The three rows this endpoint used to write here all sat outside the
+        // transaction that produced them, so a rollback left audit rows
+        // describing a save that never happened.
 
         if ($request->filled('email') && $data['email'] !== $user->getOriginal('email')) {
-            $this->audit('user.email_change_requested', $user, $user, ['pending_email' => $data['email']]);
             return redirect()->route('profile.show')
                 ->with('status', 'Verification email sent to new email address.');
         }

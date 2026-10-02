@@ -11,8 +11,7 @@ Observability
 ├── Application Logs     (Technical application behavior/warnings/errors)
 ├── Security Logs        (Security-relevant events: failed login, lock, etc.)
 ├── Server Logs          (Infrastructure/server problems)
-├── Telescope            (Laravel technical debugging)
-├── Periscope            (Telescope companion UI — browsing/filtering/search)
+├── Laravel Pulse        (Runtime metrics dashboard: queue, cache, exceptions)
 └── System Health        (Operational status)
 ```
 
@@ -24,20 +23,72 @@ Observability
 | Application Logs | Application/runtime problems, warnings, failures | Developers, SREs | Configurable |
 | Security Logs | Security-relevant events (failed login, account lock, reset activity, violations) | Security team, developers | Typically shorter than audit (see retention.md) |
 | Server Logs | Infrastructure problems (web server, PHP-FPM, OS, reverse proxy) | SREs, platform | Managed by deployment infrastructure |
-|| Telescope | Laravel technical debugging and runtime behavior | Technical users (read-only / debug access) | Short-term |
-|| Periscope | Companion UI for browsing/filtering/searching Telescope entries | Technical users (read-only / debug access) | Short-term (follows Telescope) |
-|| System Health | Operational readiness checks | Monitoring tools, SREs | Live/operational |
+| Laravel Pulse | Runtime metrics: queue depth, cache behaviour, exception rate, slow requests | Technical users (read-only) | Pulse's own retention config |
+| System Health | Operational readiness checks | Monitoring tools, SREs | Live/operational |
 
 ## Separation of Concerns
 
-| Aspect | Audit Trail | Application Logs | Security Logs | Telescope |
-|--------|-------------|------------------|---------------|-----------|
+| Aspect | Audit Trail | Application Logs | Security Logs | Laravel Pulse |
+|--------|-------------|------------------|---------------|---------------|
 | Audience | Non-technical users | Developers | Security team | Technical users |
-| Purpose | Accountability | Debugging | Security monitoring | Debugging |
-| Content | Business mutations | Technical warnings/errors | Auth events, violations | Runtime details |
+| Purpose | Accountability | Debugging | Security monitoring | Runtime health |
+| Content | Business mutations | Technical warnings/errors | Auth events, violations | Aggregate metrics |
 
 See [observability.md](../infrastructure/observability.md) for the full
 classification.
+
+## Laravel Pulse (Purpose: runtime metrics dashboard)
+
+- First-party metrics dashboard at `/pulse`.
+- Records aggregates (queue depth, cache hit rate, exception rate, slow
+  requests), **not** per-request payloads.
+- Ingestion runs on a schedule into the `pulse_*` tables; bounded by Pulse's own
+  retention configuration.
+- Not a request-level debugger. See [DEP-004](../architecture/decision-records/DEP-004-laravel-pulse-observability.md)
+  for what that trade costs and what covers the gap.
+- Ignores its own routes, so monitoring the monitor is not a feedback loop.
+- Replaced `laravel/telescope` + `periscope/periscope` (commit `85384b4`).
+
+### Access — two independent gates
+
+`/pulse` requires **both**:
+
+| Gate | Kind | Enforced in |
+|---|---|---|
+| `pulse` feature flag | deploy-time kill switch | `config/pulse.php` — `feature:pulse` in the `pulse` middleware group |
+| `pulse.view` permission | per-role | `viewPulse` gate defined in `App\Providers\AuthServiceProvider` |
+
+Both failures return 403, so a caller cannot tell which one fired. That is
+deliberate and consistent with the Phase 7 decision (see
+[phase-7-feature-flags.md](../../planning/phase-7-feature-flags.md)).
+
+**The gate is an override.** Pulse defines `viewPulse` itself as
+`environment('local')` at
+`vendor/laravel/pulse/src/PulseServiceProvider.php:100`. `AuthServiceProvider`
+redefines it as `$user->can('pulse.view')`, which wins because `Gate::define()`
+overwrites by name and our provider boots after Pulse's. Do not call
+`Pulse::auth()` — it does not exist in 1.8.
+
+`Gate::before` is untouched, so superadmin keeps access without holding a
+permission row, and `admin` inherits the permission via
+`PermissionCatalog::all()` in `PermissionSeeder`.
+
+### Toggling Pulse off
+
+```bash
+# flip the flag via the UI at /features, or per-environment in code
+php artisan config:clear && php artisan config:cache
+```
+
+For the flag to be honoured, config must be re-cached. On the VM also reload
+PHP-FPM, or opcache keeps serving the old config.
+
+## Slow-Query Diagnosis
+
+Pulse is deliberately **absent** from the slow-query diagnosis ladder. See
+[implementation-roadmap.md](../../planning/implementation-roadmap.md) for the
+full ladder: `/up` → `top`/`free` → MySQL slow log → `DB::listen()` →
+`EXPLAIN`.
 
 ## Health Check Endpoint
 
@@ -56,21 +107,11 @@ classification.
 }
 ```
 
-## Periscope (Purpose: Telescope companion UI)
-
-|- Companion UI for browsing, filtering, and searching Telescope's existing
-  entries (requests, exceptions, queries, jobs, mail, notifications, cache,
-  events, logs).
-|- Does **NOT** replace Telescope — reads the same `telescope_entries` data.
-|- Accessible at `/periscope`.
-|- Inherits Telescope's authorization (Telescope::check()).
-|- No separate auth, gate, role, or migration.
-|- Excludes its own requests from Telescope watchers to avoid noise.
-|- Retention: 7 days (auto-purge, same as Telescope).
-|- Not for non-technical users — those use the Audit Trail.
+Status: **PLANNED** (Phase 11, MONITOR scope). Documented here so the contract is
+agreed; not yet implemented.
 
 ## ADR References
 
 - ADR-013: Application Logging Strategy
 - ADR-008: Audit Trail vs Technical Observability separation
-- DEP-004: Telescope for Technical Observability (Telescope + Periscope)
+- DEP-004: Laravel Pulse for Technical Observability

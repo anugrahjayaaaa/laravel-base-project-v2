@@ -2,6 +2,7 @@
 
 namespace App\Actions\V1\Feature;
 
+use App\Models\FeatureFlag;
 use App\Models\User;
 use App\Support\FeatureCatalog;
 use Illuminate\Support\Facades\Cache;
@@ -11,16 +12,10 @@ use Laravel\Pennant\Feature;
 /**
  * Switch one feature flag on or off, and record who did it.
  *
- * ## Why the audit row has no subject
- *
- * Spatie's audit rows hang off a model via `->on($model)`. A Pennant flag has
- * no model — it is a row in a store the package owns — so this writes an event
- * with a causer and properties but no subject. The alternative, inventing a
- * throwaway model to hang it on, would put a model in the database whose only
- * job is to be an audit target.
- *
- * `properties` carries what the event is actually about: the slug, the state it
- * was, and the state it became. Without `from` the row would record that
+ * The flag's own row in the `features` table is the audit subject, so the row
+ * names the thing that changed — see FeatureFlag for why the state needed a
+ * model at all. The event properties carry what actually happened: the state it
+ * was and the state it became. Without `from` the row would record that
  * something changed and not what it changed from, which is the half an auditor
  * actually needs.
  */
@@ -65,6 +60,11 @@ class FeatureToggleAction
 
         $flag = FeatureCatalog::find($slug);
 
+        // The stored row, for the audit subject. Null before the write for a
+        // flag nobody has ever read — Pennant inserts it lazily, and the toggle
+        // below is what brings it into existence.
+        $stored = FeatureFlag::forName($slug);
+
         // Read the OLD value first. Read after the write it is always the new
         // one, and the audit row's `from` becomes a lie that looks correct.
         //
@@ -74,23 +74,29 @@ class FeatureToggleAction
         // was being served as off.
         $from = FeatureCatalog::isActive($slug);
 
-        DB::transaction(function () use ($slug, $enabled, $causer, $from): void {
+        DB::transaction(function () use ($slug, $enabled, $causer, $from, $stored): void {
             $enabled
                 ? Feature::activate($slug)
                 : Feature::deactivate($slug);
 
             // Inside the transaction (DEP-003): an audit row that survives a
             // rollback records a change that never happened.
-            activity()
-                ->event(self::EVENT)
-                ->causedBy($causer ?? auth()->user())
-                ->withProperties([
-                    'source' => request()->is('api/*') ? 'api' : 'web',
-                    'feature' => $slug,
-                    'from' => $from,
-                    'to' => $enabled,
-                ])
-                ->log(self::EVENT);
+            //
+            // Re-read rather than using the instance from before the write: it
+            // was loaded when the flag had no row, or held the old value, so its
+            // identity is stale either way. The write above created or updated
+            // the row, so it exists now.
+            $subject = $stored?->refresh() ?? FeatureFlag::forName($slug);
+
+            // The flag's own row is the subject, so the audit can name what
+            // changed. The earlier hand-rolled `activity()` call wrote a row
+            // with a causer and properties but no subject, which the viewer
+            // renders as "#" and nobody can inspect afterwards.
+            $subject?->audit(self::EVENT, $causer ?? auth()->user(), [
+                'feature' => $slug,
+                'from' => $from,
+                'to' => $enabled,
+            ]);
         });
 
         // Pennant's own resolved values, then our snapshot of them. Missing

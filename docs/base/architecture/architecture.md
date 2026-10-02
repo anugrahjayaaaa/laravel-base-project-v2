@@ -41,6 +41,22 @@ Replaceable UI
 - Business logic must not depend directly on Redis — use Laravel abstractions.
 - Secrets belong in environment/deployment configuration.
 
+## Audit Logging
+
+Audit records follow one standard: the **Action that performs a mutation writes
+its audit record inside its own transaction**, via `Auditable::audit()` —
+`$model->audit($event, $causer, $properties)`. Controllers orchestrate only and
+must not audit a mutation an action already performs; the same holds for bulk
+handlers, which loop the action so each subject gets its own row.
+
+HTTP context (`source`, `ip`, `user_agent`) is captured automatically by
+`Auditable::audit()`, so a caller supplies only event-specific properties and
+every row in the activity table is comparable.
+
+Full rules: [Application Boundaries](application-boundaries.md) §
+Action-First Audit Logging Standard, and
+[Audit Trail](../features/audit-trail.md).
+
 ## ADR References
 
 - ADR-001: API-first architecture

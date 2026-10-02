@@ -53,7 +53,16 @@ trait PersistsRole
 
             // Inside the transaction (DEP-003): an audit row that survives a
             // rollback records a save that never happened.
-            $role->audit($event, $causer);
+            //
+            // The permission set is the part worth keeping. "A role was updated"
+            // is not actionable during an incident; "this role gained report
+            // export and lost user delete" is — and it is the only record of
+            // what an admin's matrix submission actually granted, because the
+            // role row itself only holds the current state.
+            $role->audit($event, $causer, [
+                'permission_count' => $role->permissions()->count(),
+                'permissions' => $role->permissions()->pluck('name')->sort()->values()->all(),
+            ]);
 
             return $role;
         });

@@ -43,13 +43,20 @@ class AuthResendVerificationAction
 
         try {
             $user->sendEmailVerificationNotification();
+
+            $user->audit('auth.verification_resent');
         } catch (\Exception $e) {
             Log::error('Resend verification email failed', [
                 'email' => $email,
                 'error' => $e->getMessage(),
             ]);
 
-            return ['error' => ['message' => 'Failed to send verification email. Please try again later.', 'status' => 500]];
+            return [
+                'error' => [
+                    'message' => 'Failed to send verification email. Please try again later.',
+                    'status' => 500
+                ]
+            ];
         }
 
         RateLimiter::hit($key, 3600);

@@ -16,7 +16,7 @@
 | 7 | Feature availability / feature flags | DONE — Groups A–F. The kill switch is real: a flag off 403s its routes (62/62 across web + API) and drops its menu item, with no superadmin bypass |
 | 8 | Settings | PLANNED |
 | 9 | Notification/mail/queue | PLANNED |
-| 10 | Audit Trail | PLANNED |
+| 10 | Audit Trail | ARCHITECTURE DONE — action-first standard shipped and reconciled across User, System, Role, Feature and Auth (web + API), with one audit entry point (`Auditable::audit()`) that captures `source`/`ip`/`user_agent` itself. AUD-006 (Profile) still migrates |
 | 11 | Monitoring/observability | PLANNED |
 | 12 | API V1 | PLANNED |
 | 13 | Security hardening | PLANNED |
@@ -177,16 +177,18 @@ API foundation, AdminLTE UI foundation, and feature flags:
 - Laravel 13.31.0 initialized (PHP 8.3)
 - `.env.example` configured: APP_NAME="Laravel Base Project", MySQL default,
   CACHE_STORE=file, QUEUE_CONNECTION=database, SESSION_DRIVER=database,
-  PENNANT_STORE=database (Laravel Pennant), PERISCOPE_ENABLED=true (Periscope)
+  PENNANT_STORE=database (Laravel Pennant). `PERISCOPE_ENABLED` removed — the
+  package is gone (85384b4); `laravel/pulse` needs no enable key
 - Config: cache=file default / Redis available; auth=web+sanctum API guard;
   queue=database default / Redis compatible
 - Sanctum ^4.0 installed, API guard configured, User has HasApiTokens
 - Spatie Permission ^6.0 installed, migrations + config published, User has HasRoles
 - Spatie ActivityLog ^4.8 installed (Phase 10 integration pending)
-- Telescope ^5.0 installed, config + migrations published. Periscope v0.3
-  (seanbarton/laravel-periscope) added as companion UI at /periscope, reading
-  the same Telescope data, inheriting Telescope authorization. No separate
-  migration or auth mechanism.
+- Laravel Pulse ^1.8 installed (config + migrations published), replacing
+  Telescope ^5.0 and Periscope v0.3 in commit `85384b4`. The `pulse` feature
+  flag gates /pulse through `pulse.middleware` (`b08b8b4`).
+  See phase-11-monitoring-observability.md for the pending `pulse.view`
+  permission + `viewPulse` gate override.
 - Scramble ^0.13 (dev) installed
 - Pint ^1.27 for PSR-12 code style, pint.json preset=psr12
 - Correlation ID middleware (FOUND-008 / CORR-001): GenerateRequestCorrelationId
@@ -208,8 +210,9 @@ API foundation, AdminLTE UI foundation, and feature flags:
 - Table conventions (TABLE-001): sortable-th component, Bootstrap pagination
 - Laravel Pennant (FLAG-001): installed, features table migration published + migrated,
   @feature/@featureany Blade directives available
-|- Laravel Periscope (MONITOR-001): companion UI for Telescope at /periscope,
-  inherits Telescope authorization via Telescope::check(), 4 tests
+|- Laravel Pulse (MONITOR-001): runtime metrics dashboard at /pulse, gated by
+  the `pulse` feature flag. Replaced Telescope + Periscope (`85384b4`); gate
+  verified by `PulseFeatureGateTest` (3 tests)
 
 Phase 2 (DB-001, DB-002) — database foundation:
 
@@ -306,7 +309,7 @@ None — no implementation has started yet.
 - Transaction/after-commit semantics formalized
   (`docs/base/architecture/application-boundaries.md`)
 - 5-way observability classification (Audit Logs, Application Logs, Security
-  Logs, Server Logs, Telescope) formalized
+  Logs, Server Logs, Pulse) formalized
 - System role protection formalized (superadmin bypass table, system role
   deletion/renaming restrictions)
 
