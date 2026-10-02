@@ -99,8 +99,9 @@ Route::middleware(['auth:web,sanctum', 'verified', 'password.change.required', '
         Route::post('/users', [UserController::class, 'store'])->name('users.store')->can('users.create');
         Route::get('/users/{user}', [UserController::class, 'show'])->name('users.show')->can('users.view');
         Route::get('/users/{user}/edit', [UserController::class, 'edit'])->name('users.edit')->can('users.update');
-        Route::put('/users/{user}', [UserController::class, 'update'])->name('users.update')->can('users.update');
-        Route::patch('/users/{user}', [UserController::class, 'update'])->name('users.update')->can('users.update');
+        // PUT + PATCH in ONE route object: two routes sharing a name breaks
+        // route:cache ("Another route has already been assigned name").
+        Route::match(['put', 'patch'], '/users/{user}', [UserController::class, 'update'])->name('users.update')->can('users.update');
         Route::delete('/users/{user}', [UserController::class, 'destroy'])->name('users.destroy')->can('users.delete');
         // restore/force-delete took a plain Request and UserRestoreAction checks
         // nothing, so these two wrote to any user's row by id with no gate at all.

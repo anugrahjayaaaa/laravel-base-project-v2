@@ -109,10 +109,9 @@ Route::prefix('v1')->group(function () {
                 ->name('api.v1.users.show')->can('users.view');
             Route::post('/users', [UserController::class, 'store'])
                 ->name('api.v1.users.store')->can('users.create');
-            Route::put('/users/{user}', [UserController::class, 'update'])
-                ->name('api.v1.users.update')->can('users.update');
-            // Route::resource registered PUT and PATCH under one name; same here.
-            Route::patch('/users/{user}', [UserController::class, 'update'])
+            // PUT + PATCH in ONE route object: two routes sharing a name breaks
+            // route:cache ("Another route has already been assigned name").
+            Route::match(['put', 'patch'], '/users/{user}', [UserController::class, 'update'])
                 ->name('api.v1.users.update')->can('users.update');
             Route::delete('/users/{user}', [UserController::class, 'destroy'])
                 ->name('api.v1.users.destroy')->can('users.delete');
