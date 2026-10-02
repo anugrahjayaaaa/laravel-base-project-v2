@@ -2,7 +2,6 @@
 
 namespace App\Jobs;
 
-use App\Jobs\Concerns\AuditsSystemActivity;
 use App\Models\SystemSetting;
 use App\Models\User;
 use App\Services\InactivityLock;
@@ -21,7 +20,6 @@ use Illuminate\Support\Facades\Log;
  */
 class InactivityLockSweep implements ShouldQueue
 {
-    use AuditsSystemActivity;
     use Dispatchable;
     use InteractsWithQueue;
     use Queueable;
@@ -76,13 +74,16 @@ class InactivityLockSweep implements ShouldQueue
 
                 foreach ($users as $user) {
                     if (InactivityLock::shouldLock($user)) {
-                        InactivityLock::lock($user);
+                        // The audit row comes back from the lock, inside its
+                        // transaction. This loop used to write
+                        // `auth.inactivity_lock.sweep` itself on the line after,
+                        // outside — the same placement defect the middleware had.
+                        InactivityLock::lock($user, 'auth.inactivity_lock.sweep', [
+                            'causer' => 'SYSTEM',
+                            'source' => 'system',
+                        ]);
 
                         $locked++;
-
-                        $this->audit($user, 'auth.inactivity_lock.sweep', [
-                            'last_activity_at' => $user->last_activity_at?->toIso8601String(),
-                        ]);
                     }
                 }
             });

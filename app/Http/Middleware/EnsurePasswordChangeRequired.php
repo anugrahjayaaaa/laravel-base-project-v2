@@ -63,12 +63,13 @@ class EnsurePasswordChangeRequired
 
         // Check inactivity lock first (highest priority — locks the account)
         if (InactivityLock::shouldLock($user)) {
-            InactivityLock::lock($user);
-
-            $user->audit('auth.inactivity_lock.middleware', null, [
+            // The audit row is written by the lock itself, inside its
+            // transaction — this middleware used to write
+            // `auth.inactivity_lock.middleware` on the next line, outside it, so
+            // the record could outlive a rollback that undid the lock.
+            InactivityLock::lock($user, 'auth.inactivity_lock.middleware', [
                 'causer' => 'SYSTEM',
                 'source' => 'middleware',
-                'last_activity_at' => $user->last_activity_at?->toIso8601String(),
             ]);
 
             if ($request->expectsJson() || $request->is('api/*')) {
