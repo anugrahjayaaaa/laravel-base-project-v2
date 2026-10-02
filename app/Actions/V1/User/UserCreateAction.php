@@ -98,15 +98,16 @@ class UserCreateAction
                 $this->recordHistoryAction->run($user, $user->password);
             }
 
-            // Admin path only, and the causer is what tells the two apart: an
+            // The causer is what tells the two caller paths apart: an
             // administrator creating an account passes one, a self-registering
-            // user cannot. Without this gate the action would write
-            // `user.created` on top of the `user.registered` row its
-            // registration callers already write, so one signup would produce
-            // two records for one account. Self-registration is audited by the
-            // endpoint that owns that event.
+            // user cannot. Each path writes the event its caller cares about —
+            // without the gate the action would write `user.created` on top of
+            // the `user.registered` row and one signup would produce two
+            // records for one account.
             if ($causer !== null) {
                 $user->audit('user.created', $causer);
+            } else {
+                $user->audit('user.registered');
             }
 
             return $user;
