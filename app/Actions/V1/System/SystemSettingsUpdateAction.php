@@ -3,13 +3,16 @@
 namespace App\Actions\V1\System;
 
 use App\Models\SystemSetting;
+use App\Models\User;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Persist validated system settings using the shared web/API mapping.
  *
- * Controllers remain responsible for request validation, audit logging,
- * and response formatting. This action owns only setting normalization and
- * persistence so both channels cannot drift.
+ * Controllers remain responsible for request validation and response
+ * formatting. This action owns setting normalization, persistence and the
+ * `system_setting.updated` audit record, so both channels write the row the same
+ * way and a rollback takes it with the settings it describes.
  *
  * The whitelist below is the gate every setting has to pass. A key that is
  * validated and rendered but missing here is dropped without a warning — the
@@ -38,8 +41,9 @@ class SystemSettingsUpdateAction
      * @param array<string, mixed> $data
      * @param bool                 $partial  True when absent means "unchanged"
      *                                       rather than "reset to default".
+     * @param User|null            $causer   Who to attribute the audit record to
      */
-    public function run(array $data, bool $partial = false): void
+    public function run(array $data, bool $partial = false, ?User $causer = null): void
     {
         if ($partial) {
             $data = $this->backfill($data);
@@ -110,9 +114,20 @@ class SystemSettingsUpdateAction
             $updates['inactivity_lock_grace_days'] = (string) $data['inactivity_lock_grace_days'];
         }
 
-        foreach ($updates as $key => $value) {
-            SystemSetting::set($key, $value);
-        }
+        // One transaction for all ~40 keys. `SystemSetting::set()` writes a single row
+        // per key with no transaction of its own, so before this the loop could
+        // stop half way — a failure on key 30 left the password policy updated
+        // and the registration toggle not, with nothing to roll back and an audit
+        // row (written later, by the controller) claiming the save succeeded.
+        DB::transaction(function () use ($updates, $data, $causer): void {
+            foreach ($updates as $key => $value) {
+                SystemSetting::set($key, $value);
+            }
+
+            if ($causer !== null) {
+                SystemSetting::query()->firstOrFail()->audit('system_setting.updated', $causer, $data);
+            }
+        });
     }
 
     /**

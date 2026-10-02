@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\Auditable;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Cache;
@@ -15,6 +16,8 @@ use Illuminate\Support\Facades\Cache;
  */
 class SystemSetting extends Model
 {
+    use Auditable;
+
     /** @var array<string,string>|null Request-level cache to eliminate N+1. */
     protected static ?array $requestCache = null;
 

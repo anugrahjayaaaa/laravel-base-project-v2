@@ -31,11 +31,7 @@ class SystemSettingController extends Controller
      */
     public function update(SystemSettingRequest $request, SystemSettingsUpdateAction $action): JsonResponse
     {
-        $data = $request->validated();
-
-        $action->run($data, partial: true);
-
-        $this->audit('system_setting.updated', SystemSetting::query()->firstOrFail(), $request->user(), $data);
+        $action->run($request->validated(), partial: true, causer: $request->user());
 
         return $this->respond('Settings updated successfully.', 200, SystemSetting::getAll());
     }

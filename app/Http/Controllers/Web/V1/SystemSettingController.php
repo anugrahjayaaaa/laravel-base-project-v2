@@ -33,11 +33,7 @@ class SystemSettingController extends Controller
      */
     public function update(SystemSettingRequest $request, SystemSettingsUpdateAction $action): RedirectResponse
     {
-        $data = $request->validated();
-
-        $action->run($data);
-
-        $this->audit('system_setting.updated', SystemSetting::query()->firstOrFail(), $request->user(), $data);
+        $action->run($request->validated(), causer: $request->user());
 
         return back()->with('status', 'Settings updated successfully.');
     }
