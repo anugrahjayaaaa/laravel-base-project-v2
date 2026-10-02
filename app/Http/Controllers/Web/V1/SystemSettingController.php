@@ -29,7 +29,10 @@ class SystemSettingController extends Controller
     }
 
     /**
-     * Update system settings and record the acting user in the audit log.
+     * Update system settings.
+     *
+     * The audit record is written by the action, not here — see
+     * `SystemSettingsUpdateAction`.
      */
     public function update(SystemSettingRequest $request, SystemSettingsUpdateAction $action): RedirectResponse
     {

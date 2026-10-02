@@ -22,7 +22,10 @@ class SystemSettingController extends Controller
     }
 
     /**
-     * Update system settings and record the acting user in the audit log.
+     * Update system settings.
+     *
+     * The audit record is written by the action, not here — see
+     * `SystemSettingsUpdateAction`.
      *
      * Partial on purpose: an API client sends the keys it wants to change, and
      * a key it left out must survive the call. Only the web form — which posts
