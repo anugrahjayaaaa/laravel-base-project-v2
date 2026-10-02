@@ -167,7 +167,7 @@ Detail: `docs/planning/phase-6-rbac.md` § Group A and § C4.
 | P7-A3 | `<x-ui.confirm-action>` `tag` prop — an `<input type="checkbox">` trigger | 7 | P0 | P7-A2 | DONE |
 | P7-A4 | `FeatureFlagUiRenderTest` — render gate for both branches | 7 | P0 | P7-A1..A3 | DONE |
 | P7-A5 | Group A audit — `align-middle` on all five `<th>`; `ConfirmActionUsageTest` extended to `<input` triggers | 7 | P0 | P7-A1..A4 | DONE |
-| P7-B1 | `config/pennant.php` — 8 flags across 4 groups | 7 | P0 | P7-A1 | DONE |
+| P7-B1 | `config/pennant.php` — 8 flags across 5 groups | 7 | P0 | P7-A1 | DONE |
 | P7-B2 | `AppServiceProvider::boot()` — declaration loop + `resolveScopeUsing('global')` | 7 | P0 | P7-B1 | DONE |
 | P7-B3 | `App\Support\FeatureCatalog` — single reader, `isActive()` honours `disabled => true` | 7 | P0 | P7-B1 | DONE |
 | P7-B4 | `FeatureFlagSeeder` — idempotent, never blanket-activates | 7 | P0 | P7-B2, B3 | DONE |
@@ -212,7 +212,7 @@ refuses those routes and drops the menu item, for superadmin included.
 
 **Still true:** three of the eight flags control nothing, because `translations`,
 `activity_logs` and `pulse` have no routes to gate. Those modules ship in Phase 8.
-Group F and Group E1/E5 are what remain.
+Closed. Full suite green; the follow-up audit is in `docs/planning/progress.md`.
 
 Detail: `docs/planning/phase-7-feature-flags.md`.
 
@@ -1085,8 +1085,8 @@ genuinely open and are the real D1/D2 work.
     "depends_on": [
       "RBAC-005"
     ],
-    "status": "IN_PROGRESS",
-    "note": "Groups A, B and D1-D6 ship (P7-A1..A4, P7-B1..B6, P7-D1..D6). Still open: Group F bulk feature actions (P7-F1..F6). Engine is Pennant, not a custom table — see docs/planning/phase-7-feature-flags.md Decision 1."
+    "status": "DONE",
+    "note": "DONE 2026-10-02. Every group ships: A (UI), B (catalogue + activation), C (enforcement middleware), D1-D10 (route + menu gate), E (tests + docs), F (bulk enable/disable). Engine is Pennant, not a custom table — see docs/planning/phase-7-feature-flags.md Decision 1. Follow-up audit fixed a bulkAudit() row written with event NULL (invisible to every event filter), gated the undeclared pulse route, collapsed 4 duplicated cache-key literals into one public const, and removed a doc that told operators to activate flags via tinker without flushing the resolved snapshot."
   },
   {
     "id": "FEAT-002",
@@ -1096,8 +1096,8 @@ genuinely open and are the real D1/D2 work.
     "depends_on": [
       "FEAT-001"
     ],
-    "status": "PLANNED",
-    "note": "NOT STARTED — this is the whole reason the phase is not done. No route is gated on a flag: EnsureFeatureIsEnabled does not exist, the feature: middleware alias is not registered in bootstrap/app.php, and neither web.php nor api.php carries the matrix. A flag turned off at /features currently changes what that page shows and nothing else. Group C (P7-C1..C5) then Group D7-D10."
+    "status": "DONE",
+    "note": "DONE 2026-10-02. EnsureFeatureIsEnabled exists (403, fail-closed, no superadmin bypass, reads the config kill switch that Pennant\'s own middleware cannot see); the feature: alias is registered in bootstrap/app.php; 62/62 module routes are gated across web.php and api.php, plus vendor /pulse through pulse.middleware; the sidebar filters on the flag before the permission. Verified by walking gatherMiddleware() at runtime — route:list hides middleware GROUPS, so the gate is invisible there."
   },
   {
     "id": "P7-A1",
@@ -1146,7 +1146,7 @@ genuinely open and are the real D1/D2 work.
   },
   {
     "id": "P7-B1",
-    "task": "config/pennant.php — 8 flags across 4 groups",
+    "task": "config/pennant.php — 8 flags across 5 groups",
     "phase": 7,
     "priority": "P0",
     "depends_on": ["P7-A1"],
@@ -1313,7 +1313,7 @@ genuinely open and are the real D1/D2 work.
     "priority": "P0",
     "depends_on": ["P7-C2"],
     "status": "DONE",
-    "note": "Built 2026-10-01. One `feature:{slug}` group per flag rather than a call per route: a flag on 3 of 9 routes is a partial gate and the routes missed keep working. web: users 18 routes (incl. bulk-action, the four state toggles, the email-change flow), roles 9, permissions 1, settings 2, sessions 2. api: users 16, roles 7, permissions 1, settings 2, sessions 1. api.v1.auth.logout-all is gated too — it calls the same action and writes the same audit event as sessions.logout-all, so leaving it open let a client mass-logout every device with the module off. Two deliberate exclusions: `logout` stays OUTSIDE feature:sessions because logging out must keep working when the module is off or a bad flag strands an admin who cannot end a session; and roles/permissions are two groups rather than one `feature:roles,permissions` because ANDing them would switch off the permission catalogue whenever roles are off \u2014 the catalogue is code-defined, so roles being off does not invalidate it, which is exactly why it is its own flag. Verified by walking gatherMiddleware() at runtime: 59 of 59 module routes resolve a feature: middleware, none unflagged. route:list does NOT show it \u2014 its Middleware column omits the group, so a reader checking the gate there sees nothing. The first pass was NOT clean: users.bulk-action, the four state toggles and the email-change routes fell outside the group, which a diff review missed and the runtime walk caught."
+    "note": "Built 2026-10-01. One `feature:{slug}` group per flag rather than a call per route: a flag on 3 of 9 routes is a partial gate and the routes missed keep working. web: users 19 routes (incl. bulk-action, the four state toggles, the email-change flow), roles 9, permissions 1, settings 2, sessions 2. api: users 17, roles 7, permissions 1, settings 2, sessions 2. api.v1.auth.logout-all is gated too — it calls the same action and writes the same audit event as sessions.logout-all, so leaving it open let a client mass-logout every device with the module off. Two deliberate exclusions: `logout` stays OUTSIDE feature:sessions because logging out must keep working when the module is off or a bad flag strands an admin who cannot end a session; and roles/permissions are two groups rather than one `feature:roles,permissions` because ANDing them would switch off the permission catalogue whenever roles are off \u2014 the catalogue is code-defined, so roles being off does not invalidate it, which is exactly why it is its own flag. Verified by walking gatherMiddleware() at runtime: 62 of 62 module routes resolve a feature: middleware, none unflagged. Re-verified 2026-10-02, which also found /pulse ungated — a vendor route, so no route in this project carries its flag; it is now gated through pulse.middleware, the vendor's own extension point. route:list does NOT show it \u2014 its Middleware column omits the group, so a reader checking the gate there sees nothing. The first pass was NOT clean: users.bulk-action, the four state toggles and the email-change routes fell outside the group, which a diff review missed and the runtime walk caught."
   },
   {
     "id": "P7-D8",
@@ -1322,7 +1322,7 @@ genuinely open and are the real D1/D2 work.
     "priority": "P0",
     "depends_on": ["P7-D7"],
     "status": "DONE",
-    "note": "Built 2026-10-01, the same matrix as the web side. An API-only gap is the same hole under a different URL \u2014 the RbacPentestTest lesson from Phase 6 applied to a new dimension. Counts into the same 59/59 runtime verification: every api/v1 module route now resolves a feature: middleware."
+    "note": "Built 2026-10-01, the same matrix as the web side. An API-only gap is the same hole under a different URL \u2014 the RbacPentestTest lesson from Phase 6 applied to a new dimension. Counts into the same 62/62 runtime verification: every api/v1 module route now resolves a feature: middleware."
   },
   {
     "id": "P7-D9",

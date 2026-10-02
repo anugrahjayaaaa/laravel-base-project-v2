@@ -13,7 +13,7 @@
 ||| 4 | User lifecycle & user management | DONE |
 ||| 5 | Password/security lifecycle | DONE — Groups A, B, and C verified |
 | 6 | RBAC & authorization | IN PROGRESS — Groups A (UI) and B (permission set + seeders) DONE; C–E pending |
-| 7 | Feature availability / feature flags | IN PROGRESS — catalogue, management UI, controller, routes, audit (P7-A/B/D1-D6), the enforcement middleware (C) and the route/menu gate (D) all ship. The kill switch is real: a flag off refuses its routes and drops its menu item |
+| 7 | Feature availability / feature flags | DONE — Groups A–F. The kill switch is real: a flag off 403s its routes (62/62 across web + API) and drops its menu item, with no superadmin bypass |
 | 8 | Settings | PLANNED |
 | 9 | Notification/mail/queue | PLANNED |
 | 10 | Audit Trail | PLANNED |
@@ -27,8 +27,8 @@
 
 ## Current Task
 
-Phase 7 — Feature Availability & Feature Flags: IN PROGRESS
-**The management side ships; the enforcement side does not exist yet.**
+Phase 7 — Feature Availability & Feature Flags: DONE
+**Both sides ship, and both were verified by running the app, not by reading the diff.**
 
 - Group A (UI): ✅ DONE (`9545bce`) — index view, metric strip, grouped table, `feature-toggle` component, render gate
 - Group A audit: ✅ DONE — `align-middle` on all five `<th>`, and `ConfirmActionUsageTest` extended to see the `<input>` switch (it matched `<button\b` only, so the switch was never checked at all). Both sabotage-verified. Closed P7-E3 early
@@ -36,19 +36,24 @@ Phase 7 — Feature Availability & Feature Flags: IN PROGRESS
 - Group B audit: ✅ DONE — seeder non-destructiveness proven by running it (operator's `pulse=off` survived a reseed, row count held at 8), `stores` block diffed IDENTICAL against vendor, `isActive()` confirmed the only reader. Two non-defect gaps recorded: `disabled => true` is unused until routes are gated, and the slug count is deliberately unpinned. Closed P7-B7
 - Group D1–D6 (permissions, index/toggle actions, controller, web routes, sidebar item): ✅ DONE (`e538c49`)
 - Group C (enforcement middleware): ✅ DONE — `EnsureFeatureIsEnabled` (403, no `features.manage` bypass) + the `feature:` alias in `bootstrap/app.php`; 9 tests, three sabotages verified. Pennant's own middleware could not be aliased: it aborts 400, and it resolves through `Feature::active()` so a `disabled => true` kill switch reads as active to it (measured) — status revised 404 → 403 on 2026-10-01
-- Group D7–D10 (route matrix + menu gate): ✅ DONE — 59/59 module routes gated (33 web, 26 API), menu filters on the flag before the permission, `FeatureFlagMenuTest` 9 tests. The first pass shipped a partial gate (bulk-action, state toggles, email-change left outside) and was caught by walking `gatherMiddleware()` at runtime, not by reading the diff
-- Group F (bulk feature actions): ⬜ NOT STARTED — needs `enable_feature` / `disable_feature` in `ACTION_CONFIG` first
-- Group E (tests + docs): ⬜ PARTIAL
+- Group D7–D10 (route matrix + menu gate): ✅ DONE — 62/62 module routes gated (33 web, 29 API), menu filters on the flag before the permission, `FeatureFlagMenuTest` 9 tests. The first pass shipped a partial gate (bulk-action, state toggles, email-change left outside) and was caught by walking `gatherMiddleware()` at runtime, not by reading the diff
+- Group F (bulk feature actions): ✅ DONE (`0481541`, `f8d23f3`) — `FeatureBulkToggleAction` (one transaction, one `feature.bulk_toggled` row, every `from` read before the first write), `features.bulk-action` behind one `features.manage` gate rather than `AuthorizesBulkAction`, `#bulkBar` with `data-bulk-mixed="disable_feature"`, and 4 tests that run the real Vite bundle — after the dropdown shipped empty once with 800+ green tests
+- Group E (tests + docs): ✅ DONE — E1/E2/E4/E6/E7 closed as planned; E3 closed in the Group A audit; **E5 found a real N+1** (`resolve()` called `isActive()` per slug — 2/4/8 queries for 2/4/8 flags), fixed by `FeatureCatalog::activeMap()` reading the set in one `WHERE name IN (...)`. Sabotage-verified
 
-**Why the phase is not done, stated plainly:** the kill switch exists but
-**nothing is wired to it**. `EnsureFeatureIsEnabled` and the `feature:` alias ship,
-yet no route carries `feature:{slug}` — so turning a flag off at `/features` still
-changes nothing about `/users`, and the sidebar still links it. Group D7/D8 (route
-matrix on `web.php` and `api.php`) and D9 (menu filter) are the next work.
+**Follow-up audit (2026-10-02), all fixed:**
+- `bulkAudit()` left the `event` column NULL while writing `description`, so every bulk user row (7 actions × web + API) was invisible to any `where('event', …)` filter. One line in the shared helper; also gives the batch a `batch_uuid`
+- `pulse` was declared but not gated: `/pulse` served **200 with the flag off**. Now gated through `pulse.middleware`, the vendor's own extension point
+- the `SNAPSHOT` cache key was duplicated in 4 files behind docblocks claiming "a rename has to break a compile" — false for PHP string constants. One `public const` on the reader, referenced by all three writers
+- the docs told operators to activate flags via `tinker`, which writes the store row without forgetting the resolved snapshot — `/features` then shows stale state for 30s and a `features.view`-only user cannot self-heal
+- `translations` and `activity_logs` control nothing yet; the page now says so instead of letting a switch that changes nothing borrow the confidence of one that does
+- a report that the API role surface was unaudited was **wrong** — all 5 mutations audit inside their actions. `ApiRoleAuditTrailTest` now proves it by running the routes, so the question does not get re-litigated by the next grep
 
-**Next:** Group F (bulk enable/disable, incl. the `data-bulk-mixed` rule), then
-Group E1 (end-to-end flag test) and E5 (perf delta). Full detail:
-`docs/planning/phase-7-feature-flags.md`.
+**Known and accepted:** `translations` and `activity_logs` gate nothing until
+Phase 8 builds their routes — the page labels them rather than pretending. Both
+menu entries are already wired to their flag so they start hiding the moment the
+routes land.
+
+Full detail: `docs/planning/phase-7-feature-flags.md`.
 
 ---
 

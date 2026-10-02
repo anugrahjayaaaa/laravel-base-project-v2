@@ -159,9 +159,9 @@ With the `database` driver, `Feature::active($slug)` resolves against a row in
 and wired to a route produces a route that refuses for everyone — superadmin
 included — until someone activates it:
 
-```
-php artisan tinker --execute="Laravel\Pennant\Feature::activate('users');"
-```
+Activate from `/features` or seed with `FeatureFlagSeeder` — NOT via tinker,
+which writes the store row without forgetting the resolved snapshot and leaves
+the page stale for its TTL.
 
 Every flag needs **both** a config entry **and** an activation. `FeatureFlagSeeder`
 makes that non-forgettable; `FeatureFlagCatalogTest` proves it.
@@ -347,11 +347,11 @@ throwaway routes before 59 real ones depended on it.
 | ID | Task | Depends | Status |
 |----|------|---------|--------|
 | P7-D7 | `routes/web.php` — one `feature:{slug}` group per flag, not a call per route | C2 | ✅ DONE — 33 routes |
-| P7-D8 | `routes/api.php` — the same matrix | D7 | ✅ DONE — 26 routes |
+| P7-D8 | `routes/api.php` — the same matrix | D7 | ✅ DONE — 29 routes |
 | P7-D9 | `AppMenuComposer` — a `feature` key per item, checked **before** `permission` | D7 | ✅ DONE — 7 items |
 | P7-D10 | `tests/Feature/FeatureFlagMenuTest.php` | D9 | ✅ DONE — 9 tests |
 
-**Gate D: PASSED.** 59 of 59 module routes resolve a `feature:` middleware,
+**Gate D: PASSED.** 62 of 62 module routes resolve a `feature:` middleware,
 verified by walking `gatherMiddleware()` at runtime rather than by reading the
 diff. `route:list` does **not** show it — its Middleware column omits the group,
 so a reader checking the gate there sees nothing.
@@ -370,11 +370,18 @@ missed it; the runtime walk caught it.
   The catalogue is defined in code (P6-C7), so roles being off does not
   invalidate it — which is exactly why it is its own flag.
 
-**Not gateable yet:** `translations`, `activity_logs` and `pulse` have no routes
-(`Route::has()` is false for the first two; `pulse` is a vendor route). Those
-modules ship in Phase 8, so **three of the eight flags control nothing** until
-then. The menu items carry a `feature` key anyway, so the entries keep working —
-and keep hiding — when the modules land.
+**Not gateable yet:** `translations` and `activity_logs` have no routes
+(`Route::has()` is false for both). Those modules ship in Phase 8, so **two of the
+eight flags control nothing** until then. The menu items carry a `feature` key
+anyway, so the entries keep working — and keep hiding — when the modules land,
+and the `/features` rows are marked `pending` so an operator is not told
+"Inactive" for a switch that changes nothing.
+
+`pulse` looked like the same case and was not: it is a *vendor* route, and the
+audit measured `GET /pulse` returning **200 with the flag off** — a live
+dashboard behind a switch that read Inactive. It is now gated through
+`pulse.middleware`, which is the vendor's own extension point for exactly this,
+so the matrix reaches 62/62 without this project declaring the route.
 
 **P7-E4 churn happened, and was one root cause.** 274 tests failed with 403 —
 none about feature flags, all because a test visiting `/users` had no seeded flag
@@ -441,7 +448,7 @@ expensive direction.
 | Vector | Control |
 |---|---|
 | Flag bypass via superadmin | none exists — `EnsureFeatureIsEnabled` will have no `can()` escape hatch (`P7-C1`, `P7-C4`) |
-| Flag bypass via API | covered — the same middleware is on `routes/api.php` (`P7-D8`), verified as part of the 59/59 walk |
+| Flag bypass via API | covered — the same middleware is on `routes/api.php` (`P7-D8`), verified as part of the 62/62 walk |
 | UI hiding treated as enforcement | `ui-authorization.md` is explicit; the middleware is the boundary and `P7-E1` proves it |
 | Undeclared flag | fail-closed — `isActive()` is `false` for a slug with no row |
 | Silent state change | every toggle audits `feature.toggled` with `from`/`to`, old value read before the write (`P7-D3`) |
@@ -502,5 +509,5 @@ Sequential — C cannot be skipped, and it is what turns a flag into a kill swit
 ## Task Tracker Reconciliation
 
 - `FLAG-001` (Pennant foundation) stays **DONE** — Phase 1 shipped the package; this phase is what finally uses it.
-- `FEAT-001` / `FEAT-002` stay **PLANNED** until Group C/E closes; they are the phase-level rollups for exactly this work.
-- `docs/planning/feature-tracker.md` row 24 (`Feature flags (DB-backed)`) reads "done" today, which is wrong — the table existed and nothing used it. Should read "catalogue + management UI shipped; route enforcement pending" until C and D close.
+- `FEAT-001` / `FEAT-002` move to **DONE** — both were rollups for exactly this work, and it shipped. The notes they carried while waiting ("`EnsureFeatureIsEnabled` does not exist", "no route carries the matrix") described the state before Groups C and D.
+- `docs/planning/feature-tracker.md` row 24 (`Feature flags (DB-backed)`) read "done" back when the table existed and nothing used it — the same false positive. It now describes what actually ships, including which flags still control nothing.

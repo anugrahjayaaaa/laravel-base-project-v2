@@ -42,8 +42,15 @@ Flags are declared in `config/pennant.php`, not stored with labels and
 descriptions in the database. A flag's identity and its human copy are code, like
 a permission name in `PermissionCatalog` — a DB row nothing reads is a trap.
 
-Eight flags ship today, across four module groups: `users`, `roles`,
-`permissions`, `settings`, `translations`, `sessions`, `activity_logs`, `pulse`.
+Eight flags ship today, across five module groups (Users, Settings, Security,
+Audit, Monitoring): `users`, `roles`, `permissions`, `settings`, `translations`,
+`sessions`, `activity_logs`, `pulse`.
+
+**Five of the eight are wired to something.** `users`, `roles`, `permissions`,
+`settings` and `sessions` gate real routes. `pulse` gates the vendor dashboard
+through `pulse.middleware`. `translations` and `activity_logs` are declared ahead
+of their modules (Phase 8) and gate nothing yet — their rows on `/features` say
+so, rather than presenting a switch that reports success and changes nothing.
 
 `registration` is deliberately **not** a flag. `registration_enabled` is already a
 `system_settings` row read at all four entry points, so a flag for it would be two
@@ -56,9 +63,18 @@ resolves against a row in `features`. **No row → false, fail-closed.** A flag
 added to config and wired to a route produces a route that refuses for everyone,
 superadmin included, until it is activated:
 
+Activate it from `/features` (needs `features.manage`), or run the seeder on a
+fresh install:
+
 ```
-php artisan tinker --execute="Laravel\Pennant\Feature::activate('users');"
+php artisan db:seed --class=FeatureFlagSeeder
 ```
+
+**Do not activate through `tinker`.** `Feature::activate()` writes the store row
+and stops there; it does not forget the resolved snapshot, so `/features` keeps
+rendering the old state for up to 30 seconds — and a user holding only
+`features.view` has no write path to force it cold. The toggle actions and the
+seeder both flush, which is why they are the supported route.
 
 Every flag therefore needs **both** a config entry **and** an activation.
 `FeatureFlagSeeder` makes that non-forgettable: it activates any catalogue slug
@@ -179,11 +195,14 @@ Feature flags use Laravel Pennant (`Laravel\Pennant\Feature`):
 ```php
 use Laravel\Pennant\Feature;
 
-// Define a feature (in a feature class or via Pennant::define)
-// Check in application/controller code — enforcement boundary
-if (! FeatureCatalog::isActive('new-dashboard')) {
+// Identity is declared in config/pennant.php, NOT via Pennant::define
+// Read through the catalogue — it is the only place the kill switch is applied
+if (! FeatureCatalog::isActive('pulse')) {
     abort(403);
 }
+
+// Many flags at once, in ONE store read (a per-slug loop is an N+1)
+$states = FeatureCatalog::activeMap(FeatureCatalog::slugs()); // ['users' => true, ...]
 
 // Blade (UX only — backend must still enforce)
 @feature('new-dashboard')
@@ -242,34 +261,40 @@ CEO can still see it" is a state nobody asked for.
 
 ## Settings Integration
 
-Feature availability may be driven by settings:
+Self-registration is a **SystemSetting, not a flag**:
 ```
-registration.enabled
+registration_enabled
 ```
+read through `SystemSetting::getBool('registration_enabled', false)`. It is
+deliberately not duplicated as a flag — two writers for one switch is a race
+with no winner. `FeatureFlagCatalogTest` pins that no `registration%` slug
+competes with it.
 
-Or by feature flags:
-```
-features.new_dashboard.enabled
-```
+Everything else is a flag: an identity in `config/pennant.php`, its state in the
+Pennant store, read through `FeatureCatalog::isActive()`. There is no
+`features.*.enabled` settings path.
 
 ## API Responses
 
-When a feature is disabled:
+A disabled feature and a missing permission both return **403**, and this
+project does not distinguish them in the body:
+
 ```json
 {
-  "message": "This feature is not available.",
-  "code": "FEATURE_UNAVAILABLE",
-  "meta": { "feature": "new_dashboard" }
+  "message": "Request could not be completed.",
+  "code": "HTTP_ERROR"
 }
 ```
 
-When a feature is available but user lacks permission:
-```json
-{
-  "message": "This action is unauthorized.",
-  "code": "FORBIDDEN"
-}
-```
+That is the deliberate consequence of settling on 403 (see
+[Enforcement](#enforcement)): one status, one code, no table for a client to
+consult. `EnsureFeatureIsEnabled` calls a bare `abort(403)`, so nothing in the
+response names the flag.
+
+A client that genuinely must tell *module killed* from *no permission* from
+*account disabled* cannot read it off the status. `GET /features` is ungated by
+design and reports every flag's state — that is the capability endpoint, and it
+is the intended way to ask.
 
 ## Pennant Stores
 
