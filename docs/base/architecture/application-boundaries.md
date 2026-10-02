@@ -95,8 +95,14 @@ one write site per mutation.
 5. Properties MUST record the decision, not restate the model. `role.deleted`
    logs how many accounts lost access; `role.created` logs the permission set
    granted. "A role was updated" cannot be used during an incident review.
+6. **"It is not an Eloquent model" is not an exemption.** If the state is
+   persisted in a table, add a model over that table and give it `Auditable` —
+   `FeatureFlag` is exactly this, over Pennant's `features` table. A
+   hand-rolled `activity()` call that skips `audit()` produces the one row in
+   the table with no `source`, no `ip` and no subject, which is the row nobody
+   can trace or inspect.
 
-**Worked example: the Role feature** — model carries `Auditable`, each action
+**Worked examples:** the Role feature — model carries `Auditable`, each action
 writes its own row in its own transaction, both role controllers contain no
 audit call. See [Audit Trail § Reference implementation](../features/audit-trail.md#reference-implementation-the-role-feature)
 for the file-by-file shape and the per-feature migration status.

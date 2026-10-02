@@ -143,6 +143,41 @@ Three details worth copying:
 
 Read-only actions write nothing. `RoleIndexAction` is the example.
 
+### "But my thing is not an Eloquent model"
+
+This comes up, and the answer has been wrong twice. **"It is not a model" is not
+a reason to reach for `activity()` — it is a reason to check whether the state
+has a table.**
+
+Feature flags were the case: Pennant owns its store, so the code claimed there
+was nothing to hang a subject on and wrote the event by hand. But the state
+lives in a real `features` table, one row per flag, and that row had no class
+attached. The audit row ended up with a causer and properties but no subject —
+the viewer renders `#`, and nobody can inspect what changed. So:
+
+**Grep the migrations for the table before you accept the excuse.**
+
+```bash
+grep -rn "Schema::create" database/migrations/ | grep -i <thing>
+```
+
+If the state is persisted in a table, add a model over it and give it the
+trait. Do **not** invent a throwaway table whose only purpose is to be an audit
+target — that one really is a new row for no reason. `App\Models\FeatureFlag` is
+read-only by design: the package still owns every write, the model exists to give
+the row an identity.
+
+A genuine subject-less event is one where **no state is persisted at all** — a
+failed login attempt, a password-reset request. Those are already recorded in
+tables built for them (`failed_login_attempts`, `password_reset_tokens`), so the
+extra activity row would be the same fact twice in the wrong shape. Do not write
+it, and do not invent a subject for it.
+
+**Whatever you do, there is one entry point.** `Auditable::auditContext()` merges
+`source`, `ip` and `user_agent` into every row. A hand-rolled `activity()` call
+that omits them is not a stylistic difference — it is the only row in the table
+that cannot be traced back to a request.
+
 ### Migration status
 
 The migration out of the controllers is in progress, not finished. The rule
@@ -155,11 +190,32 @@ add to this list, and do not copy them:
 | User, System Setting, Auth actions | done — audited in the action |
 | `Web\V1\ProfileController`, `Api\V1\ProfileController` | **not migrated** — 7 calls via `Controller::audit()` |
 | `Web\V1\UserController:172`, `Api\V1\User\UserController:158` | **not migrated** — `bulkAudit()` for the aggregate lock/unlock/activate path |
-| `FeatureToggleAction`, `FeatureBulkToggleAction` | inline `activity()` — Pennant flags are not Eloquent models, so there is no `$model->audit()` to call. Kept deliberately; they pass `source => system`. |
+| `FeatureToggleAction`, `FeatureBulkToggleAction` | done — `FeatureFlag` model over the `features` table, `$subject->audit()` / `auditBulk()` |
 
 Once Profile and the User bulk path are migrated, `Controller::audit()` and
 `Controller::bulkAudit()` are deleted. A controller that calls either one after
 that is a mistake, not an exception.
+
+**Two `activity()` calls remain in `app/`, both expected:**
+
+```bash
+rg -n 'activity\(' app -g '!*.md' | grep -v 'Activity('
+```
+
+- `app/Models/Concerns/Auditable.php:44` — the trait's own `audit()`. That is
+  the entry point, not a bypass of it.
+- `app/Http/Controllers/Controller.php:65` — inside the transitional
+  `Controller::audit()`, which exists only for the two unmigrated call sites in
+  the table above. It goes when they do.
+
+Expect a third hit in a docblock quoting the call that was removed
+(`FeatureToggleAction`) — prose about the old shape, not a writer. Check what a
+hit actually is before treating it as one; counting lines and asserting the
+number is how a false "no activity() calls remain" gets written into a doc.
+
+`Auditable::auditBulk()` does not appear here because it is a raw `DB::table()`
+insert, not an `activity()` call. **Any hit that is real code is a second
+writer.**
 
 A grep that still finds an event name in a controller is the check for step 5.
 Two of the bugs found during this migration were exactly that: one event
