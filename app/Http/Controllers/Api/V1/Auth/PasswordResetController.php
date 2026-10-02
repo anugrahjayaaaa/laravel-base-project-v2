@@ -39,12 +39,6 @@ class PasswordResetController extends Controller
             ], $result['error']['status']);
         }
 
-        if ($result['status'] === Password::PASSWORD_RESET && $result['user']) {
-            $this->audit('auth.password_reset_completed', $result['user'], $result['user'], [
-                'ip' => $ip,
-            ]);
-        }
-
         if ($result['status'] === Password::PASSWORD_RESET) {
             return response()->json([
                 'data' => ['message' => 'Password reset successfully.'],

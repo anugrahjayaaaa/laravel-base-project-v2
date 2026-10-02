@@ -61,6 +61,8 @@ class AuthResetPasswordAction
 
                     event(new PasswordReset($user));
                     $this->recordHistoryAction->run($user, $user->password);
+
+                    $user->audit('auth.password_reset_completed');
                 }
             );
 

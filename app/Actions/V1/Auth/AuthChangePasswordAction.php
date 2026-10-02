@@ -20,7 +20,8 @@ class AuthChangePasswordAction
 {
     public function __construct(
         private readonly AuthRecordPasswordHistoryAction $recordHistoryAction,
-    ) {}
+    ) {
+    }
 
     /**
      * Execute the password change.
@@ -66,6 +67,8 @@ class AuthChangePasswordAction
             $user->tokens()->delete();
             DB::table('sessions')->where('user_id', $user->id)->delete();
 
+            $user->audit('auth.password_changed');
+
             return true;
         });
     }
@@ -97,6 +100,6 @@ class AuthChangePasswordAction
             ->limit($count)
             ->get();
 
-        return $history->contains(fn($h) => Hash::check($newPassword, $h->password));
+        return $history->contains(fn ($h) => Hash::check($newPassword, $h->password));
     }
 }

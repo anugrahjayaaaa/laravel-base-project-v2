@@ -23,8 +23,6 @@ class LogoutAllController extends Controller
     {
         $action->run($request->user());
 
-        $this->audit('auth.logout_all', $request->user(), $request->user());
-
         return $this->respond('All devices logged out successfully.');
     }
 }

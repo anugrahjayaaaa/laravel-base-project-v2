@@ -32,8 +32,6 @@ class VerifyEmailController extends Controller
             return $this->respond($result['error']['message'], $result['error']['status']);
         }
 
-        $this->audit('auth.email_verified', $result['user'], $result['user']);
-
         return $this->respond('Email verified successfully.');
     }
 }

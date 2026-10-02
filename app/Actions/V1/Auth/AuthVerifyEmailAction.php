@@ -23,6 +23,8 @@ class AuthVerifyEmailAction
 
         $user->markEmailAsVerified();
 
+        $user->audit('auth.email_verified');
+
         return ['user' => $user];
     }
 }

@@ -36,11 +36,6 @@ class RegisterController extends Controller
         $data = $request->validated();
         $user = $action->run($data, $request->password());
 
-        $user->audit('user.registered', $request->user(), [
-            'ip' => $request->ip(),
-            'channel' => 'api',
-        ]);
-
         return $this->respond('Account created. Check your email to verify it before logging in.', 201, [
             'id' => $user->getKey(),
             'username' => $user->username,

@@ -22,6 +22,8 @@ class AuthLogoutAllDevicesAction
 
         $user->tokens()->delete();
 
+        $user->audit('auth.logout_all');
+
         return ['success' => true];
     }
 }

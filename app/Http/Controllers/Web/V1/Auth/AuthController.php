@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Web\V1\Auth;
 
 use App\Actions\V1\Auth\AuthAuthenticateAction;
 use App\Actions\V1\Auth\AuthListSessionsAction;
+use App\Actions\V1\Auth\AuthLoginCompletedAction;
+use App\Actions\V1\Auth\AuthLogoutAction;
 use App\Actions\V1\Auth\AuthLogoutAllDevicesAction;
 use App\Actions\V1\Auth\AuthResendVerificationAction;
 use App\Actions\V1\Auth\AuthSendResetLinkAction;
@@ -63,7 +65,7 @@ class AuthController extends Controller
      * @param  AuthAuthenticateAction  $action
      * @return \Illuminate\Http\RedirectResponse
      */
-    public function login(LoginRequest $request, LoginThrottle $throttle, AuthAuthenticateAction $action)
+    public function login(LoginRequest $request, LoginThrottle $throttle, AuthAuthenticateAction $action, AuthLoginCompletedAction $loginCompletedAction)
     {
         $data = $request->validated();
         $identifier = $data['identifier'];
@@ -73,30 +75,6 @@ class AuthController extends Controller
         $result = $action->run($identifier, $data['password'], $ip, $throttle);
 
         if (isset($result['error'])) {
-            if (isset($result['lockedSeconds']) && $result['lockedSeconds'] > 0) {
-                $this->audit('auth.login_failed', $user, $user, [
-                    'identifier' => $identifier,
-                    'ip' => $ip,
-                    'user_agent' => $request->userAgent(),
-                    'channel' => 'web',
-                ]);
-
-                $this->audit('auth.account_locked', $user, $user, [
-                    'identifier' => $identifier,
-                    'ip' => $ip,
-                    'user_agent' => $request->userAgent(),
-                    'channel' => 'web',
-                    'lock_duration_seconds' => $result['lockedSeconds'],
-                ]);
-            } else {
-                $this->audit('auth.login_failed', $user, $user, [
-                    'identifier' => $identifier,
-                    'ip' => $ip,
-                    'user_agent' => $request->userAgent(),
-                    'channel' => 'web',
-                ]);
-            }
-
             if (($result['error']['error_code'] ?? null) === 'UNVERIFIED_EMAIL') {
                 return redirect()->route('verification.notice')
                     ->with('error', $result['error']['message']);
@@ -106,17 +84,7 @@ class AuthController extends Controller
                 ->withErrors(['identifier' => $result['error']['message']]);
         }
 
-        $user = $result['user'];
-
-        Auth::login($user, $request->boolean('remember'));
-
-        $user->updateQuietly(['last_activity_at' => now()]);
-
-        $this->audit('auth.login', $user, $user, [
-            'ip' => $ip,
-            'user_agent' => $request->userAgent(),
-            'channel' => 'web',
-        ]);
+        $loginCompletedAction->run($result['user'], $request->boolean('remember'));
 
         return redirect()->intended('/dashboard');
     }
@@ -153,19 +121,8 @@ class AuthController extends Controller
         $result = $action->run($email, $ip, $request, $throttle);
 
         if (isset($result['error'])) {
-            $this->audit('auth.password_reset_requested', $user, $user, [
-                'email' => $email,
-                'ip' => $ip,
-            ]);
-
             return back()->withInput($request->only('email'))
                 ->withErrors(['email' => $result['error']['message']]);
-        }
-
-        if ($result['user']) {
-            $this->audit('auth.password_reset_requested', $result['user'], $result['user'], [
-                'ip' => $ip,
-            ]);
         }
 
         return back()->withInput($request->only('email'))
@@ -205,12 +162,6 @@ class AuthController extends Controller
         if (isset($result['error'])) {
             return back()->withInput($request->only('email'))
                 ->withErrors(['email' => $result['error']['message']]);
-        }
-
-        if ($result['status'] === Password::PASSWORD_RESET && $result['user']) {
-            $this->audit('auth.password_reset_completed', $result['user'], $result['user'], [
-                'ip' => $ip,
-            ]);
         }
 
         if ($result['status'] === Password::PASSWORD_RESET) {
@@ -265,8 +216,6 @@ class AuthController extends Controller
                 ->with('error', $result['error']['message']);
         }
 
-        $this->audit('auth.email_verified', $result['user'], $result['user']);
-
         if ($isNewUser) {
             return redirect()->route('login')
                 ->with('success', 'Email verified. Please log in.');
@@ -300,10 +249,6 @@ class AuthController extends Controller
         if (isset($result['error'])) {
             return back()->withErrors(['error' => $result['error']['message']]);
         }
-
-        $this->audit('auth.verification_resent', $user, $user, [
-            'email' => $email,
-        ]);
 
         return back()->with('success', 'If the email is registered, a verification link has been sent.');
     }
@@ -342,12 +287,7 @@ class AuthController extends Controller
         abort_unless(SystemSetting::getBool('registration_enabled', false), 404);
 
         $data = $request->validated();
-        $user = $action->run($data, $request->password());
-
-        $this->audit('user.registered', $user, $user, [
-            'ip' => $request->ip(),
-            'channel' => 'web',
-        ]);
+        $action->run($data, $request->password());
 
         return redirect()->route('login')
             ->with('success', 'Account created. Check your email to verify it before logging in.');
@@ -382,10 +322,7 @@ class AuthController extends Controller
      */
     public function logoutAllDevices(Request $request, AuthLogoutAllDevicesAction $action)
     {
-        $user = $request->user();
-        $action->run($user);
-
-        $this->audit('auth.logout_all', $user, $user);
+        $action->run($request->user());
 
         Auth::logout();
 
@@ -400,20 +337,9 @@ class AuthController extends Controller
      * @param  Request  $request
      * @return \Illuminate\Http\RedirectResponse
      */
-    public function logout(Request $request)
+    public function logout(Request $request, AuthLogoutAction $action)
     {
-        $user = $request->user();
-
-        Auth::logout();
-
-        $request->session()->invalidate();
-        $request->session()->regenerateToken();
-
-        $this->audit('auth.logout', $user, $user, [
-            'ip' => $request->ip(),
-            'user_agent' => $request->userAgent(),
-            'channel' => 'web',
-        ]);
+        $action->run($request);
 
         return redirect('/login');
     }
