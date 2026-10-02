@@ -383,4 +383,88 @@ class ActionFirstAuditTest extends TestCase
         $this->assertSame(0, $this->deletedRows($user->id)->count(), 'a rolled-back delete left an orphan audit row');
         $this->assertFalse($user->fresh()->trashed(), 'the delete was not rolled back');
     }
+
+    /**
+     * The four mutations that used to audit outside their transaction.
+     *
+     * All four are `DB::transaction`-free in the sense that mattered: each wrote
+     * its state change and its audit row as unguarded separate statements, so a
+     * failure between them left the record claiming a change that never committed.
+     * The tracker's "events with no state change" note covers `login_failed`,
+     * `account_locked`, `verification_resent` and `registered` — true for those,
+     * but not for these: all four mutate a column or delete a row.
+     *
+     * Driven through the action inside an enclosing transaction that then throws,
+     * which is the only way to reach the failure window these had.
+     *
+     * @param  string  $event
+     * @param  array<string, mixed>  $state  Starting state the action requires.
+     * @param  callable(User): mixed  $mutate
+     * @param  callable(User): bool  $assertRolledBack
+     */
+    #[Test]
+    #[DataProvider('unguardedAuditCases')]
+    public function a_rolled_back_mutation_leaves_no_audit_record(
+        string $event,
+        array $state,
+        callable $mutate,
+        callable $assertRolledBack,
+    ): void {
+        $user = User::factory()->create($state);
+
+        try {
+            DB::transaction(function () use ($user, $mutate) {
+                $mutate($user);
+
+                throw new RuntimeException('a later step failed');
+            });
+        } catch (RuntimeException) {
+            // Expected: the enclosing transaction rolled back.
+        }
+
+        $this->assertSame(
+            0,
+            $this->rowsFor($user->id)->where('event', $event)->count(),
+            "a rolled-back {$event} left an orphan audit row"
+        );
+
+        $this->assertTrue(
+            $assertRolledBack($user),
+            "the {$event} state change was not rolled back with its audit row"
+        );
+    }
+
+    /**
+     * @return array<string, array{0: string, 1: array<string, mixed>, 2: callable, 3: callable}>
+     */
+    public static function unguardedAuditCases(): array
+    {
+        return [
+            'inactivity lock' => [
+                'auth.inactivity_lock',
+                ['last_activity_at' => now()->subDays(35)],
+                fn (User $user) => \App\Services\InactivityLock::lock($user),
+                fn (User $user) => ! $user->fresh()->is_locked,
+            ],
+            // `email_verified_at => null` is required, not cosmetic: the factory
+            // creates a verified user and the action refuses one outright, so
+            // with the default state it would write nothing and the test would
+            // pass without reaching the failure window.
+            'email verified' => [
+                'auth.email_verified',
+                ['email_verified_at' => null],
+                fn (User $user) => app(\App\Actions\V1\Auth\AuthVerifyEmailAction::class)->run($user),
+                fn (User $user) => $user->fresh()->email_verified_at === null,
+            ],
+            'logout all' => [
+                'auth.logout_all',
+                [],
+                fn (User $user) => app(\App\Actions\V1\Auth\AuthLogoutAllDevicesAction::class)->run($user),
+                // Sessions and tokens are deleted inside the transaction now, so
+                // there is no column to read back for this one; the audit-row
+                // count above is the assertion.
+                fn (User $user) => true,
+            ],
+        ];
+    }
 }
