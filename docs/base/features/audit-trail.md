@@ -178,40 +178,38 @@ it, and do not invent a subject for it.
 that omits them is not a stylistic difference — it is the only row in the table
 that cannot be traced back to a request.
 
-### Migration status
+### Migration status: complete
 
-The migration out of the controllers is in progress, not finished. The rule
-applies to new work immediately; these are the call sites still to move. Do not
-add to this list, and do not copy them:
+Every audit write is in an action, a service or a job. No controller writes an
+audit row, and there is no helper left for one to call — `Controller::audit()`
+and `Controller::bulkAudit()` were deleted, so a controller cannot reach for
+them even by mistake.
 
 | Call site | State |
 |-----------|-------|
 | `Web\V1\RoleController`, `Api\V1\Role\RoleController` | done — no audit call |
 | User, System Setting, Auth actions | done — audited in the action |
-| `Web\V1\ProfileController`, `Api\V1\ProfileController` | **not migrated** — 7 calls via `Controller::audit()` |
-| `Web\V1\UserController:172`, `Api\V1\User\UserController:158` | **not migrated** — `bulkAudit()` for the aggregate lock/unlock/activate path |
-| `FeatureToggleAction`, `FeatureBulkToggleAction` | done — `FeatureFlag` model over the `features` table, `$subject->audit()` / `auditBulk()` |
+| `Web\V1\ProfileController`, `Api\V1\ProfileController` | done — the actions own all 7 rows |
+| `Web\V1\UserController`, `Api\V1\User\UserController` bulk | done — loops the per-user action |
+| `FeatureToggleAction`, `FeatureBulkToggleAction` | done — `FeatureFlag` model over the `features` table |
 
-Once Profile and the User bulk path are migrated, `Controller::audit()` and
-`Controller::bulkAudit()` are deleted. A controller that calls either one after
-that is a mistake, not an exception.
-
-**Two `activity()` calls remain in `app/`, both expected:**
+**One `activity()` call remains in `app/`, and it is the entry point:**
 
 ```bash
 rg -n 'activity\(' app -g '!*.md' | grep -v 'Activity('
 ```
 
-- `app/Models/Concerns/Auditable.php:44` — the trait's own `audit()`. That is
-  the entry point, not a bypass of it.
-- `app/Http/Controllers/Controller.php:65` — inside the transitional
-  `Controller::audit()`, which exists only for the two unmigrated call sites in
-  the table above. It goes when they do.
+- `app/Models/Concerns/Auditable.php:44` — the trait's own `audit()`.
 
-Expect a third hit in a docblock quoting the call that was removed
-(`FeatureToggleAction`) — prose about the old shape, not a writer. Check what a
-hit actually is before treating it as one; counting lines and asserting the
-number is how a false "no activity() calls remain" gets written into a doc.
+The other two hits are prose: `FeatureToggleAction.php:92` and
+`FeatureFlag.php:15` both explain what an *earlier* hand-rolled call did wrong.
+Check what a hit actually is before treating it as a writer; counting lines and
+asserting the number is how a false "no activity() calls remain" gets written
+into a doc — and equally how a stale "two calls remain" survives.
+
+The full finding-by-finding record, including the transaction gaps found in
+follow-up and the two files that were invisible to the suite, is in
+[`docs/qa/remediation-tracker.md`](../../qa/remediation-tracker.md).
 
 `Auditable::auditBulk()` does not appear here because it is a raw `DB::table()`
 insert, not an `activity()` call. **Any hit that is real code is a second
@@ -261,6 +259,19 @@ taken through the API recorded `source => web`.
 
 Prefer the loop. Reach for `auditBulk()` only when a single insert is
 measurably the reason it is not slow.
+
+**What the loop costs, measured.** The user bulk path is ~2.0 queries per user
+at n=100 (one `UPDATE`, one `INSERT`), linear, and it grew from one batch
+`UPDATE` when `lock`/`unlock`/`activate` were routed through their actions. That
+is the trade, and it was taken deliberately: a batch `UPDATE` cannot run the
+guard each action applies, so it would happily lock a user that
+`UserLockAction::validate()` refuses.
+
+`auditBulk()` would remove the `INSERT` but not the `UPDATE` — the guard is
+per-user — and would add a second mutation path to keep correct. At the 10-row
+selection cap (`BulkUserRequest::MAX_SELECTION`) neither is worth it. Revisit
+only if a caller genuinely needs hundreds of rows in one request, and then the
+right answer is a queued job, not a faster loop.
 
 ## Transaction Boundaries
 
