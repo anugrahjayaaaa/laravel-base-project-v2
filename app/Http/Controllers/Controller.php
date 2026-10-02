@@ -6,6 +6,7 @@ use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 /**
  * Base API controller with JSON response helper and activity audit.
@@ -69,6 +70,20 @@ abstract class Controller
     /**
      * Bulk-insert activity log records for multiple subjects.
      *
+     * ## `event`, not just `description`
+     *
+     * The raw insert below bypasses Spatie's builder, so nothing fills `event`
+     * for us. It used to leave it NULL while writing `description` — and every
+     * reader in this codebase filters on `event` (`where('event', ...)` in the
+     * role, user and feature tests alike). A bulk row was therefore present in
+     * the table and invisible to every filter and viewer built on that column.
+     * One line here closes all 7 bulk actions on both web and API, rather than
+     * seven fixes.
+     *
+     * `batch_uuid` is one UUID for the whole request, which is what makes the
+     * rows correlatable as the single user action they were. Spatie does the
+     * same for its own batch logging.
+     *
      * @param  string  $event
      * @param  array  $records
      * @param  User|null  $causer
@@ -84,8 +99,9 @@ abstract class Controller
         $causerType = User::class;
         $causerId = $causer?->id;
         $now = now()->toDateTimeString();
+        $batchUuid = (string) Str::uuid();
 
-        $rows = array_map(function ($record) use ($event, $causerType, $causerId, $type, $now) {
+        $rows = array_map(function ($record) use ($event, $causerType, $causerId, $type, $now, $batchUuid) {
             $props = isset($record['properties']) && $record['properties']
                 ? array_merge(['source' => $type], $record['properties'])
                 : ['source' => $type];
@@ -93,11 +109,13 @@ abstract class Controller
             return [
                 'log_name' => 'default',
                 'description' => $event,
+                'event' => $event,
                 'subject_type' => User::class,
                 'subject_id' => $record['subject_id'],
                 'causer_type' => $causerType,
                 'causer_id' => $causerId,
                 'properties' => json_encode($props),
+                'batch_uuid' => $batchUuid,
                 'created_at' => $now,
                 'updated_at' => $now,
             ];

@@ -2,6 +2,7 @@
 
 use App\Exceptions\LastSuperadminException;
 use App\Http\Middleware\CheckAccountState;
+use App\Http\Middleware\EnsureFeatureIsEnabled;
 use App\Http\Middleware\EnsurePasswordChangeRequired;
 use App\Http\Middleware\GenerateRequestCorrelationId;
 use App\Http\Middleware\VerifyCsrfToken;
@@ -43,6 +44,11 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'password.change.required' => EnsurePasswordChangeRequired::class,
             'account.state' => CheckAccountState::class,
+            // Pennant ships an `EnsureFeaturesAreActive` that aborts 400 and
+            // resolves through Feature::active(), so it cannot honour a
+            // `disabled => true` kill switch. See the class docblock for the
+            // measured proof — the two answers disagree.
+            'feature' => EnsureFeatureIsEnabled::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

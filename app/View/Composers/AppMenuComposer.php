@@ -2,6 +2,7 @@
 
 namespace App\View\Composers;
 
+use App\Support\FeatureCatalog;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 use Illuminate\View\View;
@@ -20,6 +21,13 @@ use Illuminate\View\View;
  * authenticated user, and a decorative entry like the Labels group is not a
  * navigation target at all.
  *
+ * An item may also name the feature flag its module is gated on (P7-D9). That
+ * check runs before the permission check and applies either way: a module that
+ * is switched off must vanish from the sidebar for everyone, including a
+ * superadmin who passes every `can()`. Filtering here rather than in the partial
+ * keeps one answer per item — the sidebar and the routes behind it cannot
+ * disagree, which is the failure this class exists to prevent.
+ *
  * An item whose route does not exist is dropped rather than rendered as a dead
  * '#' link, so the menu cannot advertise a screen that was never shipped.
  */
@@ -30,20 +38,39 @@ class AppMenuComposer
      */
     public function compose(View $view): void
     {
-        $view->with('menuGroups', $this->visibleGroups());
+        // ONE store read for every flag the menu consults.
+        //
+        // The flag check used to call `isActive()` per item, and this composer
+        // runs on every authenticated page: seven flagged items meant seven
+        // `select * from features` per request, plus an eighth below for the
+        // header dropdown's Sessions link — which is the same slug as the
+        // sidebar's, read twice for one answer.
+        //
+        // `activeMap()` already exists for exactly this and is flat in the
+        // catalogue size, so the fix is to ask it once and look the answers up.
+        $flags = FeatureCatalog::activeMap(FeatureCatalog::slugs());
+
+        $view->with('menuGroups', $this->visibleGroups($flags));
+
+        // The header dropdown has its own Sessions link, outside $menuGroups.
+        // It reads the same map rather than calling FeatureCatalog itself, so the
+        // sidebar and the dropdown cannot disagree — a link the routes refuse
+        // with 403 is worse than an absent link, and this is where that starts.
+        $view->with('sessionsVisible', $flags['sessions'] ?? false);
     }
 
     /**
+     * @param  array<string, bool>  $flags  Resolved once by the caller
      * @return array<int, array<string, mixed>>
      */
-    private function visibleGroups(): array
+    private function visibleGroups(array $flags): array
     {
         $groups = array_map(
             fn (array $group) => [
                 ...$group,
                 'items' => array_values(array_filter(
                     $group['items'],
-                    fn (array $item) => $this->visible($item)
+                    fn (array $item) => $this->visible($item, $flags)
                 )),
             ],
             $this->groups()
@@ -60,16 +87,35 @@ class AppMenuComposer
     /**
      * Can the viewer see this menu entry?
      *
-     * Three ways an item survives: it names no permission (Dashboard, Sessions,
-     * the decorative Labels group), it names one the caller holds, or its route
-     * was never shipped — in which case it is dropped, because a link to a screen
-     * that does not exist is worse than an absent link.
+     * Four ways an item survives: its feature flag is active, it names no
+     * permission (Dashboard, Sessions, the decorative Labels group), it names one
+     * the caller holds, or its route was never shipped — in which case it is
+     * dropped, because a link to a screen that does not exist is worse than an
+     * absent link.
+     *
+     * The flag check comes FIRST and applies even to an item with no
+     * permission. Sessions is the case that matters: it carries no permission
+     * (every authenticated user reaches it) but is flagged, so without this the
+     * item would stay on a sidebar whose route now refuses with 403.
+     *
+     * `$flags` is passed in rather than resolved here: this runs once per menu
+     * item, and reading the store inside the loop is what made the composer
+     * cost one `select` per flagged entry on every page.
+     *
+     * An undeclared slug reads false, same as `isActive()` would answer — the
+     * `??` is the fail-closed default, not a different rule.
+     *
+     * @param  array<string, bool>  $flags
      */
-    private function visible(array $item): bool
+    private function visible(array $item, array $flags): bool
     {
         $route = $item['route'] ?? null;
 
         if ($route && $route !== '#' && ! Route::has($route)) {
+            return false;
+        }
+
+        if (isset($item['feature']) && ! ($flags[$item['feature']] ?? false)) {
             return false;
         }
 
@@ -107,6 +153,7 @@ class AppMenuComposer
                         'route' => 'users.index',
                         'active' => 'users.*',
                         'permission' => 'users.view',
+                        'feature' => 'users',
                     ],
                     [
                         'label' => 'Roles',
@@ -114,6 +161,7 @@ class AppMenuComposer
                         'route' => 'roles.index',
                         'active' => 'roles.*',
                         'permission' => 'roles.view',
+                        'feature' => 'roles',
                     ],
                     [
                         'label' => 'Permissions',
@@ -121,6 +169,7 @@ class AppMenuComposer
                         'route' => 'permissions.index',
                         'active' => 'permissions.*',
                         'permission' => 'permissions.view',
+                        'feature' => 'permissions',
                     ],
                 ],
             ],
@@ -132,6 +181,11 @@ class AppMenuComposer
                         'icon' => 'fas fa-binoculars',
                         'route' => 'activity-logs.index',
                         'active' => 'activity-logs.*',
+                        // No route ships yet (P8), so this item is dropped by the
+                        // Route::has check above regardless. The flag key is here
+                        // so the entry keeps working — and keeps hiding — when
+                        // that module lands.
+                        'feature' => 'activity_logs',
                     ],
                     [
                         'label' => 'Settings',
@@ -139,6 +193,7 @@ class AppMenuComposer
                         'route' => 'settings.index',
                         'active' => 'settings.*',
                         'permission' => 'settings.view',
+                        'feature' => 'settings',
                     ],
                     // Reachable by every authenticated user, like Dashboard.
                     [
@@ -146,12 +201,24 @@ class AppMenuComposer
                         'icon' => 'fas fa-laptop',
                         'route' => 'sessions',
                         'active' => 'sessions',
+                        // No permission — every authenticated user reaches it —
+                        // so the flag is the only thing that can hide it.
+                        'feature' => 'sessions',
                     ],
                     [
                         'label' => 'Translations',
                         'icon' => 'fas fa-language',
                         'route' => 'translations.index',
                         'active' => 'translations.*',
+                        // No route ships yet (P8) — dropped by Route::has.
+                        'feature' => 'translations',
+                    ],
+                    [
+                        'label' => 'Feature Flags',
+                        'icon' => 'fas fa-toggle-on',
+                        'route' => 'features.index',
+                        'active' => 'features.*',
+                        'permission' => 'features.view',
                     ],
                 ],
             ],

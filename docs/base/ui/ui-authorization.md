@@ -41,8 +41,17 @@ return `403`.
 
 A feature flag may be OFF for all users — the UI hides the menu item.
 
-But calling the endpoint directly must return `404` or
-`FEATURE_UNAVAILABLE`, not bypass the flag.
+But calling the endpoint directly must return `403`, not bypass the flag.
+
+**Why 403 and not 404.** The request is understood and the server is refusing
+to serve the module. 404 would claim the endpoint does not exist, which is a
+different and misleading claim: the route is registered, the flag is simply off.
+Phase 7 originally specified 404 and was corrected — see
+[Feature Availability](../features/feature-flags.md).
+
+The deliberate consequence: a disabled feature, a missing permission and a
+disabled account all return `403`. A client that must tell them apart has to
+read explicit capability data, not infer the cause from the status code.
 
 ## Implementation
 
@@ -60,9 +69,9 @@ trusts** the client-side state for security decisions.
 
 - Menu visibility → UX only, not security
 - Button visibility → UX only, not security
-- Routes/pages → backend must 403/404 if unauthorized/unavailable
+- Routes/pages → backend must 403 if unauthorized/unavailable
 - API endpoints → backend must 403/401 if unauthorized
-- Feature availability → backend must 404 if feature disabled
+- Feature availability → backend must 403 if feature disabled
 
 ## ADR References
 

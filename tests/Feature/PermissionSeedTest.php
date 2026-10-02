@@ -56,10 +56,11 @@ class PermissionSeedTest extends TestCase
     {
         // A permission with no route, controller or view grants nothing and
         // still shows up in the permissions UI as though it means something.
-        // This is the guard that kept `audit.*` (Phase 10) and `features.*`
-        // (Phase 7) out of the catalogue while neither exists.
+        // This is the guard that keeps `audit.*` (Phase 10) out of the
+        // catalogue while it does not exist, and it is what `features.*` had
+        // to be added to once the routes landed.
         $this->assertEqualsCanonicalizing(
-            ['users', 'roles', 'permissions', 'settings'],
+            ['users', 'roles', 'permissions', 'settings', 'features'],
             array_keys(PermissionCatalog::grouped()),
             'The catalogue has a group with no feature behind it.'
         );
@@ -91,8 +92,12 @@ class PermissionSeedTest extends TestCase
         // A permission removed from PermissionCatalog has no route and no
         // can() call behind it any more. left in the database it would keep
         // appearing in the permissions UI and keep granting to whoever holds it.
-        $stale = Permission::create([
-            'name' => 'features.view',
+        //
+        // A name nothing can ever put in the catalogue. This used to be
+        // `features.view`, back when the flags routes did not exist and the
+        // name was free — and creating it now collides with the real one.
+        $stale = Permission::firstOrCreate([
+            'name' => 'retired.view',
             'guard_name' => RoleLookup::guard(),
         ]);
 
@@ -102,7 +107,7 @@ class PermissionSeedTest extends TestCase
         $this->seed(PermissionSeeder::class);
 
         $this->assertNull(
-            Permission::where('name', 'features.view')->first(),
+            Permission::where('name', 'retired.view')->first(),
             'A permission the catalogue no longer declares must be pruned.'
         );
 

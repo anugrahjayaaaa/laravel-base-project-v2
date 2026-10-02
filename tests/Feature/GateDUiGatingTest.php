@@ -11,6 +11,7 @@ use Database\Seeders\RoleSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Route;
 use Tests\TestCase;
+use Symfony\Component\Finder\Finder;
 
 /**
  * The permission boundary as a user actually meets it: routes, sidebar, buttons.
@@ -196,6 +197,62 @@ class GateDUiGatingTest extends TestCase
             '@can',
             $source,
             'sidebar.blade.php must rely on AppMenuComposer, not its own @can checks'
+        );
+    }
+
+    /**
+     * No view may ask the Gate itself.
+     *
+     * A view that calls `auth()->user()?->can(...)` is a view doing a Gate
+     * lookup, and the answer belongs to whoever already knows it — a composer,
+     * a Form Request, or the action that built the data. Two consequences, both
+     * real: the lookup runs per row rather than once, and the rule lives in two
+     * places that can disagree.
+     *
+     * The features index was the last holdout — it passed `manageable` as
+     * `auth()->user()?->can('features.manage') ?? false` while every other
+     * binding in the same view was a plain variable. `FeatureIndexAction`
+     * computes it now.
+     *
+     * Scans the whole view layer, not one file, because the point is that there
+     * are none: a first-file check passes the moment a second view grows one.
+     */
+    public function test_no_view_asks_the_gate_itself(): void
+    {
+        $offenders = [];
+
+        // Finder, not glob(): PHP's glob() does NOT treat ** as recursive — it
+        // matches a single level, so `views/**/*.blade.php` found 11 of the 45
+        // blade files on disk and this test passed without reading the rest.
+        // The file count is asserted below so that cannot happen silently.
+        $files = Finder::create()
+            ->files()
+            ->in(resource_path('views'))
+            ->name('*.blade.php');
+
+        $seen = 0;
+
+        foreach ($files as $file) {
+            $seen++;
+            $source = (string) file_get_contents($file->getPathname());
+
+            // Strip Blade comments — a note that *documents* the ban may name
+            // the call it forbids, and that is not a violation.
+            $source = preg_replace('/\{\{--.*?--\}\}/s', '', $source) ?? $source;
+
+            if (preg_match('/auth\(\)->user\(\)\??->can\(|Auth::user\(\)\??->can\(/', $source)) {
+                $offenders[] = str_replace(resource_path('views').'/', '', $file->getRelativePathname());
+            }
+        }
+
+        // Guard against a scanner that finds nothing and reports success.
+        $this->assertGreaterThan(30, $seen, 'the view scanner read almost no files — the ban below is vacuous');
+
+        $this->assertSame(
+            [],
+            $offenders,
+            'these views call the Gate directly instead of reading a variable: '
+                .implode(', ', $offenders)
         );
     }
 

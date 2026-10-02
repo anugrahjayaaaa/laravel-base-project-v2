@@ -10,10 +10,10 @@
     'actionType' => null,
     'itemName' => '',
     'label' => 'Delete',
-    'cancelLabel' => 'Cancel',
-    'confirmLabel' => null,
     'callback' => null,
     'class' => 'dropdown-item',
+    // 'button' | 'input'. See the @if above the <button>.
+    'tag' => 'button',
     'title' => null,
     // Legacy overrides. Per design-system.md every action should read
     // ACTION_CONFIG, but the user form's Unlock has always carried its own
@@ -24,9 +24,30 @@
     'icon' => null,
 ])
 
-@php($confirmLabel = $confirmLabel ?? $label)
 @php($modalId = 'confirmModal')
 
+{{-- `tag` exists for one caller: the feature-flag switch, which has to BE a
+     checkbox rather than a button. The modal driver reads the same six data-*
+     attributes off any element, so the tag is the only thing that differs.
+     Everything below is unchanged, so the eight existing button triggers
+     render byte-identically. --}}
+@if ($tag === 'input')
+    <input
+        @if($title) title="{{ $title }}" @endif
+        data-bs-toggle="modal"
+        data-bs-target="#{{ $modalId }}"
+        data-action="{{ $action }}"
+        data-method="{{ $method }}"
+        @if($actionType) data-action-type="{{ $actionType }}" @endif
+        data-item-name="{{ $itemName }}"
+        data-label="{{ $label }}"
+        @if($callback) data-callback="{{ $callback }}" @endif
+        @if(!$actionType && $title) data-title="{{ $title }}" @endif
+        @if($message) data-message="{{ $message }}" @endif
+        @if($variant) data-variant="{{ $variant }}" @endif
+        @if($icon) data-icon="{{ $icon }}" @endif
+        {{ $attributes->merge(['class' => 'form-check-input']) }}>
+@else
 <button type="button"
         @if($title) title="{{ $title }}" @endif
         data-bs-toggle="modal"
@@ -35,7 +56,7 @@
         data-method="{{ $method }}"
         @if($actionType) data-action-type="{{ $actionType }}" @endif
         data-item-name="{{ $itemName }}"
-        data-label="{{ $confirmLabel ?? $label }}"
+        data-label="{{ $label }}"
         @if($callback) data-callback="{{ $callback }}" @endif
         @if(!$actionType && $title) data-title="{{ $title }}" @endif
         @if($message) data-message="{{ $message }}" @endif
@@ -44,3 +65,4 @@
         class="{{ $class }}">
     {{ $slot }}
 </button>
+@endif

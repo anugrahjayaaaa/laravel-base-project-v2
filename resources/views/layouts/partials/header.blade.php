@@ -42,10 +42,17 @@
           <li>
             {{-- Was 'Settings' pointing at settings.preferences, a route that
                  does not exist — so it silently rendered a dead '#'. Sessions is
-                 self-service and always reachable, like Profile. --}}
-            <a class="dropdown-item" href="{{ route('sessions') }}">
-              <i class="fas fa-laptop me-2"></i> Sessions
-            </a>
+                 self-service and always reachable, like Profile.
+                 `$sessionsVisible` comes from AppMenuComposer, which already owns
+                 "may this viewer reach this module". A view must not call an app
+                 class itself, and duplicating the flag check here would give the
+                 dropdown a second answer to a question the composer already
+                 answers — the two disagreeing is the exact bug this guards. --}}
+            @if ($sessionsVisible ?? false)
+              <a class="dropdown-item" href="{{ route('sessions') }}">
+                <i class="fas fa-laptop me-2"></i> Sessions
+              </a>
+            @endif
           </li>
           <li><hr class="dropdown-divider"></li>
           <li>

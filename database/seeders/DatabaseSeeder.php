@@ -23,6 +23,11 @@ class DatabaseSeeder extends Seeder
             SuperAdminSeeder::class,
             TimezoneSeeder::class,
             SystemSettingSeeder::class,
+            // After PermissionSeeder: the flags page is gated on
+            // features.view / features.manage, and a flag with no store row
+            // reads as OFF — so seeding them before anything can reach the
+            // page avoids a window where every module looks disabled.
+            FeatureFlagSeeder::class,
             UserSeeder::class,
         ]);
     }

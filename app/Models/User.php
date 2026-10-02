@@ -52,6 +52,55 @@ class User extends Authenticatable implements MustVerifyEmail
     }
 
     /**
+     * Request-scoped memo for one ability.
+     *
+     * A single page asks the same question many times: /users fires 44 Gate
+     * checks for 13 distinct abilities, because the action column renders
+     * `@can('users.lock')` once per row and every row answers identically. At
+     * 0.33ms a check that is 31 redundant evaluations per page — measured, not
+     * assumed.
+     *
+     * ## Why this overrides `can()` and not the Gate
+     *
+     * `Authorizable::can()` is the single method both callers already route
+     * through — `@can` in Blade compiles to `Gate::check()` which lands here,
+     * and the menu composer's `Auth::user()->can()` lands here too. Decorating
+     * the Gate contract instead would be a second answer to a question this
+     * method already answers, and would have to proxy the whole interface.
+     *
+     * ## Why it is safe
+     *
+     * The memo is per-instance and per-ability, and an instance is resolved
+     * once per request, so nothing leaks between users. A permission change
+     * mid-request cannot be observed through this model anyway — Spatie's own
+     * registrar caches the permission set for the request, and a toggle action
+     * forgets that cache and then redirects. So the memo is not stricter than
+     * the layer below it.
+     *
+     * `@can` and policies that pass a subject (`$user->can('update', $post)`)
+     * are NOT memoized: the arguments make the answer per-subject, and a memo
+     * keyed on the ability alone would answer for the wrong model. Those fall
+     * through to the parent.
+     *
+     * @param  string|array  $abilities
+     * @param  mixed  $arguments
+     * @return bool
+     */
+    public function can($abilities, $arguments = [])
+    {
+        if ($arguments !== [] || is_array($abilities) || ! is_string($abilities)) {
+            return parent::can($abilities, $arguments);
+        }
+
+        return $this->canMemo[$abilities] ??= parent::can($abilities);
+    }
+
+    /**
+     * @var array<string, bool>
+     */
+    private array $canMemo = [];
+
+    /**
      * Get the attributes that should be cast.
      *
      * @return array<string, string>

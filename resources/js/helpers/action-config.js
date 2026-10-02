@@ -112,4 +112,21 @@ export const ACTION_CONFIG = {
         variant: 'danger',
         icon: 'bi bi-signpost-2'
     },
+    // --- feature flags (P7-F1) ---
+    // Copy is deliberately asymmetric. Enabling a flag is a normal, reversible
+    // state change; disabling one removes a whole module for every user, so it
+    // says so. `__ITEM__` is the JS driver's "N selected feature(s)", which is
+    // why the plural noun is spelled out rather than relying on the singular.
+    enable_feature: {
+        title: 'Enable Feature',
+        msg: 'Enable <b>__ITEM__</b>? Anyone with the matching permission reaches it again.',
+        variant: 'success',
+        icon: 'bi bi-toggle-on'
+    },
+    disable_feature: {
+        title: 'Disable Feature',
+        msg: 'Disable <b>__ITEM__</b>? The module stops loading for EVERY user, including superadmin, and its menu items disappear. You can switch it back on from this page.',
+        variant: 'warning',
+        icon: 'bi bi-toggle-off'
+    },
 };

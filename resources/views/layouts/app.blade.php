@@ -31,8 +31,16 @@
 </head>
 <body class="layout-fixed sidebar-mini">
 <div class="app-wrapper">
-    @include('layouts.partials.header')
+    {{-- Sidebar FIRST, deliberately. Its composer calls
+         FeatureCatalog::activeMap(slugs()) — ONE `WHERE name IN (...)` read of
+         the whole catalogue. The header's closure then asks for a single flag
+         (`sessions`) and Pennant answers it from the in-request cache the
+         sidebar's read already warmed: 1 store read per page instead of 2.
+         DOM order does not affect the layout — .app-wrapper is a CSS grid with
+         named grid-template-areas, so each child is placed by `grid-area`,
+         not by position in the markup. --}}
     @include('layouts.partials.sidebar')
+    @include('layouts.partials.header')
 
     <main class="app-main">
         <div class="app-content py-3">
