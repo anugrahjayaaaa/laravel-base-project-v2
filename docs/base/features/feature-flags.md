@@ -143,6 +143,25 @@ that looks editable and silently discards input is worse than an absent one.
 Every toggle audits `feature.toggled` with `from`/`to`, reading the old value
 **before** the write.
 
+`POST /features/bulk-action` (`features.manage`) does the same for a selection:
+one request, one transaction, one `feature.bulk_toggled` row carrying the full
+`requested` list plus each slug's own `from`/`to` and the ones that were
+already in that state. Every `from` is read before the first write — read after,
+it is always the new value and the row records a change from a state that never
+existed. A slug outside the catalogue aborts the whole batch before any flag is
+touched.
+
+`data-bulk-mixed="disable_feature"` is the rule the bar encodes: on a mixed
+selection only disable is safe for every selected row, and for a kill switch an
+accidental enable is the more expensive direction.
+
+**Both events carry no subject.** Spatie hangs audit rows off a model via
+`->on($model)`; a Pennant flag is a row in a store the package owns, so these
+write a causer and properties with `subject_type`/`subject_id` null. Inventing
+a model to hang them on would put a row in the database whose only job is to be
+an audit target. A viewer filtering by subject therefore has to filter by
+`subject_type IS NULL AND properties->>'feature'`, not by a subject relation.
+
 ## Use Cases
 
 Feature availability controls:

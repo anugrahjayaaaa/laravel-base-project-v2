@@ -199,12 +199,12 @@ Detail: `docs/planning/phase-6-rbac.md` § Group A and § C4.
 | P7-F8 | `FeatureSelectAllTest` — real bundle over both page shapes (id and class) | 7 | P0 | P7-F5, F7 | DONE |
 | P7-F9 | `FeatureBulkDropdownTest` — dropdown offers only actions safe for the selection | 7 | P0 | P7-F1, F5 | DONE |
 | P7-E1 | 403 web + API for superadmin, plus fail-closed cases — covered by `FeatureFlagMiddlewareTest` (every role incl. superadmin, `features.manage` holder, undeclared slug, kill switch) + `FeatureFlagRouteTest` (API logout-all gate). The named `FeatureFlagTest.php` was never created; the coverage exists, split by concern | 7 | P0 | P7-C5, P7-D10 | DONE (renamed scope) |
-| P7-E2 | Round trip — `FeatureFlagRouteTest::toggling_flips_the_flag_and_audits_it` (store + audit `from`/`to`), `::the_toggle_forgets_the_resolved_snapshot` (cache flush), `::the_audit_row_records_the_effective_state`. **No follow-up GET** — that half is not asserted | 7 | P0 | P7-D3 | PARTIAL |
+| P7-E2 | Round trip — store row + audit `from`/`to` + cache flush in `FeatureFlagRouteTest`; the follow-up half now in `FeatureFlagPerformanceTest::a_toggled_flag_is_reflected_by_the_next_page_view`, which re-resolves and asserts the row AND the enabled counter both moved | 7 | P0 | P7-D3 | DONE |
 | P7-E3 | `ConfirmActionUsageTest` — `features.index` added, trigger regex extended to `<input\b` | 7 | P0 | P7-A3 | DONE |
 | P7-E4 | Regression — `php artisan test` green; gated tests activate the flag in `setUp()` | 7 | P0 | P7-D7 | DONE |
-| P7-E5 | Perf — flat store reads, pinned as a delta at two flag counts. Nothing measures store-read counts at two flag counts; `FeatureFlagUiRenderTest::it_renders_and_queries_nothing` only proves the VIEW issues zero queries | 7 | P1 | P7-D2 | TODO |
+| P7-E5 | Perf — `FeatureFlagPerformanceTest` measures the index resolution at two catalogue sizes and asserts the count is IDENTICAL. It found a real N+1: `resolve()` called `isActive()` per slug, measured 2/4/8 queries for 2/4/8 flags. `FeatureCatalog::activeMap()` now reads them in one `WHERE name IN (...)`; sabotage-verified by restoring the loop, which turns the test red (2 vs 8) | 7 | P1 | P7-D2 | DONE |
 | P7-E6 | Docs — `feature-flags.md` + broken link done; trackers close with the phase | 7 | P1 | P7-F6 | IN_PROGRESS |
-| P7-E7 | Full verification — `php artisan test` (843 passed / 3022 assertions), `npm run build`, `pint --test` on every Group F file (passed; repo-wide pint still fails on 33 PRE-EXISTING files, none in Phase 7), `view:cache`. Only the repo-wide pint debt is open | 7 | P0 | P7-E4, E6 | DONE (pint debt pre-existing) |
+| P7-E7 | Full verification — `php artisan test` (846 passed / 3030 assertions), `npm run build`, `pint --test` on every Group F file (passed; repo-wide pint still fails on 33 PRE-EXISTING files, none in Phase 7), `view:cache`. Only the repo-wide pint debt is open | 7 | P0 | P7-E4, E6 | DONE (pint debt pre-existing) |
 
 **Groups A, B, C and D1–D6 ship.** The middleware exists and answers correctly,
 and the routes now carry it (`P7-D7`/`D8`) — turning a flag off at `/features`

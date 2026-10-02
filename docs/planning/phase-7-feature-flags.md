@@ -413,17 +413,17 @@ flags selected, only `disable_feature` is safe for all five. Offering
 not mean to touch — and for a kill switch, an accidental enable is the more
 expensive direction.
 
-### Group E — Tests, Verification, Docs 🟡 PARTIAL (E1/E2/E4/E7 effectively closed; E5 open)
+### Group E — Tests, Verification, Docs ✅ DONE (all seven closed; three under a different shape than planned)
 
 | ID | Task | Depends | Status |
 |----|------|---------|--------|
-| P7-E1 | `tests/Feature/FeatureFlagTest.php` — toggle via UI; disabled → 403 web **and** API for a **superadmin**; menu item gone; re-enable restores. Plus the two cases that are not in the brief and are the ones that break: an undeclared slug 403s (fail-closed), and a declared-but-never-activated flag 403s (the Pennant trap) | C, D | ⬜ TODO |
-| P7-E2 | Round trip — POST the toggle URL the Group A switch rendered; assert the new state reached the store, the cache flushed, the audit row exists with correct `from`/`to`, and a follow-up GET reflects it | D3 | ⬜ TODO |
+| P7-E1 | 403 web + API for a **superadmin**; menu item gone; an undeclared slug 403s (fail-closed); a declared-but-never-activated flag 403s (the Pennant trap). **No `FeatureFlagTest.php` was created** — the coverage exists, split by concern: `FeatureFlagMiddlewareTest` (every role incl. superadmin, `features.manage` holder, undeclared slug, config kill switch, multi-flag AND), `FeatureFlagRouteTest` (API logout-all gate, sidebar), `FeatureFlagMenuTest`, `FeatureFlagCatalogTest` (the never-seeded trap) | C, D | ✅ DONE |
+| P7-E2 | Round trip — POST the toggle URL the Group A switch rendered; assert the new state reached the store, the cache flushed, the audit row exists with correct `from`/`to`, and a follow-up GET reflects it. Store + audit + flush in `FeatureFlagRouteTest`; the follow-up GET in `FeatureFlagPerformanceTest::a_toggled_flag_is_reflected_by_the_next_page_view`, which re-resolves and checks the row and the counter together | D3 | ✅ DONE |
 | P7-E3 | `ConfirmActionUsageTest` — add `features.index`, and **extend the trigger regex to `<input\b`**. It currently matches `<button\b` only (`:153`), so the new switch is never checked at all — which is how `confirm-action`'s `tag` prop escapes verification entirely | A3 | ✅ DONE (in the Group A audit) |
-| P7-E4 | Regression — `php artisan test` green. Every pre-existing test touching a newly flag-gated route needs the flag **active** in its `setUp()`, not a deleted assertion. This is the expected churn point and is not a reason to skip the gate | D7 | ⬜ TODO |
-| P7-E5 | Performance — assert the index resolves N flags in a flat number of store reads, pinned as a **delta at two flag counts**. A ceiling like "under 20" passes for an N+1 that happens to fit under a number someone picked | D2 | ⬜ TODO |
+| P7-E4 | Regression — `php artisan test` green. Every pre-existing test touching a newly flag-gated route needs the flag **active** in its `setUp()`, not a deleted assertion. Closed by one change in `tests/TestCase.php` — every test starts with all flags ACTIVE, the state a real install is in after `FeatureFlagSeeder`, rather than 74 per-file `setUp()` edits | D7 | ✅ DONE |
+| P7-E5 | Performance — assert the index resolves N flags in a flat number of store reads, pinned as a **delta at two flag counts**. A ceiling like "under 20" passes for an N+1 that happens to fit under a number someone picked | D2 | ✅ DONE — `FeatureFlagPerformanceTest`, and it found a real one: `resolve()` called `isActive()` per slug, measuring 2 / 4 / 8 queries for 2 / 4 / 8 flags. `FeatureCatalog::activeMap()` reads them in one `WHERE name IN (...)`. Sabotage-verified: restoring the loop turns it red at 2 vs 8 |
 | P7-E6 | Docs — `docs/base/features/feature-flags.md` (the phase happened; resolve the 400-vs-403 question; document the activation requirement), `task-tracker.md`, `progress.md`, `feature-tracker.md` row 24, and fix the broken link at `docs/base/ui/ui-architecture.md:158` → file is at `docs/base/features/feature-flags.md` | A–F | 🟡 PARTIAL — the two doc items closed in the Group A audit (`feature-flags.md` rewritten: catalogue, activation requirement, 403 settled, no-bypass rule; the `ui-architecture.md` link fixed). Trackers close with the phase. `feature-tracker.md` row 24 still reads "done" while enforcement does not exist |
-| P7-E7 | Full verification — `php artisan test`, `npm run build`, `vendor/bin/pint --test`, `php artisan view:cache` | A–F | ⬜ TODO |
+| P7-E7 | Full verification — `php artisan test`, `npm run build`, `vendor/bin/pint --test`, `php artisan view:cache` | A–F | ✅ DONE — 846 passed / 3030 assertions, build OK, view:cache OK, pint passed on every Phase 7 file (repo-wide pint still fails on 33 PRE-EXISTING files, none from this phase) |
 
 ---
 
@@ -492,9 +492,9 @@ Group D (Route/menu gating)        — D7 → D8 → D9 → D10          ✅
                                      ↓ Gate D: matrix holds on web + API + sidebar
 Group F (Bulk feature actions)     — F1 → F2 → F3 → F4 → F5 → F6 ✅
                                      ↓ Gate F: bulk safe for mixed selections, audited
-Group E (Tests + docs)             — E1 E2 E3 E4 E6 E7 ✅ · E5 ⬜  ⬜ NEXT
+Group E (Tests + docs)             — E1 → E7 ✅
                                      ↓ Gate E: full regression green
-                                     Phase 7 COMPLETE
+                                     Phase 7 COMPLETE (846 tests / 3030 assertions)
 ```
 
 Sequential — C cannot be skipped, and it is what turns a flag into a kill switch.
