@@ -16,7 +16,7 @@
 | 7 | Feature availability / feature flags | DONE — Groups A–F. The kill switch is real: a flag off 403s its routes (62/62 across web + API) and drops its menu item, with no superadmin bypass |
 | 8 | Settings | PLANNED |
 | 9 | Notification/mail/queue | PLANNED |
-| 10 | Audit Trail | PLANNED |
+| 10 | Audit Trail | ARCHITECTURE DONE — action-first standard shipped and reconciled across User, System, Role, Feature and Auth (web + API), with one audit entry point (`Auditable::audit()`) that captures `source`/`ip`/`user_agent` itself. AUD-006 (Profile) still migrates |
 | 11 | Monitoring/observability | PLANNED |
 | 12 | API V1 | PLANNED |
 | 13 | Security hardening | PLANNED |

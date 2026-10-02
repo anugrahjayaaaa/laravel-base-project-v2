@@ -71,11 +71,11 @@ caller of the action (job, command, console) is covered at all.
 | AUD-004 | `Web/V1/UserController::bulkAction` writes aggregate `user.{action}` rows via `bulkAudit()` for the 6 actions that mutate columns directly (lock, unlock, activate, deactivate, restore, force_delete) | AUD-001/003 landed, so `getAuditEvent()` now returns `''` for `delete`/`restore`/`force_delete`/`deactivate` — those four loop an auditing action, so an aggregate row would name the same subjects twice. `lock`/`unlock` keep it: `executeBulk` still writes their column directly with no action behind them | RESOLVED (partial — `lock`/`unlock` await their own actions) |
 | AUD-005 | `Web/V1/SystemSettingController` + `Api/V1/SystemSettingController` write `system_setting.updated`; `SystemSettingsUpdateAction`'s own docblock asserts "Controllers remain responsible for ... audit logging" | Write moved into the action, docblock reversed. Fixing the audit placement exposed a worse defect: the ~40-key loop had no transaction at all, so a mid-loop failure left a half-applied settings change with an audit row claiming success. Wrapped in `DB::transaction`. Required adding `Auditable` to `SystemSetting`, which had no audit trait | RESOLVED |
 | AUD-006 | `Web/V1/ProfileController` + `Api/V1/ProfileController` — 7 rows (`user.profile_updated`, `auth.password_changed` ×2 web, `user.email_change_requested`), behind `UserUpdateAction` / `AuthChangePasswordAction` | Move into the actions. Note `update()` writes three rows off one action call, so decide which action owns which row before moving | OPEN — AUD-001 |
-| AUD-007 | `Web/V1/Auth/AuthController` — 12 rows (login, login_failed ×2, account_locked, password_reset_requested ×2, password_reset_completed, email_verified, verification_resent, user.registered, logout_all, logout) | **Needs a design decision, not a mechanical move.** The audit context (`ip`, `identifier`, `lock_seconds`) is assembled in the controller; the actions take `$ip`/`$throttle` but never the audit properties. Decide the context-passing shape first | OPEN — design |
-| AUD-008 | 7 API auth controllers — 12 rows total (Login 4, PasswordForgot 2, VerifyEmail / PasswordReset / PasswordChange / Register / ResendVerification / LogoutAll / Logout 1 each) | Lands with AUD-007; same context problem, so both channels must move together | OPEN — blocked by AUD-007 |
+| AUD-007 | `Web/V1/Auth/AuthController` — 12 rows (login, login_failed, account_locked, password_reset_requested, password_reset_completed, email_verified, verification_resent, user.registered, logout_all, logout) | Context (`ip`, `user_agent`, `channel`) is identical on every auth event and was assembled 25 times over, so it drifted — the API wrote `channel => api`, the web twin `channel => web`, and only some sites carried a user agent. Moved to `App\Actions\Concerns\AuditsAuthActivity`: one method, one context builder, both channels write the same keys. `AuthLoginCompletedAction` and `AuthLogoutAction` are new — `auth.login` and `auth.logout` had no owner at all, because the session does not exist until the controller creates it | RESOLVED |
+| AUD-008 | 7 API auth controllers — 12 rows (Login 4, PasswordForgot 2, VerifyEmail / PasswordReset / PasswordChange / Register / ResendVerification / LogoutAll / Logout 1 each) | Lands with AUD-007; the context builder is shared, so both channels now write the same keys from one place | RESOLVED |
 | AUD-009 | `UserCreateAction` and `UserUpdateAction` have 3 callers each — the admin user screen AND self-registration / the self-service profile, which each write a *different* event. Auditing unconditionally would give one signup two rows (`user.created` + `user.registered`) and one profile save two (`user.updated` + `user.profile_updated`) | Both gate on `$causer !== null`: an administrator passes one, a self-registering user and a profile save cannot. `UserVerifyEmailChangeAction` is the deliberate exception — it audits unconditionally with `$causer ?? $user`, because a signed link means no actor is signed in, and gating there would leave the main path unaudited | RESOLVED |
 
-| AUD-010 | `SystemSetting` caches every read under `Cache::rememberForever` and busts it per-`set()`. A transaction that writes settings and then rolls back leaves that cache holding the rolled-back values — the next request reads values the database never committed | Found while fixing AUD-005, not introduced by it: the per-`set()` bust predates the transaction. Not fixed here; the fix belongs with whoever owns settings caching (bust after commit, or key the cache off a version bumped in the same transaction) | OPEN — not action-migration scope |
+| AUD-010 | `SystemSetting` caches every read under `Cache::rememberForever` and busted it per-`set()`. A transaction that writes settings and then rolls back left that cache holding the rolled-back values — measured, the cache held a password policy of 20 while the row said 12 | Two paths, both required. (1) `set()` busted on write; that moved to `DB::afterCommit`, so a rollback leaves nothing to un-bust. (2) The worse one: reading inside the transaction repopulated the shared cache from uncommitted rows, so busting after commit could not help — the offending write is on the READ path. `loadSettings()` now skips the shared cache while `DB::transactionLevel() > 0`. Found while fixing AUD-005, not introduced by it | RESOLVED |
 
 **Out of scope, deliberately.** `LogoutController::auth.logout` has no action behind it
 — logout is request-scoped session teardown with nothing to move the write into.
@@ -91,9 +91,32 @@ User delete, and both Feature toggle actions audit inside their transactions.
 `PermissionController` return zero audit calls from `rg` — verified, not assumed.
 
 **Suggested order.** AUD-005 (2 sites, unblocks a contradicting docblock) → AUD-001/002/003
-(User, mechanical, `user.deleted` is the template) → AUD-006 → AUD-007/008 (Auth, after
-the context shape is decided). Each batch needs a count assertion (`=== 1`, never
-`->exists()`) plus a rollback test, per `tests/Feature/Audit/ActionFirstAuditTest.php`.
+(User, mechanical, `user.deleted` is the template) → AUD-007/008 (Auth) → AUD-006 (Profile).
+Each batch needs a count assertion (`=== 1`, never `->exists()`) plus a rollback test, per
+`tests/Feature/Audit/ActionFirstAuditTest.php`.
+
+**Audit context.** `source`, `ip` and `user_agent` are derived inside
+`Auditable::audit()` for every row, on every caller — there is no per-domain
+context trait. Callers pass only event-specific properties (`identifier`,
+`lock_duration_seconds`, `remember`) and may override `source` when there is no
+request (a job passes `system`). The `channel` key is retired: it duplicated
+`source` under a second name, so a row could answer "where did this come from"
+only half of the time. An action that finds no subject writes no row at all —
+`failed_login_attempts` and `password_reset_tokens` already hold that fact keyed
+by identifier, and a subject-less `activity()` row would need a second
+implementation of the context.
+
+**Events with no state change.** `auth.login_failed`, `auth.account_locked`,
+`auth.verification_resent` and `user.registered` describe a request, not a
+mutation, so there is no transaction to write inside. They are recorded by the
+action that handles them, outside a transaction — forcing one would buy nothing,
+because there is no state that could roll back and leave an orphan row. The
+mutating auth actions (password change, reset, verify, logout-all) write inside
+their own transaction like every other Action.
+
+`auth.password_reset_requested` is not audited at all: the endpoint answers the
+same way whether or not the address is an account, and `password_reset_tokens`
+already records the ones that were real.
 
 ## Verification
 

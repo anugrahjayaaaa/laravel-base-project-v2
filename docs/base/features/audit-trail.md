@@ -63,21 +63,36 @@ for transaction/after-commit rules.
 
 ## Model Audit (Auditable Trait)
 
-User model carries an `Auditable` trait (`App\Models\Concerns\Auditable`)
-that wraps spatie/activitylog. Controllers call `$user->audit()` directly:
+The `User` model carries an `Auditable` trait (`App\Models\Concerns\Auditable`)
+that wraps spatie/activitylog. **Actions** call `$user->audit()`, inside their
+own transaction:
 
 ```php
-// In controller (thin, after action runs):
-$user->audit('user.locked', $request->user(), ['reason' => 'security']);
+// In the action that performs the mutation, inside DB::transaction:
+$user->audit('user.locked', $causer);
+$user->audit('auth.login_failed', null, ['identifier' => $identifier]);
 ```
 
 - `performedOn` = the model itself (`$this`)
 - `causedBy` = explicit causer argument (admin / system)
 - `event` = snake_case event name (e.g. `user.locked`, `user.deactivated`)
-- `properties` = optional context array
+- `properties` = event-specific values only
+
+Controllers MUST NOT call `audit()` for a mutation an action already performs —
+that is a duplicate record for one change. See
+[Application Boundaries](../architecture/application-boundaries.md) §
+Action-First Audit Logging Standard.
+
+### Context is automatic
+
+`Auditable::audit()` adds `source`, `ip` and `user_agent` to every row itself.
+A caller passes only what is specific to its event, and may override a derived
+value by including that key in `$properties` (a queued job passes
+`source => system`). The single key is `source`; the former `channel` key is
+retired and must not be reintroduced.
 
 The trait is the single model-level audit entry point. Do NOT audit inside
-observers — the caller is responsible for explicit audit logging.
+observers — the action is responsible for explicit audit logging.
 
 ## Transaction Boundaries
 

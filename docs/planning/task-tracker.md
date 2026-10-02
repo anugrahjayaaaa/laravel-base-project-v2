@@ -75,10 +75,18 @@
 | TABLE-001 | Shared table conventions (sortable, filterable, bulk actions, pagination) | 1 | P2 | UI-003 | DONE |
 || FLAG-001 | Feature flag package foundation | 1 | P1 | FOUND-003 | DONE |
 
-**Audit pattern (cross-phase convention):** All mutations log audit at the mutation
-site — Action self-logs when logic is complex/shared; Controller logs directly
-(using `$this->audit()` helper on base Controller) for thin operations. No model
-observers for audit. See `docs/base/architecture/application-components.md` §Action/Service.
+**Audit pattern (cross-phase convention):** ✅ DONE — every mutation is audited
+by the **Action that performs it**, inside that action's own transaction, via
+`Auditable::audit()`: `$model->audit($event, $causer, $properties)`. Controllers
+only orchestrate and MUST NOT call `audit()` for a mutation an action performs.
+HTTP context (`source`, `ip`, `user_agent`) is captured automatically by
+`Auditable::audit()`; callers pass only event-specific properties and may
+override `source` (a job passes `system`). No model observers. See
+`docs/base/architecture/application-boundaries.md` §
+Action-First Audit Logging Standard and `docs/base/features/audit-trail.md`.
+
+Migrated: User, System, Role, Feature (already compliant), Auth web + API.
+Remaining: AUD-006 (Profile) — the last caller of `Controller::audit()`.
 
 ---
 
