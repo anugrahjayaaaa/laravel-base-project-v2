@@ -465,6 +465,21 @@ class ActionFirstAuditTest extends TestCase
                 // count above is the assertion.
                 fn (User $user) => true,
             ],
+            'password expiry flag' => [
+                'auth.password_expiry.sweep',
+                // The job's own query needs an expired password and a user not
+                // already flagged, so the guard and the chunk both admit it.
+                ['must_change_password' => false, 'password_expires_at' => now()->subDay()],
+                fn (User $user) => (new \App\Jobs\PasswordExpirySweep())->handle(),
+                fn (User $user) => ! $user->fresh()->must_change_password,
+            ],
+            'login' => [
+                'auth.login',
+                ['last_activity_at' => null],
+                fn (User $user) => app(\App\Actions\V1\Auth\AuthLoginCompletedAction::class)
+                    ->run($user, false),
+                fn (User $user) => $user->fresh()->last_activity_at === null,
+            ],
         ];
     }
 }
