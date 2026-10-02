@@ -67,13 +67,13 @@ Testing / Hardening (Phases 13-17)
 - Config files (`config/`)
 - Queue (database), cache (file) — Redis optional
 - Correlation/request ID middleware
-- Packages installed: Sanctum, Spatie Permission, Activitylog, Telescope, Laravel Pennant (feature flags)
+- Packages installed: Sanctum, Spatie Permission, Activitylog, Laravel Pulse, Laravel Pennant (feature flags)
   (see [dependency overview](../base/dependencies/overview.md))
 - AdminLTE initial UI setup (UI-001: vendor from release ZIP, wire Blade layout, UI-independent)
 - Status: DONE
 
 ### Phase 2: Database Foundation
-|- Base migrations (existing Laravel defaults + Spatie + Sanctum + Telescope + Pennant)
+|- Base migrations (existing Laravel defaults + Spatie + Sanctum + Pennant + Pulse)
 |- Seed data: RoleSeeder (superadmin, admin, user) wired into DatabaseSeeder
 |- Database constraints: users table has is_active, is_locked, must_change_password,
   password_expires_at, last_activity_at, soft-deletes
@@ -140,24 +140,40 @@ email-verification-notice, password-change pages using AdminLTE auth layout.
 - Status: PLANNED
 
 ### Phase 11: Monitoring & Observability
-- Telescope integration (periscope companion UI) — **prod-gated, debug on demand**
+- Laravel Pulse integration (`^1.8`, in `require`) — **DONE** (`85384b4`)
+- `pulse` feature flag + route enforcement — **DONE** (`b08b8b4`)
+- `pulse.view` permission + `viewPulse` gate override — **PLANNED**
+- Sidebar entry for Pulse — **PLANNED**
 - Slow-query detection on production
 - Health check endpoint
 - System health dashboard
-- Status: PLANNED
+- Status: IN PROGRESS
 
-**Prod gating (decided, pending implementation).** Telescope stays installed
-on the VM but is OFF by default. `TelescopeServiceProvider::boot()` returns
-before `Telescope::start()` when `config('telescope.enabled')` is false, so
-watchers are never registered — a disabled Telescope costs nothing at runtime.
+> Full breakdown: [phase-11-monitoring-observability.md](phase-11-monitoring-observability.md).
+> **Superseded scope:** this phase originally specified `laravel/telescope` with
+> `periscope` as a companion UI. Both were removed in `85384b4` in favour of
+> Laravel Pulse — see [DEP-004](../base/architecture/decision-records/DEP-004-laravel-pulse-observability.md).
+
+**Access gating (decided 2026-10-02).** `/pulse` requires **both** the `pulse`
+feature flag and the `pulse.view` permission. Two independent gates answering
+different questions: the flag is the deploy-time kill switch, the permission is
+per-role. Both failures are 403, so a caller cannot tell which fired — the same
+deliberate trade Phase 7 made for feature availability.
+
+Pulse ships its own `viewPulse` gate (`environment('local')`) at
+`vendor/laravel/pulse/src/PulseServiceProvider.php:100`. `AuthServiceProvider`
+redefines it as `$user->can('pulse.view')`; `Gate::define()` overwrites by name and
+our provider boots after Pulse's, so ours wins. `Gate::before` is untouched, so
+superadmin keeps access with no permission row.
 
 | Decision | Rationale |
 |----------|-----------|
-| `enabled` default `false` | a VM whose `.env` forgets the key must not record every request |
-| `RequestWatcher` off | it stores request bodies (passwords, tokens) unencrypted in `telescope_entries` |
-| `ModelWatcher` off | most expensive watcher — serialises every Eloquent model |
-| `QueryWatcher` on | this is the actual requirement: slow-query diagnosis |
-| periscope + telescope in `require` | periscope hard-requires telescope, so moving telescope to `require-dev` alone does not remove it from `--no-dev` installs |
+| `pulse.view`, not `pulse.manage` | the dashboard is read-only; a second action is a row nothing checks |
+| flag AND permission, keep both | deploy-time kill switch vs per-role authorization are not the same question |
+| `laravel/pulse` in `require` | production observability here, not a dev-only debugger (contrast DEP-006's queue driver) |
+| no `environment('local')` in the gate | the permission replaces it; local devs hold the permission like anyone else |
+| no `Pulse::auth()` call | removed in 1.8; the gate is the supported hook |
+| admin inherits the permission | `PermissionSeeder` grants `admin` the whole catalogue — no seeder edit needed |
 
 **Slow-query diagnosis ladder for a slow production server** — run in order:
 
@@ -179,35 +195,28 @@ watchers are never registered — a disabled Telescope costs nothing at runtime.
    step 3, covers queries that do reach PHP and measures DB time only
 5. `EXPLAIN` / `EXPLAIN ANALYZE` each query surfaced by steps 3-4
 
-Telescope is deliberately **absent** from that ladder. When it is on it adds
-write load to `telescope_entries` for every request, which slows the server
-precisely when the server is already slow — and grows that table unbounded
-(nothing in `config/telescope.php` prunes it automatically).
+Pulse is deliberately **absent** from that ladder, and the reasoning that
+originally applied to Telescope still holds. Pulse records on every request while
+enabled, adding write load precisely when the server is already slow. The
+slow-query requirement — step 3 — is served by the database's own slow log, which
+needs no application tooling at all.
 
-**Runbook — toggling Telescope on the VM:**
+**Runbook — toggling Pulse on the VM:**
 
 ```bash
-# enable (config is cached, so config:clear and an fpm reload are both required)
-echo 'TELESCOPE_ENABLED=true' >> .env
+# toggle the flag in the UI at /features (never gated), then re-cache config
 php artisan config:clear && php artisan config:cache
 sudo systemctl reload php8.3-fpm     # without this, opcache keeps the old config
 
-# inspect
-php artisan telescope:list
-# open /telescope (auth-gated by laravel/sentinel middleware)
+# inspect — requires the pulse.view permission (superadmin passes via Gate::before)
+# open /pulse
 
-# disable
-echo 'TELESCOPE_ENABLED=false' >> .env
-php artisan config:clear && php artisan config:cache
-sudo systemctl reload php8.3-fpm
-
-# prune — mandatory after a debugging session, no auto-prune exists
-php artisan telescope:prune --hours=6
+# retention is Pulse's own config; unlike Telescope there is no manual prune step
 ```
 
-Note: `.env` is excluded from the rsync sync, so the toggle persists across
-deploys. That is the intended behaviour, and also why the code default must be
-`false` rather than relying on `.env` alone.
+Note: `.env` is excluded from the rsync sync, so a toggle made there persists
+across deploys. The flag itself lives in Pennant's store, not `.env` — which is
+why flipping it in the UI survives a deploy.
 
 ### Phase 12: API V1
 - Versioned API routes
