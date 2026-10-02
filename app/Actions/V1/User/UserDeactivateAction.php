@@ -2,7 +2,6 @@
 
 namespace App\Actions\V1\User;
 
-use App\Actions\Concerns\AuditsUserState;
 use App\Models\User;
 use App\Support\LastSuperadmin;
 use Illuminate\Support\Facades\DB;
@@ -15,8 +14,6 @@ use Illuminate\Validation\ValidationException;
  */
 class UserDeactivateAction
 {
-    use AuditsUserState;
-
     /**
      * Deactivate the user.
      *
@@ -35,7 +32,14 @@ class UserDeactivateAction
                 $this->invalidateSessions($user);
             }
 
-            $this->auditState($user, 'user.deactivated', $causer);
+            // target_id/target_email are redundant with the subject, and
+            // deliberately so: the activity list filters on properties, and a
+            // state row that only carried a subject id could not be searched by
+            // the address it affected.
+            $user->audit('user.deactivated', $causer, [
+                'target_id' => $user->id,
+                'target_email' => $user->email,
+            ]);
         });
 
         return ['user' => $user];

@@ -38,6 +38,18 @@ abstract class Controller
     /**
      * Log an activity audit event via spatie activitylog.
      *
+     * ## Transitional — prefer the action
+     *
+     * Only the Profile controllers still call this; every other domain audits
+     * from inside its action (see `Auditable::audit()`). Migrating Profile is
+     * AUD-006 in `docs/qa/remediation-tracker.md`, and deleting this method
+     * before then would leave those mutations unaudited.
+     *
+     * It delegates its context to `User::auditContext()` rather than deriving
+     * its own, so a row written here carries the same `source`, `ip` and
+     * `user_agent` as one written by an action. When this method goes, nothing
+     * about the context moves.
+     *
      * @param  string  $event
      * @param  Model|null  $subject
      * @param  User|null  $causer
@@ -50,8 +62,6 @@ abstract class Controller
         ?User $causer = null,
         array $properties = []
     ): void {
-        $source = request()->is('api/*') ? 'api' : 'web';
-
         $activity = activity();
 
         if ($subject !== null) {
@@ -62,7 +72,7 @@ abstract class Controller
             $activity->causedBy($causer);
         }
 
-        $activity->withProperties(array_merge(['source' => $source], $properties));
+        $activity->withProperties(array_merge(User::auditContext(), $properties));
 
         $activity->log($event);
     }

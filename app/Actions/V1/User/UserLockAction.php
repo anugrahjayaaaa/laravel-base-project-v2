@@ -2,7 +2,6 @@
 
 namespace App\Actions\V1\User;
 
-use App\Actions\Concerns\AuditsUserState;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -14,8 +13,6 @@ use Illuminate\Validation\ValidationException;
  */
 class UserLockAction
 {
-    use AuditsUserState;
-
     /**
      * Lock the user.
      *
@@ -34,7 +31,14 @@ class UserLockAction
                 $this->invalidateSessions($user);
             }
 
-            $this->auditState($user, 'user.locked', $causer);
+            // target_id/target_email are redundant with the subject, and
+            // deliberately so: the activity list filters on properties, and a
+            // state row that only carried a subject id could not be searched by
+            // the address it affected.
+            $user->audit('user.locked', $causer, [
+                'target_id' => $user->id,
+                'target_email' => $user->email,
+            ]);
         });
 
         return ['user' => $user];

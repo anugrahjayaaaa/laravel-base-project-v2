@@ -85,7 +85,6 @@ class FeatureToggleAction
                 ->event(self::EVENT)
                 ->causedBy($causer ?? auth()->user())
                 ->withProperties([
-                    'source' => request()->is('api/*') ? 'api' : 'web',
                     'feature' => $slug,
                     'from' => $from,
                     'to' => $enabled,

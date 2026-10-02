@@ -2,7 +2,6 @@
 
 namespace App\Actions\V1\User;
 
-use App\Actions\Concerns\AuditsUserState;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -14,8 +13,6 @@ use Illuminate\Validation\ValidationException;
  */
 class UserActivateAction
 {
-    use AuditsUserState;
-
     /**
      * Activate the user.
      *
@@ -30,7 +27,14 @@ class UserActivateAction
         DB::transaction(function () use ($user, $causer) {
             $user->update(['is_active' => true, 'is_locked' => false]);
 
-            $this->auditState($user, 'user.activated', $causer);
+            // target_id/target_email are redundant with the subject, and
+            // deliberately so: the activity list filters on properties, and a
+            // state row that only carried a subject id could not be searched by
+            // the address it affected.
+            $user->audit('user.activated', $causer, [
+                'target_id' => $user->id,
+                'target_email' => $user->email,
+            ]);
         });
 
         return ['user' => $user];

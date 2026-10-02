@@ -147,7 +147,6 @@ class FeatureBulkToggleAction
                 ->event(self::EVENT)
                 ->causedBy($causer ?? auth()->user())
                 ->withProperties([
-                    'source' => request()->is('api/*') ? 'api' : 'web',
                     'to' => $enabled,
                     'count' => count($changed),
                     // The full request, not just the rows that moved: "you asked
