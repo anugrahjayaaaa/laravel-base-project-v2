@@ -10,8 +10,6 @@
     'actionType' => null,
     'itemName' => '',
     'label' => 'Delete',
-    'cancelLabel' => 'Cancel',
-    'confirmLabel' => null,
     'callback' => null,
     'class' => 'dropdown-item',
     // 'button' | 'input'. See the @if above the <button>.
@@ -26,7 +24,6 @@
     'icon' => null,
 ])
 
-@php($confirmLabel = $confirmLabel ?? $label)
 @php($modalId = 'confirmModal')
 
 {{-- `tag` exists for one caller: the feature-flag switch, which has to BE a
@@ -43,7 +40,7 @@
         data-method="{{ $method }}"
         @if($actionType) data-action-type="{{ $actionType }}" @endif
         data-item-name="{{ $itemName }}"
-        data-label="{{ $confirmLabel ?? $label }}"
+        data-label="{{ $label }}"
         @if($callback) data-callback="{{ $callback }}" @endif
         @if(!$actionType && $title) data-title="{{ $title }}" @endif
         @if($message) data-message="{{ $message }}" @endif
@@ -59,7 +56,7 @@
         data-method="{{ $method }}"
         @if($actionType) data-action-type="{{ $actionType }}" @endif
         data-item-name="{{ $itemName }}"
-        data-label="{{ $confirmLabel ?? $label }}"
+        data-label="{{ $label }}"
         @if($callback) data-callback="{{ $callback }}" @endif
         @if(!$actionType && $title) data-title="{{ $title }}" @endif
         @if($message) data-message="{{ $message }}" @endif
