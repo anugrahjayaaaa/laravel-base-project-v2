@@ -214,6 +214,63 @@ class ActionFirstAuditTest extends TestCase
     }
 
     /**
+     * Every bulk state action records each subject, and adds no aggregate row.
+     *
+     * `lock`, `unlock` and `activate` used to be written as
+     * `User::whereIn(...)->update()` with no action behind them, so the only
+     * record was the aggregate the controller wrote after the processor
+     * returned — outside the transaction, with no `target_id`/`target_email`,
+     * and skipping the guards the row buttons enforce. Routing them through
+     * their actions makes them behave like `delete` already did.
+     *
+     * Driven through the HTTP route on purpose: the controller's skip and the
+     * handler's event name are both part of what is under test.
+     *
+     * @param string $action
+     * @param string $event
+     * @param array<string, mixed> $state
+     */
+    #[Test]
+    #[DataProvider('bulkStateCases')]
+    public function a_bulk_state_action_records_every_subject_once(
+        string $action,
+        string $event,
+        array $state,
+    ): void {
+        $users = User::factory()->count(2)->create($state);
+
+        $this->actingAs($this->admin)->post(route('users.bulk-action'), [
+            'action' => $action,
+            'user_ids' => $users->pluck('id')->all(),
+        ])->assertRedirect();
+
+        foreach ($users as $user) {
+            $this->assertCount(
+                1,
+                $this->rowsFor($user->id),
+                "bulk {$action} wrote a duplicate audit record for user {$user->id}"
+            );
+            $this->assertSame(
+                1,
+                $this->rowsFor($user->id)->where('event', $event)->count(),
+                "bulk {$action} wrote no {$event} row for user {$user->id}"
+            );
+        }
+    }
+
+    /**
+     * @return array<string, array{0: string, 1: string, 2: array<string, mixed>}>
+     */
+    public static function bulkStateCases(): array
+    {
+        return [
+            'lock' => ['lock', 'user.locked', []],
+            'unlock' => ['unlock', 'user.unlocked', ['is_locked' => true]],
+            'activate' => ['activate', 'user.activated', ['is_active' => false]],
+        ];
+    }
+
+    /**
      * A user state change records the target it affected, not just its id.
      *
      * `target_email` is redundant with the subject and that is the point: the
