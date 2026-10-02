@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\V1\Auth\PasswordResetController;
 use App\Http\Controllers\Api\V1\Auth\RegisterController;
 use App\Http\Controllers\Api\V1\Auth\VerifyEmailController;
 use App\Http\Controllers\Api\V1\Auth\ResendVerificationController;
+use App\Http\Controllers\Api\V1\Feature\FeatureController;
 use App\Http\Controllers\Api\V1\Permission\PermissionController;
 use App\Http\Controllers\Api\V1\ProfileController;
 use App\Http\Controllers\Api\V1\Role\RoleController;
@@ -156,6 +157,21 @@ Route::prefix('v1')->group(function () {
         Route::middleware('feature:permissions')->group(function () {
             Route::get('/permissions', [PermissionController::class, 'index'])->name('api.v1.permissions.index')->can('permissions.view');
         });
+
+        // Feature flags — the management API, NOT the enforcement.
+        //
+        // Nothing here is gated on `feature:{slug}`: that middleware goes on
+        // the routes of the modules being controlled, and putting it here would
+        // mean the endpoints that re-enable a flag disappear with it, leaving
+        // no way back. Same reasoning as the web group, and the reason the
+        // feature middleware is absent from these two lines.
+        //
+        // No `->can()` on bulk-action: the permission depends on which action
+        // was requested, so BulkFeatureRequest decides. One `features.manage`
+        // gate covers both directions.
+        Route::post('/features/bulk-action', [FeatureController::class, 'bulkAction'])
+            ->name('api.v1.features.bulk-action')->middleware('throttle:bulk-action');
+        Route::post('/features/{feature}/toggle', [FeatureController::class, 'toggle'])->name('api.v1.features.toggle')->can('features.manage');
     });
 
     // ---------------------------------------------------------------------------
