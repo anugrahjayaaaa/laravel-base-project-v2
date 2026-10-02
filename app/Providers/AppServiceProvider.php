@@ -6,6 +6,7 @@ use App\Auth\LoginThrottle;
 use App\Models\User;
 use App\Observers\UserObserver;
 use App\Services\PasswordExpiry;
+use App\Support\FeatureCatalog;
 use App\View\Composers\AccountOptionsComposer;
 use App\View\Composers\AppMenuComposer;
 use App\View\Composers\PasswordStrengthComposer;
@@ -14,6 +15,7 @@ use Illuminate\Support\ServiceProvider;
 use Illuminate\Pagination\Paginator;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\View\View;
 use Laravel\Pennant\Feature;
 
 /**
@@ -33,8 +35,18 @@ class AppServiceProvider extends ServiceProvider
 
         view()->composer('layouts.partials.sidebar', AppMenuComposer::class);
         // The header dropdown carries its own Sessions link, outside $menuGroups,
-        // so it needs the same composer's answer to the same question.
-        view()->composer('layouts.partials.header', AppMenuComposer::class);
+        // and reads ONE boolean — so it gets a closure, not the full composer.
+        // Registering AppMenuComposer here ran a second complete compose() on
+        // every authenticated page: eleven menu items rebuilt, five Gate lookups,
+        // all discarded for one flag. That was the single largest avoidable cost
+        // on the page after the N+1 fixes landed.
+        //
+        // It answers the same question from the same source, so the sidebar and
+        // the dropdown still cannot disagree — and Pennant's in-request cache
+        // means the sidebar's read has already warmed this one to 0 queries.
+        view()->composer('layouts.partials.header', function (View $view): void {
+            $view->with('sessionsVisible', FeatureCatalog::isActive('sessions'));
+        });
         view()->composer('layouts.partials.password-strength', PasswordStrengthComposer::class);
 
         // Roles and the identity-change policy: shared by every page that shows
