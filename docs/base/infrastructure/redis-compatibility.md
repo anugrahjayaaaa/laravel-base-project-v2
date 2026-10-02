@@ -61,6 +61,32 @@ So the default stays `database` (which also keeps the zero-infrastructure
 promise in DEP-006). Turn Redis on when the deployment is multi-node or the
 database is remote, not as a local speedup.
 
+### The queue is a different question from the cache
+
+The measurement above is **cache-only**, and it does not transfer. The queue
+was moved to Redis on the same host and is a real change of shape, not a
+latency trim: `jobs` goes from a MySQL table scanned by every worker on a poll
+interval to a Redis list that a worker pops, so adding workers no longer adds
+table pressure. Cache and queue were therefore given separate databases —
+queue on `REDIS_DB` (0), cache on `REDIS_CACHE_DB` (1) — so flushing one
+cannot take the other.
+
+`SESSION_DRIVER` was left on `database`: sessions are read and written on
+every single request, which is the worst case for the finding above.
+
+One setting is **not** optional on the redis driver:
+
+```
+REDIS_QUEUE_RETRY_AFTER=180   # must exceed the worker's --timeout (default 90)
+```
+
+A redis-driver job sits in a `reserved` sorted set for `retry_after` seconds.
+The shipped default is 90 and `bin/run-workers.sh`'s `QUEUE_TIMEOUT` is also
+90, so a job that hits its timeout becomes visible again *while a worker is
+still running it* — and a second worker executes it too. The database driver
+does not have this window: it reserves the row atomically at pop time. Raise
+the retry window whenever the worker timeout is raised.
+
 ## Abstraction Rule
 
 - Business logic must not depend directly on Redis.
