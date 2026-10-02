@@ -89,7 +89,17 @@ one write site per mutation.
    the action's is a duplicate record for one mutation.
 4. A bulk handler MUST NOT write its own audit rows for mutations it delegates to
    actions. Loop the action — one record per subject, same properties, same
-   transaction — instead of a second aggregate writer.
+   transaction — instead of a second aggregate writer. `Auditable::auditBulk()`
+   exists for the rare case where one insert is genuinely correct, and derives
+   the same context as `audit()`.
+5. Properties MUST record the decision, not restate the model. `role.deleted`
+   logs how many accounts lost access; `role.created` logs the permission set
+   granted. "A role was updated" cannot be used during an incident review.
+
+**Worked example: the Role feature** — model carries `Auditable`, each action
+writes its own row in its own transaction, both role controllers contain no
+audit call. See [Audit Trail § Reference implementation](../features/audit-trail.md#reference-implementation-the-role-feature)
+for the file-by-file shape and the per-feature migration status.
 
 ### `Auditable::audit()` is the only entry point
 
