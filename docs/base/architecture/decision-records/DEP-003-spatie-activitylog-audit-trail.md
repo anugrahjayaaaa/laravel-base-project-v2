@@ -8,7 +8,7 @@
 
 The Base Project requires an Audit Trail — a record of WHO did WHAT to
 WHICH resource and WHEN. This is distinct from application logs (technical
-WHAT), server logs (infrastructure), and Telescope (runtime HOW). The audit
+WHAT), server logs (infrastructure), and Laravel Pulse (runtime health). The audit
 trail must be:
 - Read-only in the UI
 - Permission-gated for view/export
@@ -30,7 +30,7 @@ application-level `Audit` abstraction layer.
 - **Custom audit table**: A `audits` table with manual inserts in Actions.
   Activitylog provides the same schema with less code and better
   causer/subject tracking. Custom implementation would duplicate this.
-- **Laravel Telescope logs**: Telescope records technical traces, not
+- **Laravel Pulse**: records runtime metrics (queue, cache, exceptions), not
   business-security accountability. Different audience and purpose.
   Explicitly not a substitute (ADR-008).
 - **Laravel Pulse**: Provides metrics/monitoring for queues, caches,

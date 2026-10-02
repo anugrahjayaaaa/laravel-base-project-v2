@@ -6,7 +6,7 @@ Use an established audit package rather than building from scratch.
 
 Create an application-level audit abstraction so the application is not tightly coupled to the package API.
 
-Audit Trail is NOT interchangeable with Telescope.
+Audit Trail is NOT interchangeable with Laravel Pulse.
 
 ## Purpose
 
@@ -127,4 +127,4 @@ Expire/delete export file
 
 ## ADR References
 
-- ADR-008: Audit Trail vs Telescope separation
+- ADR-008: Audit Trail vs Technical Observability separation

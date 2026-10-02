@@ -13,8 +13,7 @@ Define retention separately for each data type. Do NOT apply one global retentio
 || Application logs | 30 days | Debug/operational troubleshooting |
 || Security logs | 90 days | Incident response, security investigation |
 || Server logs | Configured by infra team | Infrastructure monitoring |
-|| Telescope data | 7 days | Technical debugging, auto-purge |
-|| Periscope data | 7 days (follows Telescope) | Companion UI reads Telescope data, no separate retention |
+| Pulse data | Pulse's own retention config | Runtime metrics, ingested on a schedule |
 || Sessions | Until expiration (`SESSION_LIFETIME`) | Automatic cleanup |
 || Revoked tokens | 30 days after revocation | Allow investigation window |
 || Password history | Configurable (`security.password_history.count`) | Prevent reuse (IM8 policy) |
@@ -33,7 +32,7 @@ Retention values are configurable:
 retention.audit_logs.days         (default: indefinite)
 retention.application_logs.days   (default: 30)
 retention.security_logs.days      (default: 90)
-retention.telescope.days          (default: 7)
+pulse retention                   (Pulse's own config, not this project)
 retention.sessions.minutes        (default: 120*60)
 retention.tokens.revoked.days     (default: 30)
 retention.notifications.days      (default: 90)

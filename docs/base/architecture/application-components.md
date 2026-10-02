@@ -163,7 +163,7 @@ operation that does not need decoupled side effects may skip the Event.
 || Authorization decision | Policy / authorization layer |
 || API serialization | Resource / response layer |
 || Asynchronous work | Job |
-|| Technical observability | Logging / Telescope / Periscope / monitoring infrastructure |
+|| Technical observability | Logging / Laravel Pulse / monitoring infrastructure |
 
 ### Key Implications
 
@@ -222,7 +222,7 @@ HTTP Response (JSON / Redirect / View)
 ## ADR References
 
 - ADR-002: UI-independent core
-- ADR-008: Audit Trail vs Telescope separation
+- ADR-008: Audit Trail vs Technical Observability separation
 - ADR-011: Soft delete strategy
 - ADR-012: Cascade relationship strategy
 

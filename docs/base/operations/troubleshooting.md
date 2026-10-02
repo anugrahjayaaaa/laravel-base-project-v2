@@ -93,10 +93,10 @@
 
 || Tool | Purpose |
 ||------|---------|
-|| `php artisan telescope` | (if installed) Laravel runtime inspection (technical debug) |
-|| `php artisan telescope:install` | Publish Telescope migrations + config |
-|| `php artisan migrate` | Run Telescope + Periscope migrations (Telescope data tables) |
-|| `php artisan route:list --path=periscope` | Verify Periscope companion UI routes |
+| `php artisan pulse:check` | Verify Pulse is installed and its tables exist |
+| `php artisan migrate` | Run the `pulse_*` table migrations |
+| `php artisan route:list --path=pulse` | Verify Pulse routes are registered |
+| `php artisan route:list --path=pulse -v` | Confirm the `pulse` middleware group carries `feature:pulse` |
 || `php artisan tinker` | Interactive debugging |
 || `php artisan log:clear` | Clear log files |
 || `php artisan config:clear` | Clear config cache |
