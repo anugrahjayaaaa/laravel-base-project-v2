@@ -55,6 +55,11 @@ established audit package rather than building from scratch."
   mutation, **before the COMMIT**, and only persist if the transaction commits
   successfully. The `Audit` abstraction enforces this by being called from
   within the Action/Service layer inside the transaction scope.
+- **Who writes them**: the Action that performs the mutation. Controllers
+  orchestrate and MUST NOT add an audit call for a mutation an Action already
+  performs — that is a duplicate record for one mutation. See
+  [Action-First Audit Logging Standard](../application-boundaries.md#action-first-audit-logging-standard)
+  for the full rule, including bulk mutations.
 - Sensitive data (passwords, tokens) must be scrubbed before storing in
   `properties` — the abstraction handles this.
 - Version constraint: `^4.8` (NOT v5, which requires PHP 8.4+).
