@@ -56,14 +56,13 @@ class ProfileController extends Controller
                 currentPassword: $data['current_password'],
                 newPassword: $data['password'],
             );
-
-            $this->audit('auth.password_changed', $user, $user);
         }
 
-        $this->audit('user.profile_updated', $user, $user);
+        // No audit calls here — the actions own their rows, inside their own
+        // transactions. See Web\V1\ProfileController::update() for the same
+        // three events and why none of them belongs at the controller.
 
         if ($request->filled('email') && $data['email'] !== $user->getOriginal('email')) {
-            $this->audit('user.email_change_requested', $user, $user, ['pending_email' => $data['email']]);
             return $this->respond('Verification email sent to new email address.', 200, [
                 'message' => 'Verification email sent to new email address.',
                 'user' => new UserResource($user->fresh()),
