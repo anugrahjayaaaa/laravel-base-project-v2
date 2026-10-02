@@ -44,6 +44,11 @@ class AppServiceProvider extends ServiceProvider
         // It answers the same question from the same source, so the sidebar and
         // the dropdown still cannot disagree — and Pennant's in-request cache
         // means the sidebar's read has already warmed this one to 0 queries.
+        //
+        // The warming depends on the LAYOUT: app.blade.php includes the sidebar
+        // first, so `activeMap()` has resolved the whole catalogue by the time
+        // this runs. Measured, cold cache, flushing Pennant between requests —
+        // sidebar first: 1 feature-store read per page; header first: 2.
         view()->composer('layouts.partials.header', function (View $view): void {
             $view->with('sessionsVisible', FeatureCatalog::isActive('sessions'));
         });
