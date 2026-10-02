@@ -131,7 +131,48 @@ class FeatureCatalog
     }
 
     /**
-     * @return array<string, array<string, mixed>>
+     * Many flags' effective states in ONE store read.
+     *
+     * The page asks about every flag, so calling `isActive()` per slug is N
+     * selects — measured at 8 queries for 8 flags. Pennant's `values()` reads
+     * the same rows in a single `WHERE name IN (...)`, so the count stops
+     * depending on the size of the catalogue.
+     *
+     * The kill switch is applied HERE, per slug, rather than by handing the raw
+     * map to the caller: `isActive()` stays the only place that answer is
+     * decided, so a new reader cannot come along and skip it. A `disabled =>
+     * true` flag reads false without the store ever being asked about it.
+     *
+     * @param  array<int, string>  $slugs
+     * @return array<string, bool> slug => effective state
+     */
+    public static function activeMap(array $slugs): array
+    {
+        $states = [];
+        $askable = [];
+
+        foreach ($slugs as $slug) {
+            if (self::isDisabledInConfig($slug)) {
+                // Reported as off without the store ever being asked about it.
+                $states[$slug] = false;
+
+                continue;
+            }
+
+            $askable[] = $slug;
+        }
+
+        $stored = $askable === [] ? [] : Feature::values($askable);
+
+        foreach ($askable as $slug) {
+            $states[$slug] = (bool) ($stored[$slug] ?? false);
+        }
+
+        return $states;
+    }
+
+    /**
+     * @return array<string, mixed>
      */
     private static function features(): array
     {

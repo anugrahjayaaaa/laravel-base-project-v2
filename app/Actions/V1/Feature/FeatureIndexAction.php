@@ -14,14 +14,15 @@ use Illuminate\Support\Facades\Cache;
  * nothing else. It also owns the counters, which are the same numbers the
  * action would otherwise recompute per row.
  *
- * ## Why one store read per flag, not one per render
+ * ## Why one store read for the whole catalogue, not one per flag
  *
- * `Feature::active()` caches per request, but the page asks about every flag,
- * so N flags is N resolutions. With the database driver that is N selects on
- * the first request of a process and zero on the next. Caching the resolved
- * snapshot for a short window keeps a page view from being the thing that
- * pays for the resolution — the numbers only move when someone toggles, which
- * is the only thing that flushes this key.
+ * Asking `isActive()` per flag is N selects — measured at 8 queries for 8
+ * flags, growing with the catalogue. `FeatureCatalog::activeMap()` reads them
+ * all in one `WHERE name IN (...)`, so the count stops depending on how many
+ * flags exist. That resolved map is then cached for a short window, keeping a
+ * page view from being the thing that pays for the resolution at all — the
+ * numbers only move when someone toggles, which is the only thing that flushes
+ * this key.
  *
  * ponytail: the TTL is a staleness budget, not a tuning knob — the toggle
  * action calls forget() in the same breath as the write, so an operator never
@@ -93,22 +94,25 @@ class FeatureIndexAction
     /**
      * Resolve every declared flag once.
      *
-     * The answer comes from `FeatureCatalog::isActive()`, not from
-     * `Feature::active()` directly: the kill switch lives there, and re-deriving
-     * it here is how the page and the middleware would drift apart.
+     * The answer comes from `FeatureCatalog::activeMap()`, not from
+     * `isActive()` per slug: that is N store reads, and re-deriving the kill
+     * switch here is how the page and the middleware would drift apart.
      *
      * @return array{groups: array<string, array<int, array<string, mixed>>>, total: int, enabled: int, disabled: int}
      */
     private function resolve(): array
     {
+        $grouped = FeatureCatalog::grouped();
+        $states = FeatureCatalog::activeMap(FeatureCatalog::slugs());
+
         $groups = [];
         $enabled = 0;
 
-        foreach (FeatureCatalog::grouped() as $group => $flags) {
+        foreach ($grouped as $group => $flags) {
             $rows = [];
 
             foreach ($flags as $flag) {
-                $isEnabled = FeatureCatalog::isActive($flag['slug']);
+                $isEnabled = $states[$flag['slug']] ?? false;
 
                 $enabled += (int) $isEnabled;
 
