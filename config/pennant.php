@@ -53,6 +53,12 @@ return [
             'label' => 'Translations',
             'group' => 'Settings',
             'description' => 'Runtime-editable language lines.',
+            // Declared ahead of its module. Nothing reads this flag yet, so
+            // flipping the switch writes a store row and an audit row and
+            // changes nothing else — the page says so rather than letting an
+            // operator believe they switched a module off. Remove this key when
+            // routes/translations ships and the flag is wired to them.
+            'pending' => 'Module not built yet — this switch records intent only.',
         ],
         'sessions' => [
             'label' => 'Sessions',
@@ -63,6 +69,9 @@ return [
             'label' => 'Activity Logs',
             'group' => 'Audit',
             'description' => 'The audit trail viewer.',
+            // See `translations` above. The sidebar entry is dropped by its
+            // Route::has check before the flag is ever consulted.
+            'pending' => 'Module not built yet, this switch records intent only.',
         ],
         'pulse' => [
             'label' => 'Pulse Dashboard',

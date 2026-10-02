@@ -205,6 +205,19 @@
                                     <td><code>{{ $feature['slug'] }}</code></td>
                                     <td class="text-muted">
                                         {{ $feature['description'] ?: '—' }}
+                                        {{-- A flag whose module has no routes yet.
+                                             Without this the row reads like every
+                                             other one: the switch posts, the row
+                                             flips, an audit row is written — and
+                                             nothing in the app changes. An
+                                             operator told "Inactive" for a switch
+                                             that controls nothing will believe
+                                             they turned a module off. --}}
+                                        @if (! empty($feature['pending']))
+                                            <span class="d-block fst-italic mt-1">
+                                                {{ $feature['pending'] }}
+                                            </span>
+                                        @endif
                                     </td>
                                     <td>
                                         <x-ui.badge

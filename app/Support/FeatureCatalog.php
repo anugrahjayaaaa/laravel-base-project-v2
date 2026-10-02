@@ -37,7 +37,7 @@ class FeatureCatalog
      * Defaults are filled in so no consumer has to null-check: a flag declared
      * as a bare `'audit' => []` still renders a row rather than an empty cell.
      *
-     * @return array<string, array{slug: string, label: string, group: string, description: string}>
+     * @return array<int, array{slug: string, label: string, group: string, description: string, pending: string|null}>
      */
     public static function all(): array
     {
@@ -49,6 +49,11 @@ class FeatureCatalog
                 'label' => (string) ($meta['label'] ?? ucfirst(str_replace('_', ' ', $slug))),
                 'group' => (string) ($meta['group'] ?? 'General'),
                 'description' => (string) ($meta['description'] ?? ''),
+                // Set on a flag whose module has no routes yet. The page shows it
+                // so an operator is not told "Inactive" for a switch that
+                // controls nothing — a toggle that reports success and changes
+                // nothing is worse than no toggle.
+                'pending' => isset($meta['pending']) ? (string) $meta['pending'] : null,
             ];
         }
 
@@ -58,7 +63,7 @@ class FeatureCatalog
     /**
      * Every flag grouped by module heading, for the management page's cards.
      *
-     * @return array<string, array<int, array{slug: string, label: string, group: string, description: string}>>
+     * @return array<string, array<int, array{slug: string, label: string, group: string, description: string, pending: string|null}>>
      */
     public static function grouped(): array
     {
@@ -78,7 +83,7 @@ class FeatureCatalog
      * reached for a flag this application does not have, and the store decides
      * what that means (fail-closed false), not this lookup.
      *
-     * @return array{slug: string, label: string, group: string, description: string}|null
+     * @return array{slug: string, label: string, group: string, description: string, pending: string|null}|null
      */
     public static function find(string $slug): ?array
     {
