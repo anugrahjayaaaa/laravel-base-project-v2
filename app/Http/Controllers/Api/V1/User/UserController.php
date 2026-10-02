@@ -154,10 +154,10 @@ class UserController extends Controller
             handler: $this->userBulkActionHandler,
         );
 
-        if (!empty($result['auditRecords']) && $result['auditEvent']) {
-            $this->bulkAudit($result['auditEvent'], $result['auditRecords'], $request->user());
-        }
-
+        // No aggregate audit write here: every branch of UserBulkActionHandler
+        // loops an action that records the change per subject inside its own
+        // transaction, so a row from here would name the same users a second
+        // time with none of the properties the action recorded.
         return $this->respond("{$result['label']} ({$result['count']} users).", 200);
     }
 
