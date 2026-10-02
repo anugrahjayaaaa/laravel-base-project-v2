@@ -6,6 +6,7 @@ use App\Models\User;
 use Illuminate\Contracts\Auth\StatefulGuard;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 /**
      * End a session and record it.
@@ -35,22 +36,33 @@ class AuthLogoutAction
             return;
         }
 
-        // Token-based API logout. A web session has no current access token.
-        $user->currentAccessToken()?->delete();
-
-        // Sanctum's guard is a RequestGuard and has no logout(); only a stateful
-        // guard can end the session.
         $guard = Auth::guard();
 
-        if ($guard instanceof StatefulGuard) {
-            $guard->logout();
-        }
+        // The database writes and the audit row are one transaction, so a
+        // failure part way through cannot leave tokens deleted under an
+        // `auth.logout` row that rolled back. The ordering is unchanged and still
+        // matters: the row is written last, so it never claims a logout that did
+        // not happen.
+        //
+        // Session invalidation stays outside. The session store is flushed when
+        // the response is sent, not here, so there is no write of ours to
+        // include — and a rollback could not put a regenerated session back.
+        DB::transaction(function () use ($user, $guard): void {
+            // Token-based API logout. A web session has no current access token.
+            $user->currentAccessToken()?->delete();
+
+            // Sanctum's guard is a RequestGuard and has no logout(); only a
+            // stateful guard can end the session.
+            if ($guard instanceof StatefulGuard) {
+                $guard->logout();
+            }
+
+            $user->audit('auth.logout');
+        });
 
         if ($request->hasSession()) {
             $request->session()->invalidate();
             $request->session()->regenerateToken();
         }
-
-        $user->audit('auth.logout');
     }
 }
