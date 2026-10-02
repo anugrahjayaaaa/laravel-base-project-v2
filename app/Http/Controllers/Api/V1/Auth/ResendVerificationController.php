@@ -6,7 +6,6 @@ use App\Actions\V1\Auth\AuthResendVerificationAction;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\V1\Auth\ResendVerificationRequest;
 use App\Models\SystemSetting;
-use App\Models\User;
 use Illuminate\Http\JsonResponse;
 
 /**
@@ -30,7 +29,6 @@ class ResendVerificationController extends Controller
         }
 
         $email = $request->validated('email');
-        $user = User::where('email', $email)->first();
 
         $result = $action->run($email, $request->ip());
 
@@ -38,10 +36,12 @@ class ResendVerificationController extends Controller
             return $this->respond($result['error']['message'], $result['error']['status']);
         }
 
-        if ($user) {
-            $user->audit('auth.verification_resent', $request->user());
-        }
-
+        // No audit call here. AuthResendVerificationAction writes
+        // `auth.verification_resent` itself, on the line after the notification
+        // actually went out — and it used to write a second row here, so one
+        // resend produced two records, this one outside the action and carrying
+        // no properties. The lookup of the User above existed only to have a
+        // subject to attach that row to; the action finds the user itself.
         return $this->respond('If the email is registered, a verification link has been sent.');
     }
 }

@@ -70,7 +70,6 @@ class AuthController extends Controller
         $data = $request->validated();
         $identifier = $data['identifier'];
         $ip = $request->ip();
-        $user = User::where('email', $identifier)->orWhere('username', $identifier)->first();
 
         $result = $action->run($identifier, $data['password'], $ip, $throttle);
 
@@ -116,7 +115,6 @@ class AuthController extends Controller
         $data = $request->validated();
         $email = $data['email'];
         $ip = $request->ip();
-        $user = User::where('email', $email)->first();
 
         $result = $action->run($email, $ip, $request, $throttle);
 
@@ -242,7 +240,6 @@ class AuthController extends Controller
 
         $data = $request->validated();
         $email = $data['email'];
-        $user = User::where('email', $email)->first();
 
         $result = $action->run($email, $request->ip());
 

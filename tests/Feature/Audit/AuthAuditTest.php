@@ -5,6 +5,7 @@ namespace Tests\Feature\Audit;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Notification;
 use Spatie\Activitylog\Models\Activity;
 use Tests\TestCase;
 
@@ -207,6 +208,40 @@ class AuthAuditTest extends TestCase
 
         $this->assertNotNull($activity, 'no auth.logout row was written');
         $this->assertStandardContext($activity);
+    }
+
+    /**
+     * A resend writes exactly one row.
+     *
+     * The API controller used to write `auth.verification_resent` on top of the
+     * one AuthResendVerificationAction already wrote — two rows for one resend,
+     * the second one outside the action and carrying no properties. A count,
+     * never `exists()`: the defect was a duplicate, so a presence check would
+     * pass straight through it.
+     *
+     * Reached through the action rather than the route, for the same reason the
+     * logout test is: `api.v1.auth.email.resend` sits behind the `verified`
+     * middleware, so an unverified user gets a 403 before the controller runs —
+     * and a verified user is refused by the action with 422. The route cannot
+     * reach the write under test from either side, which is what left the
+     * duplicate in place unnoticed.
+     */
+    public function test_a_resend_verification_writes_exactly_one_row(): void
+    {
+        Notification::fake();
+
+        $user = $this->makeUser(['email_verified_at' => null]);
+
+        app(\App\Actions\V1\Auth\AuthResendVerificationAction::class)
+            ->run($user->email, '127.0.0.1');
+
+        $this->assertSame(
+            1,
+            Activity::where('event', 'auth.verification_resent')
+                ->where('subject_id', $user->id)
+                ->count(),
+            'a resend wrote more than one audit row'
+        );
     }
 
     /**
