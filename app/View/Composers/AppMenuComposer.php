@@ -38,26 +38,39 @@ class AppMenuComposer
      */
     public function compose(View $view): void
     {
-        $view->with('menuGroups', $this->visibleGroups());
+        // ONE store read for every flag the menu consults.
+        //
+        // The flag check used to call `isActive()` per item, and this composer
+        // runs on every authenticated page: seven flagged items meant seven
+        // `select * from features` per request, plus an eighth below for the
+        // header dropdown's Sessions link — which is the same slug as the
+        // sidebar's, read twice for one answer.
+        //
+        // `activeMap()` already exists for exactly this and is flat in the
+        // catalogue size, so the fix is to ask it once and look the answers up.
+        $flags = FeatureCatalog::activeMap(FeatureCatalog::slugs());
+
+        $view->with('menuGroups', $this->visibleGroups($flags));
 
         // The header dropdown has its own Sessions link, outside $menuGroups.
-        // It reads this rather than calling FeatureCatalog itself, so the sidebar
-        // and the dropdown cannot disagree — a link the routes refuse with 403 is
-        // worse than an absent link, and this is where that starts.
-        $view->with('sessionsVisible', FeatureCatalog::isActive('sessions'));
+        // It reads the same map rather than calling FeatureCatalog itself, so the
+        // sidebar and the dropdown cannot disagree — a link the routes refuse
+        // with 403 is worse than an absent link, and this is where that starts.
+        $view->with('sessionsVisible', $flags['sessions'] ?? false);
     }
 
     /**
+     * @param  array<string, bool>  $flags  Resolved once by the caller
      * @return array<int, array<string, mixed>>
      */
-    private function visibleGroups(): array
+    private function visibleGroups(array $flags): array
     {
         $groups = array_map(
             fn (array $group) => [
                 ...$group,
                 'items' => array_values(array_filter(
                     $group['items'],
-                    fn (array $item) => $this->visible($item)
+                    fn (array $item) => $this->visible($item, $flags)
                 )),
             ],
             $this->groups()
@@ -84,8 +97,17 @@ class AppMenuComposer
      * permission. Sessions is the case that matters: it carries no permission
      * (every authenticated user reaches it) but is flagged, so without this the
      * item would stay on a sidebar whose route now refuses with 403.
+     *
+     * `$flags` is passed in rather than resolved here: this runs once per menu
+     * item, and reading the store inside the loop is what made the composer
+     * cost one `select` per flagged entry on every page.
+     *
+     * An undeclared slug reads false, same as `isActive()` would answer — the
+     * `??` is the fail-closed default, not a different rule.
+     *
+     * @param  array<string, bool>  $flags
      */
-    private function visible(array $item): bool
+    private function visible(array $item, array $flags): bool
     {
         $route = $item['route'] ?? null;
 
@@ -93,7 +115,7 @@ class AppMenuComposer
             return false;
         }
 
-        if (isset($item['feature']) && ! FeatureCatalog::isActive($item['feature'])) {
+        if (isset($item['feature']) && ! ($flags[$item['feature']] ?? false)) {
             return false;
         }
 

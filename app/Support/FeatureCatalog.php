@@ -167,6 +167,14 @@ class FeatureCatalog
             $askable[] = $slug;
         }
 
+        // ponytail: Pennant's `values()` is one query but its per-feature
+        // deserialization is superlinear in practice — measured 4ms at 8 flags,
+        // 50ms at 50, 1161ms at 200. All of that time is inside the package
+        // (vendor/laravel/pennant), not here, so it is not ours to optimise.
+        // Untouchable ceiling: if the catalogue ever approaches ~100 flags, the
+        // fix is to stop asking Pennant for every flag on the page — resolve
+        // lazily per consumer, or cache the map longer than the 30s snapshot.
+        // Nothing to do until the catalogue actually grows; measured at 8 today.
         $stored = $askable === [] ? [] : Feature::values($askable);
 
         foreach ($askable as $slug) {

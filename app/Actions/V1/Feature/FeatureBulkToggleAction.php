@@ -19,10 +19,11 @@ use Laravel\Pennant\Feature;
  * and the index snapshot five times — five round trips to the store for one
  * user action.
  *
- * So the writes are batched here: one transaction, one
- * `feature.bulk_toggled` row carrying the full slug list and each slug's own
- * from/to. The single-flag path keeps its own event name — a one-flag bulk
- * request and a toggle from the row switch are different things to an auditor.
+ * So the writes are batched here: one transaction, one upsert for the whole
+ * selection, one `feature.bulk_toggled` row carrying the full slug list and
+ * each slug's own from/to. The single-flag path keeps its own event name — a
+ * one-flag bulk request and a toggle from the row switch are different things to
+ * an auditor.
  *
  * ## Why every `from` is read before the first write
  *
@@ -81,40 +82,44 @@ class FeatureBulkToggleAction
             abort_unless(FeatureCatalog::has($slug), 404);
         }
 
-        // Every `from` first — see the class docblock.
-        $before = [];
-
-        foreach ($slugs as $slug) {
-            $before[$slug] = FeatureCatalog::isActive($slug);
-        }
+        // ONE read for the whole batch, twice over — and both maps are needed.
+        //
+        // Previously this was two separate per-slug loops: one reading
+        // `isActive()` for the audit `from`, one reading `Feature::active()` for
+        // the change decision. Two N+1s for one operation, which is why an 8-flag
+        // toggle cost 23 queries.
+        //
+        // They cannot be collapsed into one map, because they answer different
+        // questions:
+        //
+        //  - `$store` is the RAW row, and it decides whether there is anything to
+        //    write. `isActive()` cannot decide this: it applies the `disabled =>
+        //    true` kill switch, so a kill-switched flag reads false whatever its
+        //    row says. Short-circuiting on the effective state made
+        //    bulk-disable a kill-switched flag a silent no-op — the row stayed as
+        //    the seeder wrote it and lifting the kill switch brought the module
+        //    straight back. What we write is the row, so the row decides.
+        //  - `$before` is the EFFECTIVE state, which is what an auditor means by
+        //    "this flag was off" — a module the kill switch forced off was off
+        //    for its users, and the audit row has to say so. `activeMap()`
+        //    applies the switch, so this is exactly what `isActive()` gave.
+        $store = Feature::values($slugs);
+        $before = FeatureCatalog::activeMap($slugs);
 
         $changed = [];
         $unchanged = [];
 
-        DB::transaction(function () use ($slugs, $enabled, $causer, $before, &$changed, &$unchanged): void {
+        DB::transaction(function () use ($slugs, $enabled, $causer, $store, $before, &$changed, &$unchanged): void {
+            $toWrite = [];
+
             foreach ($slugs as $slug) {
-                // Compare against the STORE, not the effective state.
-                //
-                // `$before` is `FeatureCatalog::isActive()`, which honours the
-                // `disabled => true` kill switch, so a kill-switched flag reads
-                // false whatever its row says. Short-circuiting on that made
-                // bulk-disable a kill-switched flag a silent no-op: the row was
-                // left as the seeder wrote it, and lifting the kill switch
-                // brought the module straight back. FeatureToggleAction has no
-                // short-circuit at all and always writes, so the two paths
-                // disagreed about the same flag.
-                //
-                // What we write is the row, so the row is what decides whether
-                // there is anything to do.
-                if (Feature::active($slug) === $enabled) {
+                if ((bool) ($store[$slug] ?? false) === $enabled) {
                     $unchanged[] = $slug;
 
                     continue;
                 }
 
-                $enabled
-                    ? Feature::activate($slug)
-                    : Feature::deactivate($slug);
+                $toWrite[] = $slug;
 
                 $changed[] = [
                     'slug' => $slug,
@@ -122,6 +127,18 @@ class FeatureBulkToggleAction
                     'from' => $before[$slug],
                     'to' => $enabled,
                 ];
+            }
+
+            // ONE write for the whole batch.
+            //
+            // `activate()` and `deactivate()` both accept an array and issue a
+            // single upsert for it, so the per-slug loop this replaces was N
+            // inserts plus a re-select each. Pennant's own API was already
+            // batch-capable; nothing was asking it to be.
+            if ($toWrite !== []) {
+                $enabled
+                    ? Feature::activate($toWrite)
+                    : Feature::deactivate($toWrite);
             }
 
             // Inside the transaction (DEP-003): an audit row that survives a
