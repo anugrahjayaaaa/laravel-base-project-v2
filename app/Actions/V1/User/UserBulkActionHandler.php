@@ -67,12 +67,26 @@ class UserBulkActionHandler implements BulkActionHandler
     /**
      * Get the technical audit event name.
      *
+     * Empty for the actions whose per-user mutation is already audited by the
+     * action it loops: `deleteUsers`, `restoreUsers`, `forceDeleteUsers` and
+     * `deactivateUsers` each run one of the user actions, and each of those
+     * writes its own `user.*` row per subject inside its own transaction. An
+     * aggregate row here would name the same subjects a second time and add
+     * none of the properties the action recorded. The controllers skip the
+     * aggregate write on a falsy event, which is the same mechanism
+     * `RoleBulkActionHandler` relies on.
+     *
+     * `lock` and `unlock` keep the aggregate row: they still write their column
+     * directly through `executeBulk`, with no action behind them to audit.
+     *
      * @param  string  $action
      * @return string
      */
     public function getAuditEvent(string $action): string
     {
-        return "user.{$action}";
+        return in_array($action, ['delete', 'restore', 'force_delete', 'deactivate'], true)
+            ? ''
+            : "user.{$action}";
     }
 
     /**
@@ -163,7 +177,7 @@ class UserBulkActionHandler implements BulkActionHandler
     {
         $users = User::withTrashed()->whereIn('id', $ids)->get();
         foreach ($users as $user) {
-            app(UserRestoreAction::class)->run($user);
+            app(UserRestoreAction::class)->run($user, causer: auth()->user());
         }
     }
 

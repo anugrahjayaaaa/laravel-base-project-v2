@@ -2,6 +2,7 @@
 
 namespace App\Actions\V1\User;
 
+use App\Actions\Concerns\AuditsUserState;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -13,22 +14,27 @@ use Illuminate\Validation\ValidationException;
  */
 class UserLockAction
 {
+    use AuditsUserState;
+
     /**
      * Lock the user.
      *
-     * @param  User   $user
-     * @param  bool   $invalidateSessions
+     * @param  User       $user
+     * @param  User|null  $causer  Who to attribute the audit record to
+     * @param  bool       $invalidateSessions
      * @return array  ['user' => User]
      */
-    public function run(User $user, bool $invalidateSessions = true): array
+    public function run(User $user, ?User $causer = null, bool $invalidateSessions = true): array
     {
         $this->validate($user);
 
-        DB::transaction(function () use ($user, $invalidateSessions) {
+        DB::transaction(function () use ($user, $causer, $invalidateSessions) {
             $user->update(['is_locked' => true]);
             if ($invalidateSessions) {
                 $this->invalidateSessions($user);
             }
+
+            $this->auditState($user, 'user.locked', $causer);
         });
 
         return ['user' => $user];

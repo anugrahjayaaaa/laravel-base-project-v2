@@ -16,6 +16,11 @@ class UserDeleteAction
     /**
      * Soft-delete the user.
      *
+     * The audit row is written HERE, inside the transaction, not by the caller.
+     * Every path that trashes a user — the row button, the API endpoint, and the
+     * bulk bar, which loops this same action — therefore produces exactly one
+     * `user.deleted` record, and a rollback takes the record with it.
+     *
      * @param  User   $user
      * @param  User   $causer
      * @return array  ['user' => User]
@@ -24,9 +29,11 @@ class UserDeleteAction
     {
         $this->validate($user, $causer);
 
-        DB::transaction(function () use ($user) {
+        DB::transaction(function () use ($user, $causer) {
             $this->invalidateSessions($user);
             $user->delete();
+
+            $user->audit('user.deleted', $causer);
         });
 
         return ['user' => $user];

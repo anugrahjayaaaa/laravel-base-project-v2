@@ -76,6 +76,13 @@ class UserUpdateAction
             );
         }
 
+        // Admin path only. A self-service profile update passes no causer and is
+        // audited as `user.profile_updated` by its own endpoint, so auditing
+        // unconditionally would give one profile save two rows for one mutation.
+        if ($causer !== null) {
+            $user->audit('user.updated', $causer);
+        }
+
         return $user->fresh();
     }
 }

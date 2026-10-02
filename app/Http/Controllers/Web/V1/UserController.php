@@ -69,9 +69,7 @@ class UserController extends Controller
      */
     public function store(CreateUserRequest $request)
     {
-        $user = $this->createAction->run($request->validated(), causer: $request->user());
-
-        $user->audit('user.created', $request->user());
+        $this->createAction->run($request->validated(), causer: $request->user());
 
         return redirect()->route('users.index')
             ->with('status', 'User created successfully.');
@@ -152,8 +150,6 @@ class UserController extends Controller
     {
         $this->updateAction->run($user, $request->validated(), $request->user());
 
-        $user->audit('user.updated', $request->user());
-
         return back()->with('status', 'User updated successfully.');
     }
 
@@ -190,8 +186,6 @@ class UserController extends Controller
     {
         $this->deleteAction->run($user, $request->user());
 
-        $user->audit('user.deleted', $request->user());
-
         return back()->with('status', "User '{$user->name}' has been successfully deleted.");
     }
 
@@ -203,9 +197,7 @@ class UserController extends Controller
      */
     public function restore(User $user)
     {
-        $this->restoreAction->run($user);
-
-        $user->audit('user.restored', auth()->user());
+        $this->restoreAction->run($user, causer: auth()->user());
 
         return back()->with('status', "User '{$user->name}' has been successfully restored.");
     }
@@ -221,8 +213,6 @@ class UserController extends Controller
     {
         $this->forceDeleteAction->run($user, $request->user());
 
-        $user->audit('user.force_deleted', $request->user());
-
         return redirect()->route('users.index')->with('status', "User '{$user->name}' has been permanently deleted.");
     }
 
@@ -235,13 +225,11 @@ class UserController extends Controller
      */
     public function resendVerification(Request $request, User $user)
     {
-        $result = $this->resendVerificationAction->run($user, $request->ip());
+        $result = $this->resendVerificationAction->run($user, $request->ip(), $request->user());
 
         if (isset($result['error'])) {
             return back()->withErrors(['error' => $result['error']['message']]);
         }
-
-        $user->audit('user.verification_resent', $request->user());
 
         return back()->with('status', 'Verification email successfully sent to user.');
     }
@@ -255,9 +243,7 @@ class UserController extends Controller
      */
     public function requestEmailChange(EmailChangeRequest $request, User $user)
     {
-        $this->requestEmailChangeAction->run($user, $request->validated('email'));
-
-        $user->audit('user.email_change_requested', $request->user(), ['pending_email' => $request->validated('email')]);
+        $this->requestEmailChangeAction->run($user, $request->validated('email'), $request->user());
 
         return back()->with('status', 'Verification email sent to new email address.');
     }
@@ -279,9 +265,7 @@ class UserController extends Controller
             403
         );
 
-        $this->cancelEmailChangeAction->run($user);
-
-        $user->audit('user.email_change_cancelled', auth()->user());
+        $this->cancelEmailChangeAction->run($user, auth()->user());
 
         return back()->with('status', 'Email change cancelled.');
     }
@@ -301,21 +285,23 @@ class UserController extends Controller
             return $this->verifyRedirect('Missing verification token.', false);
         }
 
-        $verified = $this->verifyEmailChangeAction->run($user, $token);
+        // Captured before the action runs: this method logs the user out below,
+        // and the action attributes the audit record to whoever requested the
+        // change. Read after the logout it would always be null.
+        $actor = auth()->user();
+
+        $verified = $this->verifyEmailChangeAction->run($user, $token, $actor);
 
         if (! $verified) {
             return $this->verifyRedirect('Invalid or expired verification link.', false);
         }
 
         // Log out the user so they must login with the new email.
-        $actor = auth()->user();
         if (auth()->check()) {
             Auth::logout();
             $request->session()->invalidate();
             $request->session()->regenerateToken();
         }
-
-        $user->audit('user.email_changed', $actor ?? $user, ['new_email' => $user->fresh()->email]);
 
         return redirect()->route('login')->with('success', 'Email changed successfully. Please login with your new email.');
     }

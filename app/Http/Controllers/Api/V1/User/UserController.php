@@ -98,9 +98,7 @@ class UserController extends Controller
      */
     public function store(CreateUserRequest $request): JsonResponse
     {
-        $user = $this->createAction->run($request->validated(), causer: $request->user());
-
-        $user->audit('user.created', $request->user());
+        $this->createAction->run($request->validated(), causer: $request->user());
 
         return response()->json([
             'data' => ['message' => 'User created successfully.'],
@@ -134,8 +132,6 @@ class UserController extends Controller
     public function update(UpdateUserRequest $request, User $user): JsonResponse
     {
         $this->updateAction->run($user, $request->validated(), $request->user());
-
-        $user->audit('user.updated', $request->user());
 
         return $this->respond('User updated successfully.', 200, [
             'message' => 'User updated successfully.',
@@ -174,9 +170,10 @@ class UserController extends Controller
      */
     public function destroy(Request $request, User $user): JsonResponse
     {
+        // No audit call here: UserDeleteAction writes `user.deleted` inside its
+        // own transaction, so the row button, the API and the bulk bar all get
+        // exactly one record from the one place that owns the mutation.
         $this->deleteAction->run($user, $request->user());
-
-        $user->audit('user.deleted', $request->user());
 
         return $this->respond('User deleted successfully.', 200);
     }
@@ -192,8 +189,6 @@ class UserController extends Controller
     {
         $this->forceDeleteAction->run($user, $request->user());
 
-        $user->audit('user.force_deleted', $request->user());
-
         return $this->respond('User permanently deleted.', 200);
     }
 
@@ -206,9 +201,7 @@ class UserController extends Controller
      */
     public function restore(Request $request, User $user): JsonResponse
     {
-        $this->restoreAction->run($user);
-
-        $user->audit('user.restored', $request->user());
+        $this->restoreAction->run($user, causer: $request->user());
 
         return $this->respond('User restored successfully.', 200, [
             'message' => 'User restored successfully.',
@@ -225,9 +218,7 @@ class UserController extends Controller
      */
     public function requestEmailChange(EmailChangeRequest $request, User $user): JsonResponse
     {
-        $this->requestEmailChangeAction->run($user, $request->validated('email'));
-
-        $user->audit('user.email_change_requested', $request->user(), ['pending_email' => $request->validated('email')]);
+        $this->requestEmailChangeAction->run($user, $request->validated('email'), $request->user());
 
         return $this->respond('Verification email sent to new email address.', 200);
     }
@@ -248,9 +239,7 @@ class UserController extends Controller
             403
         );
 
-        $this->cancelEmailChangeAction->run($user);
-
-        $user->audit('user.email_change_cancelled', $request->user());
+        $this->cancelEmailChangeAction->run($user, $request->user());
 
         return $this->respond('Email change cancelled.', 200);
     }
@@ -270,13 +259,11 @@ class UserController extends Controller
             return $this->respond('Missing verification token.', 400);
         }
 
-        $verified = $this->verifyEmailChangeAction->run($user, $token);
+        $verified = $this->verifyEmailChangeAction->run($user, $token, $request->user());
 
         if (! $verified) {
             return $this->respond('Invalid or expired verification link.', 400);
         }
-
-        $user->audit('user.email_changed', $request->user(), ['new_email' => $user->fresh()->email]);
 
         return $this->respond('Email changed successfully. Please login with your new email.', 200);
     }
@@ -290,7 +277,7 @@ class UserController extends Controller
      */
     public function resendVerification(Request $request, User $user): JsonResponse
     {
-        $result = $this->resendVerificationAction->run($user, $request->ip());
+        $result = $this->resendVerificationAction->run($user, $request->ip(), $request->user());
 
         if (isset($result['error'])) {
             // The action already decided the status (403 disabled, 422 already
@@ -298,8 +285,6 @@ class UserController extends Controller
             // away and told the client its request was malformed.
             return $this->respond($result['error']['message'], $result['error']['status'] ?? 400);
         }
-
-        $user->audit('user.verification_resent', $request->user());
 
         return $this->respond('Verification email successfully sent.', 200);
     }

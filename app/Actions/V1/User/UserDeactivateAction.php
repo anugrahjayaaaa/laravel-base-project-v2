@@ -2,6 +2,7 @@
 
 namespace App\Actions\V1\User;
 
+use App\Actions\Concerns\AuditsUserState;
 use App\Models\User;
 use App\Support\LastSuperadmin;
 use Illuminate\Support\Facades\DB;
@@ -14,6 +15,8 @@ use Illuminate\Validation\ValidationException;
  */
 class UserDeactivateAction
 {
+    use AuditsUserState;
+
     /**
      * Deactivate the user.
      *
@@ -26,11 +29,13 @@ class UserDeactivateAction
     {
         $this->validate($user, $causer);
 
-        DB::transaction(function () use ($user, $invalidateSessions) {
+        DB::transaction(function () use ($user, $causer, $invalidateSessions) {
             $user->update(['is_active' => false]);
             if ($invalidateSessions) {
                 $this->invalidateSessions($user);
             }
+
+            $this->auditState($user, 'user.deactivated', $causer);
         });
 
         return ['user' => $user];

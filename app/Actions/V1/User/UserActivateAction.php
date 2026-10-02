@@ -2,6 +2,7 @@
 
 namespace App\Actions\V1\User;
 
+use App\Actions\Concerns\AuditsUserState;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -13,18 +14,23 @@ use Illuminate\Validation\ValidationException;
  */
 class UserActivateAction
 {
+    use AuditsUserState;
+
     /**
      * Activate the user.
      *
-     * @param  User   $user
+     * @param  User       $user
+     * @param  User|null  $causer  Who to attribute the audit record to
      * @return array  ['user' => User]
      */
-    public function run(User $user): array
+    public function run(User $user, ?User $causer = null): array
     {
         $this->validate($user);
 
-        DB::transaction(function () use ($user) {
+        DB::transaction(function () use ($user, $causer) {
             $user->update(['is_active' => true, 'is_locked' => false]);
+
+            $this->auditState($user, 'user.activated', $causer);
         });
 
         return ['user' => $user];

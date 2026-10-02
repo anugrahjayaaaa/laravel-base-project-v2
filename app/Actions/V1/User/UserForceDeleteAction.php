@@ -23,8 +23,10 @@ class UserForceDeleteAction
     {
         $this->validate($user, $causer);
 
-        DB::transaction(function () use ($user) {
+        DB::transaction(function () use ($user, $causer) {
             $user->forceDelete();
+
+            $user->audit('user.force_deleted', $causer);
         });
 
         return ['user' => $user];
