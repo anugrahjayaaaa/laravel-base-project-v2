@@ -67,6 +67,14 @@ class AuthChangePasswordAction
             $user->tokens()->delete();
             DB::table('sessions')->where('user_id', $user->id)->delete();
 
+            // Inside the transaction (DEP-003), and with no causer: the only
+            // callers are the two profile endpoints and the forced-change screen,
+            // all of which are the account holder acting on their own account.
+            //
+            // Both profile controllers used to write `auth.password_changed`
+            // as well, immediately after this returned — two rows for one
+            // password change, and the second one outside this transaction, so
+            // it survived a rollback that reverted the password itself.
             $user->audit('auth.password_changed');
 
             return true;
