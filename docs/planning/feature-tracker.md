@@ -33,7 +33,7 @@ Auto-generated from codebase scan. Not committed.
 | 25 | Audit trail (Spatie activitylog) | — | — | — | features/audit-trail.md | done |
 | 26 | Notifications (email + DB) | — | — | — | features/notifications.md | done |
 | 27 | Health check | ✅ | ✅ | — | features/monitoring.md | done |
-| 28 | Telescope | — | — | — | features/monitoring.md | done |
+| 28 | Laravel Pulse | — | — | — | features/monitoring.md | done — replaced Telescope + Periscope (`85384b4`); flag gated (`b08b8b4`); `pulse.view` permission + `viewPulse` gate override planned in Phase 11 |
 | 29 | Queue (DB + Redis compat) | — | — | — | infrastructure/queue.md | done |
 | 30 | Cache abstraction | — | — | — | infrastructure/cache.md | done |
 | 31 | API v1 (versioned) | — | ✅ | — | api/api-architecture.md | done |

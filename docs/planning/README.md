@@ -19,6 +19,9 @@ Planning system for the Laravel Base Project v2.
 | [decisions.md](./decisions.md) | ADRs (architecture decision records) |
 | [progress.md](./progress.md) | Current phase, task, status |
 | [ai-execution-guide.md](./ai-execution-guide.md) | Rules for AI agents working on this repo |
+| [phase-6-rbac.md](./phase-6-rbac.md) | Phase 6 — RBAC & Authorization: execution breakdown |
+| [phase-7-feature-flags.md](./phase-7-feature-flags.md) | Phase 7 — Feature Availability: execution breakdown |
+| [phase-11-monitoring-observability.md](./phase-11-monitoring-observability.md) | Phase 11 — Monitoring & Observability: Pulse integration, `pulse.view` permission |
 
 ## Quick Links
 

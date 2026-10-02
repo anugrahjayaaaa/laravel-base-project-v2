@@ -58,7 +58,7 @@
 || FOUND-004 | Install Sanctum for API auth | 1 | P0 | FOUND-001 | DONE |
 || FOUND-005 | Install Spatie Permission (RBAC) | 1 | P0 | FOUND-001 | DONE |
 || FOUND-006 | Install audit package (e.g. spatie/laravel-activitylog) | 1 | P0 | FOUND-001 | DONE |
-|| FOUND-007 | Install Telescope | 1 | P0 | FOUND-001 | DONE |
+|| FOUND-007 | Install Laravel Pulse (was Telescope) | 1 | P0 | FOUND-001 | DONE |
 | FOUND-008 | Create correlation/request ID middleware | 1 | P0 | FOUND-001 | DONE |
 | FOUND-009 | Set up PSR-12 linting (PHP CS Fixer) | 1 | P1 | FOUND-001 | DONE |
 | FOUND-010 | Configure health check endpoint | 1 | P1 | FOUND-001 | DONE |
@@ -1825,7 +1825,7 @@ genuinely open and are the real D1/D2 work.
   },
   {
     "id": "MONITOR-001",
-    "task": "Integrate Telescope + Periscope companion UI",
+    "task": "Integrate Laravel Pulse (was Telescope + Periscope)",
     "phase": 1,
     "priority": "P1",
     "depends_on": [
@@ -1836,12 +1836,12 @@ genuinely open and are the real D1/D2 work.
       "monitoring.md",
       "observability.md",
       "overview.md",
-      "DEP-004-telescope-technical-observability.md"
+      "DEP-004-laravel-pulse-observability.md"
     ],
     "tests": [
-      "PeriscopeFoundationTest"
+      "PulseFeatureGateTest"
     ],
-    "note": "Telescope installed at FOUND-007 (Phase 1). Periscope v0.3 added as companion UI reading the same Telescope data via Telescope::check(); inherits Telescope authorization. No separate auth/gate/migration."
+    "note": "Telescope at FOUND-007 plus Periscope v0.3 as a companion UI, both removed in commit 85384b4 in favour of Laravel Pulse ^1.8 (DEP-004). The pulse feature flag gates /pulse through pulse.middleware (b08b8b4), verified by PulseFeatureGateTest. The pulse.view permission + viewPulse gate override is PLANNED in docs/planning/phase-11-monitoring-observability.md."
   },
   {
     "id": "MONITOR-002",
