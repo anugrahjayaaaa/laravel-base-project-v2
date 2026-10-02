@@ -4,6 +4,7 @@ namespace App\Actions\V1\Auth;
 
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Complete a successful login on either channel.
@@ -35,23 +36,37 @@ class AuthLoginCompletedAction
     {
         $isApi = request()->is('api/*');
 
-        $token = $isApi
-            ? $user->createToken('auth-token')->plainTextToken
-            : null;
-
+        // Session first, on the web channel: the row below should describe a
+        // login that is already observable. This ordering is unchanged — only
+        // the persisted writes around it were grouped.
         if (! $isApi) {
             Auth::login($user, $remember);
         }
 
-        // Written after the session exists, so the row describes a login that
-        // is actually observable. Written before, a failure here would leave a
-        // row claiming a session that never happened.
-        $user->updateQuietly(['last_activity_at' => now()]);
+        // Everything the platform persists is one transaction: the token on the
+        // API channel, last_activity_at, and the audit row. As unguarded
+        // statements a failure between them left a live token under an
+        // `auth.login` row that never committed — or the inverse, a recorded
+        // login whose token was never issued, which is the worse of the two
+        // because the row is the only record a login happened.
+        //
+        // `Auth::login()` stays outside it deliberately. It is session state,
+        // flushed when the response is sent rather than here, so there is no
+        // write of ours to include — and a rollback could not un-login the user
+        // anyway. The two channels never need both: the token path skips the
+        // session entirely.
+        return DB::transaction(function () use ($user, $remember, $isApi): ?string {
+            $token = $isApi
+                ? $user->createToken('auth-token')->plainTextToken
+                : null;
 
-        $user->audit('auth.login', null, [
-            'remember' => $remember,
-        ]);
+            $user->updateQuietly(['last_activity_at' => now()]);
 
-        return $token;
+            $user->audit('auth.login', null, [
+                'remember' => $remember,
+            ]);
+
+            return $token;
+        });
     }
 }
