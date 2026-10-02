@@ -6,6 +6,9 @@ use App\Actions\V1\System\SystemSettingsUpdateAction;
 use App\Http\Requests\V1\System\SystemSettingRequest;
 use App\Models\SystemSetting;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
+use RuntimeException;
 use Tests\TestCase;
 
 /**
@@ -103,5 +106,85 @@ class SettingsPersistenceTest extends TestCase
         $this->assertTrue(SystemSetting::getBool('password_require_symbol', false));
         $this->assertTrue(SystemSetting::getBool('password_require_digit', false));
         $this->assertFalse(SystemSetting::getBool('password_history_enabled', true), 'a stored "false" must stay false');
+    }
+
+    /**
+     * A rolled-back save must not leave its values in the shared cache.
+     *
+     * `SystemSetting` caches every read under a key other processes share, and
+     * two separate paths could publish an uncommitted value there: busting the
+     * cache on write (with nothing to un-bust after a rollback), and reading
+     * inside the transaction window, which repopulates it from rows that are
+     * about to be discarded. Both are silent, and the second one looks
+     * intermittent — with no read in the window the cache is merely empty and
+     * the next request repairs itself, so the bug shows up only under load.
+     *
+     * Asserted against the cache store directly: asserting through
+     * `getString()` would read the request-level static and could not see a
+     * poisoned shared entry.
+     */
+    public function test_a_rolled_back_save_leaves_the_shared_cache_clean(): void
+    {
+        SystemSetting::create(['key' => 'password_min_length', 'value' => '12']);
+        SystemSetting::bustCache();
+
+        try {
+            DB::transaction(function (): void {
+                SystemSetting::set('password_min_length', '20');
+
+                // The read is the dangerous part: it repopulates the shared cache
+                // from inside the transaction.
+                SystemSetting::getString('password_min_length');
+
+                throw new RuntimeException('a later step failed');
+            });
+        } catch (RuntimeException) {
+            // Expected.
+        }
+
+        $cached = Cache::get('app_system_settings');
+
+        $this->assertNotContains(
+            '20',
+            is_array($cached) ? $cached : [],
+            'a rolled-back save published its value to the shared cache'
+        );
+
+        $this->assertSame(
+            '12',
+            DB::table('system_settings')->where('key', 'password_min_length')->value('value'),
+            'the rollback did not revert the row'
+        );
+    }
+
+    /**
+     * A committed save still reaches the next reader.
+     *
+     * Guards the other half of the fix: the cache is now busted in
+     * `DB::afterCommit`, so a committed value has to become visible afterwards.
+     * Reads through a fresh static (as a new request would), not through the one
+     * this request already warmed.
+     */
+    public function test_a_committed_save_reaches_the_next_reader(): void
+    {
+        SystemSetting::create(['key' => 'password_min_length', 'value' => '12']);
+        SystemSetting::bustCache();
+
+        // Warm both caches so they hold the OLD value going in.
+        $this->assertSame('12', SystemSetting::getString('password_min_length'));
+
+        DB::transaction(static function (): void {
+            SystemSetting::set('password_min_length', '20');
+        });
+
+        // The next request starts with an empty request-level static and hits
+        // the shared cache, which afterCommit must have cleared.
+        SystemSetting::bustCache();
+
+        $this->assertSame(
+            '20',
+            SystemSetting::getString('password_min_length'),
+            'the shared cache still serves the pre-save value after a committed write'
+        );
     }
 }

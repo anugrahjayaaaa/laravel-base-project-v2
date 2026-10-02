@@ -6,6 +6,7 @@ use App\Models\Concerns\Auditable;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 
 #[Fillable(['key', 'value'])]
 /**
@@ -27,12 +28,30 @@ class SystemSetting extends Model
     /**
      * Load all settings once per request.
      *
+     * ## Not cached while a transaction is open
+     *
+     * Reading inside a transaction can see values that transaction has not
+     * committed yet. Populating the shared cache from there writes the
+     * uncommitted value somewhere every other process will read it, and a
+     * rollback cannot take it back — `set()` busting after commit does not help,
+     * because the offending write happened on the READ path, not the write one.
+     * Measured: a rollback left the cache holding a password policy of 20 while
+     * the row said 12.
+     *
+     * So inside a transaction this reads the rows and fills only the
+     * per-request static, which dies with the request. Outside one — the
+     * overwhelmingly common case — the persistent cache is used as before.
+     *
      * @return array<string,string>
      */
     protected static function loadSettings(): array
     {
         if (static::$requestCache !== null) {
             return static::$requestCache;
+        }
+
+        if (DB::transactionLevel() > 0) {
+            return static::$requestCache = static::query()->pluck('value', 'key')->all();
         }
 
         static::$requestCache = Cache::rememberForever(static::$cacheKey, function () {
@@ -108,7 +127,27 @@ class SystemSetting extends Model
 
     /**
      * Set a setting value (upsert).
-     * Busts both request-level and persistent cache.
+     *
+     * ## Why the cache is NOT busted here
+     *
+     * Busting on write looks right and is wrong. `set()` runs inside a
+     * transaction that may still roll back, and the two ways that goes wrong are
+     * both silent:
+     *
+     * - A read during the transaction window repopulates the cache from inside
+     *   the transaction, so it caches the value that was about to be discarded.
+     *   After the rollback the cache serves it forever: measured here, the cache
+     *   held `20` while the row said `12`. The next request reads a policy that
+     *   was never committed.
+     * - With no read in the window the cache is simply empty afterwards, and the
+     *   next request repopulates it correctly — so the bug looks intermittent,
+     *   which is worse than a consistent one.
+     *
+     * Deferring to `DB::afterCommit` closes both: a committed save busts the
+     * cache, a rolled-back one never wrote anything worth forgetting. The
+     * request-level static is cleared eagerly because it is per-process and
+     * would otherwise serve uncommitted values to the rest of THIS request,
+     * which is the same defect one step sooner.
      *
      * @param string $key
      * @param string $value
@@ -117,7 +156,10 @@ class SystemSetting extends Model
     public static function set(string $key, string $value): self
     {
         static::$requestCache = null;
-        Cache::forget(static::$cacheKey);
+
+        DB::afterCommit(static function (): void {
+            static::bustCache();
+        });
 
         return static::updateOrCreate(['key' => $key], ['value' => $value]);
     }
