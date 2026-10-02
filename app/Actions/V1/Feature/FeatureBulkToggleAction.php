@@ -2,6 +2,7 @@
 
 namespace App\Actions\V1\Feature;
 
+use App\Models\FeatureFlag;
 use App\Models\User;
 use App\Support\FeatureCatalog;
 use Illuminate\Support\Facades\Cache;
@@ -143,23 +144,39 @@ class FeatureBulkToggleAction
 
             // Inside the transaction (DEP-003): an audit row that survives a
             // rollback records a change that never happened.
-            activity()
-                ->event(self::EVENT)
-                ->causedBy($causer ?? auth()->user())
-                ->withProperties([
-                    'to' => $enabled,
-                    'count' => count($changed),
-                    // The full request, not just the rows that moved: "you asked
-                    // for 5, 2 were already there" is part of what happened.
-                    'requested' => array_values($slugs),
-                    'changed' => array_map(fn (array $c): array => [
-                        'feature' => $c['slug'],
-                        'from' => $c['from'],
-                        'to' => $c['to'],
-                    ], $changed),
-                    'unchanged' => $unchanged,
-                ])
-                ->log(self::EVENT);
+            //
+            // ONE row for the whole batch, with the first changed flag as the
+            // subject. Looping `$flag->audit()` per slug was the other option
+            // and it is the wrong one: the request is the unit an operator
+            // reasons about ("I turned off three flags"), and three rows cannot
+            // say that two of them were asked for as a group. The per-flag detail
+            // lives in `changed[]`, where it is still complete.
+            $subject = $toWrite === []
+                ? null
+                : FeatureFlag::forName($toWrite[0]);
+
+            $subject?->auditBulk(
+                self::EVENT,
+                [[
+                    'subject_id' => $subject->getKey(),
+                    'properties' => [
+                        'to' => $enabled,
+                        'count' => count($changed),
+                        // The full request, not just the rows that moved: "you
+                        // asked for 5, 2 were already there" is part of what
+                        // happened.
+                        'requested' => array_values($slugs),
+                        'changed' => array_map(fn (array $c): array => [
+                            'feature' => $c['slug'],
+                            'from' => $c['from'],
+                            'to' => $c['to'],
+                        ], $changed),
+                        'unchanged' => $unchanged,
+                    ],
+                ]],
+                $causer ?? auth()->user(),
+                FeatureFlag::class
+            );
         });
 
         // Once, after the batch — see "Why this does not loop".
