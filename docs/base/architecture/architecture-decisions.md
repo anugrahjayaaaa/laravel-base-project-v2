@@ -5,7 +5,7 @@
 > Dependency-selection ADRs use `DEP-001` through `DEP-007` (files in `decision-records/`).
 > This separation prevents numbering collisions. To determine the next ADR number: count existing architecture ADRs in `decisions.md` + 1 for the next architecture ADR; count files in `decision-records/` + 1 for the next dependency ADR.
 >
-> 18 architecture ADRs total (ADR-001 through ADR-018), plus 7 dependency-specific
+> 18 architecture ADRs total (ADR-001 through ADR-018), plus 8 dependency-specific
 > ADRs in `docs/base/architecture/decision-records/` (DEP-001 through DEP-007).
 
 ## ADR-001: API-first architecture
@@ -42,9 +42,9 @@
 - History: enabled/disabled + configurable count via Settings.
 
 ## ADR-008: Audit Trail vs Technical Observability separation
-|- Five-tier classification: Audit Trail (who/what) / Application Logs (what) / Security Logs (security events) / Server Logs (infra) / Telescope (how Laravel behaved).
+|- Five-tier classification: Audit Trail (who/what) / Application Logs (what) / Security Logs (security events) / Server Logs (infra) / Pulse (runtime health metrics).
 |- Audit Trail source of truth = mutation caller, not observers.
-|- Telescope is for technical debugging only; NOT a replacement for Audit Trail.
+|- Pulse is for runtime metrics only; NOT a replacement for Audit Trail.
 
 ## ADR-009: API versioning
 |- Versioned APIs: `/api/v1/...`, future `/api/v2/...`
@@ -66,7 +66,7 @@
 |- Cascade behavior documented per relationship. Never blanket cascade.
 
 ## ADR-013: Application Logging Strategy
-|- Five-tier: Audit Trail (accountability) / Application Logs (technical) / Security Logs / Server Logs (infra) / Telescope (runtime debugging).
+|- Five-tier: Audit Trail (accountability) / Application Logs (technical) / Security Logs / Server Logs (infra) / Pulse (runtime metrics).
 |- Failures classified: expected (validation, authn, authz, rate-limit, business rule → warning/info) vs unexpected (DB exception, uncaught error, queue failure → error).
 |- Structured logs use stable event/action names; always include correlation ID.
 |- Centralized exception handler logs once; never in every controller/service.
@@ -106,7 +106,7 @@ See the files in [`docs/base/architecture/decision-records/`](./decision-records
 - DEP-001: Sanctum for API Auth
 - DEP-002: Spatie Permission for RBAC
 - DEP-003: Spatie Activitylog for Audit Trail
-- DEP-004: Telescope for Technical Observability
+- DEP-004: Laravel Pulse for Technical Observability
 - DEP-005: Native Laravel First
 - DEP-006: Database Queue with Redis Compatibility
 - DEP-007: API Documentation Strategy (Scramble)
