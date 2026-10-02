@@ -36,6 +36,22 @@ class FeatureIndexAction
     private const TTL = 30;
 
     /**
+     * The cache key this class READS, and the one every writer must forget.
+     *
+     * Public and named here, on the reader, because the reader is the only side
+     * that defines what the key means. Three writers used to carry their own
+     * `private const SNAPSHOT` with docblocks claiming "a rename has to break a
+     * compile" — which is false for PHP string constants: four private
+     * constants in four files are four unrelated strings, and renaming the
+     * reader left all three flushing a key nothing read, with the deploy green.
+     *
+     * One public constant makes the comments true. The test that used to catch
+     * this incidentally (`FeatureFlagRouteTest` asserting on the literal) now
+     * pins a real coupling.
+     */
+    public const SNAPSHOT_KEY = 'feature_flags.resolved';
+
+    /**
      * The flags grouped by module, with their current state and toggle URLs.
      *
      * `manageable` is resolved here rather than asked in the view. The view
@@ -51,7 +67,7 @@ class FeatureIndexAction
      * viewer, and a cached one would show the first caller's rights to everyone.
      *
      * @return array{
-     *     featureGroups: array<string, array<int, array<string, mixed>>>,
+     *     featureGroups: array<string, array<int, array<string, mixed>>>,  // rows carry `pending` when the module has no routes yet
      *     totalFeatures: int,
      *     enabledCount: int,
      *     disabledCount: int,
@@ -61,7 +77,7 @@ class FeatureIndexAction
     public function run(?User $viewer = null): array
     {
         $snapshot = Cache::remember(
-            'feature_flags.resolved',
+            self::SNAPSHOT_KEY,
             self::TTL,
             fn (): array => $this->resolve(),
         );

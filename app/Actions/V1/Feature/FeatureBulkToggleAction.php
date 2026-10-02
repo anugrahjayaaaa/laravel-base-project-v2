@@ -47,11 +47,11 @@ class FeatureBulkToggleAction
     /**
      * Cache key the index action reads its resolved snapshot from.
      *
-     * Named on both sides rather than imported, so a reader renaming its key
-     * breaks this writer at compile time instead of leaving it flushing a key
-     * nothing reads — the same reasoning as FeatureToggleAction.
+     * Referenced from the reader rather than re-spelled. See the note on
+     * FeatureToggleAction::SNAPSHOT for why a duplicated literal is not a
+     * compile-time guard.
      */
-    private const SNAPSHOT = 'feature_flags.resolved';
+    private const SNAPSHOT = FeatureIndexAction::SNAPSHOT_KEY;
 
     /**
      * Set every named flag to the same state, as one audited change.

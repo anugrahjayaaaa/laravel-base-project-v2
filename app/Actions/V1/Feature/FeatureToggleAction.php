@@ -34,12 +34,13 @@ class FeatureToggleAction
     /**
      * Cache key the index action reads its resolved snapshot from.
      *
-     * Duplicated as a constant rather than imported from the reader so the
-     * reader cannot rename its own key and silently leave every writer flushing
-     * a key nothing reads. Both sides name it; a rename has to break a
-     * compile.
+     * Referenced from the reader rather than re-spelled here. A local copy of
+     * the string was the earlier design, defended as "a rename has to break a
+     * compile" — which is false: two private constants holding the same literal
+     * are two unrelated strings, and renaming the reader left this flushing a
+     * key nothing read. The coupling is now real.
      */
-    private const SNAPSHOT = 'feature_flags.resolved';
+    private const SNAPSHOT = FeatureIndexAction::SNAPSHOT_KEY;
 
     /**
      * Set a flag's state.

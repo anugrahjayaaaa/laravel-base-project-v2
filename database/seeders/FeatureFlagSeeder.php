@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Actions\V1\Feature\FeatureIndexAction;
 use App\Support\FeatureCatalog;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Cache;
@@ -36,10 +37,11 @@ class FeatureFlagSeeder extends Seeder
     /**
      * Cache key the management page reads its resolved snapshot from.
      *
-     * Named on both sides rather than imported from the reader: a rename there
-     * would otherwise silently leave this flushing a key nothing reads.
+     * Referenced from the reader rather than re-spelled. See the note on
+     * FeatureToggleAction::SNAPSHOT for why a duplicated literal is not a
+     * compile-time guard.
      */
-    private const SNAPSHOT = 'feature_flags.resolved';
+    private const SNAPSHOT = FeatureIndexAction::SNAPSHOT_KEY;
 
     public function run(): void
     {
