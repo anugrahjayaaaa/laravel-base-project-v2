@@ -114,12 +114,19 @@ class ApiRoleAuditTrailTest extends TestCase
     }
 
     /**
-     * The specific defect `bulkAudit()` had: a row whose `event` column is NULL.
+     * A bulk user action writes one findable row per subject.
      *
-     * It wrote `description` and left `event` empty, so every `where('event', …)`
-     * in this codebase — and any viewer built on that column — skipped it. Bulk
-     * user actions were affected on both web and API; the fix is one line in the
-     * shared helper, and this is what pins it.
+     * Originally pinned a defect in `bulkAudit()`: it wrote `description` and
+     * left `event` NULL, so every `where('event', …)` in this codebase — and any
+     * viewer built on that column — skipped the row. It was present in the table
+     * and invisible, which is the worst way for an audit row to fail.
+     *
+     * The rows are no longer written by the controller's `bulkAudit()`. Bulk
+     * deactivate loops `UserDeactivateAction`, which writes its own row per
+     * subject inside its own transaction (AUD-004), so the event is now the
+     * action's `user.deactivated` rather than an aggregate `user.deactivate`.
+     * What this test protects is unchanged and is the part that matters: exactly
+     * one row per subject, `event` non-null, so an event filter finds it.
      */
     #[Test]
     public function a_bulk_user_action_writes_a_row_that_event_filters_can_find(): void
@@ -143,11 +150,14 @@ class ApiRoleAuditTrailTest extends TestCase
                 $row->event,
                 'a bulk row left `event` NULL, so every event filter skips it'
             );
-            $this->assertSame('user.deactivate', $row->event);
+            $this->assertSame('user.deactivated', $row->event);
         }
 
-        // One request is one user action, so the rows must be correlatable.
-        $uuids = $rows->pluck('batch_uuid')->unique();
-        $this->assertCount(1, $uuids, 'bulk rows carry different batch_uuids, so they are not one action');
+        // One row per subject, so no subject is audited twice for one request.
+        $this->assertCount(
+            2,
+            $rows->pluck('subject_id')->unique(),
+            'a subject carries two audit rows for one bulk request'
+        );
     }
 }
