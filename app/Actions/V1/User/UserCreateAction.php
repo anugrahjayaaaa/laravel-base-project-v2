@@ -82,15 +82,19 @@ class UserCreateAction
                 }
             }
 
+            // Read the lifetime once and hand the same number to the URL and
+            // to the mail, so the email states what the link actually enforces.
+            $minutes = SystemSetting::getInt('email_verification_expire_minutes', 60);
+
             $verificationUrl = URL::temporarySignedRoute(
                 'verification.verify',
-                now()->addMinutes(SystemSetting::getInt('email_verification_expire_minutes', 60)),
+                now()->addMinutes($minutes),
                 ['id' => $user->getKey(), 'hash' => sha1($user->getEmailForVerification())]
             );
 
             Notification::send($user, $isTemporary
-                ? new UserCreatedNotification($password, $user->username, $verificationUrl)
-                : new RegisterNotification($user->username, $verificationUrl));
+                ? new UserCreatedNotification($password, $user->username, $verificationUrl, $minutes)
+                : new RegisterNotification($user->username, $verificationUrl, $minutes));
 
             // Only a password the user chose belongs in the reuse history. A
             // generated one is never typed by them, so recording it would only

@@ -21,10 +21,14 @@ class RegisterNotification extends Notification implements ShouldQueue
     /**
      * @param  string  $username
      * @param  string  $verificationUrl
+     * @param  int     $expireMinutes  Lifetime of the verification link, stated
+     *                                in the mail so it matches what the
+     *                                signature actually enforces.
      */
     public function __construct(
         private readonly string $username,
         private readonly string $verificationUrl,
+        private readonly int $expireMinutes,
     ) {
     }
 
@@ -50,6 +54,7 @@ class RegisterNotification extends Notification implements ShouldQueue
             ->markdown('vendor.notifications.register', [
                 'username' => $this->username,
                 'url' => $this->verificationUrl,
+                'expireMinutes' => $this->expireMinutes,
             ]);
     }
 }

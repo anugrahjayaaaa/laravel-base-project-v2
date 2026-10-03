@@ -21,12 +21,17 @@ class UserCreatedNotification extends Notification implements ShouldQueue
      * @param  string  $tempPassword
      * @param  string  $username
      * @param  string  $verificationUrl
+     * @param  int     $expireMinutes  Lifetime of the verification link, stated
+     *                                in the mail so it matches what the
+     *                                signature actually enforces.
      */
     public function __construct(
         private readonly string $tempPassword,
         private readonly string $username,
         private readonly string $verificationUrl,
-    ) {}
+        private readonly int $expireMinutes,
+    ) {
+    }
 
     /**
      * Deliver via mail only.
@@ -45,11 +50,12 @@ class UserCreatedNotification extends Notification implements ShouldQueue
      */
     public function toMail(User $notifiable): MailMessage
     {
-        return (new MailMessage)
+        return (new MailMessage())
             ->markdown('vendor.notifications.user-created', [
                 'username' => $this->username,
                 'tempPassword' => $this->tempPassword,
                 'url' => $this->verificationUrl,
+                'expireMinutes' => $this->expireMinutes,
             ]);
     }
 }
