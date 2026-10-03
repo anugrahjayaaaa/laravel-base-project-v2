@@ -3,7 +3,9 @@
 namespace App\Providers;
 
 use App\Auth\LoginThrottle;
+use App\Models\SystemSetting;
 use App\Models\User;
+use App\Observers\SystemSettingObserver;
 use App\Observers\UserObserver;
 use App\Services\PasswordExpiry;
 use App\Support\FeatureCatalog;
@@ -78,6 +80,7 @@ class AppServiceProvider extends ServiceProvider
         });
 
         User::observe(UserObserver::class);
+        SystemSetting::observe(SystemSettingObserver::class);
 
         // Feature flags: one definition per catalogue entry.
         //
