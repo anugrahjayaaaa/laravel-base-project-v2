@@ -17,6 +17,22 @@ use Illuminate\Support\Facades\DB;
 class UserIndexAction
 {
     /**
+     * How long a resolved count stays readable before it is recomputed anyway.
+     *
+     * A safety net, not the freshness policy — every mutation busts the key via
+     * `bustCache()`, so an operator sees the new number immediately. This only
+     * bounds how long a MISSED invalidation can persist: without it the count
+     * is `rememberForever`, so one forgotten event would report a wrong number
+     * until an unrelated user save happened to bust the key by luck.
+     *
+     * ponytail: one day is long enough that a busy day never pays to recompute,
+     * and short enough that a missed bust could not have shipped unnoticed. The
+     * real fix is recomputing per request — the count is one conditional
+     * aggregate — not a smaller number here.
+     */
+    private const TTL = 86400;
+
+    /**
      * Get cached counts by user status.
      *
      * @return array{active: int, inactive: int, locked: int, trashed: int}
@@ -26,6 +42,28 @@ class UserIndexAction
         return ['user_index_counts.all', 'user_index_counts.masked'];
     }
 
+    /**
+     * Forget both count keys once the write that changed them is durable.
+     *
+     * One helper rather than a literal in every caller, for the reason
+     * `FeatureIndexAction::SNAPSHOT_KEY` is public: four private constants in
+     * four files are four unrelated strings, and renaming this left the
+     * invalidators flushing keys nothing read — with the deploy green.
+     *
+     * Deferred to `DB::afterCommit` for the reason `UserObserver` documents:
+     * Eloquent events fire inside the transaction that caused them, so an
+     * immediate forget lets the next reader repopulate from rows the database
+     * has not promised yet, and a rollback cannot take that value back.
+     */
+    public static function bustCache(): void
+    {
+        DB::afterCommit(function (): void {
+            foreach (static::cacheKeys() as $key) {
+                Cache::forget($key);
+            }
+        });
+    }
+
     public function counts(?User $viewer = null): array
     {
         $seesSuperadmin = RoleLookup::viewerIsSuperAdmin($viewer);
@@ -33,8 +71,9 @@ class UserIndexAction
         // Two keys, not one: the totals must equal the rows the viewer actually
         // sees, and the hidden superadmin account must not inflate them. A single
         // shared key would either leak it or under-report it for the superadmin.
-        return Cache::rememberForever(
+        return Cache::remember(
             'user_index_counts.' . ($seesSuperadmin ? 'all' : 'masked'),
+            static::TTL,
             function () use ($seesSuperadmin): array {
                 $query = DB::table('users');
 

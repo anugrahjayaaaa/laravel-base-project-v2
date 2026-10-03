@@ -4,8 +4,6 @@ namespace App\Observers;
 
 use App\Actions\V1\User\UserIndexAction;
 use App\Models\User;
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\DB;
 
 /**
  * Clears user index cache on user lifecycle events.
@@ -54,13 +52,15 @@ class UserObserver
 
     /**
      * Forget every user index count key once the write is durable.
+     *
+     * Delegates to the shared helper rather than repeating the key list: this
+     * observer watches the `users` table, but the cached count also depends on
+     * `model_has_roles` + `roles` for its superadmin mask — so the keys are
+     * shared with `RoleObserver` and `RoleAssignAction`, and one owner for that
+     * list is the only way they cannot drift.
      */
     private function bustAfterCommit(): void
     {
-        DB::afterCommit(function (): void {
-            foreach (UserIndexAction::cacheKeys() as $key) {
-                Cache::forget($key);
-            }
-        });
+        UserIndexAction::bustCache();
     }
 }

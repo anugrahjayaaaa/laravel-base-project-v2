@@ -3,8 +3,10 @@
 namespace App\Providers;
 
 use App\Auth\LoginThrottle;
+use App\Models\Role;
 use App\Models\SystemSetting;
 use App\Models\User;
+use App\Observers\RoleObserver;
 use App\Observers\SystemSettingObserver;
 use App\Observers\UserObserver;
 use App\Services\PasswordExpiry;
@@ -82,6 +84,15 @@ class AppServiceProvider extends ServiceProvider
 
         User::observe(UserObserver::class);
         SystemSetting::observe(SystemSettingObserver::class);
+
+        // The cached user count masks superadmin accounts, and that mask joins
+        // through `model_has_roles` + `roles` — so it depends on role data, not
+        // only on the users table. Without this, a role RENAME changed who the
+        // mask excluded and no observer noticed. `RoleAssignAction` still has to
+        // invalidate itself: `syncRoles()` writes the pivot and fires no model
+        // event on either side.
+        Role::observe(RoleObserver::class);
+
 
         // Feature flags: one definition per catalogue entry.
         //
