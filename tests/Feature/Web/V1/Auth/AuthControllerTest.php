@@ -155,6 +155,29 @@ class AuthControllerTest extends TestCase
             ->assertSessionHas('status');
     }
 
+    /**
+     * The flash alone is not proof the user sees anything. The controller
+     * flashed `status` while the view rendered `success`, so the test above
+     * stayed green on a page that showed nothing — assert the redirect lands
+     * on markup that actually prints the message.
+     */
+    public function test_web_forgot_password_shows_the_status_message_after_redirect(): void
+    {
+        Password::shouldReceive('sendResetLink')->andReturn(Password::RESET_LINK_SENT);
+
+        $user = User::factory()->create();
+
+        $response = $this->from('/forgot-password')
+            ->post('/forgot-password', ['email' => $user->email]);
+
+        $response->assertRedirect('/forgot-password')
+            ->assertSessionHas('status');
+
+        $this->get('/forgot-password')
+            ->assertStatus(200)
+            ->assertSee('a reset link has been sent');
+    }
+
     public function test_web_reset_password_submission(): void
     {
         $user = User::factory()->create();

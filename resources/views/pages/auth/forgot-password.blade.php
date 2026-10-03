@@ -12,10 +12,10 @@
                 <p class="text-muted small mb-0">Enter your email to receive a reset link</p>
             </div>
 
-            @if (session('success'))
+            @if (session('status'))
                 <div class="alert alert-success alert-dismissible fade show mb-0" role="alert">
                     <i class="fas fa-circle-check me-1"></i>
-                    {{ session('success') }}
+                    {{ session('status') }}
                     <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                 </div>
             @endif
