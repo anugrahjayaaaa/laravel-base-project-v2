@@ -2,6 +2,7 @@
 
 namespace App\Actions\V1\Role;
 
+use App\Actions\V1\User\UserIndexAction;
 use App\Exceptions\LastSuperadminException;
 use App\Models\RoleLookup;
 use App\Models\User;
@@ -62,6 +63,14 @@ class RoleAssignAction
                 'before' => $before,
                 'after' => $after,
             ]);
+
+            // `syncRoles()` writes only `model_has_roles`, so neither the users
+            // row nor the roles row changes and NO model event fires —
+            // `UserObserver` and `RoleObserver` both stay silent. The cached
+            // count masks superadmin accounts, so a grant or revoke here makes
+            // every non-superadmin admin's tab totals wrong, with nothing to
+            // notice. This is the one role path that has to invalidate itself.
+            UserIndexAction::bustCache();
 
             return $user;
         });
