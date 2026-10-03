@@ -230,6 +230,76 @@ class SystemSettingUpdateTest extends TestCase
      * the table and is skipped by every `where('event', ...)` filter, which is
      * the failure mode `ApiRoleAuditTrailTest` documents.
      */
+    public function test_a_settings_audit_row_records_the_channel_it_came_from(): void
+    {
+        $admin = User::factory()->create();
+        $admin->assignRole(\App\Models\RoleLookup::find('admin'));
+
+        $this->actingAs($admin, 'web')
+            ->post(route('settings.update'), ['password_min_length' => 14])
+            ->assertRedirect();
+
+        $fromWeb = DB::table('activity_log')
+            ->where('event', 'system_setting.updated')
+            ->orderByDesc('id')
+            ->first();
+
+        $this->assertNotNull($fromWeb);
+        $this->assertSame('web', $this->auditSource($fromWeb), 'a web settings save was not recorded as web');
+
+        $this->actingAs($admin, 'sanctum')
+            ->putJson(route('api.v1.settings.update'), ['password_min_length' => 16])
+            ->assertOk();
+
+        $fromApi = DB::table('activity_log')
+            ->where('event', 'system_setting.updated')
+            ->orderByDesc('id')
+            ->first();
+
+        $this->assertSame('api', $this->auditSource($fromApi), 'an API settings save was not recorded as api');
+
+        // Both must also carry the rest of the context; a partial merge would
+        // drop these silently.
+        foreach ([$fromWeb, $fromApi] as $row) {
+            $properties = $this->auditProperties($row);
+
+            $this->assertArrayHasKey('ip', $properties, 'no ip recorded');
+            $this->assertArrayHasKey('user_agent', $properties, 'no user agent recorded');
+        }
+    }
+
+    /**
+     * Read `source` out of a raw activity_log row.
+     */
+    private function auditSource(object $row): mixed
+    {
+        return $this->auditProperties($row)['source'] ?? null;
+    }
+
+    /**
+     * Read the `properties` JSON out of a raw activity_log row.
+     *
+     * @return array<string, mixed>
+     */
+    private function auditProperties(object $row): array
+    {
+        return json_decode($row->properties, true) ?: [];
+    }
+
+    /**
+     * The API channel writes an audit row attributed to the caller.
+     *
+     * The web channel has had this covered since `ActionFirstAuditTest`; the API
+     * channel had none. It is the same action and the same
+     * `system_setting.updated` event, so the property to protect is not "does it
+     * audit" but "does the API channel pass its own causer through". A settings
+     * change over the API with a NULL `causer_id` would be a real policy change
+     * that no reviewer could later attribute to anyone.
+     *
+     * `event` is asserted as well as `causer_id`: a row with `event` NULL sits in
+     * the table and is skipped by every `where('event', ...)` filter, which is
+     * the failure mode `ApiRoleAuditTrailTest` documents.
+     */
     public function test_the_api_channel_writes_an_audit_row_attributed_to_the_caller(): void
     {
         $admin = User::factory()->create();
