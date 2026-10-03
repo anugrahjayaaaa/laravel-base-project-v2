@@ -1579,8 +1579,8 @@ genuinely open and are the real D1/D2 work.
     "phase": 8,
     "priority": "P1",
     "depends_on": [],
-    "status": "PLANNED",
-    "note": "Found by the Phase 8 audit 2026-10-02. SystemSettingRequest::rules() has 37 keys and exactly ONE is proven to reject an out-of-range value (password_security_sweep_timezone, SystemSettingUpdateTest:93). A mistyped bound (max:1440 meant max:140) is therefore invisible to the suite: nothing posts a bad value for that field. Fix: loop rules(), post one out-of-range payload per numeric key, assert the error. ~37 assertions, one loop, no new file \u2014 put it in SystemSettingUpdateTest."
+    "status": "DONE",
+    "note": "DONE 2026-10-03 in 4de344f. SystemSettingUpdateTest::test_every_numeric_bound_rejects_a_value_outside_it walks all 40 min:/max: bounds in rules() and posts one out-of-range value per bound against the API channel (161 assertions), plus asserts each limit itself is accepted. Runs against the API rather than the web form because a web failure redirects and asserts against flashed session state, which reads the same whether the bound held or not. HONEST LIMIT, recorded in the test docblock: this catches DRIFT, not a single-typo. The probed limit is read back out of rules(), so a bound mistyped inward (max:140 for max:1440) still rejects 141 and the test stays green \u2014 pinning the 40 numbers would mean the same constant in two places. That is a decision for the owner, not a defect."
   },
   {
     "id": "P8-E1b",
@@ -1588,8 +1588,8 @@ genuinely open and are the real D1/D2 work.
     "phase": 8,
     "priority": "P1",
     "depends_on": [],
-    "status": "PLANNED",
-    "note": "Found by the Phase 8 audit 2026-10-02. Two unproven things on the API twin. (1) The audit row: SystemSettingUpdateTest:55-62 asserts description/subject/causer through the WEB path only; nothing proves PUT /api/v1/settings writes a row attributed to the token's user. (2) The partial semantics: nothing proves run(partial: true) leaves an unnamed key alone. (2) is the guard on a real shipped bug \u2014 sharing the web default reset password_min_length to 8 AND switched registration_enabled off in one API call, disarming the password policy and self-signup, and returning 200. Add both to SystemSettingUpdateTest."
+    "status": "DONE",
+    "note": "DONE 2026-10-03 in 4de344f. Three tests in SystemSettingUpdateTest. (1) test_the_api_channel_writes_an_audit_row_attributed_to_the_caller \u2014 one system_setting.updated row, causer_id is the caller, event asserted non-null because a row with a NULL event sits in the table and is skipped by every where('event', ...) filter. (2) test_the_api_channel_treats_an_omitted_key_as_untouched \u2014 the guard on the shipped bug: the web form always submits every field so its full-payload default is invisible from the browser, and a wrong default on the API resets password_min_length AND flips registration_enabled in one 200 response. (3) test_a_settings_audit_row_records_the_channel_it_came_from \u2014 asserts source is exactly web or api per channel, not merely one of the two: a settings change over the API recorded as web is the failure that matters here, and nothing else would notice. Sabotage-verified: causer->null red, partial true->false red, hardcoded source->web red, dropped user_agent red."
   },
   {
     "id": "NOTIF-001",

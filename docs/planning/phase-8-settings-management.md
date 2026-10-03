@@ -14,8 +14,13 @@ Groups A, B, C and D of the brief already exist in this repository and have been
 working since Phase 4F / Phase 5. Group E is partly covered by existing suites.
 
 Audited 2026-10-02 against the code, not against the brief. Every claim below is
-backed by a file and line. Full suite on `feature/general-fixes`: **971 passed /
-3500 assertions**.
+backed by a file and line. Full suite, last verified on
+`feature/phase-8-settings`: **984 passed / 3787 assertions**.
+
+**All five groups are now DONE.** Groups A–D were pre-existing (Phase 4F/5); this
+audit found gaps in A and B, and Group E's two gaps, and all of them are closed
+and committed. What follows is the record of how each group was found, including
+the parts that were wrong the first time.
 
 | Brief group | Brief task | Reality | Evidence |
 |---|---|---|---|
@@ -30,8 +35,8 @@ backed by a file and line. Full suite on `feature/general-fixes`: **971 passed /
 | C | `@can('settings.manage')` read-only view | **EXISTS** | view `@can` at :33 with an `@else` read-only table at :585 |
 | D | audit inside the transaction | **EXISTS under another event name** | `->audit('system_setting.updated', $causer, $data)` at action:128, inside the transaction |
 | D | HTTP context auto-captured | **EXISTS** | `App\Models\Concerns\Auditable:77-79` — `source`/`ip`/`user_agent` |
-| E | `tests/Feature/Settings/SystemSettingsTest.php` | **PARTIAL** | no such file; see § Group E below |
-| E | full suite green | **VERIFIED** | 971 passed / 3500 assertions |
+| E | `tests/Feature/Settings/SystemSettingsTest.php` | **DONE** | file deliberately not created; gaps closed in the existing suites — see § Group E |
+| E | full suite green | **VERIFIED** | 984 passed / 3787 assertions |
 
 **Consequence:** there is no build phase here. The remaining work is a
 reconciliation pass — close the naming divergence between the brief and the code,
@@ -308,7 +313,7 @@ the view's `@can` is UX; the middleware is the boundary.
 
 ---
 
-## Group D — Audit Trail ✅ DONE (pre-existing)
+## Group D — Audit Trail ✅ DONE (pre-existing, extended in `4de344f`)
 
 | ID | Brief task | Status |
 |----|-----------|--------|
@@ -323,48 +328,55 @@ Attribution passes the actor explicitly — the web controller sends
 `causer: $request->user()`, the API controller the same, so one action produces
 one correctly-attributed row from either channel.
 
-**Not verified by a dedicated settings audit test.** `SystemSettingUpdateTest:55-62`
-asserts the row exists with the right description, subject type, subject id and
-causer — through the web path only. The API twin's audit is asserted in
-`GateD6DPentestTest` / `GateDUiGatingTest` only incidentally. See P8-E1.
+**Both channels are now asserted, not just the web one.** `ActionFirstAuditTest`
+covers the web path plus the rollback case; `4de344f` added the API causer
+attribution and per-channel `source` (`web` vs `api`, asserted exactly rather
+than as membership — a settings change over the API recorded as `web` is the
+failure that matters, and nothing else would notice).
 
 ---
 
-## Group E — Tests & Verification 🟡 PARTIAL
+## Group E — Tests & Verification ✅ DONE
 
 | ID | Brief task | Status |
 |----|-----------|--------|
-| P8-E1 | `tests/Feature/Settings/SystemSettingsTest.php` | 🟡 PARTIAL — see table below |
-| P8-E2 | full suite green + `progress.md` | ✅ suite green (971/3500); tracker reconciliation outstanding |
+| P8-E1 | `tests/Feature/Settings/SystemSettingsTest.php` | ✅ DONE — deliberately NOT created; see below |
+| P8-E2 | full suite green + `progress.md` | ✅ suite green (984/3787); trackers reconciled |
 
-### What the brief's four E1 scenarios already have
+### What the brief's four E1 scenarios now have
 
 | Scenario | Covered by | Verdict |
 |---|---|---|
-| form updates | `SystemSettingUpdateTest` (7 tests) | ✅ |
-| 422 validation | `SystemSettingUpdateTest:93` — one field (`password_security_sweep_timezone`) | ⚠️ thin |
+| form updates | `SystemSettingUpdateTest` | ✅ |
+| 422 validation | `test_every_numeric_bound_rejects_a_value_outside_it` — all 40 bounds | ✅ |
 | 403 RBAC denial | `RbacAuthorizationMatrixTest:207,212`, `RbacPentestTest`, `GateCAuthorizationTest` | ✅ |
 | 404 feature flag | `FeatureFlagPentestTest` — both routes; **403, not 404** | ✅ (status differs from brief) |
-| audit trail | `SystemSettingUpdateTest:55-62`, web path only | ⚠️ |
+| audit trail | 3 tests — web + API causer, API partial semantics, per-channel `source` | ✅ |
 
-### Two real gaps
+### The two gaps this audit found, both closed in `4de344f`
 
-**Gap 1 — validation is proven on one field out of 37.** A bounds rule that was
-typed wrong (`max:1440` meant `max:140`) is invisible: no test posts an
-out-of-range value for it. Cheap guard: drive `rules()` and assert one
-out-of-range payload per numeric key. ~37 assertions, one loop.
+**Gap 1 — validation was proven on one field out of 37.** Closed by
+`test_every_numeric_bound_rejects_a_value_outside_it`: it walks all 40
+`min:`/`max:` bounds in `rules()` and posts one out-of-range value per bound.
+It runs against the **API** channel because a web failure redirects and asserts
+against flashed session state, which reads the same whether the bound held or
+not.
 
-**Gap 2 — the API twin's audit is not asserted.** The web path proves causer,
-subject and event. Nothing proves `PUT /api/v1/settings` writes an audit row
-attributed to the token's user, and nothing proves the API's `partial: true`
-semantics leave an unnamed key alone. The partial-semantics test matters more:
-it is the guard on the bug in Group B item 3, and a regression there
-disarms the password policy with a 200 response.
+> **Known limit, recorded rather than hidden.** This catches **drift**, not a
+> single typo. The probed limit is read back out of `rules()`, so a bound
+> mistyped inward (`max:140` for `max:1440`) still rejects `141` and the test
+> stays green. Pinning the 40 numbers would mean the same constant in two
+> places. Not done deliberately — it is the owner's call.
+
+**Gap 2 — the API twin's audit and partial semantics were unproven.** Closed by
+three tests: causer attribution (with `event` asserted non-null, since a NULL
+event is skipped by every filter), partial semantics (the guard on the shipped
+bug where one API call reset `password_min_length` and switched
+`registration_enabled` off, returning 200), and per-channel `source`.
 
 **Do NOT create `tests/Feature/Settings/SystemSettingsTest.php`.** It would
-duplicate seven existing suites under a fourth name. Put both gaps in the
-existing files — `SystemSettingUpdateTest` for validation breadth and API audit.
-Following the brief's filename here costs a permanent duplicate.
+duplicate seven existing suites under a fourth name. The brief's filename was
+deliberately not followed; both gaps went into `SystemSettingUpdateTest`.
 
 ---
 
