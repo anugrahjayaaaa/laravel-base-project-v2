@@ -1525,7 +1525,8 @@ genuinely open and are the real D1/D2 work.
     "depends_on": [
       "DB-002"
     ],
-    "status": "PLANNED"
+    "status": "DONE",
+    "note": "Reconciled 2026-10-02 during the Phase 8 audit; already shipped by Phase 4F. Flat key/value table \u2014 migration 2026_09_21_153100_create_system_settings_table.php is id + key(unique) + value(nullable) + timestamps, nothing else. No category column (the categories are seeder comment groups, not a stored taxonomy), no is_autoload, no typed schema and no per-setting class, deliberately: a setting is one row and one setter. Seeded by SystemSettingSeeder (36 keys, grouped by seeder comment category: login rate limiting, password policy/lifecycle, identity/account rules, self-registration). Rules are per-key integers/booleans/enums in SystemSettingRequest, not columns."
   },
   {
     "id": "SET-002",
@@ -1535,7 +1536,8 @@ genuinely open and are the real D1/D2 work.
     "depends_on": [
       "SET-001"
     ],
-    "status": "PLANNED"
+    "status": "DONE",
+    "note": "Reconciled 2026-10-02; already shipped. Read via SystemSetting::getAll() (ONE query, plucks value+key), written via SystemSettingsUpdateAction inside ONE DB::transaction covering all ~36 keys \u2014 set() has no transaction of its own, so a bare loop could stop half way and leave the password policy updated with the registration toggle not. Web and API share the action and differ in ONE flag: run($data, partial: false) for the form (a missing boolean means OFF) vs partial: true for the API (a missing key means LEAVE IT ALONE). Sharing the default reset password_min_length to 8 and switched registration_enabled off in the same API call, disarming the password policy and self-signup. Routes: GET/POST /settings (web), GET/PUT /api/v1/settings."
   },
   {
     "id": "SET-003",
@@ -1545,7 +1547,8 @@ genuinely open and are the real D1/D2 work.
     "depends_on": [
       "SET-002"
     ],
-    "status": "PLANNED"
+    "status": "DONE",
+    "note": "Reconciled 2026-10-02; already shipped as App\\Http\\Requests\\V1\\System\\SystemSettingRequest \u2014 37 rules with min/max bounds, guard-scoped unique checks, Rule::exists on the timezone reference table, and prepareForValidation casting '0'/'1'/'on' to bool. authorize() requires settings.manage (P6-C16, after RBAC-006). PARTIAL COVERAGE, tracked as P8-E1: bounds are proven out-of-range on ONE field of 37 (password_security_sweep_timezone), so a mistyped max is invisible."
   },
   {
     "id": "SET-004",
@@ -1555,7 +1558,8 @@ genuinely open and are the real D1/D2 work.
     "depends_on": [
       "SET-002"
     ],
-    "status": "PLANNED"
+    "status": "DONE",
+    "note": "Reconciled 2026-10-02; already shipped and compliant with DEP-003 (record written INSIDE the transaction, before COMMIT, so a rollback takes it with the settings it describes). Action-first: SystemSettingsUpdateAction calls ->audit('system_setting.updated', $causer, $data) at action:128, never the controller. causer is passed explicitly by both controllers so one action yields one correctly-attributed row from either channel; Auditable::audit() derives source (web|api), ip and user_agent itself (Auditable:77-79). PARTIAL COVERAGE, tracked as P8-E1: SystemSettingUpdateTest asserts causer/subject/event through the WEB path only; the API twin's audit row is unproven."
   },
   {
     "id": "SET-005",
@@ -1566,7 +1570,26 @@ genuinely open and are the real D1/D2 work.
       "SET-002",
       "CACHE-002"
     ],
-    "status": "PLANNED"
+    "status": "DONE",
+    "note": "Reconciled 2026-10-02; already shipped, and NOT via cache::tags() \u2014 so it does not depend on the deferred CACHE-002. SystemSetting::set() calls bustCache(), clearing both the request-level static cache and Cache::forget('app_system_settings') (model:156-161), so N getter calls in one request cost exactly ONE query. KNOWN GAP: there is no SystemSettingObserver, so a write that bypasses set() \u2014 a query-builder update, a seeder using upsert() \u2014 leaves the cache stale. Latent, not live: every shipped write path goes through set(). Decide whether to add the observer or document the invariant (open item 5 in phase-8-settings-management.md)."
+  },
+  {
+    "id": "P8-E1a",
+    "task": "Settings validation breadth \u2014 prove every numeric bound out-of-range",
+    "phase": 8,
+    "priority": "P1",
+    "depends_on": [],
+    "status": "PLANNED",
+    "note": "Found by the Phase 8 audit 2026-10-02. SystemSettingRequest::rules() has 37 keys and exactly ONE is proven to reject an out-of-range value (password_security_sweep_timezone, SystemSettingUpdateTest:93). A mistyped bound (max:1440 meant max:140) is therefore invisible to the suite: nothing posts a bad value for that field. Fix: loop rules(), post one out-of-range payload per numeric key, assert the error. ~37 assertions, one loop, no new file \u2014 put it in SystemSettingUpdateTest."
+  },
+  {
+    "id": "P8-E1b",
+    "task": "Settings API audit + partial-semantics test",
+    "phase": 8,
+    "priority": "P1",
+    "depends_on": [],
+    "status": "PLANNED",
+    "note": "Found by the Phase 8 audit 2026-10-02. Two unproven things on the API twin. (1) The audit row: SystemSettingUpdateTest:55-62 asserts description/subject/causer through the WEB path only; nothing proves PUT /api/v1/settings writes a row attributed to the token's user. (2) The partial semantics: nothing proves run(partial: true) leaves an unnamed key alone. (2) is the guard on a real shipped bug \u2014 sharing the web default reset password_min_length to 8 AND switched registration_enabled off in one API call, disarming the password policy and self-signup, and returning 200. Add both to SystemSettingUpdateTest."
   },
   {
     "id": "NOTIF-001",

@@ -14,7 +14,7 @@
 ||| 5 | Password/security lifecycle | DONE — Groups A, B, and C verified |
 | 6 | RBAC & authorization | IN PROGRESS — Groups A (UI) and B (permission set + seeders) DONE; C–E pending |
 | 7 | Feature availability / feature flags | DONE — Groups A–F. The kill switch is real: a flag off 403s its routes (62/62 across web + API) and drops its menu item, with no superadmin bypass |
-| 8 | Settings | PLANNED |
+| 8 | Settings | AUDIT COMPLETE — no build phase. Groups A–D were already shipped by Phase 4F/5 (`SystemSettingRequest`, `SystemSettingsUpdateAction`, the two-column page, `feature:settings` on web + API, `@can` read-only, audit inside the transaction). **Group A DONE** (3 passes, 2026-10-03): render gate added (13 tests / 244 assertions), `fs-6` tooltips closed, and four design-system defects fixed — error messages invisible on 18 of 22 fields (`input-group` breaks Bootstrap's sibling selector), `filter_var` in Blade, a dependent field ignoring its toggle, and two validated settings with no input at all. Groups B–D pre-existing and verified. Group E is partial: validation proven on 1 field of 37, API audit unproven. Full suite 976/3601. See `phase-8-settings-management.md` |
 | 9 | Notification/mail/queue | PLANNED |
 | 10 | Audit Trail | ARCHITECTURE DONE — action-first standard shipped and reconciled across User, System, Role, Feature and Auth (web + API), with one audit entry point (`Auditable::audit()`) that captures `source`/`ip`/`user_agent` itself. AUD-006 (Profile) still migrates |
 | 11 | Monitoring/observability | PLANNED |
