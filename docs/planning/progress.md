@@ -14,7 +14,7 @@
 ||| 5 | Password/security lifecycle | DONE — Groups A, B, and C verified |
 | 6 | RBAC & authorization | IN PROGRESS — Groups A (UI) and B (permission set + seeders) DONE; C–E pending |
 | 7 | Feature availability / feature flags | DONE — Groups A–F. The kill switch is real: a flag off 403s its routes (62/62 across web + API) and drops its menu item, with no superadmin bypass |
-| 8 | Settings | PLANNED |
+| 8 | Settings | DONE — Groups A–E closed 2026-10-03 on `feature/phase-8-settings`. Groups A–D were already shipped by Phase 4F/5 (`SystemSettingRequest`, `SystemSettingsUpdateAction`, the two-column page, `feature:settings` on web + API, `@can` read-only, audit inside the transaction). Group A fixed four design-system defects (error messages invisible on 18 of 22 fields — `input-group` breaks Bootstrap's sibling selector) and added a render gate. Group E closed both gaps: `P8-E1a` proves all 40 numeric bounds reject out-of-range, `P8-E1b` proves the API audit row and partial-key semantics. Added since: `SettingsBenchmarkTest` (read path healthy at 1 query; save is 39 constant queries, **not** an N+1 — scales with whitelist length, not rows) and `SettingsPentestTest` (23 adversarial tests — authorization, role escalation, policy sabotage, unknown-key injection, mass assignment, audit integrity — all pass). Full suite **1015 passed / 3874 assertions**. See `phase-8-settings-management.md` |
 | 9 | Notification/mail/queue | PLANNED |
 | 10 | Audit Trail | ARCHITECTURE DONE — action-first standard shipped and reconciled across User, System, Role, Feature and Auth (web + API), with one audit entry point (`Auditable::audit()`) that captures `source`/`ip`/`user_agent` itself. AUD-006 (Profile) still migrates |
 | 11 | Monitoring/observability | PLANNED |

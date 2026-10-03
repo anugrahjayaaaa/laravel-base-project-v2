@@ -117,11 +117,24 @@ class SystemSetting extends Model
     }
 
     /**
+     * Drop only the request-level static, leaving the shared cache alone.
+     *
+     * The write path needs this the moment a row changes: the rest of THIS
+     * request must not read a value the transaction may yet discard. The
+     * persistent cache has to wait for commit — see `set()` and
+     * `SystemSettingObserver` for why.
+     */
+    public static function clearRequestCache(): void
+    {
+        static::$requestCache = null;
+    }
+
+    /**
      * Bust both request-level and persistent caches.
      */
     public static function bustCache(): void
     {
-        static::$requestCache = null;
+        static::clearRequestCache();
         Cache::forget(static::$cacheKey);
     }
 
@@ -155,7 +168,7 @@ class SystemSetting extends Model
      */
     public static function set(string $key, string $value): self
     {
-        static::$requestCache = null;
+        static::clearRequestCache();
 
         DB::afterCommit(static function (): void {
             static::bustCache();

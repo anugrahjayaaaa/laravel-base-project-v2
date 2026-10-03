@@ -3,7 +3,9 @@
 namespace App\Providers;
 
 use App\Auth\LoginThrottle;
+use App\Models\SystemSetting;
 use App\Models\User;
+use App\Observers\SystemSettingObserver;
 use App\Observers\UserObserver;
 use App\Services\PasswordExpiry;
 use App\Support\FeatureCatalog;
@@ -17,6 +19,7 @@ use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\View\View;
 use Laravel\Pennant\Feature;
+use Throwable;
 
 /**
  * Application service provider.
@@ -78,6 +81,7 @@ class AppServiceProvider extends ServiceProvider
         });
 
         User::observe(UserObserver::class);
+        SystemSetting::observe(SystemSettingObserver::class);
 
         // Feature flags: one definition per catalogue entry.
         //
@@ -126,6 +130,51 @@ class AppServiceProvider extends ServiceProvider
                 ->by($key)
                 ->response($throttle->responseFor('users'));
         });
+    }
+
+    /**
+     * Push the stored token lifetimes onto the runtime config.
+     *
+     * `config/auth.php` reads `env('PASSWORD_RESET_EXPIRE_MINUTES')`, which no
+     * admin can change from the UI. Storing the value in `system_settings` while
+     * the broker kept using the .env meant the field looked live, returned 200 on
+     * save, and changed nothing — the worst way for a settings field to fail.
+     *
+     * ## Why this is NOT called from boot()
+     *
+     * Boot runs before the settings table exists on a fresh install, and before
+     * `RefreshDatabase` migrates in tests. Reading there is not a matter of
+     * catching an exception — the query failure takes the whole boot down with
+     * it. Every other `SystemSetting::getInt()` in these providers sits inside a
+     * throttle closure that runs per request, never at boot, and that is the
+     * reason they are safe.
+     *
+     * So binding happens at the one moment that matters: a settings save.
+     * `SystemSettingsUpdateAction` calls this right after its transaction
+     * commits, so an admin who changes the lifetime sees it enforced in the same
+     * process that wrote it, with no restart and no deploy.
+     *
+     * A process that only ever reads — a worker draining a queue of password
+     * resets, a console command — keeps whatever the last write bound, or
+     * `config/auth.php`'s default if that process never saw one. That is the
+     * `ponytail` ceiling, and it is named here rather than hidden: a long-lived
+     * worker started before a settings change enforces the old lifetime until it
+     * is restarted. Resolving these per call rather than from config removes the
+     * ceiling at the cost of a query per reset link; it is not worth paying for a
+     * value that changes perhaps monthly.
+     */
+    public static function bindTokenExpirations(): void
+    {
+        // The try/catch is not defensive noise: boot runs during `migrate` and
+        // `config:cache`, before the table necessarily exists.
+        try {
+            config()->set([
+                'auth.passwords.users.expire' => SystemSetting::getInt('password_reset_expire_minutes', 15),
+                'auth.verification.expire' => SystemSetting::getInt('email_verification_expire_minutes', 60),
+            ]);
+        } catch (Throwable $e) {
+            // No settings table yet — leave the config defaults in place.
+        }
     }
 
     /**

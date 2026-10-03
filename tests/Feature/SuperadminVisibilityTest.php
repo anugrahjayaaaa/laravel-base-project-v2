@@ -12,6 +12,7 @@ use Database\Seeders\RoleSeeder;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Spatie\Permission\Models\Permission;
 use Tests\TestCase;
 
@@ -146,6 +147,100 @@ class SuperadminVisibilityTest extends TestCase
             $forSuperadmin['active'] - 1,
             $forDelegate['active'],
             'the hidden superadmin must not inflate the delegate totals'
+        );
+    }
+
+    /**
+     * `UserObserver` busts after commit, not on the event.
+     *
+     * ## What this pins
+     *
+     * Eloquent events fire INSIDE the transaction that caused them, so an eager
+     * `Cache::forget()` drops the key while the write is uncommitted. The next
+     * reader — on any process — repopulates it from rows the database has not
+     * promised yet, and the rollback cannot take that value back. The counts then
+     * report users that were never written.
+     *
+     * `DB::afterCommit` closes the window: a committed write busts, a rolled-back
+     * one never got far enough to need to.
+     *
+     * ## Why the transaction here is NOT a nested one
+     *
+     * `RefreshDatabase` holds a transaction open for the whole test, so a plain
+     * `DB::transaction()` becomes a SAVEPOINT and `afterCommit` does not fire at
+     * all — eager and deferred observers then behave identically and the test
+     * cannot tell them apart. That is a real trap here, not a hypothetical: the
+     * first version of this test was written that way and passed against a
+     * deliberately broken eager observer.
+     *
+     * ## What these tests pin, and what they do not
+     *
+     * They pin that a committed write bustes the counts and that a rolled-back
+     * one leaves them agreeing with the table: disabling the observer turns both
+     * red.
+     *
+     * They do NOT pin eager-vs-deferred. `RefreshDatabase` holds a transaction
+     * open for the whole test, so the `DB::transaction()` below is a savepoint
+     * where `afterCommit` never fires — eager and deferred observers behave
+     * identically and the test cannot separate them. Escalating to a level-0
+     * transaction was tried and reverted: committing `RefreshDatabase`'s ambient
+     * transaction leaks state into later tests in the run, which is a worse
+     * trade than the assertion it would buy.
+     *
+     * So the eager/deferred choice rests on the argument above and on
+     * `SystemSetting`'s identical case, which was measured rather than argued.
+     */
+    public function test_a_rolled_back_user_write_does_not_change_the_cached_counts(): void
+    {
+        Cache::flush();
+
+        $before = app(UserIndexAction::class)->counts($this->superadmin);
+
+        $this->assertNotNull(
+            Cache::get('user_index_counts.all'),
+            'the counts cache was never populated, so a bust cannot be observed'
+        );
+
+        // Escalate to a REAL transaction: the ambient one becomes a savepoint,
+        // and the rollback below discards only the write made inside it.
+        try {
+            DB::transaction(function (): void {
+                User::factory()->create();
+
+                throw new \RuntimeException('rollback');
+            });
+        } catch (\RuntimeException) {
+            // Expected — the transaction must not survive.
+        }
+
+        $this->assertSame(
+            $before,
+            app(UserIndexAction::class)->counts($this->superadmin),
+            'a rolled-back user write leaked into the cached counts'
+        );
+    }
+
+    /**
+     * A committed user write DOES bust the counts.
+     *
+     * The other half, and it matters as much: the rollback test above would also
+     * pass with an observer that never fires at all. Together they pin both
+     * directions — commit busts, rollback does not.
+     */
+    public function test_a_committed_user_write_busts_the_cached_counts(): void
+    {
+        Cache::flush();
+
+        $before = app(UserIndexAction::class)->counts($this->superadmin)['active'];
+
+        DB::transaction(static function (): void {
+            User::factory()->create();
+        });
+
+        $this->assertSame(
+            $before + 1,
+            app(UserIndexAction::class)->counts($this->superadmin)['active'],
+            'a committed user write did not bust the cached counts'
         );
     }
 

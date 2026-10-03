@@ -13,6 +13,8 @@ Please verify your email before logging in.
 Verify Email
 @endcomponent
 
+This verification link expires in **{{ $expireMinutes }} minutes**.
+
 You must change this password upon first login.
 
 @endcomponent

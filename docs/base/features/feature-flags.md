@@ -49,8 +49,8 @@ Audit, Monitoring): `users`, `roles`, `permissions`, `settings`, `translations`,
 **Five of the eight are wired to something.** `users`, `roles`, `permissions`,
 `settings` and `sessions` gate real routes. `pulse` gates the vendor dashboard
 through `pulse.middleware`. `translations` and `activity_logs` are declared ahead
-of their modules (Phase 8) and gate nothing yet — their rows on `/features` say
-so, rather than presenting a switch that reports success and changes nothing.
+of their modules and gate nothing yet — their rows on `/features` say so, rather
+than presenting a switch that reports success and changes nothing.
 
 `registration` is deliberately **not** a flag. `registration_enabled` is already a
 `system_settings` row read at all four entry points, so a flag for it would be two

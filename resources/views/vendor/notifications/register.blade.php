@@ -9,6 +9,8 @@ Verify your email address to activate it. You can sign in once the link below is
 Verify Email
 @endcomponent
 
+This verification link expires in **{{ $expireMinutes }} minutes**.
+
 If you did not create this account, no action is needed.
 
 @endcomponent

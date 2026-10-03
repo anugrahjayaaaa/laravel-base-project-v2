@@ -131,10 +131,10 @@
 
 || ID | Scenario | Category | Feature | Status |
 ||----|----------|----------|---------|--------|
-|| QA-SET-001 | Verify settings validation on save | Validation | Settings | PLANNED |
-|| QA-SET-002 | Verify settings change is audited | Security | Settings | PLANNED |
-|| QA-SET-003 | Verify cache invalidation on settings change | Functional | Settings | PLANNED |
-||| QA-SET-004 | Verify only authorized users can change settings | Authorization | Settings | PLANNED |
+| QA-SET-001 | Verify settings validation on save | Validation | Settings | DONE — `SystemSettingUpdateTest::test_every_numeric_bound_rejects_a_value_outside_it` walks all 40 min:/max: bounds; `SettingsPentestTest` adds 10 out-of-range/malformed payloads |
+| QA-SET-002 | Verify settings change is audited | Security | Settings | DONE — causer attribution, `source` channel per web/API, and rejected-writes-leave-no-row, all asserted in `SettingsPentestTest` |
+| QA-SET-003 | Verify cache invalidation on settings change | Functional | Settings | DONE — `SystemSetting::set()` busts via `DB::afterCommit`; `SET-005` records the transaction-read hazard that motivated it |
+| QA-SET-004 | Verify only authorized users can change settings | Authorization | Settings | DONE — guest, no-permission, and `settings.view`-only are each refused in `SettingsPentestTest`, web and API |
 
 ## ADR Numbering Convention
 
