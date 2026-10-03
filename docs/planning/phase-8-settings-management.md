@@ -1,6 +1,6 @@
 # Phase 8 — Settings Management
 
-> Date: 2026-10-02 | Branch: feature/general-fixes | Status: AUDIT — implementation largely pre-existing
+> Date: 2026-10-03 | Branch: feature/phase-8-settings | Status: **DONE** — Groups A–E closed
 > Purpose: execution breakdown for Phase 8 (Groups A–E), plus a record of what the audit found against the code.
 > Scope: the system settings page, its read/update paths on web + API, validation, feature-flag and permission gates, audit trail.
 > Dependency chain: A → B → C → D → E. A cannot skip to C.
@@ -15,7 +15,7 @@ working since Phase 4F / Phase 5. Group E is partly covered by existing suites.
 
 Audited 2026-10-02 against the code, not against the brief. Every claim below is
 backed by a file and line. Full suite, last verified on
-`feature/phase-8-settings`: **984 passed / 3787 assertions**.
+`feature/phase-8-settings`: **1015 passed / 3874 assertions**.
 
 **All five groups are now DONE.** Groups A–D were pre-existing (Phase 4F/5); this
 audit found gaps in A and B, and Group E's two gaps, and all of them are closed
@@ -36,7 +36,7 @@ the parts that were wrong the first time.
 | D | audit inside the transaction | **EXISTS under another event name** | `->audit('system_setting.updated', $causer, $data)` at action:128, inside the transaction |
 | D | HTTP context auto-captured | **EXISTS** | `App\Models\Concerns\Auditable:77-79` — `source`/`ip`/`user_agent` |
 | E | `tests/Feature/Settings/SystemSettingsTest.php` | **DONE** | file deliberately not created; gaps closed in the existing suites — see § Group E |
-| E | full suite green | **VERIFIED** | 984 passed / 3787 assertions |
+| E | full suite green | **VERIFIED** | 1015 passed / 3874 assertions |
 
 **Consequence:** there is no build phase here. The remaining work is a
 reconciliation pass — close the naming divergence between the brief and the code,
@@ -405,31 +405,65 @@ more than once.
 
 ---
 
-## Tracker reconciliation (outstanding)
+## Tracker reconciliation (closed 2026-10-03)
 
-Four places still describe Phase 8 as unbuilt. None is code.
+All four places now agree that Phase 8 is built. None of this was code.
 
-| File | Says | Should say |
+| File | Was | Now |
 |---|---|---|
-| `docs/planning/progress.md` | Phase 8 `PLANNED` | audit complete; Groups A–D pre-existing; E partial |
-| `docs/planning/task-tracker.md` | `SET-001`…`SET-005` all `PLANNED` | `DONE` with notes (schema ✅, CRUD ✅, validation ✅, audit ✅, cache ✅) |
+| `docs/planning/progress.md` | Phase 8 `AUDIT COMPLETE` | `DONE` — Groups A–E, full suite 1015/3874 |
+| `docs/planning/task-tracker.md` | `SET-001`…`SET-005` all `PLANNED` | `DONE` with notes (schema, CRUD, validation, audit, cache) |
 | `docs/planning/task-tracker.md` | `RATE-001` depends on `SET-001` | already satisfied — `RATE-001` is DONE |
 | `docs/planning/feature-tracker.md` | row 24 notes `translations` / `activity_logs` have no routes until Phase 8 | those two flags still gate nothing; Phase 8 does not add them |
-| `docs/base/features/settings.md` | "canonical keys" lists 9 of 36; validation table mixes real keys with dotted `security.*` / `registration.*` names that no code reads | rewrite against `SystemSettingSeeder` |
-
-The last one is a **documentation defect, not a phase task** — that file lists
-keys the system does not have and omits most of the ones it does, and its
-`registration.default_role` / `security.password_history.count` names match
-neither the seeder nor the form.
+| `docs/base/features/settings.md` | "canonical keys" listed 9 of 37 and named dotted `security.*` / `registration.*` names no code reads | rewritten against `SystemSettingSeeder` — all 37 keys, all 37 bounds, plus caching, security and performance sections |
 
 ---
 
-## Execution order for whatever comes next
+## Verification (2026-10-03)
 
-1. **Group E, validation breadth** — one loop over `rules()`, ~37 assertions, closes the widest gap.
-2. **Group E, API audit + partial-semantics** — the guard on a real bug, not a nicety.
-3. **Tracker reconciliation** — the table above. Docs only.
-4. **`docs/base/features/settings.md`** — rewrite against the seeder.
-5. **Decide:** `SystemSettingObserver` for writes that bypass `set()` (Group B).
+**Performance** — `tests/Feature/Settings/SettingsBenchmarkTest.php`, numbers in
+`/tmp/phase8_settings_benchmark.json`:
 
-Items 1–2 are independent of each other and of 3–4. Nothing here blocks anything.
+| Path | Queries | Latency |
+|------|---------|---------|
+| `getAll()` cold | 1 | 0.24 ms |
+| `getAll()` warm (request static) | 0 | 0.00 ms |
+| 60 typed reads | 1 | 0.37 ms |
+| `GET /settings` (full kernel) | 3–9 | 12.13 ms |
+| Save (all keys) | 39 | 20.73 ms |
+| Save (1 key, partial) | 39 | 20.51 ms |
+| Save ceiling (one bulk upsert) | 1 | 0.93 ms |
+
+The read path is healthy. The write path costs 39 queries for a save that changes
+two values, and **that is not an N+1**: the count held at 40 across 6 to 1003
+rows, because it scales with the whitelist length rather than the table size.
+36 of them are `updateOrCreate`'s existence probe, one per key. No statement
+exceeds 0.3 ms and the probe uses `system_settings_key_unique`
+(`EXPLAIN`: `type=const, rows=1`), so this is a round-trip count to revisit when
+network latency matters, not a defect. Bulk `upsert` was measured, not applied.
+
+**Security** — `tests/Feature/Security/SettingsPentestTest.php`, 23 tests / 63
+assertions, all passing:
+
+| Surface | Probes | Result |
+|---|---|---|
+| Authorization (guest / no permission / view-only) | 3 | held |
+| Escalation via `registration_default_role` | 2 | held |
+| Policy sabotage (out-of-range, malformed) | 10 | held |
+| Unknown-key injection (`key`, `id`, `value`) | 1 | held |
+| Mass assignment onto timestamps | 1 | held |
+| Audit integrity (rejected writes, causer, both channels) | 4 | held |
+| Web/API partial-key divergence | 1 | held |
+
+No new findings. The `$updates` whitelist, `Rule::in(RoleLookup::visibleTo())`
+and the declared bounds between them refused every probe.
+
+Full suite: **1015 passed / 3874 assertions**.
+
+---
+
+## Open item (unresolved by design)
+
+`SystemSettingObserver` for writes that bypass `set()` — Group B. Latent, not
+live: every shipped write path goes through `set()`. Carried as a known
+invariant in `docs/base/features/settings.md` rather than closed here.

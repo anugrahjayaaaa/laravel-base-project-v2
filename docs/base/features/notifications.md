@@ -84,4 +84,4 @@ Transport settings (host, port, credentials) remain technical (config/env only).
 ## Dependency
 
 Notifications/Queue is Phase 9 in the implementation roadmap.
-Depends on: Settings (Phase 8), Queue (Phase 1 infrastructure).
+Depends on: Settings (Phase 8 — done), Queue (Phase 1 infrastructure).
