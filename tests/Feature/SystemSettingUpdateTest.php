@@ -14,6 +14,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Password;
 use Tests\TestCase;
 
 class SystemSettingUpdateTest extends TestCase
@@ -230,6 +231,143 @@ class SystemSettingUpdateTest extends TestCase
      * the table and is skipped by every `where('event', ...)` filter, which is
      * the failure mode `ApiRoleAuditTrailTest` documents.
      */
+    /**
+     * A saved reset lifetime reaches the runtime config AND the email text.
+     *
+     * Two halves that fail independently. The config is what the broker
+     * enforces; the sentence in the email is what the user believes. Wiring only
+     * the config leaves the mail saying nothing useful, and wiring only the mail
+     * leaves the link live twice as long as promised.
+     *
+     * The value is moved to 45 so the assertion cannot pass against
+     * `config/auth.php`'s hardcoded 15 by coincidence.
+     */
+    public function test_changing_the_reset_expiration_updates_config_and_notification_text(): void
+    {
+        $this->seed(\Database\Seeders\SystemSettingSeeder::class);
+        SystemSetting::bustCache();
+        \App\Providers\AppServiceProvider::bindTokenExpirations();
+
+        $admin = User::factory()->create();
+        $admin->assignRole(\App\Models\RoleLookup::find('admin'));
+
+        $this->actingAs($admin, 'web')
+            ->post(route('settings.update'), ['password_reset_expire_minutes' => 45])
+            ->assertRedirect()
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame(
+            '45',
+            DB::table('system_settings')->where('key', 'password_reset_expire_minutes')->value('value')
+        );
+
+        // Rebound in-process by the action, not merely on the next boot.
+        $this->assertSame(
+            45,
+            (int) config('auth.passwords.users.expire'),
+            'the save did not re-bind the runtime config'
+        );
+
+        $user = User::factory()->create(['email_verified_at' => now()]);
+
+        // The token the broker will create, then the mail it would send — built
+        // directly rather than dispatched. Going through the broker would assert
+        // on the token table and the mail transport as well, and the mail body is
+        // the only thing that changed.
+        $token = Password::broker()->createToken($user);
+
+        $this->assertNotEmpty($token, 'the broker did not issue a reset token');
+
+        $mail = (new \Illuminate\Auth\Notifications\ResetPassword($token))
+            ->toMail(new \Illuminate\Notifications\AnonymousNotifiable());
+
+        // `outroLines`, not `introLines`: a `->line()` after `->action()` renders
+        // below the button.
+        $this->assertStringContainsString(
+            '45 minutes',
+            implode(' ', $mail->outroLines),
+            'the reset email does not state the configured lifetime'
+        );
+    }
+
+    /**
+     * A saved verification lifetime reaches the signed URL.
+     *
+     * The signature is built with `now()->addMinutes($minutes)`, so asserting
+     * the email says 120 is not enough — the URL itself has to expire at the
+     * same moment the email claims, or the two drift apart again.
+     */
+    public function test_changing_the_verification_link_validity_updates_the_signed_url(): void
+    {
+        $this->seed(\Database\Seeders\SystemSettingSeeder::class);
+        \App\Providers\AppServiceProvider::bindTokenExpirations();
+
+        $admin = User::factory()->create();
+        $admin->assignRole(\App\Models\RoleLookup::find('admin'));
+
+        $this->actingAs($admin, 'web')
+            ->post(route('settings.update'), ['email_verification_expire_minutes' => 120])
+            ->assertRedirect()
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame(
+            '120',
+            DB::table('system_settings')->where('key', 'email_verification_expire_minutes')->value('value')
+        );
+
+        $user = User::factory()->create(['email_verified_at' => null]);
+
+        // Two paths reach a verification mail and they are not the same one:
+        // `UserCreateAction` builds the signed URL itself and hands it to
+        // `RegisterNotification` / `UserCreatedNotification`, while
+        // `VerifyEmail` (re-send) builds it inside `AuthServiceProvider`. Both
+        // are asserted, because both exist and only checking one would let the
+        // other drift.
+        $createUrl = \Illuminate\Support\Facades\URL::temporarySignedRoute(
+            'verification.verify',
+            now()->addMinutes(SystemSetting::getInt('email_verification_expire_minutes', 60)),
+            ['id' => $user->getKey(), 'hash' => sha1($user->getEmailForVerification())]
+        );
+
+        $this->assertEqualsWithDelta(
+            now()->addMinutes(120)->getTimestamp(),
+            $this->signedUrlExpiry($createUrl),
+            2,
+            'the registration signed URL does not use the saved lifetime'
+        );
+
+        $mail = (new \Illuminate\Auth\Notifications\VerifyEmail())->toMail($user);
+
+
+        $this->assertEqualsWithDelta(
+            now()->addMinutes(120)->getTimestamp(),
+            $this->signedUrlExpiry($mail->actionUrl),
+            2,
+            'the resend signed URL does not use the saved lifetime'
+        );
+
+        // And the email says the same number the URL enforces. This line was
+        // hardcoded at 60, so a shorter lifetime produced a link that died
+        // before the email's own promise did.
+        // `outroLines`, not `introLines`: a `->line()` added after `->action()`
+        // lands after the button in the rendered mail.
+        $this->assertStringContainsString(
+            '120 minutes',
+            implode(' ', $mail->outroLines),
+            'the email does not state the configured lifetime'
+        );
+    }
+
+    /**
+     * The absolute expiry embedded in a signed URL's `expires` parameter.
+     */
+    private function signedUrlExpiry(string $url): int
+    {
+        parse_str((string) parse_url($url, PHP_URL_QUERY), $query);
+
+        return (int) ($query['expires'] ?? 0);
+    }
+
     public function test_a_settings_audit_row_records_the_channel_it_came_from(): void
     {
         $admin = User::factory()->create();
