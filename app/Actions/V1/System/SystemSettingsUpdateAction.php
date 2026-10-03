@@ -4,6 +4,7 @@ namespace App\Actions\V1\System;
 
 use App\Models\SystemSetting;
 use App\Models\User;
+use App\Providers\AppServiceProvider;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -128,6 +129,17 @@ class SystemSettingsUpdateAction
                 SystemSetting::query()->firstOrFail()->audit('system_setting.updated', $causer, $data);
             }
         });
+
+        // Re-bind the token lifetimes now the save is committed, rather than
+        // waiting for the next boot. `SystemSetting::set()` busts the cache, but
+        // a cache bust only helps whoever reads next — and anything already
+        // holding `config('auth.passwords.users.expire')` in memory keeps the old
+        // value. Rebinding here closes that window for the rest of this process.
+        //
+        // After the transaction, not inside: binding a config from values a
+        // rollback then discards would leave the process enforcing a lifetime
+        // the database never accepted.
+        AppServiceProvider::bindTokenExpirations();
     }
 
     /**
