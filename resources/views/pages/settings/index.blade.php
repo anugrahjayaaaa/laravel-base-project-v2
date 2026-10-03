@@ -47,62 +47,62 @@
                         <div class="row g-3">
                             <div class="col-6 col-md-3">
                                 <label for="login_max_attempts" class="form-label">
-                                    Max Attempts
-                                    <i class="bi bi-info-circle text-muted fs-6 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Maximum number of failed login attempts allowed before an account is automatically locked."></i>
+                                    Max Failed Attempts
+                                    <i class="bi bi-info-circle text-muted fs-7 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Maximum number of failed login attempts allowed before an account is automatically locked."></i>
                                 </label>
                                 <div class="input-group">
                                     <input type="number" name="login_max_attempts" id="login_max_attempts"
-                                           class="form-control form-control-sm @error('login_max_attempts') is-invalid @enderror"
+                                           class="form-control form-control-sm @error('login_max_attempts') is-invalid @enderror" @error('login_max_attempts') aria-invalid="true" aria-describedby="login_max_attempts_error" @enderror
                                            value="{{ old('login_max_attempts', $settings['login_max_attempts'] ?? 5) }}" min="1" max="99">
                                     <span class="input-group-text bg-body-tertiary">attempts</span>
                                 </div>
                                 @error('login_max_attempts')
-                                    <div class="invalid-feedback">{{ $message }}</div>
+                                    <div class="invalid-feedback d-block" id="login_max_attempts_error">{{ $message }}</div>
                                 @enderror
                             </div>
                             <div class="col-6 col-md-3">
                                 <label for="lockout_base_minutes" class="form-label">
-                                    Lockout Duration
-                                    <i class="bi bi-info-circle text-muted fs-6 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="The initial lockout duration applied when the failed login threshold is reached."></i>
+                                    Initial Lockout Duration
+                                    <i class="bi bi-info-circle text-muted fs-7 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="The initial lockout duration applied when the failed login threshold is reached."></i>
                                 </label>
                                 <div class="input-group">
                                     <input type="number" name="lockout_base_minutes" id="lockout_base_minutes"
-                                           class="form-control form-control-sm @error('lockout_base_minutes') is-invalid @enderror"
+                                           class="form-control form-control-sm @error('lockout_base_minutes') is-invalid @enderror" @error('lockout_base_minutes') aria-invalid="true" aria-describedby="lockout_base_minutes_error" @enderror
                                            value="{{ old('lockout_base_minutes', $settings['lockout_base_minutes'] ?? 5) }}" min="1" max="60">
                                     <span class="input-group-text bg-body-tertiary">min</span>
                                 </div>
                                 @error('lockout_base_minutes')
-                                    <div class="invalid-feedback">{{ $message }}</div>
+                                    <div class="invalid-feedback d-block" id="lockout_base_minutes_error">{{ $message }}</div>
                                 @enderror
                             </div>
                             <div class="col-6 col-md-3">
                                 <label for="lockout_increment_minutes" class="form-label">
-                                    Lockout Penalty
-                                    <i class="bi bi-info-circle text-muted fs-6 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Additional penalty duration added for each subsequent failed login attempt."></i>
+                                    Lockout Increment
+                                    <i class="bi bi-info-circle text-muted fs-7 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Additional penalty duration added for each subsequent failed login attempt."></i>
                                 </label>
                                 <div class="input-group">
                                     <input type="number" name="lockout_increment_minutes" id="lockout_increment_minutes"
-                                           class="form-control form-control-sm @error('lockout_increment_minutes') is-invalid @enderror"
+                                           class="form-control form-control-sm @error('lockout_increment_minutes') is-invalid @enderror" @error('lockout_increment_minutes') aria-invalid="true" aria-describedby="lockout_increment_minutes_error" @enderror
                                            value="{{ old('lockout_increment_minutes', $settings['lockout_increment_minutes'] ?? 10) }}" min="1" max="120">
                                     <span class="input-group-text bg-body-tertiary">min</span>
                                 </div>
                                 @error('lockout_increment_minutes')
-                                    <div class="invalid-feedback">{{ $message }}</div>
+                                    <div class="invalid-feedback d-block" id="lockout_increment_minutes_error">{{ $message }}</div>
                                 @enderror
                             </div>
                             <div class="col-6 col-md-3">
                                 <label for="login_rate_limit_per_minute" class="form-label">
                                     Login Rate Limit
-                                    <i class="bi bi-info-circle text-muted fs-6 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Maximum number of total login requests allowed per minute per IP address."></i>
+                                    <i class="bi bi-info-circle text-muted fs-7 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Maximum number of total login requests allowed per minute per IP address."></i>
                                 </label>
                                 <div class="input-group">
                                     <input type="number" name="login_rate_limit_per_minute" id="login_rate_limit_per_minute"
-                                           class="form-control form-control-sm @error('login_rate_limit_per_minute') is-invalid @enderror"
+                                           class="form-control form-control-sm @error('login_rate_limit_per_minute') is-invalid @enderror" @error('login_rate_limit_per_minute') aria-invalid="true" aria-describedby="login_rate_limit_per_minute_error" @enderror
                                            value="{{ old('login_rate_limit_per_minute', $settings['login_rate_limit_per_minute'] ?? 5) }}" min="1" max="120">
-                                    <span class="input-group-text bg-body-tertiary">/min</span>
+                                    <span class="input-group-text bg-body-tertiary">/ min</span>
                                 </div>
                                 @error('login_rate_limit_per_minute')
-                                    <div class="invalid-feedback">{{ $message }}</div>
+                                    <div class="invalid-feedback d-block" id="login_rate_limit_per_minute_error">{{ $message }}</div>
                                 @enderror
                             </div>
                         </div>
@@ -118,17 +118,17 @@
                         <div class="row g-3">
                             <div class="col-md-6">
                                 <label for="password_min_length" class="form-label">
-                                    Min Password Length
-                                    <i class="bi bi-info-circle text-muted fs-6 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Minimum character length required when creating or updating passwords."></i>
+                                    Minimum Length
+                                    <i class="bi bi-info-circle text-muted fs-7 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Minimum character length required when creating or updating passwords."></i>
                                 </label>
                                 <div class="input-group">
                                     <input type="number" name="password_min_length" id="password_min_length"
-                                           class="form-control form-control-sm @error('password_min_length') is-invalid @enderror"
+                                           class="form-control form-control-sm @error('password_min_length') is-invalid @enderror" @error('password_min_length') aria-invalid="true" aria-describedby="password_min_length_error" @enderror
                                            value="{{ old('password_min_length', $settings['password_min_length'] ?? 12) }}" min="4" max="128">
                                     <span class="input-group-text bg-body-tertiary">chars</span>
                                 </div>
                                 @error('password_min_length')
-                                    <div class="invalid-feedback">{{ $message }}</div>
+                                    <div class="invalid-feedback d-block" id="password_min_length_error">{{ $message }}</div>
                                 @enderror
                             </div>
                         </div>
@@ -136,18 +136,18 @@
                         <div class="row g-3 mt-0">
                             <div class="col-md-6">
                                 <label for="password_history_count" class="form-label">
-                                    Password History
-                                    <i class="bi bi-info-circle text-muted fs-6 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Number of previous passwords remembered to prevent password reuse."></i>
+                                    Password History Limit
+                                    <i class="bi bi-info-circle text-muted fs-7 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Number of previous passwords remembered to prevent password reuse."></i>
                                 </label>
                                 <div class="input-group">
                                     <input type="number" name="password_history_count" id="password_history_count"
-                                           class="form-control form-control-sm @error('password_history_count') is-invalid @enderror"
+                                           class="form-control form-control-sm @error('password_history_count') is-invalid @enderror" @error('password_history_count') aria-invalid="true" aria-describedby="password_history_count_error" @enderror
                                            value="{{ old('password_history_count', $settings['password_history_count'] ?? 5) }}" min="0" max="24"
-                                           {{ filter_var($settings['password_history_enabled'] ?? 'true', FILTER_VALIDATE_BOOLEAN) ? '' : 'disabled' }}>
+                                           {{ $settings['password_history_enabled'] ?? true ? '' : 'disabled' }}>
                                     <span class="input-group-text bg-body-tertiary">counts</span>
                                 </div>
                                 @error('password_history_count')
-                                    <div class="invalid-feedback">{{ $message }}</div>
+                                    <div class="invalid-feedback d-block" id="password_history_count_error">{{ $message }}</div>
                                 @enderror
                             </div>
                             {{-- Password History toggle --}}
@@ -155,10 +155,10 @@
                                 <div class="form-check form-switch mt-4 pt-2">
                                     <input type="hidden" name="password_history_enabled" value="0">
                                     <input class="form-check-input" type="checkbox" name="password_history_enabled" id="password_history_enabled"
-                                        {{ filter_var($settings['password_history_enabled'] ?? 'true', FILTER_VALIDATE_BOOLEAN) ? 'checked' : '' }}>
+                                        @checked($settings['password_history_enabled'] ?? true)>
                                     <label for="password_history_enabled" class="form-check-label">
-                                        History Enforcement
-                                        <i class="bi bi-info-circle text-muted fs-6 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Enforces password history check on change/reset, prevents reuse of recent passwords."></i>
+                                        Enforce History Check
+                                        <i class="bi bi-info-circle text-muted fs-7 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Enforces password history check on change/reset, prevents reuse of recent passwords."></i>
                                     </label>
                                 </div>
                             </div>
@@ -171,12 +171,12 @@
                              list and PasswordPolicy's in step. --}}
                         <div class="row g-3">
                             @foreach ([
-                                'password_require_upper' => ['Uppercase', 'Requires at least one uppercase letter (A-Z).'],
-                                'password_require_lower' => ['Lowercase', 'Requires at least one lowercase letter (a-z).'],
-                                'password_require_digit' => ['Numbers', 'Requires at least one numeric digit (0-9).'],
-                                'password_require_symbol' => ['Symbols', 'Requires at least one special character (e.g. @, #, $).'],
-                                'password_reject_username' => ['Reject Username', 'Refuses a password containing the account\'s own username.'],
-                                'password_uncompromised' => ['Pwned Check', 'Rejects passwords found in public data breaches, via the HaveIBeenPwned k-anonymity range API — only the first five characters of the hash are sent. If the service is unreachable this one check is skipped.'],
+                                'password_require_upper' => ['Require Uppercase', 'Requires at least one uppercase letter (A-Z).'],
+                                'password_require_lower' => ['Require Lowercase', 'Requires at least one lowercase letter (a-z).'],
+                                'password_require_digit' => ['Require Numbers', 'Requires at least one numeric digit (0-9).'],
+                                'password_require_symbol' => ['Require Symbols', 'Requires at least one special character (e.g., @, #, $).'],
+                                'password_reject_username' => ['Reject Username Match', 'Refuses passwords that contain the account\'s username.'],
+                                'password_uncompromised' => ['Check Leaked Passwords', 'Rejects passwords found in public data breaches using the HaveIBeenPwned k-anonymity API.'],
                             ] as $key => [$label, $hint])
                                 <div class="col-md-6">
                                     <div class="form-check form-switch">
@@ -186,10 +186,10 @@
                                              needs the companion or it can only ever be enabled. --}}
                                         <input type="hidden" name="{{ $key }}" value="0">
                                         <input class="form-check-input" type="checkbox" name="{{ $key }}" id="{{ $key }}"
-                                            {{ filter_var($settings[$key] ?? 'true', FILTER_VALIDATE_BOOLEAN) ? 'checked' : '' }}>
+                                            @checked($settings[$key] ?? true)>
                                         <label for="{{ $key }}" class="form-check-label">
                                             {{ $label }}
-                                            <i class="bi bi-info-circle text-muted fs-6 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="{{ $hint }}"></i>
+                                            <i class="bi bi-info-circle text-muted fs-7 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="{{ $hint }}"></i>
                                         </label>
                                     </div>
                                 </div>
@@ -198,7 +198,7 @@
                     </div>
                 </div>
 
-                {{-- Card 4: Password Expiration & Inactivity Lock --}}
+                {{-- Card 3: Password Expiration & Inactivity Lock --}}
                 <div class="card border-0 shadow-sm mb-4" id="section-password-expiry">
                     <div class="card-header bg-transparent border-bottom py-3">
                         <h5 class="card-title mb-0 fw-semibold">Password Expiration &amp; Inactivity Lock</h5>
@@ -207,23 +207,23 @@
                         <div class="row g-3">
                             <div class="col-md-6">
                                 <label for="password_security_sweep_time" class="form-label">
-                                    Sweep Time
-                                    <i class="bi bi-info-circle text-muted fs-6 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Local time when both password security sweep jobs run."></i>
+                                    Daily Sweep Time
+                                    <i class="bi bi-info-circle text-muted fs-7 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Local time when automated password expiration and account inactivity sweep jobs run."></i>
                                 </label>
                                 <input type="time" name="password_security_sweep_time" id="password_security_sweep_time"
-                                       class="form-control form-control-sm @error('password_security_sweep_time') is-invalid @enderror"
+                                       class="form-control form-control-sm @error('password_security_sweep_time') is-invalid @enderror" @error('password_security_sweep_time') aria-invalid="true" aria-describedby="password_security_sweep_time_error" @enderror
                                        value="{{ old('password_security_sweep_time', $settings['password_security_sweep_time'] ?? '00:00') }}">
                                 @error('password_security_sweep_time')
-                                    <div class="invalid-feedback">{{ $message }}</div>
+                                    <div class="invalid-feedback d-block" id="password_security_sweep_time_error">{{ $message }}</div>
                                 @enderror
                             </div>
                             <div class="col-md-6">
                                 <label for="password_security_sweep_timezone" class="form-label">
                                     Sweep Timezone
-                                    <i class="bi bi-info-circle text-muted fs-6 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Timezone used for the sweep time. Leave on application timezone to use the server/application setting."></i>
+                                    <i class="bi bi-info-circle text-muted fs-7 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Timezone used for the sweep time. Leave on application timezone to use the server/application setting."></i>
                                 </label>
                                 <select name="password_security_sweep_timezone" id="password_security_sweep_timezone"
-                                        class="form-select form-select-sm @error('password_security_sweep_timezone') is-invalid @enderror">
+                                        class="form-select form-select-sm @error('password_security_sweep_timezone') is-invalid @enderror" @error('password_security_sweep_timezone') aria-invalid="true" aria-describedby="password_security_sweep_timezone_error" @enderror>
                                     <option value="" {{ old('password_security_sweep_timezone', $settings['password_security_sweep_timezone'] ?? '') === '' ? 'selected' : '' }}>
                                         Application timezone ({{ config('app.timezone') }})
                                     </option>
@@ -234,35 +234,35 @@
                                     @endforeach
                                 </select>
                                 @error('password_security_sweep_timezone')
-                                    <div class="invalid-feedback">{{ $message }}</div>
+                                    <div class="invalid-feedback d-block" id="password_security_sweep_timezone_error">{{ $message }}</div>
                                 @enderror
                             </div>
                         </div>
                         <div class="row g-3 mt-0">
                             <div class="col-md-6">
                                 <label for="password_expiry_days" class="form-label">
-                                    Expiry Days
-                                    <i class="bi bi-info-circle text-muted fs-6 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Number of days before a password expires (0 to disable)."></i>
+                                    Password Expiration
+                                    <i class="bi bi-info-circle text-muted fs-7 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Number of days before a password expires (0 to disable)."></i>
                                 </label>
                                 <div class="input-group">
                                     <input type="number" name="password_expiry_days" id="password_expiry_days"
-                                           class="form-control form-control-sm @error('password_expiry_days') is-invalid @enderror"
+                                           class="form-control form-control-sm @error('password_expiry_days') is-invalid @enderror" @error('password_expiry_days') aria-invalid="true" aria-describedby="password_expiry_days_error" @enderror
                                            value="{{ old('password_expiry_days', $settings['password_expiry_days'] ?? 90) }}" min="0" max="365"
-                                           {{ filter_var($settings['password_expiry_enabled'] ?? 'true', FILTER_VALIDATE_BOOLEAN) ? '' : 'disabled' }}>
+                                           {{ $settings['password_expiry_enabled'] ?? true ? '' : 'disabled' }}>
                                     <span class="input-group-text bg-body-tertiary">days</span>
                                 </div>
                                 @error('password_expiry_days')
-                                    <div class="invalid-feedback">{{ $message }}</div>
+                                    <div class="invalid-feedback d-block" id="password_expiry_days_error">{{ $message }}</div>
                                 @enderror
                             </div>
                             <div class="col-md-6">
                                 <div class="form-check form-switch mt-4 pt-2">
                                     <input type="hidden" name="password_expiry_enabled" value="0">
                                     <input class="form-check-input" type="checkbox" name="password_expiry_enabled" id="password_expiry_enabled"
-                                        {{ filter_var($settings['password_expiry_enabled'] ?? 'true', FILTER_VALIDATE_BOOLEAN) ? 'checked' : '' }}>
+                                        @checked($settings['password_expiry_enabled'] ?? true)>
                                     <label for="password_expiry_enabled" class="form-check-label">
-                                        Password Expiry
-                                        <i class="bi bi-info-circle text-muted fs-6 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Enforces password expiration after the configured number of days."></i>
+                                        Enable Password Expiration
+                                        <i class="bi bi-info-circle text-muted fs-7 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Enforces password expiration after the configured number of days."></i>
                                     </label>
                                 </div>
                             </div>
@@ -270,28 +270,28 @@
                         <div class="row g-3 mt-0">
                             <div class="col-md-6">
                                 <label for="inactivity_lock_days" class="form-label">
-                                    Inactivity Days
-                                    <i class="bi bi-info-circle text-muted fs-6 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Number of days of inactivity before account is locked."></i>
+                                    Inactivity Lock Threshold
+                                    <i class="bi bi-info-circle text-muted fs-7 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Number of days of inactivity before account is locked."></i>
                                 </label>
                                 <div class="input-group">
                                     <input type="number" name="inactivity_lock_days" id="inactivity_lock_days"
-                                           class="form-control form-control-sm @error('inactivity_lock_days') is-invalid @enderror"
+                                           class="form-control form-control-sm @error('inactivity_lock_days') is-invalid @enderror" @error('inactivity_lock_days') aria-invalid="true" aria-describedby="inactivity_lock_days_error" @enderror
                                            value="{{ old('inactivity_lock_days', $settings['inactivity_lock_days'] ?? 30) }}" min="1" max="365"
-                                           {{ filter_var($settings['inactivity_lock_enabled'] ?? 'true', FILTER_VALIDATE_BOOLEAN) ? '' : 'disabled' }}>
+                                           {{ $settings['inactivity_lock_enabled'] ?? true ? '' : 'disabled' }}>
                                     <span class="input-group-text bg-body-tertiary">days</span>
                                 </div>
                                 @error('inactivity_lock_days')
-                                    <div class="invalid-feedback">{{ $message }}</div>
+                                    <div class="invalid-feedback d-block" id="inactivity_lock_days_error">{{ $message }}</div>
                                 @enderror
                             </div>
                             <div class="col-md-6">
                                 <div class="form-check form-switch mt-4 pt-2">
                                     <input type="hidden" name="inactivity_lock_enabled" value="0">
                                     <input class="form-check-input" type="checkbox" name="inactivity_lock_enabled" id="inactivity_lock_enabled"
-                                        {{ filter_var($settings['inactivity_lock_enabled'] ?? 'true', FILTER_VALIDATE_BOOLEAN) ? 'checked' : '' }}>
+                                        @checked($settings['inactivity_lock_enabled'] ?? true)>
                                     <label for="inactivity_lock_enabled" class="form-check-label">
-                                        Inactivity Lock
-                                        <i class="bi bi-info-circle text-muted fs-6 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Locks accounts after the configured number of days of inactivity."></i>
+                                        Enable Inactivity Lock
+                                        <i class="bi bi-info-circle text-muted fs-7 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Locks accounts after the configured number of days of inactivity."></i>
                                     </label>
                                 </div>
                             </div>
@@ -299,28 +299,28 @@
                         <div class="row g-3 mt-0">
                             <div class="col-md-6">
                                 <label for="inactivity_lock_grace_days" class="form-label">
-                                    Inactivity Grace Days
-                                    <i class="bi bi-info-circle text-muted fs-6 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Additional days for never-logged-in accounts before inactivity lock."></i>
+                                    New Account Grace Period
+                                    <i class="bi bi-info-circle text-muted fs-7 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Additional days for never-logged-in accounts before inactivity lock."></i>
                                 </label>
                                 <div class="input-group">
                                     <input type="number" name="inactivity_lock_grace_days" id="inactivity_lock_grace_days"
-                                           class="form-control form-control-sm @error('inactivity_lock_grace_days') is-invalid @enderror"
+                                           class="form-control form-control-sm @error('inactivity_lock_grace_days') is-invalid @enderror" @error('inactivity_lock_grace_days') aria-invalid="true" aria-describedby="inactivity_lock_grace_days_error" @enderror
                                            value="{{ old('inactivity_lock_grace_days', $settings['inactivity_lock_grace_days'] ?? 30) }}" min="0" max="365"
-                                           {{ filter_var($settings['inactivity_lock_grace_enabled'] ?? 'true', FILTER_VALIDATE_BOOLEAN) ? '' : 'disabled' }}>
+                                           {{ $settings['inactivity_lock_grace_enabled'] ?? true ? '' : 'disabled' }}>
                                     <span class="input-group-text bg-body-tertiary">days</span>
                                 </div>
                                 @error('inactivity_lock_grace_days')
-                                    <div class="invalid-feedback">{{ $message }}</div>
+                                    <div class="invalid-feedback d-block" id="inactivity_lock_grace_days_error">{{ $message }}</div>
                                 @enderror
                             </div>
                             <div class="col-md-6">
                                 <div class="form-check form-switch mt-4 pt-2">
                                     <input type="hidden" name="inactivity_lock_grace_enabled" value="0">
                                     <input class="form-check-input" type="checkbox" name="inactivity_lock_grace_enabled" id="inactivity_lock_grace_enabled"
-                                        {{ filter_var($settings['inactivity_lock_grace_enabled'] ?? 'true', FILTER_VALIDATE_BOOLEAN) ? 'checked' : '' }} value="1">
+                                        @checked($settings['inactivity_lock_grace_enabled'] ?? true) value="1">
                                     <label for="inactivity_lock_grace_enabled" class="form-check-label">
-                                        Inactivity Grace Period
-                                        <i class="bi bi-info-circle text-muted fs-6 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Enables an extra grace period for accounts that have never logged in."></i>
+                                        Enable Grace Period for New Accounts
+                                        <i class="bi bi-info-circle text-muted fs-7 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Enables an extra grace period for accounts that have never logged in."></i>
                                     </label>
                                 </div>
                             </div>
@@ -328,23 +328,24 @@
                         <div class="row g-3 mt-0">
                             <div class="col-md-6">
                                 <label for="password_expiry_warn_days" class="form-label">
-                                    Warning Days
-                                    <i class="bi bi-info-circle text-muted fs-6 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Number of days before expiry to show warning banner."></i>
+                                    Expiry Warning Period
+                                    <i class="bi bi-info-circle text-muted fs-7 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Number of days before expiry to show warning banner."></i>
                                 </label>
                                 <div class="input-group">
                                     <input type="number" name="password_expiry_warn_days" id="password_expiry_warn_days"
-                                           class="form-control form-control-sm @error('password_expiry_warn_days') is-invalid @enderror"
-                                           value="{{ old('password_expiry_warn_days', $settings['password_expiry_warn_days'] ?? 14) }}" min="1" max="90">
+                                           class="form-control form-control-sm @error('password_expiry_warn_days') is-invalid @enderror" @error('password_expiry_warn_days') aria-invalid="true" aria-describedby="password_expiry_warn_days_error" @enderror
+                                           value="{{ old('password_expiry_warn_days', $settings['password_expiry_warn_days'] ?? 14) }}" min="1" max="90"
+                                           {{ $settings['password_expiry_enabled'] ?? true ? '' : 'disabled' }}>
                                     <span class="input-group-text bg-body-tertiary">days</span>
                                 </div>
                                 @error('password_expiry_warn_days')
-                                    <div class="invalid-feedback">{{ $message }}</div>
+                                    <div class="invalid-feedback d-block" id="password_expiry_warn_days_error">{{ $message }}</div>
                                 @enderror
                             </div>
                         </div>
                     </div>
                 </div>
-                <div class="card border-0 shadow-sm mb-4" id="section-password-reset">
+                <div class="card border-0 shadow-sm mb-4" id="section-rate-limits">
                     <div class="card-header bg-transparent border-bottom py-3">
                         <h5 class="card-title mb-0 fw-semibold">Rate Limits &amp; Expirations</h5>
                     </div>
@@ -353,76 +354,106 @@
                             <div class="col-md-6">
                                 <label for="password_forgot_rate_limit" class="form-label">
                                     Forgot Password Limit
-                                    <i class="bi bi-info-circle text-muted fs-6 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Maximum forgot password request submissions allowed per minute."></i>
+                                    <i class="bi bi-info-circle text-muted fs-7 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Maximum forgot-password requests allowed per minute for a single email and IP pair."></i>
                                 </label>
                                 <div class="input-group">
                                     <input type="number" name="password_forgot_rate_limit" id="password_forgot_rate_limit"
-                                           class="form-control form-control-sm @error('password_forgot_rate_limit') is-invalid @enderror"
+                                           class="form-control form-control-sm @error('password_forgot_rate_limit') is-invalid @enderror" @error('password_forgot_rate_limit') aria-invalid="true" aria-describedby="password_forgot_rate_limit_error" @enderror
                                            value="{{ old('password_forgot_rate_limit', $settings['password_forgot_rate_limit'] ?? 3) }}" min="1" max="30">
-                                    <span class="input-group-text bg-body-tertiary">/min</span>
+                                    <span class="input-group-text bg-body-tertiary">/ min</span>
                                 </div>
                                 @error('password_forgot_rate_limit')
-                                    <div class="invalid-feedback">{{ $message }}</div>
+                                    <div class="invalid-feedback d-block" id="password_forgot_rate_limit_error">{{ $message }}</div>
                                 @enderror
                             </div>
                             <div class="col-md-6">
                                 <label for="password_reset_rate_limit" class="form-label">
-                                    Reset Submit Limit
-                                    <i class="bi bi-info-circle text-muted fs-6 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Maximum password reset attempt executions allowed per minute."></i>
+                                    Reset Form Submit Limit
+                                    <i class="bi bi-info-circle text-muted fs-7 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Maximum password reset form submissions allowed per minute (brute-force guard)."></i>
                                 </label>
                                 <div class="input-group">
                                     <input type="number" name="password_reset_rate_limit" id="password_reset_rate_limit"
-                                           class="form-control form-control-sm @error('password_reset_rate_limit') is-invalid @enderror"
+                                           class="form-control form-control-sm @error('password_reset_rate_limit') is-invalid @enderror" @error('password_reset_rate_limit') aria-invalid="true" aria-describedby="password_reset_rate_limit_error" @enderror
                                            value="{{ old('password_reset_rate_limit', $settings['password_reset_rate_limit'] ?? 3) }}" min="1" max="30">
-                                    <span class="input-group-text bg-body-tertiary">/min</span>
+                                    <span class="input-group-text bg-body-tertiary">/ min</span>
                                 </div>
                                 @error('password_reset_rate_limit')
-                                    <div class="invalid-feedback">{{ $message }}</div>
+                                    <div class="invalid-feedback d-block" id="password_reset_rate_limit_error">{{ $message }}</div>
                                 @enderror
                             </div>
                             <div class="col-md-6">
                                 <label for="password_reset_token_expire_minutes" class="form-label">
-                                    Reset Token Expiry
-                                    <i class="bi bi-info-circle text-muted fs-6 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Lifetime duration of a password reset link before it expires."></i>
+                                    Reset Link Lifetime
+                                    <i class="bi bi-info-circle text-muted fs-7 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Duration in minutes a password reset link remains usable before expiring."></i>
                                 </label>
                                 <div class="input-group">
                                     <input type="number" name="password_reset_token_expire_minutes" id="password_reset_token_expire_minutes"
-                                           class="form-control form-control-sm @error('password_reset_token_expire_minutes') is-invalid @enderror"
+                                           class="form-control form-control-sm @error('password_reset_token_expire_minutes') is-invalid @enderror" @error('password_reset_token_expire_minutes') aria-invalid="true" aria-describedby="password_reset_token_expire_minutes_error" @enderror
                                            value="{{ old('password_reset_token_expire_minutes', $settings['password_reset_token_expire_minutes'] ?? 15) }}" min="1" max="1440">
                                     <span class="input-group-text bg-body-tertiary">min</span>
                                 </div>
                                 @error('password_reset_token_expire_minutes')
-                                    <div class="invalid-feedback">{{ $message }}</div>
+                                    <div class="invalid-feedback d-block" id="password_reset_token_expire_minutes_error">{{ $message }}</div>
+                                @enderror
+                            </div>
+                            <div class="col-md-6">
+                                <label for="password_reset_expire_minutes" class="form-label">
+                                    Reset Token Lifetime
+                                    <i class="bi bi-info-circle text-muted fs-7 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Duration in minutes the internal security token behind the reset link stays valid."></i>
+                                </label>
+                                <div class="input-group">
+                                    <input type="number" name="password_reset_expire_minutes" id="password_reset_expire_minutes"
+                                           class="form-control form-control-sm @error('password_reset_expire_minutes') is-invalid @enderror" @error('password_reset_expire_minutes') aria-invalid="true" aria-describedby="password_reset_expire_minutes_error" @enderror
+                                           value="{{ old('password_reset_expire_minutes', $settings['password_reset_expire_minutes'] ?? 15) }}" min="1" max="1440">
+                                    <span class="input-group-text bg-body-tertiary">min</span>
+                                </div>
+                                @error('password_reset_expire_minutes')
+                                    <div class="invalid-feedback d-block" id="password_reset_expire_minutes_error">{{ $message }}</div>
                                 @enderror
                             </div>
                             <div class="col-md-6">
                                 <label for="email_verification_rate_limit" class="form-label">
-                                    Verify Request Limit
-                                    <i class="bi bi-info-circle text-muted fs-6 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Maximum email verification resend requests allowed per hour."></i>
+                                    Verification Email Limit
+                                    <i class="bi bi-info-circle text-muted fs-7 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Maximum verification emails allowed per hour for sign-ups and resend requests."></i>
                                 </label>
                                 <div class="input-group">
                                     <input type="number" name="email_verification_rate_limit" id="email_verification_rate_limit"
-                                           class="form-control form-control-sm @error('email_verification_rate_limit') is-invalid @enderror"
+                                           class="form-control form-control-sm @error('email_verification_rate_limit') is-invalid @enderror" @error('email_verification_rate_limit') aria-invalid="true" aria-describedby="email_verification_rate_limit_error" @enderror
                                            value="{{ old('email_verification_rate_limit', $settings['email_verification_rate_limit'] ?? 5) }}" min="1" max="100">
-                                    <span class="input-group-text bg-body-tertiary">/hr</span>
+                                    <span class="input-group-text bg-body-tertiary">/ hr</span>
                                 </div>
                                 @error('email_verification_rate_limit')
-                                    <div class="invalid-feedback">{{ $message }}</div>
+                                    <div class="invalid-feedback d-block" id="email_verification_rate_limit_error">{{ $message }}</div>
                                 @enderror
                             </div>
                             <div class="col-md-6">
                                 <label for="email_verification_expire_minutes" class="form-label">
-                                    Verify Link Expiry
-                                    <i class="bi bi-info-circle text-muted fs-6 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Lifetime duration of an email verification link before it expires."></i>
+                                    Verification Link Lifetime
+                                    <i class="bi bi-info-circle text-muted fs-7 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Duration in minutes an email verification link remains usable before expiring."></i>
                                 </label>
                                 <div class="input-group">
                                     <input type="number" name="email_verification_expire_minutes" id="email_verification_expire_minutes"
-                                           class="form-control form-control-sm @error('email_verification_expire_minutes') is-invalid @enderror"
+                                           class="form-control form-control-sm @error('email_verification_expire_minutes') is-invalid @enderror" @error('email_verification_expire_minutes') aria-invalid="true" aria-describedby="email_verification_expire_minutes_error" @enderror
                                            value="{{ old('email_verification_expire_minutes', $settings['email_verification_expire_minutes'] ?? 60) }}" min="1" max="1440">
                                     <span class="input-group-text bg-body-tertiary">min</span>
                                 </div>
                                 @error('email_verification_expire_minutes')
-                                    <div class="invalid-feedback">{{ $message }}</div>
+                                    <div class="invalid-feedback d-block" id="email_verification_expire_minutes_error">{{ $message }}</div>
+                                @enderror
+                            </div>
+                            <div class="col-md-6">
+                                <label for="email_verification_token_expire_minutes" class="form-label">
+                                    Verification Token Lifetime
+                                    <i class="bi bi-info-circle text-muted fs-7 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Duration in minutes the internal token behind the verification link stays valid."></i>
+                                </label>
+                                <div class="input-group">
+                                    <input type="number" name="email_verification_token_expire_minutes" id="email_verification_token_expire_minutes"
+                                           class="form-control form-control-sm @error('email_verification_token_expire_minutes') is-invalid @enderror" @error('email_verification_token_expire_minutes') aria-invalid="true" aria-describedby="email_verification_token_expire_minutes_error" @enderror
+                                           value="{{ old('email_verification_token_expire_minutes', $settings['email_verification_token_expire_minutes'] ?? 60) }}" min="1" max="1440">
+                                    <span class="input-group-text bg-body-tertiary">min</span>
+                                </div>
+                                @error('email_verification_token_expire_minutes')
+                                    <div class="invalid-feedback d-block" id="email_verification_token_expire_minutes_error">{{ $message }}</div>
                                 @enderror
                             </div>
                         </div>
@@ -434,8 +465,8 @@
             {{-- Sidebar Area --}}
             <div class="col-12 col-lg-4">
 
-                {{-- Card 4: Identity & Account Policies --}}
-                <div class="card border-0 shadow-sm mb-4" id="section-change">
+                {{-- Card 5: Identity & Account Policies --}}
+                <div class="card border-0 shadow-sm mb-4" id="section-identity">
                     <div class="card-header bg-transparent border-bottom py-3">
                         <h5 class="card-title mb-0 fw-semibold">Identity &amp; Account Rules</h5>
                     </div>
@@ -443,64 +474,64 @@
                         <div class="form-check form-switch mb-3">
                             <input type="hidden" name="allow_username_change" value="0">
                             <input class="form-check-input" type="checkbox" name="allow_username_change" id="allow_username_change"
-                                {{ filter_var($settings['allow_username_change'] ?? 'true', FILTER_VALIDATE_BOOLEAN) ? 'checked' : '' }}>
+                                @checked($settings['allow_username_change'] ?? true)>
                             <label class="form-check-label" for="allow_username_change">
-                                Username Change
-                                <i class="bi bi-info-circle text-muted fs-6 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Permits users to update their usernames from their profile page."></i>
+                                Allow Username Change
+                                <i class="bi bi-info-circle text-muted fs-7 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Permits users to update their usernames from their profile page."></i>
                             </label>
                         </div>
                         <div class="mb-3">
                             <label for="username_change_cooldown_days" class="form-label">
-                                Username Cooldown
-                                <i class="bi bi-info-circle text-muted fs-6 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Cooldown period required before a user can change their username again."></i>
+                                Username Change Cooldown
+                                <i class="bi bi-info-circle text-muted fs-7 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Cooldown period required before a user can change their username again."></i>
                             </label>
                             <div class="input-group">
                                 <input type="number" name="username_change_cooldown_days" id="username_change_cooldown_days"
-                                       class="form-control form-control-sm @error('username_change_cooldown_days') is-invalid @enderror"
+                                       class="form-control form-control-sm @error('username_change_cooldown_days') is-invalid @enderror" @error('username_change_cooldown_days') aria-invalid="true" aria-describedby="username_change_cooldown_days_error" @enderror
                                        value="{{ old('username_change_cooldown_days', $settings['username_change_cooldown_days'] ?? 30) }}" min="0" max="365">
                                 <span class="input-group-text bg-body-tertiary">days</span>
                             </div>
                             @error('username_change_cooldown_days')
-                                <div class="invalid-feedback">{{ $message }}</div>
+                                <div class="invalid-feedback d-block" id="username_change_cooldown_days_error">{{ $message }}</div>
                             @enderror
                         </div>
                         <div class="form-check form-switch mb-3">
                             <input type="hidden" name="allow_email_change" value="0">
                             <input class="form-check-input" type="checkbox" name="allow_email_change" id="allow_email_change"
-                                {{ filter_var($settings['allow_email_change'] ?? 'true', FILTER_VALIDATE_BOOLEAN) ? 'checked' : '' }}>
+                                @checked($settings['allow_email_change'] ?? true)>
                             <label class="form-check-label" for="allow_email_change">
-                                Email Change
-                                <i class="bi bi-info-circle text-muted fs-6 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Permits users to update their email addresses from their profile page."></i>
+                                Allow Email Change
+                                <i class="bi bi-info-circle text-muted fs-7 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Permits users to update their email addresses from their profile page."></i>
                             </label>
                         </div>
                         <div class="mb-3">
                             <label for="email_change_cooldown_days" class="form-label">
-                                Email Cooldown
-                                <i class="bi bi-info-circle text-muted fs-6 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Cooldown period required before a user can change their email address again."></i>
+                                Email Change Cooldown
+                                <i class="bi bi-info-circle text-muted fs-7 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Cooldown period required before a user can change their email address again."></i>
                             </label>
                             <div class="input-group">
                                 <input type="number" name="email_change_cooldown_days" id="email_change_cooldown_days"
-                                       class="form-control form-control-sm @error('email_change_cooldown_days') is-invalid @enderror"
+                                       class="form-control form-control-sm @error('email_change_cooldown_days') is-invalid @enderror" @error('email_change_cooldown_days') aria-invalid="true" aria-describedby="email_change_cooldown_days_error" @enderror
                                        value="{{ old('email_change_cooldown_days', $settings['email_change_cooldown_days'] ?? 30) }}" min="0" max="365">
                                 <span class="input-group-text bg-body-tertiary">days</span>
                             </div>
                             @error('email_change_cooldown_days')
-                                <div class="invalid-feedback">{{ $message }}</div>
+                                <div class="invalid-feedback d-block" id="email_change_cooldown_days_error">{{ $message }}</div>
                             @enderror
                         </div>
                         <div class="mb-3">
                             <label for="email_verification_mode" class="form-label">
-                                Verification Mode
-                                <i class="bi bi-info-circle text-muted fs-6 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Determines the email verification strategy (Public, Admin, or Disabled)."></i>
+                                Email Verification Mode
+                                <i class="bi bi-info-circle text-muted fs-7 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Determines email verification strategy: Public (user self-verify), Admin-only, or Disabled."></i>
                             </label>
                             <select name="email_verification_mode" id="email_verification_mode"
-                                    class="form-select form-select-sm @error('email_verification_mode') is-invalid @enderror">
+                                    class="form-select form-select-sm @error('email_verification_mode') is-invalid @enderror" @error('email_verification_mode') aria-invalid="true" aria-describedby="email_verification_mode_error" @enderror>
                                 <option value="public" {{ ($settings['email_verification_mode'] ?? 'public') === 'public' ? 'selected' : '' }}>Public</option>
                                 <option value="admin" {{ ($settings['email_verification_mode'] ?? 'public') === 'admin' ? 'selected' : '' }}>Admin-only</option>
                                 <option value="disabled" {{ ($settings['email_verification_mode'] ?? 'public') === 'disabled' ? 'selected' : '' }}>Disabled</option>
                             </select>
                             @error('email_verification_mode')
-                                <div class="invalid-feedback">{{ $message }}</div>
+                                <div class="invalid-feedback d-block" id="email_verification_mode_error">{{ $message }}</div>
                             @enderror
                         </div>
 
@@ -510,47 +541,47 @@
                         <div class="form-check form-switch mb-3">
                             <input type="hidden" name="registration_enabled" value="0">
                             <input class="form-check-input" type="checkbox" name="registration_enabled" id="registration_enabled"
-                                {{ filter_var($settings['registration_enabled'] ?? 'false', FILTER_VALIDATE_BOOLEAN) ? 'checked' : '' }}>
+                                @checked($settings['registration_enabled'] ?? false)>
                             <label class="form-check-label" for="registration_enabled">
                                 Allow Self-Registration
-                                <i class="bi bi-info-circle text-muted fs-6 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Publishes a public sign-up form. New accounts still have to verify their email before they can log in."></i>
+                                <i class="bi bi-info-circle text-muted fs-7 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Publishes a public sign-up form. New accounts still have to verify their email before they can log in."></i>
                             </label>
                         </div>
                         <div class="mb-3">
                             <label for="registration_default_role" class="form-label">
-                                Default Role
-                                <i class="bi bi-info-circle text-muted fs-6 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Role assigned to accounts that sign up on their own. An admin can change it later."></i>
+                                Default Registration Role
+                                <i class="bi bi-info-circle text-muted fs-7 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Role automatically assigned to new self-registered accounts."></i>
                             </label>
                             <select name="registration_default_role" id="registration_default_role"
-                                    class="form-select form-select-sm @error('registration_default_role') is-invalid @enderror">
+                                    class="form-select form-select-sm @error('registration_default_role') is-invalid @enderror" @error('registration_default_role') aria-invalid="true" aria-describedby="registration_default_role_error" @enderror>
                                 <option value="">No role</option>
                                 @foreach ($roles as $roleName)
                                     <option value="{{ $roleName }}" {{ ($settings['registration_default_role'] ?? 'user') === $roleName ? 'selected' : '' }}>{{ $roleName }}</option>
                                 @endforeach
                             </select>
                             @error('registration_default_role')
-                                <div class="invalid-feedback">{{ $message }}</div>
+                                <div class="invalid-feedback d-block" id="registration_default_role_error">{{ $message }}</div>
                             @enderror
                         </div>
                         <div class="mb-3">
                             <label for="registration_rate_limit_per_minute" class="form-label">
                                 Registration Rate Limit
-                                <i class="bi bi-info-circle text-muted fs-6 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Sign-up attempts allowed per minute per IP. Keeps the form from being used to probe which email addresses are registered."></i>
+                                <i class="bi bi-info-circle text-muted fs-7 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Sign-up attempts allowed per minute per IP. Keeps the form from being used to probe which email addresses are registered."></i>
                             </label>
                             <div class="input-group">
                                 <input type="number" name="registration_rate_limit_per_minute" id="registration_rate_limit_per_minute"
-                                       class="form-control form-control-sm @error('registration_rate_limit_per_minute') is-invalid @enderror"
+                                       class="form-control form-control-sm @error('registration_rate_limit_per_minute') is-invalid @enderror" @error('registration_rate_limit_per_minute') aria-invalid="true" aria-describedby="registration_rate_limit_per_minute_error" @enderror
                                        value="{{ old('registration_rate_limit_per_minute', $settings['registration_rate_limit_per_minute'] ?? 3) }}" min="1" max="30">
                                 <span class="input-group-text bg-body-tertiary">/ min</span>
                             </div>
                             @error('registration_rate_limit_per_minute')
-                                <div class="invalid-feedback">{{ $message }}</div>
+                                <div class="invalid-feedback d-block" id="registration_rate_limit_per_minute_error">{{ $message }}</div>
                             @enderror
                         </div>
                     </div>
                 </div>
 
-                {{-- Card 5: Sticky Save Actions Card --}}
+                {{-- Card 6: Sticky Save Actions Card --}}
                 <div class="card border-0 shadow-sm mb-4 sticky-top" style="top: 80px;">
                     <div class="card-header bg-transparent border-bottom py-3">
                         <h5 class="card-title mb-0 fw-semibold">Save Settings</h5>
@@ -617,6 +648,7 @@
             const dependentFields = [
                 ['password_history_enabled', 'password_history_count'],
                 ['password_expiry_enabled', 'password_expiry_days'],
+                ['password_expiry_enabled', 'password_expiry_warn_days'],
                 ['inactivity_lock_enabled', 'inactivity_lock_days'],
                 ['inactivity_lock_grace_enabled', 'inactivity_lock_grace_days'],
             ];
