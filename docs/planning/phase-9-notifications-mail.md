@@ -148,7 +148,7 @@ both required:
    transport rather than `.env`. Wrapped in the same `try/catch (Throwable)` as
    `bindTokenExpirations()`: boot runs during `migrate` and `config:cache`, before
    the settings table necessarily exists.
-2. **After commit** in `MailSettingUpdateAction` — so the admin who saved sees it
+2. **After commit** in `NotificationMailSettingUpdateAction` — so the admin who saved sees it
    enforced in the same request. Never inside the transaction: binding config
    from values a rollback discards leaves the process enforcing what the database
    never accepted. That trap is exactly what `bindTokenExpirations()` documents.
@@ -231,7 +231,7 @@ is meant to serve.
 | `UpdateMailSettingsRequest` under `Requests\V1\Notification\` | **Keep.** Matches `Requests\V1\System\` for the settings module; namespace follows the module, not the resource. |
 | Event `mail_settings.updated` | **Keep.** Singular-to-plural: Phase 8 established `system_setting.updated` (singular matches the subject type). Here the subject is a settings row, so **`mail_setting.updated`**. |
 | `EnsureFeatureIsEnabled:notifications` (D2) | **The middleware is `feature:notifications`** — Pennant ships the alias. `EnsureFeatureIsEnabled` is what `routes/web.php` uses for flags; do not invent a new class. |
-| `TestMailSendAction` | **Keep**, but the transport check is `Mail::mailer()->getSymfonyTransport()` — Laravel already owns it. No custom SMTP handshake. |
+| `NotificationTestMailSendAction` | **Keep**, but the transport check is `Mail::mailer()->getSymfonyTransport()` — Laravel already owns it. No custom SMTP handshake. |
 
 ---
 
@@ -292,7 +292,7 @@ row.
 
 ---
 
-## Group B — Mail Configuration & Sending — **PLANNED (unblocked)**
+## Group B — Mail Configuration & Sending — **DONE**
 
 > Dependency: Group A complete. Storage and password are now **decided**
 > (D-1), so nothing blocks this group. `SystemSetting` + `encrypt()` only — no
@@ -300,13 +300,49 @@ row.
 
 | ID | Task | Notes |
 |---|---|---|
-| **P9-B1** | `UpdateMailSettingsRequest` extends `BaseFormRequest`; `authorize()` → `notifications.manage`. Rules: host, port (int 1–65535), encryption `in:` per the scheme divergence, username, password (nullable — empty means keep the stored one), from address + name. | `Rule::in` over encryption, not a free string. **Resolve the `none`-vs-`null` scheme question here** (D-1 divergence 1) — the stored value must be one `config/mail.php` actually reads. |
-| **P9-B2** | `MailSettingUpdateAction` — `DB::transaction`, `SystemSetting::set()` per key, password through `encrypt()`, audit **inside** the transaction, then `AppServiceProvider::bindMailConfig()` **after** commit. | After-commit, not inside: binding config from values a rollback discards leaves the process enforcing what the database never accepted — the trap `bindTokenExpirations()` documents. Cache bust is **free** — `set()` already does `afterCommit(bustCache)`; do not add a second call. |
-| **P9-B3** | `TestMailSendAction` — send to a validated address via the configured transport, catch transport failure, return a user-facing error + `Log::error`. | Never let an SMTP exception 500 the page. Laravel owns the transport: `Mail::mailer()->getSymfonyTransport()`, no custom SMTP handshake. |
-| **P9-B4** | `Web\V1\NotificationController` (`index`/`update`/`sendTestMail`) + `Api\V1` twin sharing the actions. | API `PUT`, not `POST` — matches `api.v1.settings.update`. |
-| **P9-B5** | Swap the stub URLs for `route()` calls in the controller; add `->can('notifications.manage')` on the write routes and `->can('notifications.send_test')` on the test route. | The views need **no** change — `$updateUrl` / `$sendTestUrl` are already the seam Group A left. This is what stops the form POSTing to a 404. |
-| **P9-B6** | `bindMailConfig()` in `AppServiceProvider::boot()` + the 7 `SystemSettingSeeder` keys. | Wrapped in `try/catch (Throwable)` exactly like `bindTokenExpirations()` — boot runs during `migrate` and `config:cache`, before the table exists. Seeder keys go in the existing seeder; one seeder, one source of truth. |
-| **P9-B7** | Seed the channel-switch keys from the admin's global decision (no per-user preference table). | Same seeder, same store as the SMTP keys. |
+| **P9-B1** | **DONE** — `UpdateMailSettingsRequest` extends `BaseFormRequest`; `authorize()` → `notifications.manage`. Rules: mailer `Rule::in(array_keys(config('mail.mailers')))`, host, port (int 1–65535), encryption `Rule::in(['smtp','tls','ssl','none'])`, username, password (nullable), from address (`email:rfc`) + name. | `Rule::in` over encryption, not a free string. **The `none`-vs-`null` question is resolved**: `none` is accepted by the form and stored as the empty value, which `bindMailConfig()` binds as `null`. `none` is not a transport scheme, so storing the literal string would be a row nothing reads (D-1 divergence 1). |
+| **P9-B2** | **DONE** — `NotificationMailSettingUpdateAction`: `DB::transaction`, `SystemSetting::set()` per key, `encrypt()` on the password, audit **inside** the transaction, then `bindMailConfig()` **after** commit. Supports `$partial` for the API (absent key = unchanged) and non-partial for the web form. | After-commit, not inside: binding config from values a rollback discards leaves the process enforcing what the database never accepted — the trap `bindTokenExpirations()` documents. Cache bust is **free** — `set()` already does `afterCommit(bustCache)`; no second call. The password is written **only when a new one was submitted**: the field renders blank, so an empty submit must not overwrite a working credential. |
+| **P9-B3** | **DONE** — `NotificationTestMailSendAction`: `Mail::raw()` through the configured transport, catches every transport failure, returns `{ok, message}`, logs the exception with the host and mailer, audits `test_mail.sent` on success and `test_mail.failed` on failure. | Never let an SMTP exception 500 the page. `Mail::raw`, not a Notification: there is no notification class for "is the transport working", and the probe must not depend on the delivery system it tests. The failure message carries no host, username or server banner — the operator gets the log, the page gets the actionable half. |
+| **P9-B4** | **DONE** — `Web\V1\NotificationController` (`index`/`channels`/`update`/`updateChannels`/`sendTestMail`) + `Api\V1\NotificationController` sharing every action. API returns booleans for the channel switches, `has_password` instead of the credential, and 502 on a transport failure (the request was understood; the mail server is what failed). | API `PUT`, not `POST` — matches `api.v1.settings.update`. |
+| **P9-B5** | **DONE** — the controller builds `$updateUrl` / `$sendTestUrl` / the channels URL from `route()`. Write routes carry `->can('notifications.manage')`; the test route carries `->can('notifications.send_test')`. | The views needed **no** change — the URLs were already the seam Group A left. This is what stops the form POSTing to a 404. |
+| **P9-B6** | **DONE, with a correction** — `bindMailConfig()` is called from the ACTION after commit, **not** from `boot()`, matching `bindTokenExpirations()`'s own reasoning: boot runs before the settings table exists and the query failure would take the boot down. 8 `SystemSettingSeeder` keys added. | See "Group B correction" below — the typed-getter call with a null default bound nothing at all. |
+| **P9-B7** | **DONE** — 3 `notification_channel_*` keys seeded, plus `NotificationChannelUpdateAction` and `UpdateNotificationChannelsRequest`. `in_app` is seeded **off** until Group C ships the badge that gives it a meaning. | Same seeder, same store as the SMTP keys. A switch that reports success and controls nothing is the same category error as a `pending` feature flag. |
+
+### Group B correction — a null default bound nothing at all
+
+Found while writing the Group B tests, and it would have shipped as "the feature
+does not work on most installs".
+
+`bindMailConfig()` reads each setting with the runtime config as its fallback:
+
+```php
+// BROKEN — this is what was written first
+'username' => SystemSetting::getString('mail_username', config('mail.mailers.smtp.username')),
+```
+
+`config('mail.mailers.smtp.username')` is **`null`** whenever `MAIL_USERNAME` is
+unset — which is most installs, and every install using a relay that needs no
+authentication. `SystemSetting::getString(string $key, string $default)` rejects a
+null default with a `TypeError`. The exception landed in `bindMailConfig()`'s
+`catch (Throwable)`, so **not one key was bound**: an admin saved a host, the save
+returned 200, the row was written, and the transport kept using the `.env`
+values. The catch hid it completely.
+
+Fixed by casting every fallback before it reaches a typed getter, and by making
+the catch log instead of swallowing — `bindTokenExpirations()` may swallow because
+its failure means "no table yet", which is expected during `migrate`; this one
+would be a real bug, so it has to be visible.
+
+The regression is asserted by
+`NotificationSettingsTest::an_install_without_a_configured_username_still_binds`,
+with the null-default form reintroduced to confirm the test goes red.
+
+**The general lesson, recorded because it is not specific to mail:** a `catch`
+that swallows a `TypeError` around a loop of writes is not a safety net, it is a
+way of losing all of them at once. Where a partial failure is acceptable, each
+step catches for itself.
+
+---
 
 **ponytail:** the read path is `SystemSetting::getString($key, config('fallback'))`
 in one helper. The whole rebinding is ~20 lines of `config()->set()` in a method

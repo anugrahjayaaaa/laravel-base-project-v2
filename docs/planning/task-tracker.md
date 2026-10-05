@@ -245,13 +245,13 @@ genuinely open and are the real D1/D2 work.
 | P9-A3 | `NotificationUiRenderTest` (19 tests / 119 assertions) — zero queries from inside the views, forbidden classes, `filter_var` ban, sibling-page link + card-header action styling on both permission branches | 9 | P0 | P9-A1..A2 | DONE |
 | P9-A4 | `NotificationController` stub (`index`/`channels`) + `notifications.index` / `notifications.channels` routes | 9 | P0 | P9-A1 | DONE |
 | P9-A5 | Group A audit — mutation-verified guards, `p-4` revert, narrowing `send_test` gate; re-audited 2026-10-05 after D1/D2/D4, one gap closed (no sibling link on the mail page) | 9 | P0 | P9-A1..A4 | DONE |
-| P9-B1 | `UpdateMailSettingsRequest` — authorize `notifications.manage`, port 1–65535, `Rule::in` encryption; **resolve `none`-vs-`null` scheme** (`config/mail.php` has `scheme`, not `encryption`) | 9 | P0 | P9-A4 | PLANNED |
-| P9-B2 | `MailSettingUpdateAction` — `SystemSetting::set()` per key inside a transaction, `encrypt()` on `mail_password`, audit inside, rebind `config('mail')` AFTER commit (cache bust is free via `set()`) | 9 | P0 | P9-B1 | PLANNED |
-| P9-B3 | `TestMailSendAction` — never let an SMTP exception 500 the page | 9 | P0 | P9-B1 | PLANNED |
-| P9-B4 | `NotificationController` `update`/`sendTestMail` + `Api\V1` twin | 9 | P0 | P9-B2, B3 | PLANNED |
-| P9-B5 | Swap stub URLs for `route()` in the controller + `->can('notifications.manage')` / `->can('notifications.send_test')` on write routes (stops the form POSTing to a 404) | 9 | P0 | P9-B4 | PLANNED |
-| P9-B6 | `AppServiceProvider::bindMailConfig()` at boot (try/catch like `bindTokenExpirations`) + 7 `SystemSettingSeeder` keys | 9 | P0 | P9-B1 | PLANNED |
-| P9-B7 | Seed the global channel-switch keys — admin-owned, **no per-user preference table** (D-1, decision 1) | 9 | P0 | P9-B6 | PLANNED |
+| P9-B1 | `UpdateMailSettingsRequest` — authorize `notifications.manage`, port 1–65535, mailer `Rule::in(config('mail.mailers'))`, encryption `Rule::in(smtp/tls/ssl/none)`; `none` stored as the empty value | 9 | P0 | P9-A4 | DONE |
+| P9-B2 | `NotificationMailSettingUpdateAction` — transaction, `encrypt()` on the password (written only when a new one was submitted), audit inside, rebind AFTER commit; `$partial` for API | 9 | P0 | P9-B1 | DONE |
+| P9-B3 | `NotificationTestMailSendAction` — `Mail::raw` probe; every transport failure becomes a message + `Log::error` + `test_mail.failed`, never a 500 | 9 | P0 | P9-B1 | DONE |
+| P9-B4 | `Web\V1` + `Api\V1` NotificationController sharing every action; API returns booleans + `has_password`, 502 on transport failure | 9 | P0 | P9-B2, B3 | DONE |
+| P9-B5 | `route()` URLs in the controller + `->can('notifications.manage')` / `->can('notifications.send_test')` on the write routes | 9 | P0 | P9-B4 | DONE |
+| P9-B6 | `AppServiceProvider::bindMailConfig()` — **called from the action after commit, NOT boot** (boot runs before the table exists) + 8 seeder keys | 9 | P0 | P9-B1 | DONE |
+| P9-B7 | `NotificationChannelUpdateAction` + `UpdateNotificationChannelsRequest` + 3 `notification_channel_*` keys — admin-owned, no per-user table | 9 | P0 | P9-B6 | DONE |
 | P9-C1 | `notifications` migration (Laravel native schema) + write action for the channels form | 9 | P0 | P9-B7 | PLANNED |
 | P9-C2 | In-app engine + unread badge + preview dropdown; bell target moves to `/notifications/inbox` and its permission check is DROPPED in the same change (D-2) | 9 | P0 | P9-C1 | PLANNED |
 | P9-C3 | **Target Audience Rule** — admin notifications → holders of `roles.manage`/`users.manage`/`settings.manage`; users get ONLY personal transactional/security alerts (D-3) | 9 | P0 | P9-C1 | PLANNED |
@@ -260,12 +260,12 @@ genuinely open and are the real D1/D2 work.
 | P9-C6 | Route the `database` channel: `via()` becomes `['database','mail']` on the 3 existing notification classes | 9 | P0 | P9-C1 | PLANNED |
 | P9-D1 | `notifications.view`/`.manage`/`.send_test` in `PermissionCatalog` + `can()` on both web routes, same commit | 9 | P0 | — | DONE |
 | P9-D2 | `feature:notifications` — pennant flag + routes + composer. **403, not 404** | 9 | P0 | P9-D1 | DONE |
-| P9-D3 | Action-first audit `mail_setting.updated` + `test_mail.sent`, inside the action and the transaction | 9 | P0 | P9-B2, B3 | PLANNED |
+| P9-D3 | Action-first audit `mail_setting.updated` + `test_mail.sent` / `test_mail.failed` + `notification_channels.updated`, inside the action and the transaction | 9 | P0 | P9-B2, B3 | DONE |
 | P9-D4 | Header bell is a real `<a>` with the same two gates as the sidebar entry — `NotificationAccessTest` (14 tests) | 9 | P0 | P9-D1, D2 | DONE |
 | P9-D5 | `feature:notifications` on `/notifications/inbox` — flag only, **no** permission (D-2) | 9 | P0 | P9-C5 | PLANNED |
 | P9-D6 | Swap `NotificationUiRenderTest`'s `Gate::before` fixture for real seeded roles + precondition assertion (owed from D1) | 9 | P1 | P9-D1 | PLANNED |
-| P9-E1 | `NotificationSettingsTest` — SMTP update round-trip, test-mail, RBAC 403 per permission, flag 403, audit row | 9 | P0 | P9-D3 | PLANNED |
-| P9-E2 | `mail_password` encrypted at rest — assert the DB row holds no plaintext and the read path returns the original | 9 | P0 | P9-B2 | PLANNED |
+| P9-E1 | `NotificationSettingsTest` (19 tests) — SMTP round-trip into config, encryption at rest, RBAC 403, flag 403, audit rows, validation bounds | 9 | P0 | P9-D3 | DONE |
+| P9-E2 | `mail_password` encrypted at rest — DB row holds no plaintext, decrypts back, transport receives the usable value | 9 | P0 | P9-B2 | DONE |
 | P9-E3 | Inbox isolation — A cannot mark B's notification read or reach another's by id | 9 | P0 | P9-C5 | PLANNED |
 | P9-E4 | Target Audience Rule — an ordinary user receives nothing from an administrative dispatch | 9 | P0 | P9-C3 | PLANNED |
 | P9-E5 | Bell target — href is `/notifications/inbox`, renders for a plain user with no `notifications.*` permission | 9 | P0 | P9-C2 | PLANNED |
