@@ -438,9 +438,122 @@ class NotificationUiRenderTest extends TestCase
      * not a 403: the editable form is wrapped in `@can('notifications.manage')`
      * so a viewer never sees an input that silently discards what they type.
      *
-     * The read-only branch REPLACES the controls rather than disabling them — a
-     * disabled input still looks editable and still invites typing.
+    /**
+     * The two pages link to each other in the MARKUP, not merely through the
+     * sidebar. `the_two_pages_link_to_each_other` already proves the routes are
+     * reachable; this proves the pages carry the link, because a module whose
+     * second page is only reachable from the sidebar gives a read-only viewer
+     * the fewest possible ways to find it.
+     *
+     * Both permission branches: the link sits in the editable card header AND
+     * the read-only one. Asserting only the editable branch would pass on a page
+     * that dropped it precisely for the viewer with least navigation.
      */
+    #[Test]
+    public function the_mail_page_links_to_the_channels_page_in_both_branches(): void
+    {
+        $this->login();
+        $this->grantAll();
+
+        $href = 'href="'.route('notifications.channels').'"';
+        $this->assertSame(2, substr_count($this->renderIndex(), $href), 'precondition: both branches carry the link');
+
+        // And the read-only branch keeps its own badge — the sibling link is
+        // added beside it, not instead of it.
+        $this->grantViewOnly();
+        $html = $this->renderIndex();
+
+        $this->assertStringContainsString($href, $html, 'a read-only viewer loses the channels link');
+        $this->assertStringContainsString('Read-only', $html, 'the read-only badge was displaced by the sibling link');
+    }
+
+    /**
+     * The sibling link is a card-header ACTION, so it wears the design system's
+     * action styling (design-system.md §Index Page) rather than a variant invented
+     * here: `btn-primary` plus the inline-flex/gap sizing every other module's
+     * header action uses.
+     *
+     * `ms-auto` is load-bearing on the read-only branch, where the badge shares
+     * the row: without it justify-content-between spreads three elements and the
+     * button lands in the middle instead of at the right edge. Asserted because
+     * "looks roughly right" is exactly what this class of fix regresses from.
+     *
+     * Found by href AND `btn`, not by first match: the sidebar renders a link to
+     * the same route, so a positional read returns `class="nav-link"` and reports
+     * a styling regression that never happened.
+     */
+    #[Test]
+    public function the_channels_link_is_a_right_aligned_primary_action(): void
+    {
+        $this->login();
+
+        $this->grantAll();
+        $editable = $this->renderIndex();
+
+        $this->grantViewOnly();
+        $readOnly = $this->renderIndex();
+
+        // Asserted class-by-class, not as one literal string. Class order in the
+        // markup is not a contract and a test that pins it fails on a reformat
+        // rather than on a regression.
+        $required = ['btn', 'btn-primary', 'btn-sm', 'd-inline-flex', 'align-items-center', 'gap-2'];
+
+        foreach (['editable' => $editable, 'read-only' => $readOnly] as $branch => $html) {
+            $classes = $this->channelsButtonClasses($html);
+
+            $this->assertNotSame([], $classes, "the {$branch} branch has no Channels button");
+
+            foreach ($required as $class) {
+                $this->assertContains($class, $classes, "the {$branch} channels link lost [{$class}]");
+            }
+        }
+
+        // Right-pinning. On the editable branch it is on the button itself; on the
+        // read-only one the badge shares the row, so it sits on the WRAPPER —
+        // pushing the button alone would strand the badge mid-card.
+        $this->assertContains('ms-auto', $this->channelsButtonClasses($editable));
+        $this->assertMatchesRegularExpression(
+            '/<div class="d-flex align-items-center gap-2 ms-auto">.*?Read-only.*?'
+                .'<a[^>]*\/notifications\/channels/s',
+            $readOnly,
+            'the read-only row is not pinned right, or the badge lost its place'
+        );
+
+        // `btn-outline-secondary` is what this replaced; it must not survive on
+        // either branch, or one of them kept the old treatment.
+        $this->assertStringNotContainsString('btn-outline-secondary', $editable);
+        $this->assertStringNotContainsString('btn-outline-secondary', $readOnly);
+    }
+
+    /**
+     * The classes of the Channels button in rendered markup, as a flat list.
+     *
+     * Found by href + label rather than by position: the sidebar renders its own
+     * link to the same route, and a positional read picks that one up instead.
+     *
+     * @return array<int, string>
+     */
+    private function channelsButtonClasses(string $html): array
+    {
+        // Every anchor to this route, then the one that is a BUTTON. The sidebar
+        // renders its own link to the same route with `class="nav-link"`, and
+        // matching the first anchor picks that up — the failure looks like a
+        // styling regression when nothing regressed.
+        preg_match_all(
+            '/<a[^>]*href="[^"]*\/notifications\/channels"[^>]*>/s',
+            $html,
+            $tags
+        );
+
+        foreach ($tags[0] as $tag) {
+            if (preg_match('/class="([^"]*)"/', $tag, $m)
+                && in_array('btn', explode(' ', $m[1]), true)) {
+                return preg_split('/\s+/', trim($m[1])) ?: [];
+            }
+        }
+
+        return [];
+    }
     #[Test]
     public function a_viewer_without_manage_gets_a_read_only_mail_page(): void
     {
