@@ -49,6 +49,11 @@ return [
             'group' => 'Settings',
             'description' => 'Login security, password policy and rate limits.',
         ],
+        'notifications' => [
+            'label' => 'Notifications & Mail',
+            'group' => 'Settings',
+            'description' => 'Mail transport configuration and the in-app notification inbox.',
+        ],
         'translations' => [
             'label' => 'Translations',
             'group' => 'Settings',

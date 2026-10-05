@@ -215,13 +215,20 @@ Route::middleware(['auth:web,sanctum', 'verified', 'password.change.required', '
     // Read routes for the two pages, and nothing that writes. Group B adds the
     // update/send-test endpoints and Group C the channel preference write.
     //
-    // Gated on `can:notifications.view`, the permission P9-D1 seeds in the same
-    // change: a `can:` against a permission nothing holds is a 403 on every page,
-    // so the gate ships with what it guards. `feature:notifications` follows in
-    // P9-D2 with the flag itself.
+    // The gate lands WITH the permission and flag it checks, in the same change:
+    // a `can:` against a permission nothing holds is a 403 on every page, and a
+    // `feature:` against an undeclared slug is dead middleware. Both are now
+    // real — `notifications.view` is in PermissionCatalog, `notifications` in
+    // config/pennant.php — so the pages are gated properly.
+    //
+    // `password.change.required` sits ABOVE in the stack: a user with an expired
+    // password cannot open the mail configuration even holding the permission,
+    // which is the intended order (fix your credential before it is used).
     // -----------------------------------------------------------------------
-    Route::controller(NotificationController::class)->group(function () {
-        Route::get('/notifications', 'index')->name('notifications.index')->can('notifications.view');
-        Route::get('/notifications/channels', 'channels')->name('notifications.channels')->can('notifications.view');
+    Route::middleware('feature:notifications')->group(function () {
+        Route::controller(NotificationController::class)->group(function () {
+            Route::get('/notifications', 'index')->name('notifications.index')->can('notifications.view');
+            Route::get('/notifications/channels', 'channels')->name('notifications.channels')->can('notifications.view');
+        });
     });
 });
