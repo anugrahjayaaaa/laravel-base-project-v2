@@ -18,10 +18,16 @@
 
     <!-- RIGHT: Notification + Theme + User -->
     <div class="navbar-nav ms-auto d-flex flex-row align-items-center">
-      <!-- Notification -->
-      <button type="button" class="nav-link text-secondary" title="Notifications">
-        <i class="far fa-bell"></i>
-      </button>
+      <!-- Notification: a real link, gated by the same flag as the sidebar item, so
+           a switched-off module leaves no icon pointing at a 403. The unread
+           badge and the inbox target land with P9-C2; until then it points at
+           the module root, which is the configuration page. -->
+      @if ($notificationsVisible ?? false)
+        <a href="{{ Route::has('notifications.index') ? route('notifications.index') : '#' }}"
+           class="nav-link text-secondary" title="Notifications">
+          <i class="far fa-bell"></i>
+        </a>
+      @endif
 
       @include('layouts.partials.scripts.theme-toggle')
 

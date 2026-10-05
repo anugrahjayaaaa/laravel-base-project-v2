@@ -56,6 +56,25 @@ class AppServiceProvider extends ServiceProvider
         // sidebar first: 1 feature-store read per page; header first: 2.
         view()->composer('layouts.partials.header', function (View $view): void {
             $view->with('sessionsVisible', FeatureCatalog::isActive('sessions'));
+
+            // The bell points at the notifications module, so it carries the SAME two gates
+            // the sidebar item does. Permission included: until P9-C2 replaces this
+            // target with the inbox, the destination is `notifications.index`,
+            // which a plain user is refused by — and a bell that 403s on click is
+            // worse than the dead button it replaced.
+            //
+            // Read from the same catalog and the same Gate as the sidebar, so
+            // header and sidebar cannot disagree about whether the module is
+            // reachable for this viewer.
+            //
+            // P9-C2 moves the target to the inbox, which is the viewer's OWN rows
+            // and needs no permission — the bell then drops this check and keeps
+            // only the flag.
+            $view->with(
+                'notificationsVisible',
+                FeatureCatalog::isActive('notifications')
+                && (auth()->user()?->can('notifications.view') ?? false)
+            );
         });
         view()->composer('layouts.partials.password-strength', PasswordStrengthComposer::class);
 
