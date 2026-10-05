@@ -71,5 +71,40 @@ class SystemSettingSeeder extends Seeder
         SystemSetting::set('registration_enabled', 'false');
         SystemSetting::set('registration_default_role', 'user');
         SystemSetting::set('registration_rate_limit_per_minute', '3');
+
+        // Mail transport — Phase 9 Group B.
+        //
+        // Seeded from the .env values this app already boots with, so an install
+        // that never opens the notifications page keeps working exactly as
+        // before: `bindMailConfig()` reads each of these with the config value as
+        // its fallback, and these rows simply make the same answer explicit.
+        //
+        // `mail_password` is the exception and stays EMPTY here. Seeding it from
+        // the .env would write a credential into the settings table on every
+        // install, and the first `db:seed` on a developer's machine would copy a
+        // live password into a row anyone holding `notifications.view` can read.
+        // An empty value means "keep using the .env credential".
+        SystemSetting::set('mail_mailer', config('mail.default', 'log'));
+        SystemSetting::set('mail_host', (string) config('mail.mailers.smtp.host', '127.0.0.1'));
+        SystemSetting::set('mail_port', (string) config('mail.mailers.smtp.port', 2525));
+        SystemSetting::set('mail_username', (string) config('mail.mailers.smtp.username', ''));
+        SystemSetting::set('mail_password', '');
+        SystemSetting::set('mail_encryption', (string) (config('mail.mailers.smtp.scheme') ?: ''));
+        SystemSetting::set('mail_from_address', (string) config('mail.from.address', ''));
+        SystemSetting::set('mail_from_name', (string) config('mail.from.name', ''));
+
+        // Notification delivery channels — Phase 9 Group B (P9-B7).
+        //
+        // Global and admin-owned, not per user. Notification delivery is
+        // per-recipient by definition (a registration event reaches admins, a
+        // password expiry reaches one account), so a per-user preference screen
+        // would describe a choice nobody needs to make.
+        //
+        // `in_app` is off until Group C ships the badge that gives it a meaning —
+        // a switch that reports success and controls nothing is the same category
+        // error as a `pending` feature flag.
+        SystemSetting::set('notification_channel_in_app', 'false');
+        SystemSetting::set('notification_channel_mail', 'true');
+        SystemSetting::set('notification_channel_database', 'false');
     }
 }
