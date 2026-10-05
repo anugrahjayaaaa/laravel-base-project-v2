@@ -195,6 +195,33 @@ class AppMenuComposer
                         'permission' => 'settings.view',
                         'feature' => 'settings',
                     ],
+                    [
+                        'label' => 'Notifications',
+                        'icon' => 'far fa-bell',
+                        'route' => 'notifications.index',
+                        'active' => 'notifications.index',
+                        // Its own permission, not a subset of settings.*: the
+                        // transport is an abuse surface of its own, and gating
+                        // it behind settings.view would hand every settings
+                        // reader the SMTP configuration too.
+                        'permission' => 'notifications.view',
+                        'feature' => 'notifications',
+                    ],
+                    [
+                        // A second flat entry rather than a treeview child: the
+                        // sidebar partial renders flat <li> items only, and
+                        // nesting one item under another is a markup change to
+                        // the shared layout for a single sub-page. The module
+                        // gains real nesting when it has more than one child.
+                        'label' => 'Notification Channels',
+                        'icon' => 'fas fa-tower-broadcast',
+                        'route' => 'notifications.channels',
+                        // Exact, not `notifications.*`: the parent's pattern
+                        // would light up BOTH entries on either page.
+                        'active' => 'notifications.channels',
+                        'permission' => 'notifications.view',
+                        'feature' => 'notifications',
+                    ],
                     // Reachable by every authenticated user, like Dashboard.
                     [
                         'label' => 'Sessions',
