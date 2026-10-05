@@ -73,8 +73,25 @@ class DashboardTest extends TestCase
         $this->assertStringContainsString('fa-search', $header);
     }
 
+    /**
+     * The bell is a real entry point, not a decorative icon.
+     *
+     * It is gated — flag first, then `notifications.view` — so the fixtures are
+     * seeded here rather than asserted unconditionally. A plain, role-less user
+     * must NOT see it: the destination answers 403 for them. That pair is
+     * `NotificationAccessTest`'s job; this test only claims the bell renders for
+     * a viewer who can reach it.
+     */
     public function test_dashboard_includes_notification_in_header(): void
     {
+        $this->seed(\Database\Seeders\RoleSeeder::class);
+        $this->seed(\Database\Seeders\PermissionSeeder::class);
+        $this->seed(\Database\Seeders\FeatureFlagSeeder::class);
+        app(\Spatie\Permission\PermissionRegistrar::class)->forgetCachedPermissions();
+
+        $this->user->assignRole(\App\Support\SystemRole::ADMIN);
+        \Laravel\Pennant\Feature::activate('notifications');
+
         $response = $this->get('/dashboard');
         $response->assertSee('fa-bell');
     }
