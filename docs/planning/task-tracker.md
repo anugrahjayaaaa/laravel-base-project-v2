@@ -269,9 +269,10 @@ genuinely open and are the real D1/D2 work.
 | P9-E3 | Inbox isolation — A cannot mark B's notification read or reach another's by id | 9 | P0 | P9-C5 | PLANNED |
 | P9-E4 | Target Audience Rule — an ordinary user receives nothing from an administrative dispatch | 9 | P0 | P9-C3 | PLANNED |
 | P9-E5 | Bell target — href is `/notifications/inbox`, renders for a plain user with no `notifications.*` permission | 9 | P0 | P9-C2 | PLANNED |
-| P9-E6 | Full suite green + reconcile `progress.md` / `task-tracker.md` / `feature-tracker.md` / phase doc | 9 | P1 | P9-E1 | PLANNED |
-| P9-E7 | Reconcile `docs/base/features/notifications.md` — unused channels AND "transport settings remain config/env only", which D-1 reverses | 9 | P1 | P9-B2 | PLANNED |
+| P9-E6 | Full suite green (`1090 passed / 4197 assertions`) + reconcile `progress.md` / `task-tracker.md` / phase doc / `docs/base/features/notifications.md` | 9 | P1 | P9-E1 | DONE |
+| P9-E7 | Reconcile `docs/base/features/notifications.md` — channels trimmed to the two in use, transport table rewritten, "config/env only" reversed, audience table split | 9 | P1 | P9-B2 | DONE |
 | P9-E8 | Correct the conventions skill — `Permission::featureOf()` does not exist; the sidebar is `AppMenuComposer`, not `@feature()` in Blade | 9 | P2 | — | DONE |
+| P9-E9 | Regression for the null-default binding bug — `an_install_without_a_configured_username_still_binds`, verified load-bearing by reintroducing the bug | 9 | P0 | P9-B6 | DONE |
 
 **Group A ships. B–E do not exist yet.** The pages render and are reachable
 behind the full auth stack, but nothing persists: no write endpoint, no

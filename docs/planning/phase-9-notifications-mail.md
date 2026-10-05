@@ -2,9 +2,9 @@
 
 > Date: 2026-10-03 (spec) · 2026-10-03 (Group A audit + build) · 2026-10-05 (D1/D2/D4 shipped) · 2026-10-05 (Group B/E scope locked)
 > Branch: feature/phase-9-notifications-mail
-> Status: Group A DONE · D1/D2/D4 DONE · B, C, E PLANNED (scope locked, unblocked)
-> Scope: Mail/SMTP configuration (`SystemSetting`), admin notification configuration, per-user in-app inbox, transactional + system notification delivery.
-> Dependency chain: A → B → C → D → E. Group A is verified rendering-complete; D1/D2/D4 shipped ahead of B because a gate must land with what it guards.
+> Status: Group A DONE · Group B DONE · D1/D2/D3/D4 DONE · C, E remaining (E1/E2 done as part of B)
+> Scope: Mail/SMTP configuration (`SystemSetting`), admin notification configuration, global delivery channel switches, per-user in-app inbox, transactional + system notification delivery.
+> Dependency chain: A → B → C → D → E. Group A and Group B are shipped; D1/D2/D4 shipped ahead of B because a gate must land with what it guards; D3 and E1/E2 shipped with B.
 > File note: the brief refers to `docs/planning/phase-9-notifications.md`. **This file is the single source of truth** — `phase-9-notifications-mail.md`. Do not create the second name; two plan files for one phase drift, and the tracker links this one.
 
 **No Git commit without owner approval.**
@@ -37,7 +37,7 @@ the plan are folded into the group tables; documentation debt is listed in
 | No `notifications.*` permissions | **FALSE as of 2026-10-05** | `PermissionCatalog::NOTIFICATIONS` added with P9-D1; `PermissionSeedTest` covers the new group. |
 | No `notifications` feature flag | **FALSE as of 2026-10-05** | Declared in `config/pennant.php` (group `Settings`) with P9-D2; routes and menu both gated. |
 | Views must not query | **HELD** | Zero-query assertion green on both pages. |
-| Full suite green | **TRUE** | `1060 passed / 4070 assertions` (2026-10-05); the 5 risky are pre-existing (confirmed against a stashed baseline). |
+| Full suite green | **TRUE** | `1090 passed / 4197 assertions` (2026-10-05, after Group B); the 5 risky are pre-existing. |
 
 ### Audit findings
 
@@ -68,6 +68,7 @@ code, not the brief.
 | Mail configured via `config/mail.php` | driver `smtp`; 8 mailers the UI can read as `<select>` options |
 | Queue for mail | `UserCreatedNotification implements ShouldQueue` |
 | Group A UI | `pages/notifications/{index,channels}.blade.php`, `NotificationController`, 2 routes, `NotificationUiRenderTest` (19 tests / 119 assertions) |
+| Group B write path | 3 actions in `App/Actions/V1/Notification/`, 3 Form Requests, Web + API controllers, 3 write routes per channel, 11 `SystemSetting` keys, `bindMailConfig()`, `NotificationSettingsTest` (19 tests / 77 assertions) |
 
 ### What does not exist — verified, not assumed
 
@@ -77,13 +78,13 @@ code, not the brief.
 | Database channel | All three notification classes declare `via() => ['mail']`. Nothing routes to `database` today. |
 | ~~`notifications.*` permissions~~ | **RESOLVED 2026-10-05** — `PermissionCatalog::NOTIFICATIONS` exists. |
 | ~~`notifications` feature flag~~ | **RESOLVED 2026-10-05** — declared in `config/pennant.php`. |
-| Any write endpoint | `NotificationController` has `index` + `channels` only — no `update`, no `sendTestMail`. |
+| ~~Any write endpoint~~ | **RESOLVED 2026-10-05 (Group B)** — `update`, `updateChannels`, `sendTestMail` on Web + API, behind `notifications.manage` / `notifications.send_test`. |
 | A working inbox UI | The bell is now a real link (`header.blade.php`), but `/notifications/inbox` does not exist — C5. |
 | Mail settings persistence | `config/mail.php` is env-driven; no `SystemSetting` keys for SMTP. |
 
 ### Consequences — RESOLVED 2026-10-05 (see "Locked decisions")
 
-1. **The feature flag does not exist.** `config/pennant.php:52-61` documents
+1. ~~**The feature flag does not exist.**~~ **RESOLVED (D2).** Originally: `config/pennant.php:52-61` documents
    `translations` and `activity_logs` as `pending` flags that "record intent
    only". Adding a THIRD such flag is a category error — it makes the settings
    page grow switches that do nothing. `notifications` gets a flag **in the same
@@ -379,7 +380,7 @@ The badge is a count on an existing composer, not a component library.
 
 ---
 
-## Group D — Security Enforcement, Feature Flags, RBAC & Audit — **D1, D2, D4 DONE · D3 PLANNED**
+## Group D — Security Enforcement, Feature Flags, RBAC & Audit — **D1, D2, D3, D4 DONE**
 
 > D1/D2/D4 landed together on 2026-10-05 as one change: a `can:` against an
 > unseeded permission and a `feature:` against an undeclared slug are both dead
@@ -422,18 +423,19 @@ The badge is a count on an existing composer, not a component library.
 
 ---
 
-## Group E — Tests & Documentation Reconciliation — **PLANNED**
+## Group E — Tests & Documentation Reconciliation — **E1, E2 DONE (shipped with B) · E3–E8 PLANNED**
 
 | ID | Task | Notes |
 |---|---|---|
 | **P9-E1** | `NotificationSettingsTest` — SMTP update round-trips through `SystemSetting`, test-mail delivery, RBAC 403 per permission, feature-flag 403, audit row per action. | Same shape as `SystemSettingUpdateTest`. |
-| **P9-E2** | **NEW** — `mail_password` is encrypted at rest: assert the stored `system_settings.value` does NOT contain the plaintext, and that the read path returns the original. | Without this, `encrypt()` is an untested claim. Assert against the DB row, not the rendered page — the page already never shows the value. |
+| **P9-E2** | **DONE** — `mail_password` encrypted at rest: the raw column holds no plaintext, decrypts back to the submitted value, and the transport receives the usable password rather than the ciphertext. | Compared by decrypting, not by equality with `encrypt()`: the cipher is randomized per call, so two encryptions of one string differ and an equality check fails on a correct implementation. |
 | **P9-E3** | **NEW** — inbox isolation: user A cannot mark user B's notification read, and cannot reach another's notification by id. | The inbox has no permission and reads `Auth::user()`'s relations; isolation is the only thing standing between two users' data, so it must be asserted. |
 | **P9-E4** | **NEW** — Target Audience Rule test: an ordinary user receives nothing from an administrative dispatch (C3). | Named as a requirement in the plan and in `docs/base/features/notifications.md`; it has never been asserted. |
 | **P9-E5** | **NEW** — bell target test: the bell's href is `/notifications/inbox`, and it renders for a plain user with no `notifications.*` permission. | Pairs with `NotificationAccessTest::the_header_bell_is_hidden_from_a_user_the_route_refuses`, which becomes the *previous* behaviour and must be inverted when C2 lands. |
 | **P9-E6** | Full suite green + reconcile `progress.md`, `task-tracker.md`, `feature-tracker.md`, and this document. | |
 | **P9-E7** | Reconcile `docs/base/features/notifications.md` — it advertises `slack` / `broadcast` / `vonage` / `push` channels nothing uses, and states transport settings "remain technical (config/env only)", which D-1 reverses. | Audit finding 6. The doc is the source of that contradiction, so it is the thing that must change. |
 | **P9-E8** | **DONE** — correct the project conventions skill: `Permission::featureOf()` does not exist (audit finding 5). | Fixed 2026-10-05 in the `laravel-base-project-conventions` skill, along with the `@feature()`-in-Blade claim that does not match this repo's composer. |
+| **P9-E9** | **DONE** — regression for the null-default bug: `an_install_without_a_configured_username_still_binds`. | New, not in the original plan. Verified load-bearing by reintroducing the bug and watching the host assertion go red — the exact symptom, where the transport silently kept its `.env` values. A test that cannot fail is not a guard. |
 
 ---
 
