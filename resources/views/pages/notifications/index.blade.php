@@ -64,8 +64,31 @@
                         @csrf
 
                         <div class="card border-0 shadow-sm mb-4" id="section-transport">
-                            <div class="card-header bg-transparent border-bottom py-3">
+                            <div class="card-header bg-transparent border-bottom py-3 d-flex justify-content-between align-items-center gap-2">
                                 <h5 class="card-title mb-0 fw-semibold">Mail Transport</h5>
+                                {{-- The two pages link both ways. The channels page
+                                     breadcrumbs back here and cancels back here; without
+                                     this the return trip needs the sidebar, and the module
+                                     has two pages of unequal access.
+
+                                     `ms-auto` pins it right even though the header is
+                                     already justify-content-between: the read-only badge
+                                     shares this row, and without it the link drifts to
+                                     the middle of three elements.
+
+                                     `btn-primary` + these sizing classes are the design
+                                     system's card-header action (design-system.md
+                                     §Index Page), so it matches every other module's
+                                     action button instead of inventing a variant.
+
+                                     No extra @can: this branch is already inside
+                                     @can('notifications.view'), which is the permission the
+                                     channels route checks — a second check on the same
+                                     ability would be a second place to disagree. --}}
+                                <a href="{{ route('notifications.channels') }}"
+                                   class="btn btn-primary btn-sm ms-auto d-inline-flex align-items-center gap-2">
+                                    <i class="bi bi-tower-broadcast"></i> Channels
+                                </a>
                             </div>
                             <div class="card-body p-4">
                                 <div class="row g-3">
@@ -222,9 +245,20 @@
                  the values are visible and there is nothing to fill. The server re-checks
                  regardless — see UpdateMailSettingsRequest. --}}
             <div class="card border-0 shadow-sm mb-4">
-                <div class="card-header bg-transparent border-bottom py-3 d-flex justify-content-between align-items-center">
+                <div class="card-header bg-transparent border-bottom py-3 d-flex justify-content-between align-items-center gap-2">
                     <h5 class="card-title mb-0 fw-semibold">Mail Configuration</h5>
-                    <span class="badge bg-secondary-subtle text-secondary">Read-only</span>
+                    <div class="d-flex align-items-center gap-2 ms-auto">
+                        <span class="badge bg-secondary-subtle text-secondary">Read-only</span>
+                        {{-- Same link, same treatment as the editable branch. It sits
+                             on BOTH because gating it to the editable one would
+                             leave a viewer — who is exactly the person with least
+                             navigation elsewhere — unable to reach the channels page
+                             from here. --}}
+                        <a href="{{ route('notifications.channels') }}"
+                           class="btn btn-primary btn-sm d-inline-flex align-items-center gap-2">
+                            <i class="bi bi-tower-broadcast"></i> Channels
+                        </a>
+                    </div>
                 </div>
                 <div class="card-body p-4">
                     <p class="text-muted fs-7">You can view these settings but not change them.</p>
