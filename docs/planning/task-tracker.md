@@ -242,9 +242,9 @@ genuinely open and are the real D1/D2 work.
 |----|------|-------|----------|-----------|--------|
 | P9-A1 | `pages/notifications/index.blade.php` — `col-lg-8` SMTP form + `col-lg-4` Send Test Mail, `card border-0 shadow-sm mb-4`, footer `bg-body-tertiary` | 9 | P0 | — | DONE |
 | P9-A2 | `pages/notifications/channels.blade.php` — per-channel toggles, hidden `value="0"` + checkbox `value="1"` | 9 | P0 | P9-A1 | DONE |
-| P9-A3 | `NotificationUiRenderTest` — zero queries from inside the views, forbidden classes, `filter_var` ban | 9 | P0 | P9-A1..A2 | DONE |
+| P9-A3 | `NotificationUiRenderTest` (19 tests / 119 assertions) — zero queries from inside the views, forbidden classes, `filter_var` ban, sibling-page link + card-header action styling on both permission branches | 9 | P0 | P9-A1..A2 | DONE |
 | P9-A4 | `NotificationController` stub (`index`/`channels`) + `notifications.index` / `notifications.channels` routes | 9 | P0 | P9-A1 | DONE |
-| P9-A5 | Group A audit — mutation-verified guards, `p-4` revert, narrowing `send_test` gate | 9 | P0 | P9-A1..A4 | DONE |
+| P9-A5 | Group A audit — mutation-verified guards, `p-4` revert, narrowing `send_test` gate; re-audited 2026-10-05 after D1/D2/D4, one gap closed (no sibling link on the mail page) | 9 | P0 | P9-A1..A4 | DONE |
 | P9-B1 | `UpdateMailSettingsRequest` — authorize `notifications.manage`, port 1–65535, `Rule::in` encryption; **resolve `none`-vs-`null` scheme** (`config/mail.php` has `scheme`, not `encryption`) | 9 | P0 | P9-A4 | PLANNED |
 | P9-B2 | `MailSettingUpdateAction` — `SystemSetting::set()` per key inside a transaction, `encrypt()` on `mail_password`, audit inside, rebind `config('mail')` AFTER commit (cache bust is free via `set()`) | 9 | P0 | P9-B1 | PLANNED |
 | P9-B3 | `TestMailSendAction` — never let an SMTP exception 500 the page | 9 | P0 | P9-B1 | PLANNED |

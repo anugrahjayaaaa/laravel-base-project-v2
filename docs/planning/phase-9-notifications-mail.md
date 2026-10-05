@@ -31,7 +31,7 @@ the plan are folded into the group tables; documentation debt is listed in
 
 | Claim | Verdict | Evidence |
 |---|---|---|
-| Group A UI complete | **TRUE** | 2 views, 1 controller, 2 routes, `NotificationUiRenderTest` 17 tests / 98 assertions. |
+| Group A UI complete | **TRUE** | 2 views, 1 controller, 2 routes, `NotificationUiRenderTest` 19 tests / 119 assertions. |
 | Notification module is permission- + flag-gated | **TRUE as of 2026-10-05** | `can:notifications.view` + `feature:notifications` on both routes; composer + header bell filtered; `NotificationAccessTest` 14 tests. |
 | `notifications` DB table absent | **TRUE** | `ls database/migrations/ \| grep -i notif` → empty. The `database` channel cannot work. |
 | No `notifications.*` permissions | **FALSE as of 2026-10-05** | `PermissionCatalog::NOTIFICATIONS` added with P9-D1; `PermissionSeedTest` covers the new group. |
@@ -67,7 +67,7 @@ code, not the brief.
 | 2 markdown mail templates | `resources/views/vendor/notifications/{register,user-created}.blade.php` |
 | Mail configured via `config/mail.php` | driver `smtp`; 8 mailers the UI can read as `<select>` options |
 | Queue for mail | `UserCreatedNotification implements ShouldQueue` |
-| Group A UI | `pages/notifications/{index,channels}.blade.php`, `NotificationController`, 2 routes, `NotificationUiRenderTest` (17 tests / 98 assertions) |
+| Group A UI | `pages/notifications/{index,channels}.blade.php`, `NotificationController`, 2 routes, `NotificationUiRenderTest` (19 tests / 119 assertions) |
 
 ### What does not exist — verified, not assumed
 
@@ -243,13 +243,42 @@ is meant to serve.
 |---|---|---|
 | **P9-A1** | `pages/notifications/index.blade.php` — two-column, `col-lg-8` SMTP form, `col-lg-4` Send Test Mail card. Wrapper `card border-0 shadow-sm mb-4`, footer `card-footer bg-body-tertiary border-top py-3 d-flex justify-content-end align-items-center gap-2`. No query in Blade. | DONE |
 | **P9-A2** | `pages/notifications/channels.blade.php` — per-channel toggles, hidden `value="0"` + checkbox `value="1"`, hidden placed directly BEFORE. | DONE |
-| **P9-A3** | `NotificationUiRenderTest` — 17 tests / 98 assertions: zero queries from inside the views, forbidden classes, `filter_var` ban, checkbox pairs, both permission branches. | DONE |
+| **P9-A3** | `NotificationUiRenderTest` — 19 tests / 119 assertions: zero queries from inside the views, forbidden classes, `filter_var` ban, checkbox pairs, both permission branches, sibling-page link in both branches and its card-header action styling. | DONE |
 | **P9-A4** | `NotificationController` stub (`index`/`channels`) + 2 routes. Every variable assembled in the controller, never in Blade. | DONE |
 | **P9-A5** | Group A audit — findings below. | DONE |
 
 A1/A2 are `@can`-gated like the settings page: `notifications.view` alone renders
 **read-only**, with the whole form inside the `@can` pair — gating the button alone
 leaves editable fields that silently discard input.
+
+### Group A re-audit — 2026-10-05 (every claim re-checked against the code)
+
+Group A was audited a second time after D1/D2/D4 landed, because those commits
+changed things Group A's own findings describe. Method: grep / `route:list` / test
+run per claim, not a re-read of this document.
+
+| Claim | Verdict | Evidence |
+|---|---|---|
+| A1 two-column `col-lg-8` + `col-lg-4` | **HELD** | one occurrence each |
+| A1 wrapper + footer classes | **HELD** | wrapper 4×, footer 2×, every `card-body` is `p-4` |
+| A1 no query in Blade | **HELD** | 0 hits for `SystemSetting::` / `DB::` / `config(` / `Notification::` |
+| A2 hidden companion directly BEFORE each checkbox | **HELD** | verified in markup and by `every_channel_switch_has_a_hidden_companion` |
+| A3 test count | **HELD, count corrected** | 17/98 → **19/119** after the sibling-link and action-styling tests |
+| A4 controller is `index`/`channels` only | **HELD** | asserted by the method-list test |
+| A4 route middleware stack | **HELD** | `auth:web,sanctum` → `verified` → `password.change.required` → `account.state` → `feature:notifications` → `can:notifications.view` |
+| A5 "routes carry no `->can()`" | **STALE — fixed above** | both gates landed in D1/D2 |
+
+**One real gap found and closed:** the channels page breadcrumbs back to the mail
+page, but the mail page had no way back — reaching Channels required the sidebar,
+which is the least navigation available to a read-only viewer. Both card headers
+on `index` now carry the sibling link (the pattern `users/index` uses for
+`users/create`), asserted on both permission branches by
+`the_mail_page_links_to_the_channels_page_in_both_branches` — including that the
+read-only badge is not displaced by the link that was added beside it. The link
+was then restyled to the design system's card-header action (`btn-primary`,
+`design-system.md` §Index Page) and pinned right — on the button itself where it
+alone shares the header, on the wrapper where the read-only badge shares the
+row.
 
 ### Group A audit findings
 
@@ -258,7 +287,7 @@ leaves editable fields that silently discard input.
 - **`card-body p-4` was violated deliberately and then reverted.** The channels table body was first written `p-0` for an edge-to-edge table. Every other table card (features, users, permissions) uses `p-4`, so the one-off was reverted rather than shipped as a new variant.
 - **`@can('notifications.send_test')` is a narrowing gate.** It sits inside the manage branch, so `send_test` alone renders neither the card nor the form. Tested in both directions. Sending to an arbitrary address is a real abuse vector, hence a third permission rather than a subset of manage.
 - **The permission fixture is `Gate::before`, not seeded roles** — deliberate while `notifications.*` is unseeded. It returns `null` for every other ability so Spatie still decides those; returning `false` would deny every gate in the app. **Replace with real seeded roles in P9-D1** — the test class docblock says so.
-- **The routes carry no `->can()` and no `feature:notifications` yet**, on purpose: a gate against an unseeded permission is a 403 on every page. Both land with the permission/flag they check, not before.
+- **The routes carried no `->can()` and no `feature:notifications` when Group A shipped**, on purpose: a gate against an unseeded permission is a 403 on every page. **Both have since landed** (P9-D1 `can:notifications.view`, P9-D2 `feature:notifications`); the finding is kept as the record of why the gate was deferred, not as a statement about the current code.
 - **The stored SMTP password never reaches view data.** `$hasPassword` (bool) replaces it, asserted by `the_stored_smtp_password_is_never_rendered`, which also fails if a future fixture quietly adds the credential back.
 
 ---
@@ -327,7 +356,7 @@ The badge is a count on an existing composer, not a component library.
 |---|---|---|
 | **P9-D1** | **DONE** — `notifications.view` / `.manage` / `.send_test` in `PermissionCatalog`, `can:notifications.view` on both web routes in the same change. | `.send_test` is a third permission — mail to an arbitrary address is a real abuse vector, not a subset of `manage`. The API routes land with B4. |
 | **P9-D6** | **OPEN** — replace `NotificationUiRenderTest`'s `Gate::before` fixture with real seeded roles, asserting the precondition (`assertFalse($viewer->can(...))`). | Still owed from D1: the fixture was a deliberate stopgap while the permissions were unseeded. Now they exist, so the override tests the override. |
-| **P9-D2** | **DONE** — flag declared in `config/pennant.php` (group `Settings`, no `pending` marker), `feature:notifications` on both admin routes, `FeatureFlagSeeder` writes the row. **A disabled flag returns 403, not 404** — see Corrections. | All three places, or it is not gated. The middleware already existed; this added the flag, not a class. |
+| **P9-D2** | **DONE** — flag declared in `config/pennant.php` (group `Settings`, no `pending` marker), `feature:notifications` on both admin routes, `FeatureFlagSeeder` writes the row, and the sidebar entry is filtered in `AppMenuComposer` (flag first, then permission). **A disabled flag returns 403, not 404** — see Corrections. | All three places, or it is not gated. The middleware already existed; this added the flag, not a class. **Not `@feature()` in Blade** — this repo filters the menu in the composer, so a `@feature()` wrap would be a second mechanism answering a question the composer already answers. |
 | **P9-D5** | `feature:notifications` on `/notifications/inbox` too. | The inbox is part of the module and must vanish with it — but with **no** permission (D-2). Lands with C5. |
 | **P9-D4** | **DONE** — sidebar entry + header bell, both gated flag-then-permission; `NotificationAccessTest` (14 tests) proves the menu never shows a link the route refuses, in both directions, for admin, superadmin and plain user. |
 | **P9-D3** | Action-first audit: `mail_setting.updated` + `test_mail.sent` inside the action, inside the transaction. | Never the controller. Naming matches `system_setting.updated` and `feature.toggled` — singular subject, dotted event. |
