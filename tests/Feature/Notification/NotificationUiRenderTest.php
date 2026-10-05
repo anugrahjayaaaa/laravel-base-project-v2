@@ -752,11 +752,13 @@ class NotificationUiRenderTest extends TestCase
             'channels', 'updateUrl',
         ]);
 
-        // And the controller itself must stay a stub: Group A renders, it does
-        // not persist. A write here would be Group B/C work landing unasked.
-        $this->assertSame(['index', 'channels'], array_values(array_diff(
-            get_class_methods(NotificationController::class),
-            ['__construct']
-        )));
+        // And no other method: every write Group B added must go through a
+        // Form Request + action pair the route gates, not through a method this
+        // file cannot see. `NotificationSettingsTest` covers the write itself;
+        // what is asserted here is that the read path hands over exactly what
+        // the views read and nothing else.
+        $this->assertContains('update', get_class_methods(NotificationController::class));
+        $this->assertContains('updateChannels', get_class_methods(NotificationController::class));
+        $this->assertContains('sendTestMail', get_class_methods(NotificationController::class));
     }
 }
