@@ -3,6 +3,7 @@
 use App\Http\Controllers\Web\V1\Auth\AuthController;
 use App\Http\Controllers\Web\V1\DashboardController;
 use App\Http\Controllers\Web\V1\FeatureController;
+use App\Http\Controllers\Web\V1\NotificationController;
 use App\Http\Controllers\Web\V1\PermissionController;
 use App\Http\Controllers\Web\V1\ProfileController;
 use App\Http\Controllers\Web\V1\RoleController;
@@ -207,4 +208,20 @@ Route::middleware(['auth:web,sanctum', 'verified', 'password.change.required', '
     Route::post('/features/bulk-action', [FeatureController::class, 'bulkAction'])
         ->name('features.bulk-action')->middleware('throttle:bulk-action');
     Route::post('/features/{feature}/toggle', [FeatureController::class, 'toggle'])->name('features.toggle')->can('features.manage');
+
+    // -----------------------------------------------------------------------
+    // Notifications & Mail — Phase 9 Group A (UI only).
+    //
+    // Read routes for the two pages, and nothing that writes. Group B adds the
+    // update/send-test endpoints and Group C the channel preference write.
+    //
+    // NOT gated on `->can()` or `feature:notifications` yet: `notifications.view`
+    // and the `notifications` flag are seeded in P9-D1/D2, and a gate against a
+    // permission nothing holds is a 403 on every page. Both land in the commits
+    // that add the permission and the flag.
+    // -----------------------------------------------------------------------
+    Route::controller(NotificationController::class)->group(function () {
+        Route::get('/notifications', 'index')->name('notifications.index');
+        Route::get('/notifications/channels', 'channels')->name('notifications.channels');
+    });
 });
