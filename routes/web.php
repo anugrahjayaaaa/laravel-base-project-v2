@@ -210,25 +210,29 @@ Route::middleware(['auth:web,sanctum', 'verified', 'password.change.required', '
     Route::post('/features/{feature}/toggle', [FeatureController::class, 'toggle'])->name('features.toggle')->can('features.manage');
 
     // -----------------------------------------------------------------------
-    // Notifications & Mail — Phase 9 Group A (UI only).
+    // Notifications & Mail — Phase 9 Groups A and B.
     //
-    // Read routes for the two pages, and nothing that writes. Group B adds the
-    // update/send-test endpoints and Group C the channel preference write.
-    //
-    // The gate lands WITH the permission and flag it checks, in the same change:
-    // a `can:` against a permission nothing holds is a 403 on every page, and a
-    // `feature:` against an undeclared slug is dead middleware. Both are now
-    // real — `notifications.view` is in PermissionCatalog, `notifications` in
-    // config/pennant.php — so the pages are gated properly.
+    // Read routes render; the write routes persist. Every one of them carries
+    // the module gate, and the write routes carry their own permission on top:
+    // `notifications.manage` configures the transport, `notifications.send_test`
+    // may mail an address a user typed. Sending to an arbitrary address is an
+    // abuse vector, not a subset of configuring a transport.
     //
     // `password.change.required` sits ABOVE in the stack: a user with an expired
-    // password cannot open the mail configuration even holding the permission,
-    // which is the intended order (fix your credential before it is used).
+    // password cannot reconfigure the transport that would mail them the
+    // reminder, which is the intended order — fix your credential before it is
+    // used.
     // -----------------------------------------------------------------------
     Route::middleware('feature:notifications')->group(function () {
         Route::controller(NotificationController::class)->group(function () {
             Route::get('/notifications', 'index')->name('notifications.index')->can('notifications.view');
             Route::get('/notifications/channels', 'channels')->name('notifications.channels')->can('notifications.view');
+
+            Route::post('/notifications', 'update')->name('notifications.update')->can('notifications.manage');
+            Route::post('/notifications/channels', 'updateChannels')
+                ->name('notifications.channels.update')->can('notifications.manage');
+            Route::post('/notifications/test-mail', 'sendTestMail')
+                ->name('notifications.test-mail')->can('notifications.send_test');
         });
     });
 });
