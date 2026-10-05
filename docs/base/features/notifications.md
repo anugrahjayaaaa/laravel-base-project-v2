@@ -8,41 +8,72 @@ Notifications are the user notification abstraction. Mail is the transport for e
 
 | Channel | Use Case |
 |---------|----------|
-| `mail` | Email notifications |
-| `database` | Database notification (inbox) |
-| `slack` | Team notifications (ops) |
-| `broadcast` | Real-time web notifications |
-| `vonage` / `nexmo` | SMS notifications (custom) |
-| `push` | Mobile push (custom) |
+| `mail` | Email delivery |
+| `database` | In-app inbox (Laravel's native notifications table) |
+
+Slack, broadcast, SMS and push are **not** wired: nothing in the application
+configures or dispatches them. They are listed here only if a module that needs
+them arrives.
+
+Delivery switches are global and admin-owned (`notification_channel_*` settings),
+not per-user. Notification delivery is per-recipient by definition — a
+registration event reaches administrators, a password expiry one account — so
+there is no per-user preference to record.
 
 ## Notification Categories
 
+Two disjoint audiences, and no third category.
+
 | Category | Channel | Audience |
 |----------|---------|----------|
-| Security alerts | mail, database | Users |
-| Password reset | mail | Users |
-| Email verification | mail | Users |
-| Audit export ready | mail, database | Admins |
-| Registration welcome | mail | Users |
-| System alerts | slack, mail | Ops |
-| Feature announcements | database, broadcast | Users |
+| Security alerts | mail, database | The affected user |
+| Password reset / expiry | mail, database | The affected user |
+| Email verification | mail | The affected user |
+| Password change required | mail, database | The affected user |
+| Registration welcome | mail | The affected user |
+| New user registered | mail, database | Holders of `users.manage` |
+| Account locked / deactivated | mail, database | Holders of `users.manage` |
+| Role or permission changed | mail, database | Holders of `roles.manage` |
+| Feature flag changed | mail, database | Holders of `settings.manage` |
+
+An ordinary user is never an administrative recipient. An administrator is not
+opted out of their own personal alerts — a password-expiry notice about their
+own account is personal regardless of what they can administer.
+
+The trigger permissions above resolve the audience; they are not
+`notifications.*` permissions. A `notifications.admin_target` would gate the
+rule behind the mechanism it serves.
 
 ## Mail Configuration
 
-Settings group: `mail`
+Storage: `system_settings` rows, read through `SystemSetting` with the `.env`
+value as each key's fallback.
 
-```
-mail.default_transport   (smtp | log | file)
-mail.host
-mail.port
-mail.encryption         (tls | ssl)
-mail.username
-mail.password           (via env)
-mail.from_address
-mail.from_name
-```
+| Key | Type | Notes |
+|-----|------|-------|
+| `mail_mailer` | string | A key of `config('mail.mailers')` |
+| `mail_host` | string | |
+| `mail_port` | int | 1–65535 |
+| `mail_encryption` | string | `smtp` / `tls` / `ssl` / `none`. Stored as `scheme`, **not** `encryption` — `config/mail.php` declares no `encryption` key on the smtp mailer, and Symfony's transport reads `scheme`. `none` is stored as the empty value, which binds as `null` |
+| `mail_username` | string | Empty for a relay that needs no authentication |
+| `mail_password` | **encrypted** | `encrypt()` on write, `decrypt()` in `bindMailConfig()`. Never sent to a view — the page reports `$hasPassword` instead |
+| `mail_from_address` | string | |
+| `mail_from_name` | string | |
 
-Technical mail config remains in environment (`.env`): `MAIL_MAILER`, `MAIL_HOST`, `MAIL_PORT`, `MAIL_ENCRYPTION`, `MAIL_USERNAME`, `MAIL_PASSWORD`.
+**`.env` is the fallback, not a competitor.** An install that never saves a row
+behaves exactly as before; a saved row simply overrides the same value.
+
+**Rebinding** — `AppServiceProvider::bindMailConfig()` pushes the stored values
+onto `config('mail')`. It is called from the save action **after commit**, not
+from `boot()`: boot runs before the settings table exists on a fresh install and
+before `RefreshDatabase` migrates, and the query failure takes the whole boot
+down. A long-lived queue worker keeps its bound transport until
+`queue:restart` — accepted, for the same reason token lifetimes accept it.
+
+**Access** — `/notifications`, gated on the `notifications` feature flag plus
+`notifications.view` to read and `notifications.manage` to write. Sending a test
+message is a third permission, `notifications.send_test`: mailing an address a
+user typed is an abuse vector, not a subset of configuring a transport.
 
 ## Queue Integration
 
@@ -75,11 +106,14 @@ Mail/notification templates:
 
 ## Settings Integration
 
-Some notification settings may be operational:
-- `mail.from_address` (operational, manageable via settings)
-- `mail.from_name` (operational, manageable via settings)
+Every transport value above is an operational setting, managed in the UI at
+`/notifications` and editable through the API at `/api/v1/notifications`.
 
-Transport settings (host, port, credentials) remain technical (config/env only).
+This reverses an earlier statement in this document, which said transport
+settings "remain technical (config/env only)". That was true while the mail
+page was a stub with nowhere to save; it is no longer true, and a base doc that
+contradicts the implementation sends the next reader looking for a mechanism
+that does not exist.
 
 ## Dependency
 
