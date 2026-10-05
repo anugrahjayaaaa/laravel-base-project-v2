@@ -60,7 +60,7 @@ class PermissionSeedTest extends TestCase
         // catalogue while it does not exist, and it is what `features.*` had
         // to be added to once the routes landed.
         $this->assertEqualsCanonicalizing(
-            ['users', 'roles', 'permissions', 'settings', 'features'],
+            ['users', 'roles', 'permissions', 'settings', 'notifications', 'features'],
             array_keys(PermissionCatalog::grouped()),
             'The catalogue has a group with no feature behind it.'
         );
