@@ -2,6 +2,7 @@
 
 namespace App\Notifications;
 
+use App\Models\NotificationChannel;
 use App\Models\User;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -33,13 +34,15 @@ class RegisterNotification extends Notification implements ShouldQueue
     }
 
     /**
-     * Deliver via mail only.
+     * Deliver on the channels the admin has enabled.
      *
      * @return array<string>
      */
     public function via(User $notifiable): array
     {
-        return ['mail'];
+        // From the admin's global switches rather than a hardcoded list, so the
+        // channels page controls something that is actually read.
+        return NotificationChannel::for();
     }
 
     /**
@@ -56,5 +59,31 @@ class RegisterNotification extends Notification implements ShouldQueue
                 'url' => $this->verificationUrl,
                 'expireMinutes' => $this->expireMinutes,
             ]);
+    }
+
+    /**
+     * The in-app representation, stored verbatim in `notifications.data`.
+     *
+     * Required the moment `database` is a channel — without it Laravel throws
+     * rather than writing an empty row. The shape (`subject` + `lines`) is what
+     * `pages/notifications/inbox` reads, so the two are a contract: a class that
+     * stores different keys renders as a bare "Notification" placeholder rather
+     * than an undefined-variable fatal on someone's inbox.
+     *
+     * `lines` is escaped here, not in the view: this string is persisted and
+     * re-rendered later, so escaping at write time is the only place the value
+     * can be trusted.
+     *
+     * @return array<string, mixed>
+     */
+    public function toArray(User $notifiable): array
+    {
+        return [
+            'subject' => 'Verify your email address',
+            'lines' => [
+                'Click the verification link to activate your account.',
+                'The link expires in '.$this->expireMinutes.' minutes.',
+            ],
+        ];
     }
 }
