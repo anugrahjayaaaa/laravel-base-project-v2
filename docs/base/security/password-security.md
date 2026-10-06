@@ -56,6 +56,22 @@
 - `pages/profile/edit.blade.php` — change password section
 - `pages/users/create.blade.php` — ❌ skipped (auto-generated temp password)
 
+**Password visibility toggle (eye icon):**
+- Shared handler: `layouts/partials/scripts/password-toggle.blade.php`,
+  included via `@include` in both `layouts/auth.blade.php` and
+  `layouts/app.blade.php`.
+- Attribute: `data-password-toggle="<id>"` — toggles `type` between
+  `password` and `text`, swaps icon `bi-eye`/`bi-eye-slash`, updates `aria-label`.
+- Fields using toggle:
+  - `auth/login.blade.php` — password
+  - `auth/register.blade.php` — password, password_confirmation
+  - `auth/reset-password.blade.php` — password, password_confirmation
+  - `partials/password-change-form.blade.php` — current_password, password, password_confirmation
+  - `pages/notifications/index.blade.php` — mail_password
+- `right` offset convention: `2.25rem` for fields without a strength indicator,
+  `2rem` for password fields with a strength indicator.
+- See `docs/base/ui/design-system.md` § Password Visibility Toggle for markup rules.
+
 **FormRequests using `PasswordStrengthRule`:**
 - `PasswordChangeRequest`
 - `PasswordResetRequest`

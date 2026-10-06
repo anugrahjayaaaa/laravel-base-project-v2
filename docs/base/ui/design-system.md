@@ -492,6 +492,67 @@ staged control underneath it.
 </div>
 ```
 
+### Password Visibility Toggle (Eye Icon)
+
+A shared, generic eye-icon toggle for password fields. Reuses ONE delegated
+handler across every view — no per-page inline JS.
+
+**How it works:**
+- `@include('layouts.partials.scripts.password-toggle')` in BOTH
+  `layouts/app.blade.php` and `layouts/auth.blade.php` registers a single
+  document-level click listener.
+- Any button with `data-password-toggle="<input-id>"` toggles the matching
+  input's `type` between `password` and `text`, swaps the icon
+  (`bi-eye` / `bi-eye-slash`), and updates `aria-label`.
+- The input ID and the button's `data-password-toggle` value MUST match.
+
+**Standard markup for every toggleable password field:**
+
+```html
+<div class="mb-3">
+    <label for="password" class="form-label">Password</label>
+    <div class="position-relative">
+        <input type="password" class="form-control pe-5 @error('password') is-invalid @enderror"
+               id="password" name="password" required>
+        <button type="button"
+                class="btn btn-link text-muted text-decoration-none position-absolute top-50 translate-middle-y toggle-password p-0 border-0"
+                data-password-toggle="password" aria-label="Toggle password visibility"
+                tabindex="-1" style="right: 2.25rem; z-index: 5;">
+            <i class="bi bi-eye"></i>
+        </button>
+    </div>
+    @error('password')
+        <div class="invalid-feedback d-block">{{ $message }}</div>
+    @enderror
+</div>
+```
+
+**Fields using it (all covered, no exceptions needed):**
+- `auth/login.blade.php` — password
+- `auth/register.blade.php` — password, password_confirmation
+- `auth/reset-password.blade.php` — password, password_confirmation
+- `auth/password-expired.blade.php` — via `partials/password-change-form`
+- `pages/profile/edit.blade.php` — via `partials/password-change-form`
+- `pages/notifications/index.blade.php` — `mail_password`
+
+**Rules:**
+- `right` offset: `2.25rem` for password fields WITHOUT a strength indicator,
+  `2rem` for password fields WITH one (the strength partial occupies the same
+  gutter, so the button shifts left to avoid overlap).
+- `aria-label` must be present — `"Toggle password visibility"` (or localized
+  via `ui('toggle_password_visibility')`).
+- `tabindex="-1"` — the eye button is secondary; Tab moves to the next form
+  field, not the toggle.
+- Icon uses Bootstrap Icons (`bi bi-eye` / `bi bi-eye-slash`), matching the
+  Phase 5 convention (`bi-eye` replacing `fa-eye`). FontAwesome is NOT mixed.
+- Never add `onclick` / inline JS on the toggle — the delegated handler is
+  the only touchpoint. Adding per-page JS for the same behavior is the #1
+  source of drift here.
+
+**Adding toggle to a new password field:** copy the markup block above, match
+the `id` to `data-password-toggle`, include the partial via the layout (it is
+already included in both `layouts/auth.blade.php` and `layouts/app.blade.php`).
+
 ### Forbidden Classes
 
 | Class | Replace With |

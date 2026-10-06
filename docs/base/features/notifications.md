@@ -24,25 +24,36 @@ there is no per-user preference to record.
 
 Two disjoint audiences, and no third category.
 
-| Category | Channel | Audience |
-|----------|---------|----------|
-| Security alerts | mail, database | The affected user |
-| Password reset / expiry | mail, database | The affected user |
-| Email verification | mail | The affected user |
-| Password change required | mail, database | The affected user |
-| Registration welcome | mail | The affected user |
-| New user registered | mail, database | Holders of `users.manage` |
-| Account locked / deactivated | mail, database | Holders of `users.manage` |
-| Role or permission changed | mail, database | Holders of `roles.manage` |
-| Feature flag changed | mail, database | Holders of `settings.manage` |
+### Shipped
 
-An ordinary user is never an administrative recipient. An administrator is not
-opted out of their own personal alerts — a password-expiry notice about their
-own account is personal regardless of what they can administer.
+| Category | Channel | Audience | Class |
+|----------|---------|----------|-------|
+| Email verification (self-registration) | mail | The affected user | `RegisterNotification` |
+| Account created with a temporary password | mail | The affected user | `UserCreatedNotification` |
+| Confirm a new email address | mail | The affected user | `ChangeEmailVerificationNotification` |
+| Account locked / unlocked / activated / deactivated | mail, database | The affected user **and** every holder of the matching action permission | `AccountStateChangedNotification` |
 
-The trigger permissions above resolve the audience; they are not
-`notifications.*` permissions. A `notifications.admin_target` would gate the
-rule behind the mechanism it serves.
+`UserCreatedNotification` carries a temporary password, which is why it is
+personal only: it is handed to the account holder, never to administrators. The
+permission that created the account did not receive a copy of the credential.
+
+### The rule, for events not yet dispatched
+
+An administrative event goes to the holders of the permission that PERFORMS it —
+`users.lock` for a lock, `roles.assign_permissions` for a role change — never
+`users.view` and never a generic `*.manage` (which does not exist in this
+catalogue). A personal event goes to the affected user only. An ordinary user is
+never an administrative recipient, and an administrator is not opted out of their
+own account's alerts.
+
+`NotificationAudience` resolves this and `NotificationAccountStateAction`
+dispatches it. The map declares events whose notification classes do not exist
+yet — role changes, feature toggles, setting changes. Those are **declared and
+unreachable**, and an undeclared event fails toward the narrower audience so a
+typo cannot broadcast to every administrator.
+
+The trigger permissions are not `notifications.*`. A `notifications.admin_target`
+would gate the rule behind the mechanism it serves.
 
 ## Mail Configuration
 

@@ -13,7 +13,8 @@
 | 6 | RBAC & authorization | P0 | PLANNED |
 | 7 | Feature availability / feature flags | P1 | PLANNED |
 | 8 | Settings | P1 | PLANNED |
-| 9 | Notification/mail/queue | P1 | PLANNED |
+| 9 | Notification/mail/queue | P1 | DONE |
+
 | 10 | Audit Trail | P0 | PLANNED |
 | 11 | Monitoring/observability | P1 | PLANNED |
 | 12 | API V1 | P0 | PLANNED |
@@ -129,9 +130,11 @@ email-verification-notice, password-change pages using AdminLTE auth layout.
 - Status: PLANNED
 
 ### Phase 9: Notifications & Mail
-- Mail configuration
-- Notification channels
-- Status: PLANNED
+- Mail configuration — **DONE** (`SystemSetting` + `encrypt()`, rebound into `config('mail')` after commit)
+- Notification channels — **DONE** (global admin switches; `via()` reads them)
+- In-app inbox — **DONE** (`/notifications/inbox`, Laravel's `database` channel, no permission)
+- Audience rule — **DONE** (`NotificationAudience`, per-action trigger permissions)
+- Status: DONE
 
 ### Phase 10: Audit Trail
 - Audit package integration

@@ -252,27 +252,31 @@ genuinely open and are the real D1/D2 work.
 | P9-B5 | `route()` URLs in the controller + `->can('notifications.manage')` / `->can('notifications.send_test')` on the write routes | 9 | P0 | P9-B4 | DONE |
 | P9-B6 | `AppServiceProvider::bindMailConfig()` — **called from the action after commit, NOT boot** (boot runs before the table exists) + 8 seeder keys | 9 | P0 | P9-B1 | DONE |
 | P9-B7 | `NotificationChannelUpdateAction` + `UpdateNotificationChannelsRequest` + 3 `notification_channel_*` keys — admin-owned, no per-user table | 9 | P0 | P9-B6 | DONE |
-| P9-C1 | `notifications` migration (Laravel native schema) + write action for the channels form | 9 | P0 | P9-B7 | PLANNED |
-| P9-C2 | In-app engine + unread badge + preview dropdown; bell target moves to `/notifications/inbox` and its permission check is DROPPED in the same change (D-2) | 9 | P0 | P9-C1 | PLANNED |
-| P9-C3 | **Target Audience Rule** — admin notifications → holders of `roles.manage`/`users.manage`/`settings.manage`; users get ONLY personal transactional/security alerts (D-3) | 9 | P0 | P9-C1 | PLANNED |
-| P9-C4 | Sidebar menu item per admin page (`notifications.index`, `notifications.channels`), flag before permission, exact `active` pattern | 9 | P1 | P9-D2 | DONE |
-| P9-C5 | `/notifications/inbox` route + controller + view; self-scoped via `Auth::user()->{unread,read}Notifications()`, never `findOrFail($id)` | 9 | P0 | P9-C1, D5 | PLANNED |
-| P9-C6 | Route the `database` channel: `via()` becomes `['database','mail']` on the 3 existing notification classes | 9 | P0 | P9-C1 | PLANNED |
+| P9-C1 | `notifications` migration from `make:notifications-table` — Laravel's own stub, no hand-written schema | 9 | P0 | P9-B7 | DONE |
+| P9-C2 | **DONE** — see phase doc for the correction and the reasoning | 9 | P0 | P9-B7 | DONE |
+| P9-C3 | **DONE** — see phase doc for the correction and the reasoning | 9 | P0 | P9-B7 | DONE |
+| P9-C4 | **DONE with D2** — one flat entry per admin page; the inbox gets NO entry, it is reached from the bell | 9 | P0 | P9-B7 | DONE |
+| P9-C5 | **DONE** — see phase doc for the correction and the reasoning | 9 | P0 | P9-B7 | DONE |
+| P9-C6 | **DONE** — see phase doc for the correction and the reasoning | 9 | P0 | P9-B7 | DONE |
 | P9-D1 | `notifications.view`/`.manage`/`.send_test` in `PermissionCatalog` + `can()` on both web routes, same commit | 9 | P0 | — | DONE |
 | P9-D2 | `feature:notifications` — pennant flag + routes + composer. **403, not 404** | 9 | P0 | P9-D1 | DONE |
 | P9-D3 | Action-first audit `mail_setting.updated` + `test_mail.sent` / `test_mail.failed` + `notification_channels.updated`, inside the action and the transaction | 9 | P0 | P9-B2, B3 | DONE |
 | P9-D4 | Header bell is a real `<a>` with the same two gates as the sidebar entry — `NotificationAccessTest` (14 tests) | 9 | P0 | P9-D1, D2 | DONE |
-| P9-D5 | `feature:notifications` on `/notifications/inbox` — flag only, **no** permission (D-2) | 9 | P0 | P9-C5 | PLANNED |
-| P9-D6 | Swap `NotificationUiRenderTest`'s `Gate::before` fixture for real seeded roles + precondition assertion (owed from D1) | 9 | P1 | P9-D1 | PLANNED |
+| P9-D5 | `feature:notifications` on `/notifications/inbox` — flag only, **no** permission (D-2) | 9 | P0 | P9-C5 | DONE |
+| P9-D6 | Swap `NotificationUiRenderTest`'s `Gate::before` fixture for real seeded roles + precondition assertions | 9 | P1 | P9-D1 | DONE |
 | P9-E1 | `NotificationSettingsTest` (19 tests) — SMTP round-trip into config, encryption at rest, RBAC 403, flag 403, audit rows, validation bounds | 9 | P0 | P9-D3 | DONE |
 | P9-E2 | `mail_password` encrypted at rest — DB row holds no plaintext, decrypts back, transport receives the usable value | 9 | P0 | P9-B2 | DONE |
-| P9-E3 | Inbox isolation — A cannot mark B's notification read or reach another's by id | 9 | P0 | P9-C5 | PLANNED |
-| P9-E4 | Target Audience Rule — an ordinary user receives nothing from an administrative dispatch | 9 | P0 | P9-C3 | PLANNED |
-| P9-E5 | Bell target — href is `/notifications/inbox`, renders for a plain user with no `notifications.*` permission | 9 | P0 | P9-C2 | PLANNED |
-| P9-E6 | Full suite green (`1090 passed / 4197 assertions`) + reconcile `progress.md` / `task-tracker.md` / phase doc / `docs/base/features/notifications.md` | 9 | P1 | P9-E1 | DONE |
-| P9-E7 | Reconcile `docs/base/features/notifications.md` — channels trimmed to the two in use, transport table rewritten, "config/env only" reversed, audience table split | 9 | P1 | P9-B2 | DONE |
+| P9-E3 | Inbox isolation — A cannot mark B's notification read (single route nor mark-all) | 9 | P0 | P9-C5 | DONE |
+| P9-E4 | Target Audience Rule — admin event reaches only permission holders, personal reaches only its subject, unclassified reaches nobody, and every event names a declared permission | 9 | P0 | P9-C3 | DONE |
+| P9-E5 | Bell target — href is `/notifications/inbox`, renders for a plain user, badge reflects the count | 9 | P0 | P9-C2 | DONE |
+| P9-E6 | Full suite green (`1111 passed / 4263 assertions`) + reconcile `progress.md` / `task-tracker.md` / `feature-tracker.md` / phase doc | 9 | P1 | P9-E1 | DONE |
+| P9-E7 | Reconcile `docs/base/features/notifications.md` — channels trimmed, transport table rewritten, "config/env only" reversed, audience table split | 9 | P1 | P9-B2 | DONE |
 | P9-E8 | Correct the conventions skill — `Permission::featureOf()` does not exist; the sidebar is `AppMenuComposer`, not `@feature()` in Blade | 9 | P2 | — | DONE |
 | P9-E9 | Regression for the null-default binding bug — `an_install_without_a_configured_username_still_binds`, verified load-bearing by reintroducing the bug | 9 | P0 | P9-B6 | DONE |
+| P9-E10 | Bell count cache — invalidated on delivery AND on mark-read; warm cache costs no query per render | 9 | P0 | P9-C2 | DONE |
+| P9-E11 | `NotificationAccountStateAction` wired to the four user-state actions — the audience rule now has callers (was zero) | 9 | P0 | P9-C3 | DONE |
+| P9-E12 | `notification_channel_in_app` read as the `database` gate in `NotificationChannel::for()` — was a switch that saved and changed nothing | 9 | P0 | P9-C1 | DONE |
+| P9-E13 | `docs/base/features/notifications.md` rewritten to name only shipped events; declared-but-undispatched ones marked unreachable | 9 | P1 | P9-E7 | DONE |
 
 **Group A ships. B–E do not exist yet.** The pages render and are reachable
 behind the full auth stack, but nothing persists: no write endpoint, no
