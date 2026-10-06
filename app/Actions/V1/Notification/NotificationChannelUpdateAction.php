@@ -25,6 +25,11 @@ use Illuminate\Support\Facades\DB;
  */
 class NotificationChannelUpdateAction
 {
+    public function __construct(
+        private readonly NotificationAdminEventAction $notifyAction,
+    ) {
+    }
+
     /**
      * The switches this action owns.
      *
@@ -72,5 +77,10 @@ class NotificationChannelUpdateAction
                 ]);
             }
         });
+
+        // Every `notifications.manage` holder, with the resulting states. These
+        // are the switches themselves, not credentials — quoting them is what
+        // makes the notification useful.
+        $this->notifyAction->configurationChanged('channel.changed', null, $causer);
     }
 }

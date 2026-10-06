@@ -31,6 +31,11 @@ use Illuminate\Support\Facades\DB;
  */
 class NotificationMailSettingUpdateAction
 {
+    public function __construct(
+        private readonly NotificationAdminEventAction $notifyAction,
+    ) {
+    }
+
     /**
      * Normalize and persist the transport payload.
      *
@@ -129,6 +134,12 @@ class NotificationMailSettingUpdateAction
         // Cache busting needs no second call: `SystemSetting::set()` already
         // registers `DB::afterCommit(fn () => static::bustCache())`.
         AppServiceProvider::bindMailConfig();
+
+        // Every `notifications.manage` holder — another operator may need to know
+        // the transport moved underneath them. Never the values: this notification
+        // goes into `notifications.data` and renders in an inbox, and an SMTP
+        // host plus a password read back is a credential in a list.
+        $this->notifyAction->configurationChanged('mail_setting.changed', null, $causer);
     }
 
     /**
