@@ -196,7 +196,7 @@ class AppMenuComposer
                         'feature' => 'settings',
                     ],
                     [
-                        'label' => 'Notifications',
+                        'label' => 'Notifications & Mail',
                         'icon' => 'far fa-bell',
                         'route' => 'notifications.index',
                         'active' => 'notifications.index',

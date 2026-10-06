@@ -23,9 +23,15 @@
            badge and the inbox target land with P9-C2; until then it points at
            the module root, which is the configuration page. -->
       @if ($notificationsVisible ?? false)
-        <a href="{{ Route::has('notifications.index') ? route('notifications.index') : '#' }}"
+        <a href="{{ Route::has('notifications.inbox') ? route('notifications.inbox') : '#' }}"
            class="nav-link text-secondary" title="Notifications">
           <i class="far fa-bell"></i>
+          @if ($unreadNotificationCount > 0)
+            <span class="position-absolute top-0 start-75 translate-middle badge rounded-pill bg-danger border border-light">
+              {{ $unreadNotificationCount }}
+            </span>
+            <span class="ms-1 text-muted fs-7">{{ $unreadNotificationCount }} unread notifications</span>
+          @endif
         </a>
       @endif
 

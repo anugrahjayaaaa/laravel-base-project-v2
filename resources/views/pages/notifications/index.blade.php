@@ -169,6 +169,32 @@
                                         @enderror
                                     </div>
                                     <div class="col-md-6">
+                                        <label for="mail_from_address" class="form-label">
+                                            From Address
+                                            <i class="bi bi-info-circle text-muted fs-7 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Sender email address for outgoing notifications."></i>
+                                        </label>
+                                        <input type="email" name="mail_from_address" id="mail_from_address"
+                                               class="form-control form-control-sm @error('mail_from_address') is-invalid @enderror" @error('mail_from_address') aria-invalid="true" aria-describedby="mail_from_address_error" @enderror
+                                               value="{{ old('mail_from_address', $settings['mail_from_address'] ?? '') }}" autocomplete="off">
+                                        @error('mail_from_address')
+                                            <div class="invalid-feedback d-block" id="mail_from_address_error">{{ $message }}</div>
+                                        @enderror
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="mail_from_name" class="form-label">
+                                            From Name
+                                            <i class="bi bi-info-circle text-muted fs-7 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Display name for outgoing notifications."></i>
+                                        </label>
+                                        <input type="text" name="mail_from_name" id="mail_from_name"
+                                               class="form-control form-control-sm @error('mail_from_name') is-invalid @enderror" @error('mail_from_name') aria-invalid="true" aria-describedby="mail_from_name_error" @enderror
+                                               value="{{ old('mail_from_name', $settings['mail_from_name'] ?? '') }}" autocomplete="off">
+                                        @error('mail_from_name')
+                                            <div class="invalid-feedback d-block" id="mail_from_name_error">{{ $message }}</div>
+                                        @enderror
+                                    </div>
+                                </div>
+
+                                <div class="col-md-6">
                                         <label for="mail_password" class="form-label">
                                             Password
                                             <i class="bi bi-info-circle text-muted fs-7 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Stored credential. It is never sent back to the browser, so an empty field here leaves the current one unchanged."></i>
@@ -177,9 +203,17 @@
                                              the markup is readable by anyone who can view this page,
                                              which is exactly the audience the password hides from. The
                                              stored state is reported by the hint below instead. --}}
-                                        <input type="password" name="mail_password" id="mail_password"
-                                               class="form-control form-control-sm @error('mail_password') is-invalid @enderror" @error('mail_password') aria-invalid="true" aria-describedby="mail_password_error" @enderror
+                                        <div class="position-relative">
+                                            <input type="password" name="mail_password" id="mail_password"
+                                               class="form-control pe-5 form-control-sm @error('mail_password') is-invalid @enderror" @error('mail_password') aria-invalid="true" aria-describedby="mail_password_error" @enderror
                                                value="" autocomplete="new-password">
+                                            <button type="button"
+                                                class="btn btn-link text-muted text-decoration-none position-absolute top-50 translate-middle-y toggle-password p-0 border-0"
+                                                data-password-toggle="mail_password" aria-label="Toggle password visibility"
+                                                tabindex="-1" style="right: 0.75rem; z-index: 5;">
+                                                <i class="bi bi-eye"></i>
+                                            </button>
+                                        </div>
                                         @error('mail_password')
                                             <div class="invalid-feedback d-block" id="mail_password_error">{{ $message }}</div>
                                         @enderror
@@ -191,7 +225,6 @@
                                             @endif
                                         </div>
                                     </div>
-                                </div>
                             </div>
                             <div class="card-footer bg-body-tertiary border-top py-3 d-flex justify-content-end align-items-center gap-2">
                                 <button type="submit" class="btn btn-primary d-inline-flex align-items-center gap-2">
