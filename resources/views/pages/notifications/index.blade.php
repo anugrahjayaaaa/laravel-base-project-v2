@@ -138,7 +138,7 @@
                                             <i class="bi bi-info-circle text-muted fs-7 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Hostname of the outgoing mail server, e.g. smtp.example.com."></i>
                                         </label>
                                         <input type="text" name="mail_host" id="mail_host"
-                                               class="form-control form-control-sm @error('mail_host') is-invalid @enderror" @error('mail_host') aria-invalid="true" aria-describedby="mail_host_error" @enderror
+                                               class="form-control pe-5 @error('mail_host') is-invalid @enderror" @error('mail_host') aria-invalid="true" aria-describedby="mail_host_error" @enderror
                                                value="{{ old('mail_host', $settings['mail_host'] ?? '') }}" autocomplete="off">
                                         @error('mail_host')
                                             <div class="invalid-feedback d-block" id="mail_host_error">{{ $message }}</div>
@@ -150,7 +150,7 @@
                                             <i class="bi bi-info-circle text-muted fs-7 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Server port. 587 for STARTTLS, 465 for implicit SSL."></i>
                                         </label>
                                         <input type="number" name="mail_port" id="mail_port"
-                                               class="form-control form-control-sm @error('mail_port') is-invalid @enderror" @error('mail_port') aria-invalid="true" aria-describedby="mail_port_error" @enderror
+                                               class="form-control pe-5 @error('mail_port') is-invalid @enderror" @error('mail_port') aria-invalid="true" aria-describedby="mail_port_error" @enderror
                                                value="{{ old('mail_port', $settings['mail_port'] ?? 587) }}" min="1" max="65535">
                                         @error('mail_port')
                                             <div class="invalid-feedback d-block" id="mail_port_error">{{ $message }}</div>
@@ -162,55 +162,25 @@
                                             <i class="bi bi-info-circle text-muted fs-7 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Account the mail server authenticates as. Leave empty for a relay that needs no authentication."></i>
                                         </label>
                                         <input type="text" name="mail_username" id="mail_username"
-                                               class="form-control form-control-sm @error('mail_username') is-invalid @enderror" @error('mail_username') aria-invalid="true" aria-describedby="mail_username_error" @enderror
+                                               class="form-control pe-5 @error('mail_username') is-invalid @enderror" @error('mail_username') aria-invalid="true" aria-describedby="mail_username_error" @enderror
                                                value="{{ old('mail_username', $settings['mail_username'] ?? '') }}" autocomplete="off">
                                         @error('mail_username')
                                             <div class="invalid-feedback d-block" id="mail_username_error">{{ $message }}</div>
                                         @enderror
                                     </div>
                                     <div class="col-md-6">
-                                        <label for="mail_from_address" class="form-label">
-                                            From Address
-                                            <i class="bi bi-info-circle text-muted fs-7 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Sender email address for outgoing notifications."></i>
-                                        </label>
-                                        <input type="email" name="mail_from_address" id="mail_from_address"
-                                               class="form-control form-control-sm @error('mail_from_address') is-invalid @enderror" @error('mail_from_address') aria-invalid="true" aria-describedby="mail_from_address_error" @enderror
-                                               value="{{ old('mail_from_address', $settings['mail_from_address'] ?? '') }}" autocomplete="off">
-                                        @error('mail_from_address')
-                                            <div class="invalid-feedback d-block" id="mail_from_address_error">{{ $message }}</div>
-                                        @enderror
-                                    </div>
-                                    <div class="col-md-6">
-                                        <label for="mail_from_name" class="form-label">
-                                            From Name
-                                            <i class="bi bi-info-circle text-muted fs-7 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Display name for outgoing notifications."></i>
-                                        </label>
-                                        <input type="text" name="mail_from_name" id="mail_from_name"
-                                               class="form-control form-control-sm @error('mail_from_name') is-invalid @enderror" @error('mail_from_name') aria-invalid="true" aria-describedby="mail_from_name_error" @enderror
-                                               value="{{ old('mail_from_name', $settings['mail_from_name'] ?? '') }}" autocomplete="off">
-                                        @error('mail_from_name')
-                                            <div class="invalid-feedback d-block" id="mail_from_name_error">{{ $message }}</div>
-                                        @enderror
-                                    </div>
-                                </div>
-
-                                <div class="col-md-6">
                                         <label for="mail_password" class="form-label">
                                             Password
                                             <i class="bi bi-info-circle text-muted fs-7 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Stored credential. It is never sent back to the browser, so an empty field here leaves the current one unchanged."></i>
                                         </label>
-                                        {{-- Never bound to a value: an SMTP credential rendered into
-                                             the markup is readable by anyone who can view this page,
-                                             which is exactly the audience the password hides from. The
-                                             stored state is reported by the hint below instead. --}}
                                         <div class="position-relative">
                                             <input type="password" name="mail_password" id="mail_password"
-                                               class="form-control pe-5 form-control-sm @error('mail_password') is-invalid @enderror" @error('mail_password') aria-invalid="true" aria-describedby="mail_password_error" @enderror
+                                               class="form-control pe-5 @error('mail_password') is-invalid @enderror" @error('mail_password') aria-invalid="true" aria-describedby="mail_password_error" @enderror
                                                value="" autocomplete="new-password">
                                             <button type="button"
                                                 class="btn btn-link text-muted text-decoration-none position-absolute top-50 translate-middle-y toggle-password p-0 border-0"
                                                 data-password-toggle="mail_password" aria-label="Toggle password visibility"
-                                                tabindex="-1" style="right: 0.75rem; z-index: 5;">
+                                                tabindex="-1" style="right: 2.25rem; z-index: 5;">
                                                 <i class="bi bi-eye"></i>
                                             </button>
                                         </div>
@@ -225,6 +195,33 @@
                                             @endif
                                         </div>
                                     </div>
+
+                                    <div class="col-md-6">
+                                        <label for="mail_from_address" class="form-label">
+                                            From Address
+                                            <i class="bi bi-info-circle text-muted fs-7 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Sender email address for outgoing notifications."></i>
+                                        </label>
+                                        <input type="email" name="mail_from_address" id="mail_from_address"
+                                               class="form-control pe-5 @error('mail_from_address') is-invalid @enderror" @error('mail_from_address') aria-invalid="true" aria-describedby="mail_from_address_error" @enderror
+                                               value="{{ old('mail_from_address', $settings['mail_from_address'] ?? '') }}" autocomplete="off">
+                                        @error('mail_from_address')
+                                            <div class="invalid-feedback d-block" id="mail_from_address_error">{{ $message }}</div>
+                                        @enderror
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="mail_from_name" class="form-label">
+                                            From Name
+                                            <i class="bi bi-info-circle text-muted fs-7 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Display name for outgoing notifications."></i>
+                                        </label>
+                                        <input type="text" name="mail_from_name" id="mail_from_name"
+                                               class="form-control pe-5 @error('mail_from_name') is-invalid @enderror" @error('mail_from_name') aria-invalid="true" aria-describedby="mail_from_name_error" @enderror
+                                               value="{{ old('mail_from_name', $settings['mail_from_name'] ?? '') }}" autocomplete="off">
+                                        @error('mail_from_name')
+                                            <div class="invalid-feedback d-block" id="mail_from_name_error">{{ $message }}</div>
+                                        @enderror
+                                    </div>
+                                </div>
+
                             </div>
                             <div class="card-footer bg-body-tertiary border-top py-3 d-flex justify-content-end align-items-center gap-2">
                                 <button type="submit" class="btn btn-primary d-inline-flex align-items-center gap-2">
