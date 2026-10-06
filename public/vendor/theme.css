@@ -462,3 +462,54 @@ input:focus-visible,
     animation: none !important;
   }
 }
+
+/* Notification bell: unread badge and preview dropdown (Phase 9 Group C).
+   Themed rather than inline `style` attributes: the header is shared layout
+   markup, and a colour hardcoded in Blade cannot follow the light/dark tokens. */
+.app-header .nav-link .badge-notification-unread {
+  font-size: .6rem;
+  line-height: 1;
+  min-width: 1rem;
+}
+
+/* The dropdown is wide enough for a sentence and narrow enough not to push the
+   user menu off-screen on a laptop. `right: 0` keeps it anchored under the bell
+   even when the bell sits at the far end of the header. */
+.notifications-preview {
+  width: 20rem;
+  max-width: calc(100vw - 2rem);
+  right: 0;
+  left: auto;
+}
+
+.notifications-preview-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: .5rem;
+}
+
+.notifications-preview-item {
+  white-space: normal;
+  border-bottom: 1px solid var(--lbp-border, rgba(0, 0, 0, .05));
+}
+
+.notifications-preview-item:last-of-type {
+  border-bottom: 0;
+}
+
+/* The unread dot. A filled dot for unread and a hollow one for read, so the
+   state survives greyscale and colour-blindness — the badge count alone cannot
+   tell a read row from an unread one. */
+.notifications-preview-dot {
+  width: .5rem;
+  height: .5rem;
+  border-radius: 50%;
+  background: var(--lbp-primary, #0d6efd);
+  flex: 0 0 auto;
+}
+
+.notifications-preview-dot.empty {
+  background: transparent;
+  border: 1px solid var(--lbp-border, rgba(0, 0, 0, .15));
+}
