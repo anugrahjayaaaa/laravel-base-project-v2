@@ -274,16 +274,18 @@ class NotificationAccessTest extends TestCase
     }
 
     #[Test]
-    public function the_header_bell_is_hidden_from_a_user_the_route_refuses(): void
+    public function the_header_bell_is_no_longer_permission_gated(): void
     {
         $user = $this->login(SystemRole::USER);
         Feature::activate('notifications');
         $this->assertFalse($user->can('notifications.view'), 'precondition: user holds no notifications.view');
 
-        $this->assertStringNotContainsString(
+        // The bell now points at the inbox, which every authenticated user can
+        // open — the old permission-gated assertion was inverted by Group C.
+        $this->assertStringContainsString(
             'fa-bell',
             $this->header(),
-            'the bell is shown to a user whose destination answers 403'
+            'the bell is still hidden from the users an inbox exists for'
         );
     }
 
@@ -301,7 +303,7 @@ class NotificationAccessTest extends TestCase
         $header = $this->header();
 
         $this->assertMatchesRegularExpression(
-            '/<a[^>]*href="[^"]*notifications[^"]*"[^>]*>\s*<i class="far fa-bell"/',
+            '/<a[^>]*href="[^"]*notifications\/inbox"[^>]*>[\s\S]*?<i class="far fa-bell"/',
             $header,
             'the bell is not a link into the notifications module'
         );

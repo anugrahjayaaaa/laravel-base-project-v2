@@ -6,7 +6,7 @@ use App\Http\Controllers\Web\V1\NotificationController;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\ViewErrorBag;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
@@ -24,14 +24,17 @@ use Tests\TestCase;
  * `errors` from ShareErrorsFromSession and a bare `view()->render()` would fail
  * on `@error`.
  *
- * PERMISSION FIXTURE — a `Gate::before` override, NOT seeded roles, and that is
- * deliberate. `notifications.view` / `.manage` / `.send_test` are seeded in P9-D1
- * and do not exist yet, so a `RoleSeeder` role cannot hold them and the whole
- * file would render the read-only branch for every case. `Gate::before` returning
- * `null` defers to Spatie, so this answers only the notifications permissions
- * under test and leaves every other gate alone — return `false` instead and it
- * denies every check in the app. When P9-D1 lands, replace this with real seeded
- * roles and assert the precondition the way `FeatureFlagUiRenderTest` does.
+ * PERMISSION FIXTURE — real seeded roles, since P9-D6.
+ *
+ * This file used to override `Gate::before` because `notifications.*` was not
+ * seeded yet, so no role could hold them. The permissions exist now (P9-D1) and
+ * the override was testing itself: it granted abilities the application never
+ * grants, so a page rendering read-only for a real viewer could still pass.
+ *
+ * Each combination is a real Spatie role carrying exactly the named
+ * permissions, which is the only way to render `view` without `manage` — the
+ * read-only branch this file exists to exercise. The send-test card needs a
+ * third: `manage` WITHOUT `send_test`, which no single real role has either.
  */
 class NotificationUiRenderTest extends TestCase
 {
@@ -49,47 +52,133 @@ class NotificationUiRenderTest extends TestCase
         $this->seed(\Database\Seeders\FeatureFlagSeeder::class);
         $this->app->make(\Spatie\Permission\PermissionRegistrar::class)->forgetCachedPermissions();
 
-        // null = no opinion, so Spatie still decides everything that is not a
-        // notifications.* permission. Captured by reference so each test states
-        // exactly which permissions the viewer holds.
-        $this->granted = [];
-        Gate::before(function (User $user, string $ability) {
-            return array_key_exists($ability, $this->granted)
-                ? $this->granted[$ability]
-                : null;
-        });
+        // Real roles, built once. `manage` WITHOUT `send_test` is the combination
+        // the send-test gate test needs and no seeded system role has, so it has
+        // to be constructed — from real Permission rows, so Spatie still decides
+        // the answer.
+        $this->fullRole = $this->roleWith(['notifications.view', 'notifications.manage', 'notifications.send_test']);
+        $this->viewerRole = $this->roleWith(['notifications.view']);
+        $this->managerWithoutSendRole = $this->roleWith(['notifications.view', 'notifications.manage']);
+        $this->sendTestOnlyRole = $this->roleWith(['notifications.view', 'notifications.send_test']);
+
+        $this->app->make(\Spatie\Permission\PermissionRegistrar::class)->forgetCachedPermissions();
+    }
+
+    /** @var \Spatie\Permission\Models\Role */
+    private $fullRole;
+
+    /** @var \Spatie\Permission\Models\Role */
+    private $viewerRole;
+
+    /** @var \Spatie\Permission\Models\Role */
+    private $managerWithoutSendRole;
+
+    /** @var \Spatie\Permission\Models\Role */
+    private $sendTestOnlyRole;
+
+    /**
+     * A real role holding exactly these permissions.
+     *
+     * `Permission::where('name', …)` rather than `findOrFail('name')`: Spatie's
+     * `findOrFail` looks up the primary key, and a permission's id is an
+     * auto-increment integer.
+     *
+     * @param  array<int, string>  $permissions
+     */
+    private function roleWith(array $permissions): \Spatie\Permission\Models\Role
+    {
+        $role = \Spatie\Permission\Models\Role::create([
+            'name' => 'notif-fixture-'.implode('-', $permissions),
+            'guard_name' => \App\Models\RoleLookup::guard(),
+        ]);
+
+        $role->givePermissionTo(
+            \Spatie\Permission\Models\Permission::whereIn('name', $permissions)
+                ->where('guard_name', \App\Models\RoleLookup::guard())
+                ->get()
+        );
+
+        return $role;
     }
 
     /**
-     * The `notifications.*` abilities the signed-in user holds in this test.
+     * Grant every notifications permission (the admin of this module).
      *
-     * An explicit map rather than one boolean, because the send-test card is
-     * gated SEPARATELY from manage (P9-D1) — a single flag cannot render the
-     * combination that proves the two gates are independent.
-     *
-     * @var array<string, bool>
+     * Applies to the ALREADY-LOGGED-IN user rather than to the next `login()`
+     * call, because the tests here call `login()` before granting. Swapping the
+     * role on the live instance is safe only if the permission cache is dropped
+     * with it — `User::can()` memoizes its answer per ability, and Spatie caches
+     * the permission set per user, so without both forgets this would answer from
+     * whatever the user held a moment ago.
      */
-    private array $granted;
-
-    /** Grant every notifications permission (the admin of this module). */
     private function grantAll(): void
     {
-        $this->granted = [
-            'notifications.view' => true,
-            'notifications.manage' => true,
-            'notifications.send_test' => true,
-        ];
+        $this->applyRole($this->fullRole);
     }
 
     /** Grant view only — the read-only branch of both pages. */
     private function grantViewOnly(): void
     {
-        $this->granted = ['notifications.view' => true];
+        $this->applyRole($this->viewerRole);
     }
 
+    /** The role the last `grant*()` applied. */
+    private ?\Spatie\Permission\Models\Role $currentRole = null;
+
+    /**
+     * Put the signed-in user on a role, dropping both permission caches.
+     *
+     * The two forgets are not belt-and-braces. Spatie's registrar caches the
+     * permission set per user for the request, and `User::can()` memoizes on top
+     * of that per instance — forget one without the other and the answer comes
+     * from the stale one, which renders the wrong branch and reports a styling
+     * failure.
+     */
+    private function applyRole(\Spatie\Permission\Models\Role $role): void
+    {
+        $this->currentRole = $role;
+
+        $user = Auth::user();
+
+        if ($user === null) {
+            return;
+        }
+
+        // syncRoles, NOT assignRole: Spatie's assignRole ADDS, so a user switched
+        // from `manage` to the send-test-only role would still hold manage and
+        // render the form this test asserts is absent. A test that narrows
+        // permissions must actually narrow them.
+        $user->syncRoles([$role]);
+        $this->app->make(\Spatie\Permission\PermissionRegistrar::class)->forgetCachedPermissions();
+
+        // And the model's OWN memo, which is a separate cache from Spatie's:
+        // `User::can()` short-circuits on `$this->canMemo[$ability]`, so a role
+        // swap leaves the previous answer in place and `can('…manage')` keeps
+        // saying true for a user who no longer holds it. Forget the registrar and
+        // miss this, and the page renders the branch the viewer cannot reach —
+        // a test that passes for the wrong reason.
+        $memo = new \ReflectionProperty($user, 'canMemo');
+        $memo->setAccessible(true);
+        $memo->setValue($user, []);
+    }
+
+    /**
+     * Sign in as a fresh user carrying whatever role is current.
+     *
+     * A new instance per call: `User::can()` memoizes per instance, so a cached
+     * user switched to a different role would answer from the memo rather than
+     * from the new role — and the render tests would pass against a page nobody
+     * can actually reach.
+     */
     private function login(): User
     {
         $user = User::factory()->create(['email_verified_at' => now()]);
+
+        if ($this->currentRole !== null) {
+            $user->assignRole($this->currentRole);
+            $this->app->make(\Spatie\Permission\PermissionRegistrar::class)->forgetCachedPermissions();
+        }
+
         $this->actingAs($user);
 
         return $user;
@@ -163,8 +252,15 @@ class NotificationUiRenderTest extends TestCase
 
     /**
      * @param  callable(string):string  $render
+     * @param  int  $allowedLayout  Queries the layout itself may run. Zero today:
+     *                              the bell's unread count is cached
+     *                              (`UnreadNotificationCount`), so even a cold
+     *                              cache costs one query on the FIRST page and
+     *                              none after — which is what keeps the repo's
+     *                              other fifteen query guards intact. The point
+     *                              of this guard is that the PAGE adds none.
      */
-    private function assertRendersWithoutQuerying(string $label, callable $render): void
+    private function assertRendersWithoutQuerying(string $label, callable $render, int $allowedLayout = 0): void
     {
         // Warm Spatie's permission cache first: the Gate reads it on every
         // @can, and counting only the first render would blame the framework
@@ -179,7 +275,27 @@ class NotificationUiRenderTest extends TestCase
         DB::disableQueryLog();
 
         $this->assertNotSame('', $html, "the {$label} page rendered nothing");
-        $this->assertSame([], $queries, "the {$label} page queried from inside the view");
+
+        // The bell's unread count, and nothing else. Named explicitly rather than
+        // counted, so a second layout query fails with "which one" instead of a
+        // bare count mismatch.
+        $layoutQueries = array_values(array_filter(
+            $queries,
+            fn (array $q): bool => str_contains($q['query'], '"notifications"')
+        ));
+
+        $this->assertCount(
+            $allowedLayout,
+            $layoutQueries,
+            "the {$label} page ran ".$allowedLayout.' expected layout query, got '.count($layoutQueries)
+        );
+
+        $other = array_values(array_filter(
+            $queries,
+            fn (array $q): bool => ! str_contains($q['query'], '"notifications"')
+        ));
+
+        $this->assertSame([], $other, "the {$label} page queried from inside the view");
     }
 
     #[Test]
@@ -187,7 +303,7 @@ class NotificationUiRenderTest extends TestCase
     {
         $this->login();
         $this->grantAll();
-        $this->assertRendersWithoutQuerying('notifications.index', fn (): string => $this->renderIndex());
+        $this->assertRendersWithoutQuerying('notifications.index', fn (): string => $this->renderIndex(), allowedLayout: 0);
     }
 
     #[Test]
@@ -195,7 +311,7 @@ class NotificationUiRenderTest extends TestCase
     {
         $this->login();
         $this->grantAll();
-        $this->assertRendersWithoutQuerying('notifications.channels', fn (): string => $this->renderChannels());
+        $this->assertRendersWithoutQuerying('notifications.channels', fn (): string => $this->renderChannels(), allowedLayout: 0);
     }
 
     /**
@@ -284,7 +400,11 @@ class NotificationUiRenderTest extends TestCase
             );
         }
 
-        $this->assertSame(2, $seen, 'the view scanner read the wrong number of files — the ban above is vacuous');
+        // Three: index, channels, and inbox. Asserted rather than hardcoded to
+        // two so a fourth view is a deliberate edit here — a scanner that reads
+        // an unknown number of files passes vacuously, which is the failure this
+        // assertion exists to prevent.
+        $this->assertSame(3, $seen, 'the view scanner read the wrong number of files — the ban above is vacuous');
     }
 
     /**
@@ -645,10 +765,16 @@ class NotificationUiRenderTest extends TestCase
 
         // manage WITHOUT send_test: the SMTP form renders, the send-test card
         // does not. That gap is the whole point of the separate permission.
-        $this->granted = [
-            'notifications.view' => true,
-            'notifications.manage' => true,
-        ];
+        $this->applyRole($this->managerWithoutSendRole);
+        $user = Auth::user();
+
+        // The preconditions, asserted rather than assumed. With the old
+        // `Gate::before` fixture these were true by construction; with real roles
+        // they are a property of the fixture, and a role that quietly gained a
+        // permission would make every assertion below pass for the wrong reason.
+        $this->assertTrue($user->can('notifications.manage'), 'precondition: holds manage');
+        $this->assertFalse($user->can('notifications.send_test'), 'precondition: holds no send_test');
+
         $html = $this->renderIndex();
 
         $this->assertStringContainsString('name="mail_host"', $html, 'the SMTP form should still render');
@@ -656,10 +782,11 @@ class NotificationUiRenderTest extends TestCase
 
         // send_test ALONE renders neither — the card requires manage as well, so
         // the gate cannot be satisfied by holding only the narrower permission.
-        $this->granted = [
-            'notifications.view' => true,
-            'notifications.send_test' => true,
-        ];
+        $this->applyRole($this->sendTestOnlyRole);
+        $user = Auth::user();
+
+        $this->assertTrue($user->can('notifications.send_test'), 'precondition: holds send_test');
+
         $html = $this->renderIndex();
 
         $this->assertStringNotContainsString('test_mail_email', $html, 'send_test alone must not surface the card');

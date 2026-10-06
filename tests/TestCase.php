@@ -6,6 +6,7 @@ use App\Models\SystemSetting;
 use Database\Seeders\FeatureFlagSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Schema;
 
 abstract class TestCase extends BaseTestCase
@@ -15,6 +16,38 @@ abstract class TestCase extends BaseTestCase
         parent::setUp();
 
         $this->seedFeatureFlags();
+        $this->fakeNotifications();
+    }
+
+    /**
+     * Faked by default, so a test about something else does not render mail.
+     *
+     * Sixteen test files save system settings, and every save now dispatches an
+     * administrative notification to the holders of the matching permission. None
+     * of those tests is about notifications, and without this they each rendered
+     * the Markdown mail template for a real `mail` transport — which is not slow,
+     * it is fatal: the run died with a premature end of PHP process partway
+     * through the numeric-bound suite.
+     *
+     * One line in the shared base rather than sixteen: the cost belongs to
+     * EVERY test that triggers an action with a notification side effect, and
+     * that set only grows. A test that cares about the notification calls
+     * `Notification::fake()` itself, or opts out below if it needs a real
+     * transport — which no test in this repository does.
+     */
+    private function fakeNotifications(): void
+    {
+        if ($this->shouldFakeNotifications()) {
+            Notification::fake();
+        }
+    }
+
+    /**
+     * Does this test want notifications faked? Override to opt out.
+     */
+    protected function shouldFakeNotifications(): bool
+    {
+        return true;
     }
 
     /**
