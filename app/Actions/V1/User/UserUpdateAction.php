@@ -2,6 +2,7 @@
 
 namespace App\Actions\V1\User;
 
+use App\Actions\V1\Notification\NotificationAdminEventAction;
 use App\Actions\V1\Role\RoleAssignAction;
 use App\Enums\UserStatusEnum;
 use App\Models\User;
@@ -17,6 +18,7 @@ class UserUpdateAction
 {
     public function __construct(
         private readonly RoleAssignAction $assignRolesAction,
+        private readonly NotificationAdminEventAction $notifyAction,
     ) {
     }
 
@@ -113,6 +115,12 @@ class UserUpdateAction
                         'pending_email' => $user->fresh()->pending_email ?? $data['email'],
                     ]);
                 }
+            }
+
+            // Inside the closure, because the method RETURNS the transaction —
+            // anything written after `});` is unreachable.
+            if ($causer !== null) {
+                $this->notifyAction->configurationChanged('user.updated', 'Profile updated', $causer);
             }
 
             return $user->fresh();

@@ -2,6 +2,7 @@
 
 namespace App\Actions\V1\System;
 
+use App\Actions\V1\Notification\NotificationAdminEventAction;
 use App\Models\SystemSetting;
 use App\Models\User;
 use App\Providers\AppServiceProvider;
@@ -22,6 +23,11 @@ use Illuminate\Support\Facades\DB;
  */
 class SystemSettingsUpdateAction
 {
+    public function __construct(
+        private readonly NotificationAdminEventAction $notifyAction,
+    ) {
+    }
+
     /**
      * Normalize and persist the settings payload.
      *
@@ -140,6 +146,12 @@ class SystemSettingsUpdateAction
         // rollback then discards would leave the process enforcing a lifetime
         // the database never accepted.
         AppServiceProvider::bindTokenExpirations();
+
+        // Every `settings.manage` holder. The message names the KEY that changed,
+        // never its value: a settings notification quoting the new value hands a
+        // reader nothing they could not already read, and this record is visible
+        // to everyone who holds the permission the change required.
+        $this->notifyAction->configurationChanged('setting.changed', count($data).' key(s)', $causer);
     }
 
     /**

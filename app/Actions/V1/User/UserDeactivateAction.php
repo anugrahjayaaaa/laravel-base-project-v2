@@ -2,6 +2,7 @@
 
 namespace App\Actions\V1\User;
 
+use App\Actions\V1\Notification\NotificationAccountStateAction;
 use App\Models\User;
 use App\Support\LastSuperadmin;
 use Illuminate\Support\Facades\DB;
@@ -14,6 +15,17 @@ use Illuminate\Validation\ValidationException;
  */
 class UserDeactivateAction
 {
+    /**
+     * @param  NotificationAccountStateAction  $notifyAction  Notifies both
+     *         audiences after the state change commits. Injected rather than
+     *         resolved so the action stays testable and the dispatch has one
+     *         seam, not two.
+     */
+    public function __construct(
+        private readonly NotificationAccountStateAction $notifyAction,
+    ) {
+    }
+
     /**
      * Deactivate the user.
      *
@@ -41,6 +53,12 @@ class UserDeactivateAction
                 'target_email' => $user->email,
             ]);
         });
+
+        // Both audiences, after the transaction: the account is already in its
+        // new state, so a notification failure cannot roll back a lock the admin
+        // asked for. See NotificationAccountStateAction for why this is a
+        // separate step rather than an event listener on the update above.
+        $this->notifyAction->run($user, 'user.deactivated', $causer);
 
         return ['user' => $user];
     }

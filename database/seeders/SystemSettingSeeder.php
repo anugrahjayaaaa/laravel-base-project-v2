@@ -100,11 +100,17 @@ class SystemSettingSeeder extends Seeder
         // password expiry reaches one account), so a per-user preference screen
         // would describe a choice nobody needs to make.
         //
-        // `in_app` is off until Group C ships the badge that gives it a meaning —
-        // a switch that reports success and controls nothing is the same category
-        // error as a `pending` feature flag.
-        SystemSetting::set('notification_channel_in_app', 'false');
+        // `in_app` gates the inbox alongside `database` — they describe the same
+        // thing (rows written to the notifications table), so a split pair where
+        // only one is read would be a control that saves and changes nothing.
+        // Seeded ON so the two agree on a fresh install; the badge and the rows
+        // exist together or neither is useful.
+        SystemSetting::set('notification_channel_in_app', 'true');
+
         SystemSetting::set('notification_channel_mail', 'true');
-        SystemSetting::set('notification_channel_database', 'false');
+        // On by default now that the `notifications` table exists. Off would
+        // mean a fresh install has an inbox, a bell and a table, and nothing
+        // ever arrives in any of them.
+        SystemSetting::set('notification_channel_database', 'true');
     }
 }

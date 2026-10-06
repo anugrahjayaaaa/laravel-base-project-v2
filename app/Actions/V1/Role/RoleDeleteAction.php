@@ -5,6 +5,7 @@ namespace App\Actions\V1\Role;
 use App\Models\Role;
 use App\Models\RoleLookup;
 use App\Models\SystemSetting;
+use App\Actions\V1\Notification\NotificationAdminEventAction;
 use App\Models\User;
 use App\Support\SystemRole;
 use Illuminate\Support\Facades\DB;
@@ -55,6 +56,11 @@ use Illuminate\Validation\ValidationException;
  */
 class RoleDeleteAction
 {
+    public function __construct(
+        private readonly NotificationAdminEventAction $notifyAction
+    ) {
+    }
+
     /**
      * Trash a role, revoking it from every user holding it.
      *
@@ -69,7 +75,7 @@ class RoleDeleteAction
     {
         $this->validate($role, $force);
 
-        DB::transaction(function () use ($role, $causer): void {
+        DB::transaction(function () use ($role, $causer): Role {
             // Read the holders BEFORE the detach — afterwards the relation is
             // empty and there is no way to ask who was affected.
             $holders = $role->users()->get();
@@ -90,8 +96,14 @@ class RoleDeleteAction
                 'reassigned_to_default' => $reassigned,
                 'revoked_permissions' => $role->permissions()->count(),
             ]);
-        });
 
+            // Inside the closure, because the method RETURNS the transaction —
+            // anything written after `});` is unreachable.
+            $this->notifyAction->configurationChanged('role.deleted', $role->name, $causer);
+
+            return $role;
+        });
+        
         return $role;
     }
 

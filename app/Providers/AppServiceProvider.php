@@ -5,6 +5,7 @@ namespace App\Providers;
 use App\Auth\LoginThrottle;
 use App\Models\Role;
 use App\Models\SystemSetting;
+use App\Models\UnreadNotificationCount;
 use App\Models\User;
 use App\Observers\RoleObserver;
 use App\Observers\SystemSettingObserver;
@@ -58,24 +59,33 @@ class AppServiceProvider extends ServiceProvider
         view()->composer('layouts.partials.header', function (View $view): void {
             $view->with('sessionsVisible', FeatureCatalog::isActive('sessions'));
 
-            // The bell points at the notifications module, so it carries the SAME two gates
-            // the sidebar item does. Permission included: until P9-C2 replaces this
-            // target with the inbox, the destination is `notifications.index`,
-            // which a plain user is refused by — and a bell that 403s on click is
-            // worse than the dead button it replaced.
+            // The bell points at the inbox, so it follows the INBOX's gate — the
+            // flag only, no permission. It previously carried
+            // `notifications.view` because its target was the configuration page,
+            // which is permission-gated; the inbox is every user's own rows, and
+            // keeping the check would hide the bell from exactly the people an
+            // inbox is for.
+            $view->with('notificationsVisible', FeatureCatalog::isActive('notifications'));
+
+            // The unread count, read HERE rather than in the partial: the partial
+            // renders on every authenticated page and a count read in its markup
+            // is a query per render.
             //
-            // Read from the same catalog and the same Gate as the sidebar, so
-            // header and sidebar cannot disagree about whether the module is
-            // reachable for this viewer.
+            // Cached, so it is a query on a cold cache rather than on every
+            // render — see `UnreadNotificationCount` for why it is invalidated on
+            // the notification event and not when the inbox is opened.
             //
-            // P9-C2 moves the target to the inbox, which is the viewer's OWN rows
-            // and needs no permission — the bell then drops this check and keeps
-            // only the flag.
-            $view->with(
-                'notificationsVisible',
-                FeatureCatalog::isActive('notifications')
-                && (auth()->user()?->can('notifications.view') ?? false)
-            );
+            // Zero when the module is off: a flag-off app pays nothing, and a
+            // count for a module nobody can open is not information.
+            $show = FeatureCatalog::isActive('notifications') && auth()->check();
+
+            $view->with([
+                'unreadNotificationCount' => $show ? UnreadNotificationCount::for(auth()->user()) : 0,
+                // The dropdown's rows, read through the SAME cache as the badge
+                // above — one forget clears both, so the number in the corner and
+                // the list below it cannot come from two different moments.
+                'recentNotifications' => $show ? UnreadNotificationCount::recent(auth()->user()) : collect(),
+            ]);
         });
         view()->composer('layouts.partials.password-strength', PasswordStrengthComposer::class);
 
@@ -101,6 +111,11 @@ class AppServiceProvider extends ServiceProvider
                 'passwordExpiryDaysRemaining' => $user ? PasswordExpiry::daysUntilExpiry($user) : 0,
             ]);
         });
+
+        // The bell's cached count is invalidated when a notification is delivered,
+        // not when the inbox is opened — see the class for why the second is too
+        // late to be correct.
+        UnreadNotificationCount::listen();
 
         User::observe(UserObserver::class);
         SystemSetting::observe(SystemSettingObserver::class);

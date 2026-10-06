@@ -3,6 +3,7 @@
 namespace App\Actions\V1\User;
 
 use App\Actions\V1\Auth\AuthRecordPasswordHistoryAction;
+use App\Actions\V1\Notification\NotificationAdminEventAction;
 use App\Actions\V1\Role\RoleAssignAction;
 use App\Models\RoleLookup;
 use App\Models\SystemSetting;
@@ -24,9 +25,11 @@ use Illuminate\Support\Facades\URL;
  */
 class UserCreateAction
 {
+
     public function __construct(
         private readonly AuthRecordPasswordHistoryAction $recordHistoryAction,
         private readonly RoleAssignAction $assignRolesAction,
+        private readonly NotificationAdminEventAction $notifyAction,
     ) {
     }
 
@@ -114,6 +117,16 @@ class UserCreateAction
             } else {
                 $user->audit('user.registered');
             }
+
+            // Administrators who can create accounts, and the account itself.
+            // Inside the closure: this method RETURNS the transaction, so anything
+            // after `});` never runs — which is how a dispatch with passing tests
+            // shipped without a caller.
+            //
+            // `UserCreatedNotification` is NOT reused. It carries a temporary
+            // password, and copying that into every `users.create` holder's inbox
+            // would turn a permission into a credential distribution list.
+            $this->notifyAction->userRegistered($user->fresh(), $causer);
 
             return $user;
         });

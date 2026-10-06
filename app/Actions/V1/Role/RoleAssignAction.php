@@ -2,6 +2,7 @@
 
 namespace App\Actions\V1\Role;
 
+use App\Actions\V1\Notification\NotificationAdminEventAction;
 use App\Actions\V1\User\UserIndexAction;
 use App\Exceptions\LastSuperadminException;
 use App\Models\RoleLookup;
@@ -18,6 +19,11 @@ use Illuminate\Support\Facades\DB;
  */
 class RoleAssignAction
 {
+    public function __construct(
+        private readonly NotificationAdminEventAction $notifyAction,
+    ) {
+    }
+
     /**
      * Replace a user's roles and record what changed.
      *
@@ -31,7 +37,7 @@ class RoleAssignAction
      */
     public function run(User $user, array $roleNames, ?User $causer = null, bool $confirmed = false): User
     {
-        return DB::transaction(function () use ($user, $roleNames, $causer, $confirmed): User {
+        DB::transaction(function () use ($user, $roleNames, $causer, $confirmed): User {
             $before = $user->roles->pluck('name')->all();
 
             // A name with no role on this guard is skipped rather than thrown on:
@@ -72,8 +78,33 @@ class RoleAssignAction
             // notice. This is the one role path that has to invalidate itself.
             UserIndexAction::bustCache();
 
+            // Inside the closure, because the method RETURNS the transaction —
+            // anything written after `});` is unreachable, which is how a
+            // notification with four passing tests shipped without a caller.
+            // Inside is also safe: the action catches its own delivery failure, so
+            // a mail server being down cannot roll back a role assignment.
+            //
+            // Only if the diff is real: a save that changed nothing must not mail
+            // anyone, or "I opened the form and pressed Save" becomes everyone's
+            // inbox.
+            if ($before !== $after) {
+                $this->notifyAction->rolesChanged(
+                    $user->fresh(),
+                    $causer,
+                    array_values(array_diff($after, $before)),
+                    array_values(array_diff($before, $after))
+                );
+
+                // The personal half: the person whose access changed. The admin
+                // half: everyone who can edit a role is told. Both audiences of
+                // the Target Audience Rule, resolved in one place.
+                $this->notifyAction->configurationChanged('role.changed', null, $causer);
+            }
+
             return $user;
         });
+
+        return $user;
     }
 
     /**
