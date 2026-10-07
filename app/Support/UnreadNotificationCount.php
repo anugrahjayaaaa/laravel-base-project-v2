@@ -45,11 +45,11 @@ class UnreadNotificationCount
     {
         $limit ??= self::RECENT_LIMIT;
 
-        return Cache::remember(
-            self::recentKey($user->getKey(), $limit),
-            now()->addMinutes(5),
-            fn (): Collection => self::materialize(
-                $user->notifications()->latest()->limit($limit)->get()->map(
+        return self::materialize(
+            Cache::remember(
+                self::recentKey($user->getKey(), $limit),
+                now()->addMinutes(5),
+                fn (): array => $user->notifications()->latest()->limit($limit)->get()->map(
                     fn ($n) => [
                         'id' => $n->id,
                         'data' => $n->data,
