@@ -41,7 +41,7 @@ class FeatureFlagCatalogTest extends TestCase
      * @var array<int, string> tests that assert an UNSEEDED database
      */
     private const EMPTY_STATE_TESTS = [
-        'every_catalogued_flag_resolves_off_until_it_is_seeded',
+        'test_every_catalogued_flag_resolves_off_until_it_is_seeded',
     ];
 
     protected function shouldSeedFeatureFlags(): bool
@@ -61,7 +61,7 @@ class FeatureFlagCatalogTest extends TestCase
         $this->app->make(\Spatie\Permission\PermissionRegistrar::class)->forgetCachedPermissions();
     }
 
-        public function every_catalogued_flag_resolves_off_until_it_is_seeded(): void
+        public function test_every_catalogued_flag_resolves_off_until_it_is_seeded(): void
     {
         // The trap, stated as a test: a fresh database with a full catalogue
         // has every module switched off.
@@ -73,7 +73,7 @@ class FeatureFlagCatalogTest extends TestCase
         }
     }
 
-        public function seeding_activates_every_flag_and_is_idempotent(): void
+        public function test_seeding_activates_every_flag_and_is_idempotent(): void
     {
         $this->seed(FeatureFlagSeeder::class);
 
@@ -93,7 +93,7 @@ class FeatureFlagCatalogTest extends TestCase
      * already looks wrong. A seeder that re-activates everything would silently
      * undo the operator's decision at the worst possible moment.
      */
-        public function reseeding_does_not_undo_an_operators_decision(): void
+        public function test_reseeding_does_not_undo_an_operators_decision(): void
     {
         $this->seed(FeatureFlagSeeder::class);
 
@@ -192,7 +192,7 @@ class FeatureFlagCatalogTest extends TestCase
      * `registration_enabled` system setting in four places, and a flag as well
      * would be two writers for one question.
      */
-        public function registration_is_not_a_flag_because_it_is_already_a_setting(): void
+        public function test_registration_is_not_a_flag_because_it_is_already_a_setting(): void
     {
         $this->assertFalse(
             FeatureCatalog::has('registration'),

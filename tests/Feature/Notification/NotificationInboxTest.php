@@ -148,7 +148,7 @@ class NotificationInboxTest extends TestCase
 
     /** The same hole, through the bulk write — which is the wider of the two. */
     #
-    public function mark_all_as_read_touches_nobody_elses_notifications(): void
+    public function test_mark_all_as_read_touches_nobody_elses_notifications(): void
     {
         $this->login(SystemRole::ADMIN);
 
@@ -245,7 +245,7 @@ class NotificationInboxTest extends TestCase
      * permanently one too high.
      */
     #
-    public function marking_read_invalidates_the_bell_count(): void
+    public function test_marking_read_invalidates_the_bell_count(): void
     {
         $user = $this->login();
         $id = $this->notify($user);
@@ -380,7 +380,7 @@ class NotificationInboxTest extends TestCase
      * exclude the one role guaranteed to see everything.
      */
     #
-    public function superadmin_is_an_administrative_recipient_despite_holding_no_rows(): void
+    public function test_superadmin_is_an_administrative_recipient_despite_holding_no_rows(): void
     {
         $superadmin = User::factory()->create(['email_verified_at' => now()]);
         $superadmin->assignRole(RoleLookup::find(SystemRole::SUPERADMIN));
@@ -428,7 +428,7 @@ class NotificationInboxTest extends TestCase
      * an empty audience looks like "no one is an admin".
      */
     #
-    public function every_administrative_event_names_a_permission_the_catalogue_declares(): void
+    public function test_every_administrative_event_names_a_permission_the_catalogue_declares(): void
     {
         foreach (NotificationAudience::ADMINISTRATIVE_EVENTS as $event => $permission) {
             $this->assertContains(

@@ -93,7 +93,7 @@ class AccountStateNotificationTest extends TestCase
      * This is the test that would have caught the gap. Before this was wired,
      * `NotificationAudience` had four passing tests and zero callers.
      */
-        public function locking_an_account_reaches_both_audiences(): void
+        public function test_locking_an_account_reaches_both_audiences(): void
     {
         // Fixtures FIRST, then the fake. Building a role grants permissions, and
         // Spatie fires its own model events through the Notification facade — so
@@ -133,7 +133,7 @@ class AccountStateNotificationTest extends TestCase
      * between the events is a string, and a rule enforced in one place cannot be
      * enforced in four.
      */
-        public function every_account_state_event_notifies_both_audiences(): void
+        public function test_every_account_state_event_notifies_both_audiences(): void
     {
         foreach ([
             // The operator holds the permission for THAT event, not a generic
@@ -246,7 +246,7 @@ class AccountStateNotificationTest extends TestCase
         $this->assertContains('database', NotificationChannel::for());
     }
 
-        public function turning_mail_off_stops_mail(): void
+        public function test_turning_mail_off_stops_mail(): void
     {
         SystemSetting::set('notification_channel_mail', 'false');
         SystemSetting::bustCache();

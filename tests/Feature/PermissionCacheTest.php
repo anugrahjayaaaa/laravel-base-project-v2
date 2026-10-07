@@ -96,7 +96,7 @@ class PermissionCacheTest extends TestCase
         );
     }
 
-        public function can_reflects_a_role_assigned_after_the_cache_warmed(): void
+        public function test_can_reflects_a_role_assigned_after_the_cache_warmed(): void
     {
         $this->seed(RoleSeeder::class);
 
@@ -156,7 +156,7 @@ class PermissionCacheTest extends TestCase
         $this->assertTrue($user->fresh()->can('users.view'));
     }
 
-        public function superadmin_passes_without_the_catalogue_being_cached(): void
+        public function test_superadmin_passes_without_the_catalogue_being_cached(): void
     {
         $this->seed(RoleSeeder::class);
 

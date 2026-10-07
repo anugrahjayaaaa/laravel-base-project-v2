@@ -171,7 +171,7 @@ class AdministrativeEventDispatchTest extends TestCase
      * carrying no password, because either alone would miss the other failure.
      */
     #
-    public function registering_a_user_notifies_administrators_without_the_credential(): void
+    public function test_registering_a_user_notifies_administrators_without_the_credential(): void
     {
         $operator = $this->holderOf('users.create');
         $bystander = $this->ordinaryUser();
@@ -205,7 +205,7 @@ class AdministrativeEventDispatchTest extends TestCase
      * name.
      */
     #
-    public function only_an_administrative_edit_notifies(): void
+    public function test_only_an_administrative_edit_notifies(): void
     {
         $subject = $this->ordinaryUser();
         $operator = $this->holderOf('users.update');
@@ -304,7 +304,7 @@ class AdministrativeEventDispatchTest extends TestCase
      * phase already found once.
      */
     #
-    public function every_declared_event_is_dispatched_or_listed_as_unwired(): void
+    public function test_every_declared_event_is_dispatched_or_listed_as_unwired(): void
     {
         $dispatched = [
             'user.registered', 'user.updated', 'user.locked', 'user.unlocked',
@@ -318,7 +318,7 @@ class AdministrativeEventDispatchTest extends TestCase
         // RoleAssignAction.
         $unwired = ['permission.changed'];
 
-        $declared = array_keys(\App\Models\NotificationAudience::ADMINISTRATIVE_EVENTS);
+        $declared = array_keys(\App\Support\NotificationAudience::ADMINISTRATIVE_EVENTS);
 
         $this->assertSame(
             [],

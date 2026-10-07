@@ -173,7 +173,7 @@ class FeatureFlagUiRenderTest extends TestCase
      * they pointed at. Asserting the count per table catches that at the markup
      * level; the behaviour half is covered by the bundle test.
      */
-        public function each_module_card_has_its_own_scoped_select_all(): void
+        public function test_each_module_card_has_its_own_scoped_select_all(): void
     {
         $html = $this->render();
 
@@ -316,7 +316,7 @@ class FeatureFlagUiRenderTest extends TestCase
      * has one": a second card without it is exactly the misalignment this
      * guards, and a first-table-only assertion would stay green through it.
      */
-        public function every_tables_columns_are_pinned_identically(): void
+        public function test_every_tables_columns_are_pinned_identically(): void
     {
         $this->login();
         $html = $this->render();
@@ -424,7 +424,7 @@ class FeatureFlagUiRenderTest extends TestCase
         );
     }
 
-        public function every_flag_row_carries_its_key_and_status(): void
+        public function test_every_flag_row_carries_its_key_and_status(): void
     {
         $this->login();
         $html = $this->render();
@@ -443,7 +443,7 @@ class FeatureFlagUiRenderTest extends TestCase
      * attribute the shared driver reads. A missing one falls back to "Confirm"
      * in danger red, silently — which is the failure this asserts.
      */
-        public function every_switch_carries_the_attributes_the_modal_driver_reads(): void
+        public function test_every_switch_carries_the_attributes_the_modal_driver_reads(): void
     {
         $this->login();
         $switches = $this->switches($this->render());

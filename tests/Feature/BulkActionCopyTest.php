@@ -32,7 +32,7 @@ class BulkActionCopyTest extends TestCase
     use RefreshDatabase;
 
     #[\PHPUnit\Framework\Attributes\Test]
-    public function every_bulk_action_resolves_to_dropdown_and_modal_copy(): void
+    public function test_every_bulk_action_resolves_to_dropdown_and_modal_copy(): void
     {
         foreach ($this->bulkBars() as $where => $bar) {
             // A page may set none of these and lean on the driver's built-in

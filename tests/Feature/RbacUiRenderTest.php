@@ -570,7 +570,7 @@ class RbacUiRenderTest extends TestCase
         $this->assertStringContainsString('Create User', $users);
     }
 
-        public function switching_tabs_keeps_the_search_term(): void
+        public function test_switching_tabs_keeps_the_search_term(): void
     {
         $user = User::factory()->create(['email_verified_at' => now(), 'is_active' => true]);
         $user->assignRole(\App\Models\RoleLookup::find('admin'));
@@ -619,7 +619,7 @@ class RbacUiRenderTest extends TestCase
             ->where('guard_name', RoleLookup::guard())->count());
     }
 
-        public function sorting_preserves_the_active_filter_over_http(): void
+        public function test_sorting_preserves_the_active_filter_over_http(): void
     {
         $this->login();
 
@@ -631,7 +631,7 @@ class RbacUiRenderTest extends TestCase
         $this->assertStringContainsString('value="adm"', $html);
     }
 
-        public function every_page_is_reachable_over_http(): void
+        public function test_every_page_is_reachable_over_http(): void
     {
         $role = Role::create(['name' => 'staff', 'guard_name' => RoleLookup::guard()]);
 

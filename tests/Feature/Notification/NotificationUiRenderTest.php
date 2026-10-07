@@ -372,7 +372,7 @@ class NotificationUiRenderTest extends TestCase
      * file count asserted: PHP's `glob()` does not treat `**` as recursive, so a
      * naive scan reads almost nothing and the ban passes vacuously.
      */
-        public function no_view_casts_booleans_with_filter_var(): void
+        public function test_no_view_casts_booleans_with_filter_var(): void
     {
         $files = \Symfony\Component\Finder\Finder::create()
             ->files()
@@ -408,7 +408,7 @@ class NotificationUiRenderTest extends TestCase
      * the cheap guard that names the offender, because a query behind a cache
      * hit is invisible to the count.
      */
-        public function no_view_reaches_for_a_model_or_a_setting(): void
+        public function test_no_view_reaches_for_a_model_or_a_setting(): void
     {
         foreach (['index', 'channels'] as $page) {
             $path = resource_path("views/pages/notifications/{$page}.blade.php");
@@ -439,7 +439,7 @@ class NotificationUiRenderTest extends TestCase
      * parsing the rendered markup for every checkbox name and requiring a
      * companion for each.
      */
-        public function every_channel_switch_has_a_hidden_companion(): void
+        public function test_every_channel_switch_has_a_hidden_companion(): void
     {
         $this->login();
         $this->grantAll();
@@ -513,7 +513,7 @@ class NotificationUiRenderTest extends TestCase
      * description is exactly what the pin prevents. Asserted per table, because a
      * first-table-only assertion stays green through a second card missing it.
      */
-        public function every_channels_table_pins_its_columns(): void
+        public function test_every_channels_table_pins_its_columns(): void
     {
         $this->login();
         $this->grantAll();
@@ -790,7 +790,7 @@ class NotificationUiRenderTest extends TestCase
      * the message is invisible while the field is red. Asserted by rendering with
      * errors and checking the pairing, the way `SettingsUiRenderTest` does.
      */
-        public function every_error_message_is_visible_and_associated_with_its_field(): void
+        public function test_every_error_message_is_visible_and_associated_with_its_field(): void
     {
         $this->login();
         $this->grantAll();
@@ -829,7 +829,7 @@ class NotificationUiRenderTest extends TestCase
      * The pages are reachable through the routes the brief specifies, behind
      * `auth` — a guest gets the login redirect, not the mail configuration.
      */
-        public function both_pages_are_reachable_and_require_authentication(): void
+        public function test_both_pages_are_reachable_and_require_authentication(): void
     {
         $this->get(route('notifications.index'))->assertRedirect(route('login'));
         $this->get(route('notifications.channels'))->assertRedirect(route('login'));

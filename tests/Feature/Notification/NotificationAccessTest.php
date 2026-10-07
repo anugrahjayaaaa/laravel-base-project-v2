@@ -99,7 +99,7 @@ class NotificationAccessTest extends TestCase
     }
 
     #
-    public function both_pages_need_the_permission(): void
+    public function test_both_pages_need_the_permission(): void
     {
         foreach (['notifications.index', 'notifications.channels'] as $name) {
             $this->assertTrue(
@@ -155,7 +155,7 @@ class NotificationAccessTest extends TestCase
      * ship and wrong on every visit.
      */
     #
-    public function both_module_pages_are_in_the_menu_and_only_one_highlights(): void
+    public function test_both_module_pages_are_in_the_menu_and_only_one_highlights(): void
     {
         $this->login(SystemRole::ADMIN);
         Feature::activate('notifications');

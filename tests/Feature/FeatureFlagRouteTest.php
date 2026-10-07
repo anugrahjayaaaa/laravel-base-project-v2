@@ -86,7 +86,7 @@ class FeatureFlagRouteTest extends TestCase
             ->assertForbidden();
     }
 
-        public function toggling_flips_the_flag_and_audits_it(): void
+        public function test_toggling_flips_the_flag_and_audits_it(): void
     {
         $admin = $this->login();
 
@@ -196,7 +196,7 @@ class FeatureFlagRouteTest extends TestCase
      * A flag in `config/pennant.php` with no toggle route is a switch an
      * operator can see but not flip.
      */
-        public function every_declared_flag_is_reachable_from_the_page(): void
+        public function test_every_declared_flag_is_reachable_from_the_page(): void
     {
         $admin = $this->login();
 
@@ -247,7 +247,7 @@ class FeatureFlagRouteTest extends TestCase
      * `logout` itself must stay reachable with the module off, or a bad flag
      * strands the user in a session they cannot end.
      */
-        public function logout_stays_reachable_with_the_sessions_module_off(): void
+        public function test_logout_stays_reachable_with_the_sessions_module_off(): void
     {
         foreach (['logout', 'api.v1.auth.logout'] as $name) {
             $route = collect(app('router')->getRoutes())->first(fn ($r) => $r->getName() === $name);

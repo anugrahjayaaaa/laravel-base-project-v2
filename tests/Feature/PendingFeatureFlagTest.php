@@ -89,7 +89,7 @@ class PendingFeatureFlagTest extends TestCase
      * declares, so it is the flag most likely to be wrongly marked pending. It
      * must not be.
      */
-        public function pulse_is_wired_and_not_marked_pending(): void
+        public function test_pulse_is_wired_and_not_marked_pending(): void
     {
         $this->assertNull(FeatureCatalog::find('pulse')['pending']);
 

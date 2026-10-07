@@ -76,7 +76,7 @@ class ApiRoleAuditTrailTest extends TestCase
     }
 
         #[DataProvider('mutations')]
-    public function every_api_role_mutation_writes_an_audited_row(string $mutation, string $event): void
+    public function test_every_api_role_mutation_writes_an_audited_row(string $mutation, string $event): void
     {
         $id = $this->makeRole('Audit Probe');
 

@@ -201,7 +201,7 @@ class FeatureFlagMiddlewareTest extends TestCase
      * switch rather than a typo. That is the failure this test exists to keep
      * the correct spelling honest.
      */
-        public function several_flags_must_all_be_active(): void
+        public function test_several_flags_must_all_be_active(): void
     {
         $this->login();
         Route::middleware(['web', 'auth', 'feature:users,roles'])

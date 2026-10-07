@@ -100,7 +100,7 @@ class FeatureFlagBulkTest extends TestCase
     /**
      * The whole point of the action: one request, one audit row.
      */
-        public function one_request_writes_exactly_one_audit_row(): void
+        public function test_one_request_writes_exactly_one_audit_row(): void
     {
         $this->login();
 
@@ -139,7 +139,7 @@ class FeatureFlagBulkTest extends TestCase
      * `from` read after the write is the single most likely bug in this action:
      * every row would say from=true to=false and look perfectly plausible.
      */
-        public function every_from_is_read_before_the_first_write(): void
+        public function test_every_from_is_read_before_the_first_write(): void
     {
         $this->login();
         Feature::deactivate('roles');

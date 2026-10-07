@@ -329,7 +329,7 @@ class NotificationSettingsTest extends TestCase
      * for. Asserted against the route, not the view — the view already gates the
      * card, and a hidden form is not an authorization check.
      */
-        public function manage_alone_cannot_send_a_test_mail(): void
+        public function test_manage_alone_cannot_send_a_test_mail(): void
     {
         // A real role carrying `manage` and NOT `send_test`. Using `admin` here
         // would prove nothing: admin holds the entire catalogue, so its refusal

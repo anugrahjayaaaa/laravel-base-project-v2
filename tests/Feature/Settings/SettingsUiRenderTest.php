@@ -184,7 +184,7 @@ class SettingsUiRenderTest extends TestCase
      * Counted against `form-label` rather than pinned at a number, so a label
      * added without an icon fails and one removed does not make the count stale.
      */
-        public function every_tooltip_icon_is_the_house_size_and_carries_a_title(): void
+        public function test_every_tooltip_icon_is_the_house_size_and_carries_a_title(): void
     {
         $this->login();
         $html = $this->render();
@@ -209,7 +209,7 @@ class SettingsUiRenderTest extends TestCase
      * the value round-trips fine when it is ON. Asserted by parsing the rendered
      * markup for every checkbox name and requiring a companion for each.
      */
-        public function every_switch_has_a_hidden_companion(): void
+        public function test_every_switch_has_a_hidden_companion(): void
     {
         $this->login();
         $html = $this->render();
@@ -269,7 +269,7 @@ class SettingsUiRenderTest extends TestCase
      * design system also requires the message be programmatically associated
      * with its field, which the `aria-describedby`/`id` pair provides.
      */
-        public function every_error_message_is_visible_and_associated_with_its_field(): void
+        public function test_every_error_message_is_visible_and_associated_with_its_field(): void
     {
         $this->login();
         $html = $this->render();
@@ -328,7 +328,7 @@ class SettingsUiRenderTest extends TestCase
      * the driver alike. `password_expiry_warn_days` was readable and editable
      * with Password Expiry switched off, unlike its three siblings.
      */
-        public function every_dependent_field_follows_its_toggle(): void
+        public function test_every_dependent_field_follows_its_toggle(): void
     {
         $this->login();
 
@@ -377,7 +377,7 @@ class SettingsUiRenderTest extends TestCase
      * with no field anywhere, so no admin could set them. The loop-rendered
      * policy switches are listed because their `name` is `{{ $key }}`.
      */
-        public function every_validated_setting_has_a_form_field(): void
+        public function test_every_validated_setting_has_a_form_field(): void
     {
         $this->login();
         $html = $this->render();

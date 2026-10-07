@@ -114,7 +114,7 @@ class PerformanceGuardTest extends TestCase
      * "under 5" passes for a memo that only half works; asking the same
      * question 5 times and requiring exactly one evaluation cannot.
      */
-        public function repeated_permission_checks_for_one_ability_evaluate_the_gate_once(): void
+        public function test_repeated_permission_checks_for_one_ability_evaluate_the_gate_once(): void
     {
         $user = $this->viewerWithEveryPermission();
         $gateEvaluations = $this->countGateEvaluations();

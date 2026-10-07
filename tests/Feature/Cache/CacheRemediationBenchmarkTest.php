@@ -163,6 +163,8 @@ class CacheRemediationBenchmarkTest extends TestCase
         });
 
         $this->record('RoleAssignAction x2 (grant + sync)', $measured);
+
+        $this->addToAssertionCount(1);
     }
 
     /**
@@ -196,6 +198,8 @@ class CacheRemediationBenchmarkTest extends TestCase
             // Report the marginal cost per role so the scaling is legible.
             fwrite(STDERR, sprintf("    -> %.2f queries per role\n", $r['queries'] / $size));
         }
+
+        $this->addToAssertionCount(1);
     }
 
     /**
