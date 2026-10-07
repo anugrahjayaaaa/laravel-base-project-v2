@@ -93,8 +93,7 @@ class AccountStateNotificationTest extends TestCase
      * This is the test that would have caught the gap. Before this was wired,
      * `NotificationAudience` had four passing tests and zero callers.
      */
-    #[Test]
-    public function locking_an_account_reaches_both_audiences(): void
+        public function locking_an_account_reaches_both_audiences(): void
     {
         // Fixtures FIRST, then the fake. Building a role grants permissions, and
         // Spatie fires its own model events through the Notification facade — so
@@ -134,8 +133,7 @@ class AccountStateNotificationTest extends TestCase
      * between the events is a string, and a rule enforced in one place cannot be
      * enforced in four.
      */
-    #[Test]
-    public function every_account_state_event_notifies_both_audiences(): void
+        public function every_account_state_event_notifies_both_audiences(): void
     {
         foreach ([
             // The operator holds the permission for THAT event, not a generic
@@ -172,8 +170,7 @@ class AccountStateNotificationTest extends TestCase
      * only consulted for undeclared ones. Writing it that way is a one-word
      * mistake that silently drops the person the notification is about.
      */
-    #[Test]
-    public function the_subject_is_notified_even_though_the_event_is_administrative(): void
+        public function the_subject_is_notified_even_though_the_event_is_administrative(): void
     {
         Notification::fake();
 
@@ -197,8 +194,7 @@ class AccountStateNotificationTest extends TestCase
      * it happens exactly when the rule works — an admin is in the permission set
      * by definition.
      */
-    #[Test]
-    public function a_recipient_in_both_audiences_is_notified_once(): void
+        public function a_recipient_in_both_audiences_is_notified_once(): void
     {
         Notification::fake();
 
@@ -216,8 +212,7 @@ class AccountStateNotificationTest extends TestCase
      * worse outcome than a missed notification: the admin asked for a lock, the
      * lock did not happen, and nothing says why.
      */
-    #[Test]
-    public function a_delivery_failure_does_not_undo_the_state_change(): void
+        public function a_delivery_failure_does_not_undo_the_state_change(): void
     {
         Notification::shouldReceive('send')->andThrow(new \RuntimeException('transport down'));
 
@@ -241,8 +236,7 @@ class AccountStateNotificationTest extends TestCase
      * `NotificationChannel::for()` ignored it — the same category of defect as a
      * `pending` feature flag, and the reason this assertion exists.
      */
-    #[Test]
-    public function the_in_app_switch_gates_the_database_channel(): void
+        public function the_in_app_switch_gates_the_database_channel(): void
     {
         SystemSetting::set('notification_channel_mail', 'false');
         SystemSetting::set('notification_channel_database', 'true');
@@ -252,8 +246,7 @@ class AccountStateNotificationTest extends TestCase
         $this->assertContains('database', NotificationChannel::for());
     }
 
-    #[Test]
-    public function turning_mail_off_stops_mail(): void
+        public function turning_mail_off_stops_mail(): void
     {
         SystemSetting::set('notification_channel_mail', 'false');
         SystemSetting::bustCache();
@@ -267,8 +260,7 @@ class AccountStateNotificationTest extends TestCase
      * `NotificationChannel::for()` returning the right array proves nothing if
      * nothing calls it — the defect this file exists to catch, one level down.
      */
-    #[Test]
-    public function the_switches_reach_the_dispatched_notification(): void
+        public function the_switches_reach_the_dispatched_notification(): void
     {
         Notification::fake();
 

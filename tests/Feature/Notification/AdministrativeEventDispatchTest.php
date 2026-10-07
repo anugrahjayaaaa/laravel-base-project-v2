@@ -21,7 +21,7 @@ use Database\Seeders\RoleSeeder;
 use Database\Seeders\SystemSettingSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
-use PHPUnit\Framework\Attributes\Test;
+
 use Spatie\Permission\PermissionRegistrar;
 use Tests\TestCase;
 
@@ -97,7 +97,7 @@ class AdministrativeEventDispatchTest extends TestCase
      * more numerous than the people wearing it, and telling all of them that a
      * colleague gained a permission turns an administrative feed into noise.
      */
-    #[Test]
+    #
     public function a_role_change_notifies_the_user_whose_access_changed(): void
     {
         $subject = $this->ordinaryUser();
@@ -120,7 +120,7 @@ class AdministrativeEventDispatchTest extends TestCase
     }
 
     /** A role change notifies the holder of roles.update, not just the user. */
-    #[Test]
+    #
     public function a_role_change_notifies_administrators_who_can_edit_roles(): void
     {
         $subject = $this->ordinaryUser();
@@ -146,7 +146,7 @@ class AdministrativeEventDispatchTest extends TestCase
      * Without this, "I opened the form and pressed Save" mails everyone wearing
      * the affected role.
      */
-    #[Test]
+    #
     public function a_role_save_that_changed_nothing_notifies_nobody(): void
     {
         $subject = $this->ordinaryUser();
@@ -170,7 +170,7 @@ class AdministrativeEventDispatchTest extends TestCase
      * Asserted on both classes being distinct AND on the registered event
      * carrying no password, because either alone would miss the other failure.
      */
-    #[Test]
+    #
     public function registering_a_user_notifies_administrators_without_the_credential(): void
     {
         $operator = $this->holderOf('users.create');
@@ -204,7 +204,7 @@ class AdministrativeEventDispatchTest extends TestCase
      * it would tell every `users.update` holder that somebody changed a display
      * name.
      */
-    #[Test]
+    #
     public function only_an_administrative_edit_notifies(): void
     {
         $subject = $this->ordinaryUser();
@@ -231,7 +231,7 @@ class AdministrativeEventDispatchTest extends TestCase
      * The concrete case this exists for: one operator flips `users` off, and
      * without this the other operators cannot agree on whether it is on.
      */
-    #[Test]
+    #
     public function a_feature_toggle_reaches_every_manager(): void
     {
         $operator = $this->holderOf('features.manage');
@@ -252,7 +252,7 @@ class AdministrativeEventDispatchTest extends TestCase
      * could not already read — and this one goes into `notifications.data`, which
      * renders back in an inbox.
      */
-    #[Test]
+    #
     public function a_settings_notification_never_carries_the_value(): void
     {
         $operator = $this->holderOf('settings.manage');
@@ -274,7 +274,7 @@ class AdministrativeEventDispatchTest extends TestCase
         $this->assertStringNotContainsString('registration_enabled', $serialized);
     }
 
-    #[Test]
+    #
     public function a_role_deletion_reaches_role_deleters(): void
     {
         $operator = $this->holderOf('roles.delete');
@@ -303,7 +303,7 @@ class AdministrativeEventDispatchTest extends TestCase
      * and adding one to the dispatched set without a class is the same defect this
      * phase already found once.
      */
-    #[Test]
+    #
     public function every_declared_event_is_dispatched_or_listed_as_unwired(): void
     {
         $dispatched = [
@@ -342,7 +342,7 @@ class AdministrativeEventDispatchTest extends TestCase
      * feature toggle that rolled back because a mail server was down would leave
      * the store row and the notification disagreeing about what happened.
      */
-    #[Test]
+    #
     public function a_delivery_failure_does_not_fail_the_configuration_change(): void
     {
         Notification::shouldReceive('send')->andThrow(new \RuntimeException('transport down'));

@@ -14,7 +14,7 @@ use Database\Seeders\RoleSeeder;
 use Database\Seeders\SystemSettingSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification as NotificationFacade;
-use PHPUnit\Framework\Attributes\Test;
+
 use Spatie\Permission\PermissionRegistrar;
 use Tests\TestCase;
 
@@ -77,7 +77,7 @@ class NotificationInboxTest extends TestCase
      * the route, and that is the point: an inbox only its administrators can
      * open is not an inbox.
      */
-    #[Test]
+    #
     public function an_ordinary_user_reaches_their_inbox(): void
     {
         $user = $this->login();
@@ -86,7 +86,7 @@ class NotificationInboxTest extends TestCase
         $this->get(route('notifications.inbox'))->assertOk();
     }
 
-    #[Test]
+    #
     public function the_inbox_shows_the_viewers_notifications(): void
     {
         $user = $this->login();
@@ -97,7 +97,7 @@ class NotificationInboxTest extends TestCase
             ->assertSee('Welcome aboard');
     }
 
-    #[Test]
+    #
     public function the_inbox_counts_every_unread_not_just_the_page(): void
     {
         $user = $this->login();
@@ -112,7 +112,7 @@ class NotificationInboxTest extends TestCase
             ->assertViewHas('unreadCount', 5);
     }
 
-    #[Test]
+    #
     public function an_empty_inbox_renders_rather_than_erroring(): void
     {
         $this->login();
@@ -130,7 +130,7 @@ class NotificationInboxTest extends TestCase
      * a UUID, so it is not guessable, but a logged-in user has a valid UUID from
      * their own inbox to try against this endpoint.
      */
-    #[Test]
+    #
     public function a_user_cannot_mark_another_users_notification_read(): void
     {
         $this->login(SystemRole::ADMIN);
@@ -147,7 +147,7 @@ class NotificationInboxTest extends TestCase
     }
 
     /** The same hole, through the bulk write — which is the wider of the two. */
-    #[Test]
+    #
     public function mark_all_as_read_touches_nobody_elses_notifications(): void
     {
         $this->login(SystemRole::ADMIN);
@@ -173,7 +173,7 @@ class NotificationInboxTest extends TestCase
         );
     }
 
-    #[Test]
+    #
     public function the_viewer_can_mark_their_own_notification_read(): void
     {
         $user = $this->login();
@@ -186,7 +186,7 @@ class NotificationInboxTest extends TestCase
         $this->assertNotNull($user->notifications()->whereKey($id)->first()->read_at);
     }
 
-    #[Test]
+    #
     public function an_already_read_notification_is_reported_not_silently_accepted(): void
     {
         $user = $this->login();
@@ -197,7 +197,7 @@ class NotificationInboxTest extends TestCase
             ->assertSessionHas('error');
     }
 
-    #[Test]
+    #
     public function an_unknown_notification_id_is_reported_not_a_500(): void
     {
         $this->login();
@@ -217,7 +217,7 @@ class NotificationInboxTest extends TestCase
      * clicked it, which is the number people notice least and complain about
      * most.
      */
-    #[Test]
+    #
     public function the_bell_count_is_cached_and_invalidated_when_a_notification_arrives(): void
     {
         $user = $this->login();
@@ -244,7 +244,7 @@ class NotificationInboxTest extends TestCase
      * event fires for it. Forgetting only on delivery is how a badge ends up
      * permanently one too high.
      */
-    #[Test]
+    #
     public function marking_read_invalidates_the_bell_count(): void
     {
         $user = $this->login();
@@ -261,7 +261,7 @@ class NotificationInboxTest extends TestCase
         );
     }
 
-    #[Test]
+    #
     public function the_bell_count_costs_no_query_on_a_warm_cache(): void
     {
         $user = $this->login();
@@ -299,7 +299,7 @@ class NotificationInboxTest extends TestCase
      * `notifications.view` because its target was the configuration page. The
      * target is now a page any authenticated user can open.
      */
-    #[Test]
+    #
     public function the_bell_points_at_the_inbox_for_an_ordinary_user(): void
     {
         $this->login(SystemRole::USER);
@@ -310,7 +310,7 @@ class NotificationInboxTest extends TestCase
         $this->assertStringContainsString(route('notifications.inbox'), $html);
     }
 
-    #[Test]
+    #
     public function the_bell_shows_the_unread_count(): void
     {
         $user = $this->login();
@@ -324,7 +324,7 @@ class NotificationInboxTest extends TestCase
         $this->assertStringContainsString('3 unread notifications', $html);
     }
 
-    #[Test]
+    #
     public function the_bell_shows_no_badge_when_everything_is_read(): void
     {
         $user = $this->login();
@@ -336,7 +336,7 @@ class NotificationInboxTest extends TestCase
         $this->assertStringNotContainsString('unread notifications', $html);
     }
 
-    #[Test]
+    #
     public function a_disabled_flag_hides_the_bell_and_closes_the_inbox(): void
     {
         $this->login();
@@ -355,7 +355,7 @@ class NotificationInboxTest extends TestCase
      * administrative dispatch. Without this assertion the rule is a comment, and
      * a comment does not keep a mail-out from going to everyone in the table.
      */
-    #[Test]
+    #
     public function an_administrative_event_reaches_only_permission_holders(): void
     {
         $operator = User::factory()->create(['email_verified_at' => now()]);
@@ -379,7 +379,7 @@ class NotificationInboxTest extends TestCase
      * `Gate::before` rule — so a permission-only audience query would silently
      * exclude the one role guaranteed to see everything.
      */
-    #[Test]
+    #
     public function superadmin_is_an_administrative_recipient_despite_holding_no_rows(): void
     {
         $superadmin = User::factory()->create(['email_verified_at' => now()]);
@@ -395,7 +395,7 @@ class NotificationInboxTest extends TestCase
      * Personal events go to the subject and nobody else — not even an
      * administrator, who is not opted out of their own account's alerts.
      */
-    #[Test]
+    #
     public function a_personal_event_reaches_only_its_subject(): void
     {
         $admin = User::factory()->create(['email_verified_at' => now()]);
@@ -414,7 +414,7 @@ class NotificationInboxTest extends TestCase
      * "administrative" for an unknown name would mean a typo broadcasting to
      * every administrator in the system.
      */
-    #[Test]
+    #
     public function an_unclassified_event_reaches_nobody_when_there_is_no_subject(): void
     {
         $this->assertCount(0, NotificationAudience::forEvent('typo.in.the.event.name'));
@@ -427,7 +427,7 @@ class NotificationInboxTest extends TestCase
      * route the event to nobody — silently, because the query returns empty and
      * an empty audience looks like "no one is an admin".
      */
-    #[Test]
+    #
     public function every_administrative_event_names_a_permission_the_catalogue_declares(): void
     {
         foreach (NotificationAudience::ADMINISTRATIVE_EVENTS as $event => $permission) {

@@ -100,8 +100,7 @@ class NotificationSettingsTest extends TestCase
         ], $overrides);
     }
 
-    #[Test]
-    public function a_manager_saves_the_transport_and_it_reaches_the_runtime_config(): void
+        public function a_manager_saves_the_transport_and_it_reaches_the_runtime_config(): void
     {
         $this->login();
 
@@ -126,8 +125,7 @@ class NotificationSettingsTest extends TestCase
         $this->assertSame('Example App', config('mail.from.name'));
     }
 
-    #[Test]
-    public function the_password_is_encrypted_at_rest_and_decrypted_for_the_transport(): void
+        public function the_password_is_encrypted_at_rest_and_decrypted_for_the_transport(): void
     {
         $this->login();
 
@@ -151,8 +149,7 @@ class NotificationSettingsTest extends TestCase
         $this->assertTrue(AppServiceProvider::hasMailPassword());
     }
 
-    #[Test]
-    public function the_password_is_never_handed_to_a_view(): void
+        public function the_password_is_never_handed_to_a_view(): void
     {
         $this->login();
 
@@ -168,8 +165,7 @@ class NotificationSettingsTest extends TestCase
      * instead would disarm authentication on the next send — and the symptom
      * (mail stops arriving) appears long after the save that caused it.
      */
-    #[Test]
-    public function an_empty_password_keeps_the_stored_one(): void
+        public function an_empty_password_keeps_the_stored_one(): void
     {
         $this->login();
 
@@ -192,8 +188,7 @@ class NotificationSettingsTest extends TestCase
      * `none`, is therefore stored as the empty value so it binds as null — a
      * literal `none` would be a row nothing reads.
      */
-    #[Test]
-    public function the_none_encryption_option_binds_as_null(): void
+        public function the_none_encryption_option_binds_as_null(): void
     {
         $this->login();
 
@@ -205,8 +200,7 @@ class NotificationSettingsTest extends TestCase
         $this->assertNull(config('mail.mailers.smtp.scheme'));
     }
 
-    #[Test]
-    public function an_encryption_value_the_transport_cannot_read_is_refused(): void
+        public function an_encryption_value_the_transport_cannot_read_is_refused(): void
     {
         $this->login();
 
@@ -221,8 +215,7 @@ class NotificationSettingsTest extends TestCase
         $this->assertSame($before, SystemSetting::getString('mail_encryption'), 'a refused save changed the scheme');
     }
 
-    #[Test]
-    public function an_out_of_range_port_is_refused(): void
+        public function an_out_of_range_port_is_refused(): void
     {
         $this->login();
 
@@ -236,8 +229,7 @@ class NotificationSettingsTest extends TestCase
             ->assertSessionHasErrors('mail_port');
     }
 
-    #[Test]
-    public function an_unconfigured_mailer_is_refused(): void
+        public function an_unconfigured_mailer_is_refused(): void
     {
         $this->login();
 
@@ -245,8 +237,7 @@ class NotificationSettingsTest extends TestCase
             ->assertSessionHasErrors('mail_mailer');
     }
 
-    #[Test]
-    public function a_save_writes_one_audit_record_inside_its_transaction(): void
+        public function a_save_writes_one_audit_record_inside_its_transaction(): void
     {
         $this->login();
 
@@ -276,8 +267,7 @@ class NotificationSettingsTest extends TestCase
         );
     }
 
-    #[Test]
-    public function the_channel_switches_save_and_render_as_booleans(): void
+        public function the_channel_switches_save_and_render_as_booleans(): void
     {
         $this->login();
 
@@ -304,8 +294,7 @@ class NotificationSettingsTest extends TestCase
      * this save would leave the stored value untouched — a switch that can be
      * enabled but never disabled.
      */
-    #[Test]
-    public function an_unticked_channel_can_be_turned_off(): void
+        public function an_unticked_channel_can_be_turned_off(): void
     {
         $this->login();
 
@@ -324,8 +313,7 @@ class NotificationSettingsTest extends TestCase
         $this->assertFalse(SystemSetting::getBool('notification_channel_in_app'));
     }
 
-    #[Test]
-    public function a_viewer_cannot_write_the_transport(): void
+        public function a_viewer_cannot_write_the_transport(): void
     {
         $this->login(SystemRole::USER);
 
@@ -341,8 +329,7 @@ class NotificationSettingsTest extends TestCase
      * for. Asserted against the route, not the view — the view already gates the
      * card, and a hidden form is not an authorization check.
      */
-    #[Test]
-    public function manage_alone_cannot_send_a_test_mail(): void
+        public function manage_alone_cannot_send_a_test_mail(): void
     {
         // A real role carrying `manage` and NOT `send_test`. Using `admin` here
         // would prove nothing: admin holds the entire catalogue, so its refusal
@@ -373,8 +360,7 @@ class NotificationSettingsTest extends TestCase
             ->assertForbidden();
     }
 
-    #[Test]
-    public function a_disabled_flag_refuses_every_route_in_the_module(): void
+        public function a_disabled_flag_refuses_every_route_in_the_module(): void
     {
         $this->login(SystemRole::SUPERADMIN);
         Feature::deactivate('notifications');
@@ -384,8 +370,7 @@ class NotificationSettingsTest extends TestCase
         }
     }
 
-    #[Test]
-    public function the_test_mail_reports_a_transport_failure_without_a_500(): void
+        public function the_test_mail_reports_a_transport_failure_without_a_500(): void
     {
         $this->login();
 
@@ -404,8 +389,7 @@ class NotificationSettingsTest extends TestCase
         );
     }
 
-    #[Test]
-    public function a_delivered_test_mail_is_recorded(): void
+        public function a_delivered_test_mail_is_recorded(): void
     {
         $this->login();
 
@@ -426,8 +410,7 @@ class NotificationSettingsTest extends TestCase
         );
     }
 
-    #[Test]
-    public function the_test_mail_recipient_must_be_a_valid_address(): void
+        public function the_test_mail_recipient_must_be_a_valid_address(): void
     {
         $this->login();
 
@@ -450,8 +433,7 @@ class NotificationSettingsTest extends TestCase
      *
      * Every typed getter is called with a cast fallback, so this passes.
      */
-    #[Test]
-    public function an_install_without_a_configured_username_still_binds(): void
+        public function an_install_without_a_configured_username_still_binds(): void
     {
         config([
             // Exactly what an unset MAIL_USERNAME produces.
@@ -475,8 +457,7 @@ class NotificationSettingsTest extends TestCase
      * The page must show what the app is enforcing, not blanks — an admin
      * opening the form before its first save sees the transport in force.
      */
-    #[Test]
-    public function the_page_shows_the_effective_transport_before_any_save(): void
+        public function the_page_shows_the_effective_transport_before_any_save(): void
     {
         // The seeder writes these rows from config, so a fallback can only be
         // observed on an install that never saved one. Deleting them is what puts

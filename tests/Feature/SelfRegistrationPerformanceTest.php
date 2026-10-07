@@ -125,8 +125,7 @@ class SelfRegistrationPerformanceTest extends TestCase
         parent::tearDownAfterClass();
     }
 
-    #[Test]
-    public function test_web_registration_happy_path(): void
+        public function test_web_registration_happy_path(): void
     {
         $result = $this->measure('Web POST /register', function () {
             $this->post(route('register.submit'), $this->payload())->assertRedirect();
@@ -147,8 +146,7 @@ class SelfRegistrationPerformanceTest extends TestCase
      * A duplicate username is the cheapest possible attack: same request, no
      * work done. It must not cost more than the happy path.
      */
-    #[Test]
-    public function test_rejected_registration_costs_no_more_than_the_happy_path(): void
+        public function test_rejected_registration_costs_no_more_than_the_happy_path(): void
     {
         User::factory()->create(['username' => 'taken', 'email' => 'taken@example.test']);
 
@@ -182,8 +180,7 @@ class SelfRegistrationPerformanceTest extends TestCase
      * BCRYPT_ROUNDS to 4, so this only proves the work is present and paid
      * once — the production cost is the configured rounds, not this number.
      */
-    #[Test]
-    public function test_password_hashing_happens_once_per_registration(): void
+        public function test_password_hashing_happens_once_per_registration(): void
     {
         $hashes = 0;
         DB::listen(function ($query) use (&$hashes) {
@@ -205,8 +202,7 @@ class SelfRegistrationPerformanceTest extends TestCase
      * that matters. Reported, not asserted: the absolute value belongs to the
      * machine, and asserting it would make this a flaky test.
      */
-    #[Test]
-    public function test_sustained_throughput(): void
+        public function test_sustained_throughput(): void
     {
         // The rate limiter is the point of the next test, not this one: left on,
         // it caps the run at registration_rate_limit_per_minute and the loop
@@ -242,8 +238,7 @@ class SelfRegistrationPerformanceTest extends TestCase
      * part of its performance behaviour, not a detail. Left untested, raising
      * registration_rate_limit_per_minute would look like a free speed-up.
      */
-    #[Test]
-    public function test_the_rate_limit_caps_registrations_per_minute(): void
+        public function test_the_rate_limit_caps_registrations_per_minute(): void
     {
         $limit = SystemSetting::getInt('registration_rate_limit_per_minute', 3);
         $created = 0;

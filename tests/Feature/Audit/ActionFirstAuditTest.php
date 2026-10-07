@@ -86,8 +86,7 @@ class ActionFirstAuditTest extends TestCase
      * The controller used to add its own `$user->audit('user.deleted')` on top
      * of the action, which is the double-write this standard forbids.
      */
-    #[Test]
-    public function a_single_delete_writes_exactly_one_audit_record(): void
+        public function a_single_delete_writes_exactly_one_audit_record(): void
     {
         $user = User::factory()->create();
 
@@ -109,8 +108,7 @@ class ActionFirstAuditTest extends TestCase
      * records come from the same code path the row button uses — there is no
      * bulk-specific audit writer to keep in sync.
      */
-    #[Test]
-    public function a_bulk_delete_records_every_deleted_user(): void
+        public function a_bulk_delete_records_every_deleted_user(): void
     {
         $users = User::factory()->count(3)->create();
 
@@ -139,8 +137,7 @@ class ActionFirstAuditTest extends TestCase
      * double-write, one layer up. Driven through the HTTP route rather than the
      * processor, because the controller's skip is part of what is under test.
      */
-    #[Test]
-    public function a_bulk_delete_writes_no_aggregate_row(): void
+        public function a_bulk_delete_writes_no_aggregate_row(): void
     {
         $users = User::factory()->count(2)->create();
 
@@ -170,8 +167,7 @@ class ActionFirstAuditTest extends TestCase
      * @param  string  $routeName
      * @param  array<string, mixed>  $state  Starting state the route requires.
      */
-    #[Test]
-    #[DataProvider('singleMutationCases')]
+        #[DataProvider('singleMutationCases')]
     public function a_single_user_mutation_writes_exactly_one_audit_record(
         string $event,
         string $method,
@@ -230,8 +226,7 @@ class ActionFirstAuditTest extends TestCase
      * @param string $event
      * @param array<string, mixed> $state
      */
-    #[Test]
-    #[DataProvider('bulkStateCases')]
+        #[DataProvider('bulkStateCases')]
     public function a_bulk_state_action_records_every_subject_once(
         string $action,
         string $event,
@@ -277,8 +272,7 @@ class ActionFirstAuditTest extends TestCase
      * audit list is filtered on properties, and a state row carrying only a
      * subject id cannot be searched by the address it was applied to.
      */
-    #[Test]
-    public function a_state_change_records_the_target_it_affected(): void
+        public function a_state_change_records_the_target_it_affected(): void
     {
         $subject = User::factory()->create(['is_active' => false]);
 
@@ -308,8 +302,7 @@ class ActionFirstAuditTest extends TestCase
      * reading through it here would report a false failure for a save that
      * correctly changed nothing.
      */
-    #[Test]
-    public function a_rolled_back_settings_save_leaves_no_value_or_audit_row(): void
+        public function a_rolled_back_settings_save_leaves_no_value_or_audit_row(): void
     {
         $before = DB::table('system_settings')->where('key', 'password_min_length')->value('value');
 
@@ -344,8 +337,7 @@ class ActionFirstAuditTest extends TestCase
     /**
      * A committed settings save writes exactly one row, attributed to the caller.
      */
-    #[Test]
-    public function a_settings_save_writes_exactly_one_audit_record(): void
+        public function a_settings_save_writes_exactly_one_audit_record(): void
     {
         $this->actingAs($this->admin)
             ->post(route('settings.update'), ['password_min_length' => 14])
@@ -363,8 +355,7 @@ class ActionFirstAuditTest extends TestCase
      * The action writes its record inside the transaction, so an outer failure
      * discards both the deletion and the claim that it happened.
      */
-    #[Test]
-    public function a_rolled_back_delete_leaves_no_audit_record(): void
+        public function a_rolled_back_delete_leaves_no_audit_record(): void
     {
         $user = User::factory()->create();
 
@@ -402,8 +393,7 @@ class ActionFirstAuditTest extends TestCase
      * @param  callable(User): mixed  $mutate
      * @param  callable(User): bool  $assertRolledBack
      */
-    #[Test]
-    #[DataProvider('unguardedAuditCases')]
+        #[DataProvider('unguardedAuditCases')]
     public function a_rolled_back_mutation_leaves_no_audit_record(
         string $event,
         array $state,

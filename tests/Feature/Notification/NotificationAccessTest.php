@@ -13,7 +13,7 @@ use Database\Seeders\RoleSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Route;
 use Laravel\Pennant\Feature;
-use PHPUnit\Framework\Attributes\Test;
+
 use Spatie\Permission\PermissionRegistrar;
 use Tests\TestCase;
 
@@ -72,7 +72,7 @@ class NotificationAccessTest extends TestCase
         return $m[0];
     }
 
-    #[Test]
+    #
     public function the_permission_is_seeded_and_grouped(): void
     {
         foreach (['notifications.view', 'notifications.manage', 'notifications.send_test'] as $name) {
@@ -87,7 +87,7 @@ class NotificationAccessTest extends TestCase
         );
     }
 
-    #[Test]
+    #
     public function the_flag_is_declared_and_not_pending(): void
     {
         $flag = FeatureCatalog::find('notifications');
@@ -98,7 +98,7 @@ class NotificationAccessTest extends TestCase
         $this->assertNull($flag['pending']);
     }
 
-    #[Test]
+    #
     public function both_pages_need_the_permission(): void
     {
         foreach (['notifications.index', 'notifications.channels'] as $name) {
@@ -112,7 +112,7 @@ class NotificationAccessTest extends TestCase
         }
     }
 
-    #[Test]
+    #
     public function a_user_without_the_permission_is_refused(): void
     {
         $this->login(SystemRole::USER);
@@ -121,7 +121,7 @@ class NotificationAccessTest extends TestCase
         $this->get(route('notifications.channels'))->assertForbidden();
     }
 
-    #[Test]
+    #
     public function a_holder_of_the_permission_reaches_both_pages(): void
     {
         $this->login(SystemRole::ADMIN);
@@ -137,7 +137,7 @@ class NotificationAccessTest extends TestCase
      * off. This is the assertion that fails the moment someone helpfully adds a
      * superadmin bypass.
      */
-    #[Test]
+    #
     public function a_disabled_flag_refuses_an_admin(): void
     {
         $this->login(SystemRole::SUPERADMIN);
@@ -154,7 +154,7 @@ class NotificationAccessTest extends TestCase
      * a wildcard here renders the module twice highlighted — quiet enough to
      * ship and wrong on every visit.
      */
-    #[Test]
+    #
     public function both_module_pages_are_in_the_menu_and_only_one_highlights(): void
     {
         $this->login(SystemRole::ADMIN);
@@ -176,7 +176,7 @@ class NotificationAccessTest extends TestCase
      * The channels page is not orphaned: the breadcrumb on the mail page links
      * back out to it, so an admin can reach it from either direction.
      */
-    #[Test]
+    #
     public function the_two_pages_link_to_each_other(): void
     {
         $this->login(SystemRole::ADMIN);
@@ -198,7 +198,7 @@ class NotificationAccessTest extends TestCase
      * permission-gated module. Asserting on the bare word would fail on the
      * bell, which is supposed to be there.
      */
-    #[Test]
+    #
     public function the_sidebar_item_follows_the_permission(): void
     {
         $this->login(SystemRole::ADMIN);
@@ -238,7 +238,7 @@ class NotificationAccessTest extends TestCase
         return route('notifications.index');
     }
 
-    #[Test]
+    #
     public function the_sidebar_item_follows_the_flag(): void
     {
         $this->login(SystemRole::SUPERADMIN);
@@ -261,7 +261,7 @@ class NotificationAccessTest extends TestCase
      * `the_sidebar_item_follows_the_permission` — the sidebar was filtered
      * correctly while the header kept the entry.
      */
-    #[Test]
+    #
     public function the_header_bell_follows_the_flag(): void
     {
         $this->login(SystemRole::ADMIN);
@@ -273,7 +273,7 @@ class NotificationAccessTest extends TestCase
         $this->assertStringNotContainsString('fa-bell', $this->header());
     }
 
-    #[Test]
+    #
     public function the_header_bell_is_no_longer_permission_gated(): void
     {
         $user = $this->login(SystemRole::USER);
@@ -294,7 +294,7 @@ class NotificationAccessTest extends TestCase
      * finding. Asserted on the tag, not on the icon: an `<a>` wrapping nothing
      * is still a link, and a `<button>` with a title is still a dead control.
      */
-    #[Test]
+    #
     public function the_bell_is_a_link_not_a_button(): void
     {
         $this->login(SystemRole::ADMIN);
@@ -319,7 +319,7 @@ class NotificationAccessTest extends TestCase
      * and does nothing — the exact failure `AppMenuComposer` drops unshipped
      * routes to avoid.
      */
-    #[Test]
+    #
     public function the_sidebar_link_points_at_the_route_not_a_placeholder(): void
     {
         $this->login(SystemRole::ADMIN);

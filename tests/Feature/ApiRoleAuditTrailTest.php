@@ -75,8 +75,7 @@ class ApiRoleAuditTrailTest extends TestCase
         ];
     }
 
-    #[Test]
-    #[DataProvider('mutations')]
+        #[DataProvider('mutations')]
     public function every_api_role_mutation_writes_an_audited_row(string $mutation, string $event): void
     {
         $id = $this->makeRole('Audit Probe');
@@ -128,8 +127,7 @@ class ApiRoleAuditTrailTest extends TestCase
      * What this test protects is unchanged and is the part that matters: exactly
      * one row per subject, `event` non-null, so an event filter finds it.
      */
-    #[Test]
-    public function a_bulk_user_action_writes_a_row_that_event_filters_can_find(): void
+        public function a_bulk_user_action_writes_a_row_that_event_filters_can_find(): void
     {
         $users = User::factory()->count(2)->create();
 

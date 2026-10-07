@@ -127,8 +127,7 @@ class SettingsUiRenderTest extends TestCase
      * own behaviour. A query left in Blade fires on the second render too, so
      * the delta is what actually measures the view.
      */
-    #[Test]
-    public function it_renders_and_queries_nothing(): void
+        public function it_renders_and_queries_nothing(): void
     {
         $this->login();
 
@@ -144,8 +143,7 @@ class SettingsUiRenderTest extends TestCase
         $this->assertSame([], $queries, 'the settings page queried from inside the view');
     }
 
-    #[Test]
-    public function the_forbidden_classes_never_appear(): void
+        public function the_forbidden_classes_never_appear(): void
     {
         $this->login();
         $html = $this->render();
@@ -165,8 +163,7 @@ class SettingsUiRenderTest extends TestCase
      * sticky save card in the `col-lg-4` sidebar. Asserted as a pairing rather
      * than a count, so a page that kept one column and dropped the other fails.
      */
-    #[Test]
-    public function the_page_keeps_the_two_column_grid(): void
+        public function the_page_keeps_the_two_column_grid(): void
     {
         $this->login();
         $html = $this->render();
@@ -187,8 +184,7 @@ class SettingsUiRenderTest extends TestCase
      * Counted against `form-label` rather than pinned at a number, so a label
      * added without an icon fails and one removed does not make the count stale.
      */
-    #[Test]
-    public function every_tooltip_icon_is_the_house_size_and_carries_a_title(): void
+        public function every_tooltip_icon_is_the_house_size_and_carries_a_title(): void
     {
         $this->login();
         $html = $this->render();
@@ -213,8 +209,7 @@ class SettingsUiRenderTest extends TestCase
      * the value round-trips fine when it is ON. Asserted by parsing the rendered
      * markup for every checkbox name and requiring a companion for each.
      */
-    #[Test]
-    public function every_switch_has_a_hidden_companion(): void
+        public function every_switch_has_a_hidden_companion(): void
     {
         $this->login();
         $html = $this->render();
@@ -238,8 +233,7 @@ class SettingsUiRenderTest extends TestCase
      * wrapped in `@can('settings.manage')` so a viewer never sees an input that
      * silently discards what they type.
      */
-    #[Test]
-    public function a_viewer_without_manage_gets_a_read_only_page(): void
+        public function a_viewer_without_manage_gets_a_read_only_page(): void
     {
         $viewer = $this->login('user');
 
@@ -258,8 +252,7 @@ class SettingsUiRenderTest extends TestCase
         $this->assertStringContainsString('login_max_attempts', $html);
     }
 
-    #[Test]
-    public function a_manager_is_not_shown_the_read_only_banner(): void
+        public function a_manager_is_not_shown_the_read_only_banner(): void
     {
         $this->login();
         $html = $this->render();
@@ -276,8 +269,7 @@ class SettingsUiRenderTest extends TestCase
      * design system also requires the message be programmatically associated
      * with its field, which the `aria-describedby`/`id` pair provides.
      */
-    #[Test]
-    public function every_error_message_is_visible_and_associated_with_its_field(): void
+        public function every_error_message_is_visible_and_associated_with_its_field(): void
     {
         $this->login();
         $html = $this->render();
@@ -336,8 +328,7 @@ class SettingsUiRenderTest extends TestCase
      * the driver alike. `password_expiry_warn_days` was readable and editable
      * with Password Expiry switched off, unlike its three siblings.
      */
-    #[Test]
-    public function every_dependent_field_follows_its_toggle(): void
+        public function every_dependent_field_follows_its_toggle(): void
     {
         $this->login();
 
@@ -386,8 +377,7 @@ class SettingsUiRenderTest extends TestCase
      * with no field anywhere, so no admin could set them. The loop-rendered
      * policy switches are listed because their `name` is `{{ $key }}`.
      */
-    #[Test]
-    public function every_validated_setting_has_a_form_field(): void
+        public function every_validated_setting_has_a_form_field(): void
     {
         $this->login();
         $html = $this->render();
@@ -419,8 +409,7 @@ class SettingsUiRenderTest extends TestCase
      * so in the markup. `max:1440` typed as `max:140` is invisible to a reader
      * and untestable from the UI, so the attribute is pinned against the rule.
      */
-    #[Test]
-    public function the_numeric_bounds_in_the_markup_match_the_validation_rules(): void
+        public function the_numeric_bounds_in_the_markup_match_the_validation_rules(): void
     {
         $this->login();
         $html = $this->render();
@@ -451,8 +440,7 @@ class SettingsUiRenderTest extends TestCase
      * controller (`ui-architecture.md` rule 1), so assert it there: through the
      * HTTP path, with real `SystemSetting` rows behind it.
      */
-    #[Test]
-    public function the_controller_hands_the_view_real_booleans(): void
+        public function the_controller_hands_the_view_real_booleans(): void
     {
         $this->login();
 
@@ -477,8 +465,7 @@ class SettingsUiRenderTest extends TestCase
      * or role the admin cannot pick is impossible — the option is not in the
      * markup to begin with.
      */
-    #[Test]
-    public function it_renders_the_reference_options_the_controller_loaded(): void
+        public function it_renders_the_reference_options_the_controller_loaded(): void
     {
         $this->login();
         $html = $this->render();

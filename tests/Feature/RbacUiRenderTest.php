@@ -164,8 +164,7 @@ class RbacUiRenderTest extends TestCase
         ];
     }
 
-    #[Test]
-    #[DataProvider('views')]
+        #[DataProvider('views')]
     public function test_each_view_renders_and_queries_nothing(string $view, array $keys): void
     {
         $this->login();
@@ -205,8 +204,7 @@ class RbacUiRenderTest extends TestCase
         $this->assertSame([], $queries, "{$view} queried from inside the view");
     }
 
-    #[Test]
-    public function the_forbidden_classes_never_appear(): void
+        public function the_forbidden_classes_never_appear(): void
     {
         $this->login();
 
@@ -241,8 +239,7 @@ class RbacUiRenderTest extends TestCase
         }
     }
 
-    #[Test]
-    public function a_system_role_shows_a_badge_and_no_delete_trigger(): void
+        public function a_system_role_shows_a_badge_and_no_delete_trigger(): void
     {
         $this->login();
 
@@ -260,8 +257,7 @@ class RbacUiRenderTest extends TestCase
         $this->assertStringNotContainsString('data-action-type="delete_role"', $html);
     }
 
-    #[Test]
-    public function a_custom_role_gets_the_delete_trigger(): void
+        public function a_custom_role_gets_the_delete_trigger(): void
     {
         $this->login();
 
@@ -279,8 +275,7 @@ class RbacUiRenderTest extends TestCase
         $this->assertStringContainsString('data-item-name="staff"', $html);
     }
 
-    #[Test]
-    public function a_trashed_role_offers_restore_and_no_edit(): void
+        public function a_trashed_role_offers_restore_and_no_edit(): void
     {
         $this->login();
 
@@ -305,8 +300,7 @@ class RbacUiRenderTest extends TestCase
         $this->assertStringContainsString('Trashed', $html);
     }
 
-    #[Test]
-    public function the_matrix_posts_permission_ids_and_preserves_the_selection(): void
+        public function the_matrix_posts_permission_ids_and_preserves_the_selection(): void
     {
         $this->login();
 
@@ -327,8 +321,7 @@ class RbacUiRenderTest extends TestCase
         $this->assertSame(2, substr_count($html, 'checked'), 'pre-checked selection was not preserved');
     }
 
-    #[Test]
-    public function an_empty_permission_set_renders_the_empty_state(): void
+        public function an_empty_permission_set_renders_the_empty_state(): void
     {
         $this->login();
 
@@ -341,8 +334,7 @@ class RbacUiRenderTest extends TestCase
         $this->assertStringNotContainsString('name="permissions[]"', $html);
     }
 
-    #[Test]
-    public function the_permission_catalogue_searches(): void
+        public function the_permission_catalogue_searches(): void
     {
         // superadmin, not a plain user: once P6-D1 gates this route, a user with
         // zero permissions gets a 403 and the test stops being about search.
@@ -374,8 +366,7 @@ class RbacUiRenderTest extends TestCase
         $this->assertSame(count(PermissionCatalog::all()), $filtered['totalPermissions']);
     }
 
-    #[Test]
-    public function the_permission_catalogue_paginates(): void
+        public function the_permission_catalogue_paginates(): void
     {
         $user = User::factory()->create(['email_verified_at' => now()]);
         $user->assignRole(\App\Models\RoleLookup::find('admin'));
@@ -417,8 +408,7 @@ class RbacUiRenderTest extends TestCase
         );
     }
 
-    #[Test]
-    public function the_permission_catalogue_sorts(): void
+        public function the_permission_catalogue_sorts(): void
     {
         $user = User::factory()->create(['email_verified_at' => now()]);
         $user->assignRole(\App\Models\RoleLookup::find('admin'));
@@ -458,8 +448,7 @@ class RbacUiRenderTest extends TestCase
         );
     }
 
-    #[Test]
-    public function the_permission_catalogue_offers_no_write_controls(): void
+        public function the_permission_catalogue_offers_no_write_controls(): void
     {
         $this->login();
 
@@ -484,8 +473,7 @@ class RbacUiRenderTest extends TestCase
      * class defined nowhere in public/vendor/theme.css, so it painted a fixed
      * light #e2e3e5 on the dark surface and read as a broken row.
      */
-    #[Test]
-    public function the_trashed_row_treatment_matches_the_users_index(): void
+        public function the_trashed_row_treatment_matches_the_users_index(): void
     {
         $rolesView = file_get_contents(resource_path('views/pages/roles/index.blade.php'));
         $usersView = file_get_contents(resource_path('views/pages/users/index.blade.php'));
@@ -515,8 +503,7 @@ class RbacUiRenderTest extends TestCase
         );
     }
 
-    #[Test]
-    public function the_index_offers_a_filter_and_a_create_button(): void
+        public function the_index_offers_a_filter_and_a_create_button(): void
     {
         $this->login();
 
@@ -543,8 +530,7 @@ class RbacUiRenderTest extends TestCase
      * muted inactive pill, `ms-auto` on the button), and a roles-only assertion
      * would just re-state whichever version this file was written against.
      */
-    #[Test]
-    public function the_role_index_header_matches_the_user_index_header(): void
+        public function the_role_index_header_matches_the_user_index_header(): void
     {
         $user = User::factory()->create(['email_verified_at' => now(), 'is_active' => true]);
         $user->assignRole(\App\Models\RoleLookup::find('admin'));
@@ -584,8 +570,7 @@ class RbacUiRenderTest extends TestCase
         $this->assertStringContainsString('Create User', $users);
     }
 
-    #[Test]
-    public function switching_tabs_keeps_the_search_term(): void
+        public function switching_tabs_keeps_the_search_term(): void
     {
         $user = User::factory()->create(['email_verified_at' => now(), 'is_active' => true]);
         $user->assignRole(\App\Models\RoleLookup::find('admin'));
@@ -600,8 +585,7 @@ class RbacUiRenderTest extends TestCase
         $this->assertStringContainsString('search=Supp&amp;trashed=1', $html);
     }
 
-    #[Test]
-    public function the_index_headers_sort_and_an_unknown_column_is_ignored(): void
+        public function the_index_headers_sort_and_an_unknown_column_is_ignored(): void
     {
         $this->login();
 
@@ -635,8 +619,7 @@ class RbacUiRenderTest extends TestCase
             ->where('guard_name', RoleLookup::guard())->count());
     }
 
-    #[Test]
-    public function sorting_preserves_the_active_filter_over_http(): void
+        public function sorting_preserves_the_active_filter_over_http(): void
     {
         $this->login();
 
@@ -648,8 +631,7 @@ class RbacUiRenderTest extends TestCase
         $this->assertStringContainsString('value="adm"', $html);
     }
 
-    #[Test]
-    public function every_page_is_reachable_over_http(): void
+        public function every_page_is_reachable_over_http(): void
     {
         $role = Role::create(['name' => 'staff', 'guard_name' => RoleLookup::guard()]);
 
