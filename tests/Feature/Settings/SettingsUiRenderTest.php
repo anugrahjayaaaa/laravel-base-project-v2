@@ -127,7 +127,7 @@ class SettingsUiRenderTest extends TestCase
      * own behaviour. A query left in Blade fires on the second render too, so
      * the delta is what actually measures the view.
      */
-        public function it_renders_and_queries_nothing(): void
+        public function test_it_renders_and_queries_nothing (): void
     {
         $this->login();
 
@@ -143,7 +143,7 @@ class SettingsUiRenderTest extends TestCase
         $this->assertSame([], $queries, 'the settings page queried from inside the view');
     }
 
-        public function the_forbidden_classes_never_appear(): void
+        public function test_the_forbidden_classes_never_appear (): void
     {
         $this->login();
         $html = $this->render();
@@ -163,7 +163,7 @@ class SettingsUiRenderTest extends TestCase
      * sticky save card in the `col-lg-4` sidebar. Asserted as a pairing rather
      * than a count, so a page that kept one column and dropped the other fails.
      */
-        public function the_page_keeps_the_two_column_grid(): void
+        public function test_the_page_keeps_the_two_column_grid (): void
     {
         $this->login();
         $html = $this->render();
@@ -233,7 +233,7 @@ class SettingsUiRenderTest extends TestCase
      * wrapped in `@can('settings.manage')` so a viewer never sees an input that
      * silently discards what they type.
      */
-        public function a_viewer_without_manage_gets_a_read_only_page(): void
+        public function test_a_viewer_without_manage_gets_a_read_only_page (): void
     {
         $viewer = $this->login('user');
 
@@ -252,7 +252,7 @@ class SettingsUiRenderTest extends TestCase
         $this->assertStringContainsString('login_max_attempts', $html);
     }
 
-        public function a_manager_is_not_shown_the_read_only_banner(): void
+        public function test_a_manager_is_not_shown_the_read_only_banner (): void
     {
         $this->login();
         $html = $this->render();
@@ -409,7 +409,7 @@ class SettingsUiRenderTest extends TestCase
      * so in the markup. `max:1440` typed as `max:140` is invisible to a reader
      * and untestable from the UI, so the attribute is pinned against the rule.
      */
-        public function the_numeric_bounds_in_the_markup_match_the_validation_rules(): void
+        public function test_the_numeric_bounds_in_the_markup_match_the_validation_rules (): void
     {
         $this->login();
         $html = $this->render();
@@ -440,7 +440,7 @@ class SettingsUiRenderTest extends TestCase
      * controller (`ui-architecture.md` rule 1), so assert it there: through the
      * HTTP path, with real `SystemSetting` rows behind it.
      */
-        public function the_controller_hands_the_view_real_booleans(): void
+        public function test_the_controller_hands_the_view_real_booleans (): void
     {
         $this->login();
 
@@ -465,7 +465,7 @@ class SettingsUiRenderTest extends TestCase
      * or role the admin cannot pick is impossible — the option is not in the
      * markup to begin with.
      */
-        public function it_renders_the_reference_options_the_controller_loaded(): void
+        public function test_it_renders_the_reference_options_the_controller_loaded (): void
     {
         $this->login();
         $html = $this->render();

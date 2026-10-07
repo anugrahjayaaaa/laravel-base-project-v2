@@ -46,7 +46,7 @@ class PendingFeatureFlagTest extends TestCase
         ])->render();
     }
 
-        public function a_flag_with_no_module_says_so(): void
+        public function test_a_flag_with_no_module_says_so (): void
     {
         $pending = collect(FeatureCatalog::all())
             ->filter(fn (array $f): bool => $f['pending'] !== null)
@@ -67,7 +67,7 @@ class PendingFeatureFlagTest extends TestCase
         }
     }
 
-        public function a_wired_flag_carries_no_caveat(): void
+        public function test_a_wired_flag_carries_no_caveat (): void
     {
         // `users` is gated on 36 routes. A caveat on it would be noise.
         $this->assertNull(

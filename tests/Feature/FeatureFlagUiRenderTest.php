@@ -135,7 +135,7 @@ class FeatureFlagUiRenderTest extends TestCase
         return $matches[0];
     }
 
-        public function it_renders_and_queries_nothing(): void
+        public function test_it_renders_and_queries_nothing (): void
     {
         $this->login();
 
@@ -241,7 +241,7 @@ class FeatureFlagUiRenderTest extends TestCase
         );
     }
 
-        public function it_never_builds_a_features_route_from_the_view(): void
+        public function test_it_never_builds_a_features_route_from_the_view (): void
     {
         $this->login();
 
@@ -268,7 +268,7 @@ class FeatureFlagUiRenderTest extends TestCase
         );
     }
 
-        public function the_forbidden_classes_never_appear(): void
+        public function test_the_forbidden_classes_never_appear (): void
     {
         $this->login();
         $html = $this->render();
@@ -282,7 +282,7 @@ class FeatureFlagUiRenderTest extends TestCase
         );
     }
 
-        public function the_header_and_metric_strip_render(): void
+        public function test_the_header_and_metric_strip_render (): void
     {
         $this->login();
         $html = $this->render();
@@ -398,7 +398,7 @@ class FeatureFlagUiRenderTest extends TestCase
      * block box with the input positioned inside its left edge. Setting only the
      * cell looks centred and is not.
      */
-        public function the_toggle_column_is_centred(): void
+        public function test_the_toggle_column_is_centred (): void
     {
         $this->login();
         $html = $this->render();
@@ -469,7 +469,7 @@ class FeatureFlagUiRenderTest extends TestCase
         }
     }
 
-        public function the_switch_targets_the_intended_new_state(): void
+        public function test_the_switch_targets_the_intended_new_state (): void
     {
         $this->login();
         $switches = $this->switches($this->render());
@@ -491,7 +491,7 @@ class FeatureFlagUiRenderTest extends TestCase
      * read-only shape `pages/settings` uses, for the same reason: a control
      * that looks editable and silently discards input is worse than none.
      */
-        public function a_viewer_without_manage_gets_badges_and_no_switch(): void
+        public function test_a_viewer_without_manage_gets_badges_and_no_switch (): void
     {
         // `user` holds no permissions at all, so this is a real 403-shaped
         // viewer rather than a stubbed Gate answer.
@@ -511,7 +511,7 @@ class FeatureFlagUiRenderTest extends TestCase
         $this->assertStringContainsString('You can view these flags but not change them.', $html);
     }
 
-        public function a_manager_is_not_shown_the_read_only_banner(): void
+        public function test_a_manager_is_not_shown_the_read_only_banner (): void
     {
         $this->login();
 
@@ -525,7 +525,7 @@ class FeatureFlagUiRenderTest extends TestCase
      * An empty catalogue is a real state — Phase 7 Group B has not declared a
      * flag yet, and the page must render rather than fatal on `count([])`.
      */
-        public function an_empty_catalogue_renders_an_empty_state(): void
+        public function test_an_empty_catalogue_renders_an_empty_state (): void
     {
         $this->login();
 

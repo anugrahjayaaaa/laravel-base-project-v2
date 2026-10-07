@@ -170,7 +170,7 @@ class AccountStateNotificationTest extends TestCase
      * only consulted for undeclared ones. Writing it that way is a one-word
      * mistake that silently drops the person the notification is about.
      */
-        public function the_subject_is_notified_even_though_the_event_is_administrative(): void
+        public function test_the_subject_is_notified_even_though_the_event_is_administrative (): void
     {
         Notification::fake();
 
@@ -194,7 +194,7 @@ class AccountStateNotificationTest extends TestCase
      * it happens exactly when the rule works — an admin is in the permission set
      * by definition.
      */
-        public function a_recipient_in_both_audiences_is_notified_once(): void
+        public function test_a_recipient_in_both_audiences_is_notified_once (): void
     {
         Notification::fake();
 
@@ -212,7 +212,7 @@ class AccountStateNotificationTest extends TestCase
      * worse outcome than a missed notification: the admin asked for a lock, the
      * lock did not happen, and nothing says why.
      */
-        public function a_delivery_failure_does_not_undo_the_state_change(): void
+        public function test_a_delivery_failure_does_not_undo_the_state_change (): void
     {
         Notification::shouldReceive('send')->andThrow(new \RuntimeException('transport down'));
 
@@ -236,7 +236,7 @@ class AccountStateNotificationTest extends TestCase
      * `NotificationChannel::for()` ignored it — the same category of defect as a
      * `pending` feature flag, and the reason this assertion exists.
      */
-        public function the_in_app_switch_gates_the_database_channel(): void
+        public function test_the_in_app_switch_gates_the_database_channel (): void
     {
         SystemSetting::set('notification_channel_mail', 'false');
         SystemSetting::set('notification_channel_database', 'true');
@@ -260,7 +260,7 @@ class AccountStateNotificationTest extends TestCase
      * `NotificationChannel::for()` returning the right array proves nothing if
      * nothing calls it — the defect this file exists to catch, one level down.
      */
-        public function the_switches_reach_the_dispatched_notification(): void
+        public function test_the_switches_reach_the_dispatched_notification (): void
     {
         Notification::fake();
 

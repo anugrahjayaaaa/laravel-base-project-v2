@@ -64,7 +64,7 @@ class PermissionStatsCacheTest extends TestCase
         return \Spatie\Permission\Models\Role::where('guard_name', RoleLookup::guard())->count();
     }
 
-        public function the_cards_agree_with_the_catalogue_on_a_cold_cache(): void
+        public function test_the_cards_agree_with_the_catalogue_on_a_cold_cache (): void
     {
         $this->seed(RoleSeeder::class);
         $this->seed(PermissionSeeder::class);
@@ -95,7 +95,7 @@ class PermissionStatsCacheTest extends TestCase
         );
     }
 
-        public function the_search_box_does_not_change_the_cards(): void
+        public function test_the_search_box_does_not_change_the_cards (): void
     {
         $this->seed(RoleSeeder::class);
         $this->seed(PermissionSeeder::class);
@@ -114,7 +114,7 @@ class PermissionStatsCacheTest extends TestCase
         }
     }
 
-        public function the_second_request_spends_no_query_on_the_cards(): void
+        public function test_the_second_request_spends_no_query_on_the_cards (): void
     {
         $this->seed(RoleSeeder::class);
         $this->seed(PermissionSeeder::class);
@@ -142,7 +142,7 @@ class PermissionStatsCacheTest extends TestCase
      * The staleness window is the price of the cache, so it is pinned: the
      * cards may lag, but not past the TTL that was chosen for them.
      */
-        public function a_card_refreshes_once_the_window_expires(): void
+        public function test_a_card_refreshes_once_the_window_expires (): void
     {
         $this->seed(RoleSeeder::class);
         $this->seed(PermissionSeeder::class);

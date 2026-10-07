@@ -106,7 +106,7 @@ class BulkActionCopyTest extends TestCase
      * is invisible until someone reads the modal.
      */
     #[\PHPUnit\Framework\Attributes\Test]
-    public function the_feature_actions_use_the_mapped_variants(): void
+    public function test_the_feature_actions_use_the_mapped_variants (): void
     {
         // design-system.md, Action Color Convention: enable => success,
         // disable => warning. Reversible consequences never wear the

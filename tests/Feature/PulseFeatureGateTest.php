@@ -35,7 +35,7 @@ class PulseFeatureGateTest extends TestCase
 {
     use RefreshDatabase;
 
-        public function the_pulse_route_is_refused_with_the_flag_off(): void
+        public function test_the_pulse_route_is_refused_with_the_flag_off (): void
     {
         Feature::deactivate('pulse');
         Feature::flushCache();
@@ -56,7 +56,7 @@ class PulseFeatureGateTest extends TestCase
      * middleware answers 403 on its own, so the off case alone cannot tell the
      * two apart.
      */
-        public function the_pulse_middleware_group_carries_the_feature_gate(): void
+        public function test_the_pulse_middleware_group_carries_the_feature_gate (): void
     {
         $group = app('router')->getMiddlewareGroups()['pulse'] ?? [];
 
@@ -73,7 +73,7 @@ class PulseFeatureGateTest extends TestCase
      * A typo in either place — config or middleware — makes the flag decorative
      * while everything still looks wired.
      */
-        public function the_gated_slug_is_declared_in_the_catalogue(): void
+        public function test_the_gated_slug_is_declared_in_the_catalogue (): void
     {
         $this->assertTrue(
             FeatureCatalog::has('pulse'),

@@ -60,7 +60,7 @@ class AssetBundleFreshnessTest extends TestCase
      * here instead of in a browser.
      */
     #[\PHPUnit\Framework\Attributes\Test]
-    public function the_driver_matches_every_page_s_select_all_markup(): void
+    public function test_the_driver_matches_every_page_s_select_all_markup (): void
     {
         $bundle = $this->appBundle();
 

@@ -43,7 +43,7 @@ class PermissionCacheTest extends TestCase
         $this->app->make(PermissionRegistrar::class)->forgetCachedPermissions();
     }
 
-        public function a_permission_granted_after_the_cache_warms_is_visible_immediately(): void
+        public function test_a_permission_granted_after_the_cache_warms_is_visible_immediately (): void
     {
         $this->seed(RoleSeeder::class);
 
@@ -70,7 +70,7 @@ class PermissionCacheTest extends TestCase
         );
     }
 
-        public function a_permission_revoked_after_the_cache_warms_stops_granting_immediately(): void
+        public function test_a_permission_revoked_after_the_cache_warms_stops_granting_immediately (): void
     {
         $this->seed(RoleSeeder::class);
 
@@ -120,7 +120,7 @@ class PermissionCacheTest extends TestCase
         );
     }
 
-        public function a_stale_cache_would_hide_a_write_made_behind_it(): void
+        public function test_a_stale_cache_would_hide_a_write_made_behind_it (): void
     {
         // The negative control for the tests above: warm the cache, then write
         // straight to the table WITHOUT flushing, and confirm the registrar

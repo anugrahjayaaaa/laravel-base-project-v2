@@ -76,7 +76,7 @@ class FeatureFlagMiddlewareTest extends TestCase
         return 'test.feature-gated';
     }
 
-        public function an_active_flag_lets_the_request_through(): void
+        public function test_an_active_flag_lets_the_request_through (): void
     {
         $this->login();
         $name = $this->gatedRoute('users');
@@ -84,7 +84,7 @@ class FeatureFlagMiddlewareTest extends TestCase
         $this->assertSame(200, $this->get(route($name))->getStatusCode());
     }
 
-        public function an_inactive_flag_returns_403(): void
+        public function test_an_inactive_flag_returns_403 (): void
     {
         $this->login();
         Feature::deactivate('users');
@@ -105,7 +105,7 @@ class FeatureFlagMiddlewareTest extends TestCase
      * @return array<string, array{0: string}>
      */
         #[DataProvider('roles')]
-    public function an_inactive_flag_returns_403_for_every_role(string $role): void
+    public function test_an_inactive_flag_returns_403_for_every_role (string $role): void
     {
         $this->login($role);
         Feature::deactivate('users');
@@ -135,7 +135,7 @@ class FeatureFlagMiddlewareTest extends TestCase
      * module. The manager re-enables from `/features` — a page that is itself
      * deliberately left ungated — and comes back.
      */
-        public function a_features_manage_holder_still_gets_403(): void
+        public function test_a_features_manage_holder_still_gets_403 (): void
     {
         $manager = $this->login();
         $manager->givePermissionTo('features.manage');
@@ -155,7 +155,7 @@ class FeatureFlagMiddlewareTest extends TestCase
      * refused — the opposite failure would be a live endpoint protected by
      * nothing.
      */
-        public function an_undeclared_slug_is_refused_rather_than_allowed_through(): void
+        public function test_an_undeclared_slug_is_refused_rather_than_allowed_through (): void
     {
         $this->login();
         $name = $this->gatedRoute('not_a_real_flag');
@@ -172,7 +172,7 @@ class FeatureFlagMiddlewareTest extends TestCase
      * `FeatureCatalog::isActive()` consults config first — which is why this
      * project's middleware is its own class rather than an alias of Pennant's.
      */
-        public function a_config_kill_switch_beats_a_stored_active_row(): void
+        public function test_a_config_kill_switch_beats_a_stored_active_row (): void
     {
         $this->login();
 
@@ -226,7 +226,7 @@ class FeatureFlagMiddlewareTest extends TestCase
      * fix would be a redeploy. The comment at `routes/web.php:171-174` says so;
      * this fails if someone adds the gate anyway.
      */
-        public function the_management_page_is_never_itself_gated(): void
+        public function test_the_management_page_is_never_itself_gated (): void
     {
         $this->login();
 

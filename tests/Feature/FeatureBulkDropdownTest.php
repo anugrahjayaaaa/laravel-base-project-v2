@@ -37,7 +37,7 @@ class FeatureBulkDropdownTest extends TestCase
     use RefreshDatabase;
 
     #[\PHPUnit\Framework\Attributes\Test]
-    public function the_dropdown_offers_only_actions_safe_for_the_selection(): void
+    public function test_the_dropdown_offers_only_actions_safe_for_the_selection (): void
     {
         $node = $this->nodeBinary();
 

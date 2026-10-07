@@ -124,7 +124,7 @@ class FeatureFlagCatalogTest extends TestCase
      * the row records the operator's decision, config overrides it, and
      * removing the `disabled` key restores the operator's answer untouched.
      */
-        public function a_config_kill_switch_wins_over_a_stored_row(): void
+        public function test_a_config_kill_switch_wins_over_a_stored_row (): void
     {
         $this->seed(FeatureFlagSeeder::class);
         Feature::activateForEveryone('users');
@@ -150,7 +150,7 @@ class FeatureFlagCatalogTest extends TestCase
      * user's state and write it for everyone, and the sidebar would disagree
      * with the routes depending on who asked. A kill switch is one switch.
      */
-        public function the_scope_is_global_not_per_user(): void
+        public function test_the_scope_is_global_not_per_user (): void
     {
         $this->seed(FeatureFlagSeeder::class);
 
@@ -161,7 +161,7 @@ class FeatureFlagCatalogTest extends TestCase
         );
     }
 
-        public function an_undeclared_slug_is_never_active(): void
+        public function test_an_undeclared_slug_is_never_active (): void
     {
         $this->assertFalse(
             Feature::active('no_such_flag'),
@@ -169,7 +169,7 @@ class FeatureFlagCatalogTest extends TestCase
         );
     }
 
-        public function the_catalogue_reports_labels_groups_and_descriptions(): void
+        public function test_the_catalogue_reports_labels_groups_and_descriptions (): void
     {
         $grouped = FeatureCatalog::grouped();
 

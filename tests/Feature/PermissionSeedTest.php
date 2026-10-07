@@ -83,7 +83,7 @@ class PermissionSeedTest extends TestCase
         );
     }
 
-        public function a_permission_dropped_from_the_catalogue_is_pruned_on_reseed(): void
+        public function test_a_permission_dropped_from_the_catalogue_is_pruned_on_reseed (): void
     {
         // A permission removed from PermissionCatalog has no route and no
         // can() call behind it any more. left in the database it would keep
@@ -114,7 +114,7 @@ class PermissionSeedTest extends TestCase
         );
     }
 
-        public function a_role_removed_from_the_matrix_keeps_no_grants(): void
+        public function test_a_role_removed_from_the_matrix_keeps_no_grants (): void
     {
         // syncPermissions only runs for roles the matrix still names, so a role
         // dropped from the matrix is exactly the one that never gets its grants
@@ -157,7 +157,7 @@ class PermissionSeedTest extends TestCase
         );
     }
 
-        public function the_catalogue_has_no_duplicates(): void
+        public function test_the_catalogue_has_no_duplicates (): void
     {
         $all = PermissionCatalog::all();
 
