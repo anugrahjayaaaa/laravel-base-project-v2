@@ -28,12 +28,15 @@
            below the text. -->
       @if ($notificationsVisible ?? false)
         <li class="nav-item dropdown">
-          <a class="nav-item nav-link px-2 position-relative" href="#"
-             data-bs-toggle="dropdown" aria-expanded="false" title="Notifications">
+          <a class="nav-item nav-link px-2 position-relative"
+             href="{{ route('notifications.inbox') }}"
+             data-bs-toggle="dropdown" aria-expanded="false"
+             title="Notifications"
+             @class(['text-decoration-none' => ! $notificationsVisible ?? false])>
             <i class="far fa-bell"></i>
             @if ($unreadNotificationCount > 0)
-              <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger fs-8">
-                {{ $unreadNotificationCount }}
+              <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger fs-8 badge-notification-unread">
+                {{ $unreadNotificationCount }} unread notifications
               </span>
             @endif
           </a>
@@ -47,7 +50,8 @@
               @forelse ($recentNotifications as $notification)
                 @php
                   $type = $notification->data['type'] ?? '';
-                  $class = end(explode('\\', $type)) ?: '';
+                  $parts = explode('\\', $type);
+                  $class = end($parts) ?: '';
                   $color = match ($class) {
                       'UserCreatedNotification', 'UserRegisteredNotification' => 'primary',
                       'ChangeEmailVerificationNotification' => 'info',

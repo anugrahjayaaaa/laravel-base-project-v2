@@ -75,15 +75,13 @@ class AppServiceProvider extends ServiceProvider
             // render — see `UnreadNotificationCount` for why it is invalidated on
             // the notification event and not when the inbox is opened.
             //
-            // Zero when the module is off: a flag-off app pays nothing, and a
-            // count for a module nobody can open is not information.
-            $show = FeatureCatalog::isActive('notifications') && auth()->check();
+            // a flag-off module leaves no icon pointing at a 403. The unread
+            // badge and the inbox target land with P9-C2; until then it points
+            // at the inbox, which every authenticated user can open.
+            $show = auth()->check();
 
             $view->with([
                 'unreadNotificationCount' => $show ? UnreadNotificationCount::for(auth()->user()) : 0,
-                // The dropdown's rows, read through the SAME cache as the badge
-                // above — one forget clears both, so the number in the corner and
-                // the list below it cannot come from two different moments.
                 'recentNotifications' => $show ? UnreadNotificationCount::recent(auth()->user()) : collect(),
             ]);
         });
@@ -152,10 +150,10 @@ class AppServiceProvider extends ServiceProvider
         // would show one user's answer and write it for everyone, and the
         // sidebar would disagree with the routes depending on who asked. A
         // kill switch is one switch.
-        Feature::resolveScopeUsing(fn () => 'global');
+        Feature::resolveScopeUsing(fn() => 'global');
 
         foreach (array_keys(config('pennant.features', [])) as $slug) {
-            Feature::define($slug, fn (): bool => false);
+            Feature::define($slug, fn(): bool => false);
         }
 
         // Both are reachable from the API, so both need the JSON branch too.
@@ -267,7 +265,7 @@ class AppServiceProvider extends ServiceProvider
             // key was bound, so a perfectly good configuration silently left the
             // transport on its .env values. A single unconfigured field took the
             // whole binding down.
-            $text = fn (string $path): string => (string) (config($path) ?? '');
+            $text = fn(string $path): string => (string) (config($path) ?? '');
 
             config()->set([
                 'mail.default' => SystemSetting::getString('mail_mailer', $text('mail.default')),
@@ -276,9 +274,9 @@ class AppServiceProvider extends ServiceProvider
                 // `mail.mailers.smtp.*` keys means six `config()->set()` calls
                 // that each have to remember they are editing one nested array.
                 $smtp => array_replace(config($smtp) ?? [], [
-                    'host' => SystemSetting::getString('mail_host', $text($smtp.'.host')),
-                    'port' => SystemSetting::getInt('mail_port', (int) ($text($smtp.'.port') ?: 2525)),
-                    'username' => SystemSetting::getString('mail_username', $text($smtp.'.username')),
+                    'host' => SystemSetting::getString('mail_host', $text($smtp . '.host')),
+                    'port' => SystemSetting::getInt('mail_port', (int) ($text($smtp . '.port') ?: 2525)),
+                    'username' => SystemSetting::getString('mail_username', $text($smtp . '.username')),
                     'password' => self::mailPassword(SystemSetting::getString('mail_password', '')),
                     // No fallback argument at all: an unconfigured scheme must
                     // stay null (plaintext relay), not inherit the .env value —

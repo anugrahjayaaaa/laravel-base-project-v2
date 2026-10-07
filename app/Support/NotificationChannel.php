@@ -1,6 +1,8 @@
 <?php
-namespace AppSupport;
 
+namespace App\Support;
+
+use App\Models\SystemSetting;
 use App\Support\SystemRole;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;

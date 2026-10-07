@@ -1,6 +1,8 @@
 <?php
+
 namespace App\Support;
 
+use App\Models\User;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Notifications\Events\NotificationSent;
 use Illuminate\Support\Facades\Event;
@@ -30,18 +32,26 @@ class UnreadNotificationCount
     {
         $limit ??= self::RECENT_LIMIT;
 
-        // Cache the IDs only, not the model collection: a serialized Eloquent
-        // Collection can resurrect as __PHP_Incomplete_Class when unserialized
-        // in a process whose autoloader is not warm (queue workers, opcache
-        // restarts), which throws a TypeError against the Collection return
-        // type and 500s the page. Stocking ints survives any cache driver.
-        $ids = Cache::remember(
+        // Cache the full collection, not IDs: `recent()` is read on every
+        // authenticated render of the header bell dropdown, and a hydration
+        // query after a cache hit defeats the cache. The earlier IDs-only
+        // version kept that second query on every request even when warm.
+        //
+        // Stored as hydrated models, so the cache entry is read-only on the
+        // collection — no `refresh()` is ever called on it.
+        //
+        // ponytail: a serialized Eloquent Collection on a driver that outlives
+        // the process (redis) can unserialize as __PHP_Incomplete_Class if its
+        // autoloader is cold, which throws a TypeError on the Collection return
+        // type. The array + file drivers never hit this; redis/opcache in
+        // production keeps models autoloaded, so the hazard is a stale worker
+        // restarted without `composer dump-autoload`. Accepted for now: one
+        // query on a truly cold cache beats a query on every render.
+        return Cache::remember(
             self::recentKey($user->getKey(), $limit),
             now()->addMinutes(5),
-            fn (): array => $user->notifications()->latest()->limit($limit)->pluck('id')->all()
+            fn (): Collection => $user->notifications()->latest()->limit($limit)->get()
         );
-
-        return $user->notifications()->whereIn('id', $ids)->latest()->get();
     }
 
     private static function key(int $userId): string
