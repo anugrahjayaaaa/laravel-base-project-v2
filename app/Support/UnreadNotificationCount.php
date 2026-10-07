@@ -7,6 +7,8 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Notifications\Events\NotificationSent;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Carbon;
+use stdClass;
 
 class UnreadNotificationCount
 {
@@ -25,33 +27,59 @@ class UnreadNotificationCount
     {
         $id = $user instanceof User ? $user->getKey() : $user;
         Cache::forget(self::key($id));
-        Cache::forget(self::recentKey($id, self::RECENT_LIMIT));
     }
 
+    /**
+     * The five most recent notifications for the bell dropdown.
+     *
+     * Cached as a plain array, not an Eloquent Collection: a serialized
+     * Collection stored in the Redis driver unserializes to
+     * __PHP_Incomplete_Class in any process whose autoloader has not
+     * registered the framework model class yet (a queue worker restarted
+     * without `composer dump-autoload`, a stale Octane worker, the long-
+     * running `queue:work` that this app runs). The count stays as an int
+     * (universally safe to cache); this reconstitutes lightweight stdClass
+     * rows so no second query is paid on a warm cache.
+     */
     public static function recent(User $user, ?int $limit = null): Collection
     {
         $limit ??= self::RECENT_LIMIT;
 
-        // Cache the full collection, not IDs: `recent()` is read on every
-        // authenticated render of the header bell dropdown, and a hydration
-        // query after a cache hit defeats the cache. The earlier IDs-only
-        // version kept that second query on every request even when warm.
-        //
-        // Stored as hydrated models, so the cache entry is read-only on the
-        // collection — no `refresh()` is ever called on it.
-        //
-        // ponytail: a serialized Eloquent Collection on a driver that outlives
-        // the process (redis) can unserialize as __PHP_Incomplete_Class if its
-        // autoloader is cold, which throws a TypeError on the Collection return
-        // type. The array + file drivers never hit this; redis/opcache in
-        // production keeps models autoloaded, so the hazard is a stale worker
-        // restarted without `composer dump-autoload`. Accepted for now: one
-        // query on a truly cold cache beats a query on every render.
         return Cache::remember(
             self::recentKey($user->getKey(), $limit),
             now()->addMinutes(5),
-            fn (): Collection => $user->notifications()->latest()->limit($limit)->get()
+            fn (): Collection => self::materialize(
+                $user->notifications()->latest()->limit($limit)->get()->map(
+                    fn ($n) => [
+                        'id' => $n->id,
+                        'data' => $n->data,
+                        'read_at' => $n->read_at,
+                        'created_at' => $n->created_at->toDateTimeString(),
+                    ]
+                )->all()
+            )
         );
+    }
+
+    /**
+     * Build a Collection of stdClass rows from cached arrays. No query — the
+     * caller already has the data serialized as primitives.
+     */
+    private static function materialize(array $rows): Collection
+    {
+        $items = array_map(
+            static function (array $r): stdClass {
+                $n = new stdClass();
+                $n->id = $r['id'];
+                $n->data = $r['data'];
+                $n->read_at = $r['read_at'];
+                $n->created_at = Carbon::parse($r['created_at']);
+                return $n;
+            },
+            $rows
+        );
+
+        return new Collection($items);
     }
 
     private static function key(int $userId): string
