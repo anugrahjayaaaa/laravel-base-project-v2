@@ -9,7 +9,7 @@ use Illuminate\Notifications\Notifiable;
 use Illuminate\Database\Eloquent\Model;
 
 #[Fillable(['type', 'notifiable_id', 'notifiable_type', 'data', 'read_at'])]
-class NotificationModel extends Model
+class Notification extends Model
 {
     use HasFactory, Notifiable, HasUlids;
 
