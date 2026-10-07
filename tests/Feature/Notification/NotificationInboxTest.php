@@ -2,8 +2,8 @@
 
 namespace Tests\Feature\Notification;
 
-use App\Models\NotificationAudience;
-use App\Models\UnreadNotificationCount;
+use App\Support\NotificationAudience;
+use App\Support\UnreadNotificationCount;
 use App\Models\RoleLookup;
 use App\Models\User;
 use App\Notifications\RegisterNotification;

@@ -2,7 +2,7 @@
 
 namespace App\Actions\V1\Notification;
 
-use App\Models\UnreadNotificationCount;
+use App\Support\UnreadNotificationCount;
 use App\Models\User;
 
 /** The viewer's own notifications, and the two ways they clear them. */

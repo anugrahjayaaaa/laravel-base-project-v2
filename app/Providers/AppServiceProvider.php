@@ -5,7 +5,7 @@ namespace App\Providers;
 use App\Auth\LoginThrottle;
 use App\Models\Role;
 use App\Models\SystemSetting;
-use App\Models\UnreadNotificationCount;
+use App\Support\UnreadNotificationCount;
 use App\Models\User;
 use App\Observers\RoleObserver;
 use App\Observers\SystemSettingObserver;

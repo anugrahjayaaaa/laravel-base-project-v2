@@ -1,6 +1,5 @@
 <?php
-
-namespace App\Models;
+namespace AppSupport;
 
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Notifications\Events\NotificationSent;

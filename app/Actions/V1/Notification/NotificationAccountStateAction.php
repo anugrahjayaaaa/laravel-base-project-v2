@@ -2,7 +2,7 @@
 
 namespace App\Actions\V1\Notification;
 
-use App\Models\NotificationAudience;
+use App\Support\NotificationAudience;
 use App\Models\User;
 use App\Notifications\AccountStateChangedNotification;
 use Illuminate\Support\Collection;
