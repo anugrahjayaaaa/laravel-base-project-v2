@@ -2,7 +2,7 @@
 
 > Date: 2026-10-03 (spec) · 2026-10-03 (Group A) · 2026-10-05 (D1/D2/D4, Group B, Groups C and E) · 2026-10-08 (audit of the shipped phase, copy rewrite, performance, security)
 > Branch: feature/phase-9-notifications-mail
-> Status: **Groups A–E DONE, and the shipped phase re-audited 2026-10-08.** Every task is shipped and verified. Four passes ran after the groups closed: a code audit (7 findings, all closed), a copy rewrite, a performance measurement, and a pentest (11 probes, no findings). Full suite **1301 passed / 5087 assertions**.
+> Status: **Groups A–E DONE, and the shipped phase re-audited 2026-10-08.** Every task is shipped and verified. Four passes ran after the groups closed: a code audit (7 findings, all closed), a copy rewrite, a performance measurement, and a pentest (11 probes, no findings). Full suite green at every checkpoint.
 > Scope: Mail/SMTP configuration (`SystemSetting`), admin notification configuration, global delivery channel switches, per-user in-app inbox, transactional + system notification delivery.
 > Dependency chain: A → B → C → D → E. Groups A, B and C are shipped; D1/D2/D4 shipped ahead of B because a gate must land with what it guards; D3 and E1/E2 shipped with B.
 > Post-ship work is tracked as **P9-X1..X9** in `task-tracker.md` and recorded here under "Audit of the shipped phase", "Audit of the shipped copy" and "Verification — performance".
@@ -715,7 +715,9 @@ Recorded because both produced numbers that looked fine:
   quietly measured an empty result. The fixture grants through a role now, which
   is also how the application grants.
 
-Full suite: **1290 passed / 4979 assertions**.
+Full suite at this gate: **1290 passed / 4979 assertions**. The live figure is in `progress.md`
+— the count moves with every suite change, and a number copied into a plan is a number
+that goes stale.
 
 ---
 

@@ -27,6 +27,10 @@ cheat sheet; that guide is the contract.
 ## Hard rules
 - **Never merge/commit to `main`.** Branch `feature/<task-id>-<desc>`.
 - Run `php artisan test` before declaring done. Tests green or it is not done.
+- **Never write an inline FQCN** (`\App\Models\User::query()`) — in `app/`, in
+  `tests/`, anywhere. `use` it at the top and write `User::query()`. Only
+  docblocks, comments, runtime strings and the global namespace (`\Closure`,
+  `\Throwable`) are exempt. Enforced by `tests/Arch/NoInlineFqnTest.php`.
 - Authorization is gated on the **route** (`can:` + `feature:` middleware),
   never in a controller constructor.
 - Validation: dedicated FormRequest calling `$request->validated()`. Never

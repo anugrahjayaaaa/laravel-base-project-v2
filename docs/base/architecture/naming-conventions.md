@@ -16,9 +16,53 @@
 | Config files | snake_case |
 | Routes | kebab-case for URI |
 | Policy methods | CRUD verb + model (`view`, `create`, `update`, `delete`) |
-| Imports | Short import only — no FQCN in code bodies |
+| Imports | Short import only — no FQCN in code bodies, in `app/` **and** `tests/` — see [Imports](#imports-no-inline-fully-qualified-names) |
 | Views | No FQCN, no model queries, no service calls in Blade — supply them as view data |
 | Action classes | `{Domain}{Operation}Action` — see [Action Naming](#action-naming-domain-first) |
+
+## Imports (no inline fully-qualified names)
+
+A class referenced in code is referenced by its short name. `\App\Models\RoleLookup::find('admin')`
+is the same class as `RoleLookup::find('admin')`; the difference is everything around it.
+
+**This is enforced.** `tests/Arch/NoInlineFqnTest.php` scans every PHP file in
+`app/` and `tests/` and fails on an inline FQCN, so the rule cannot rot the way a
+prose convention does. It found two real violations the day it was written — one
+`throw new \App\Exceptions\LastSuperadminException(...)` in `app/Support/` — after
+the test suite itself had been cleaned from 253.
+
+Why it is worth a gate:
+
+- **A rename is a grep.** `RoleLookup::` finds every use; `\App\Models\RoleLookup::`
+  finds only the uses somebody happened to write inline, and misses the rest.
+- **One place to look.** Every symbol a line depends on belongs in the file header.
+- **A diff that means something.** Moving a class moves one line up top instead of
+  silently rewriting the meaning of every body that named it.
+
+### What is exempt, and why
+
+| Exempt | Reason |
+|---|---|
+| Docblocks and comments | `@see \App\Support\FeatureCatalog::isActive()` often names a class the file does not import. Importing for a docblock adds an import nothing uses. |
+| Strings | `'App\Models\User'` in a morph map or a route action is a runtime value, not a symbol reference. Shortening it would break it. |
+| The global namespace | `\Closure`, `\Throwable`, `\RuntimeException`, `\stdClass` — importing a class with no namespace is noise, and Pint does not do it either. |
+| `namespace` declarations | `namespace Tests\Feature\Role;` is not a reference; it is the file's own address. |
+
+All four are properties of PHP's grammar rather than judgement calls, which is what
+makes the rule testable instead of arguable.
+
+### Two short names, one file
+
+Alias the loser and say why in the import:
+
+```php
+use App\Models\Role as AppRole;              // the application's role
+use Spatie\Permission\Models\Role;           // Spatie's role model
+```
+
+In tests the collision is common because a fixture creates a role for `assignRole`
+while the model under test is `App\Models\Role`. `PermissionRole` / `AppRole` reads
+better than either one losing.
 
 ## Form Request Layout
 
