@@ -29,7 +29,7 @@
           $parts = explode('\\', $type);
           $class = end($parts) ?: '';
           $color = match ($class) {
-              'UserCreatedNotification', 'UserRegisteredNotification' => 'primary',
+              'UserCreatedNotification', 'UserRegisteredNotification', 'RegisterNotification' => 'primary',
               'ChangeEmailVerificationNotification' => 'info',
               'AccountStateChangedNotification', 'ConfigurationChangedNotification' => 'warning',
               'RolesChangedNotification' => 'success',
