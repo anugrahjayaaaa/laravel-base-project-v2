@@ -116,8 +116,10 @@
                                     @if ($notification->read_at === null)
                                         <form method="POST" action="{{ route('notifications.inbox.read', $notification->id) }}">
                                             @csrf
-                                            <button type="submit" class="btn btn-sm btn-outline-secondary d-inline-flex align-items-center gap-1">
-                                                <i class="bi bi-check-lg"></i> Mark read
+                                            <button type="submit" class="btn btn-sm btn-outline-secondary"
+                                                    data-bs-toggle="tooltip" title="Mark as read"
+                                                    aria-label="Mark as read">
+                                                <i class="bi bi-check-lg fs-6"></i>
                                             </button>
                                         </form>
                                     @else
@@ -154,4 +156,11 @@
             {{ $notifications->links() }}
         </div>
     </div>
+
+    @push('scripts')
+    <script>
+        var tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+        tooltipTriggerList.forEach(function(el) { new bootstrap.Tooltip(el); });
+    </script>
+    @endpush
 @endsection
