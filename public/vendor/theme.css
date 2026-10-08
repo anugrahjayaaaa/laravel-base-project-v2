@@ -75,6 +75,13 @@ body {
   gap: .75rem;
 }
 
+/* Focus ring for header icon pills (a11y) */
+.app-header .nav-link.text-secondary:focus-visible,
+.app-header button.nav-link.text-secondary:focus-visible {
+  outline: 2px solid var(--lbp-primary);
+  outline-offset: 2px;
+}
+
 /* Neutralize AdminLTE's fixed nav-link height so header content aligns */
 .app-header .nav-link {
   height: auto;
@@ -92,11 +99,39 @@ body {
   border-radius: 9999px;
 }
 
+/* Hover feedback for header icon pills — subtle surface shift */
+.app-header .nav-link.text-secondary:hover,
+.app-header .dropdown > a.nav-link.text-secondary:hover,
+.app-header button.nav-link.text-secondary:hover {
+  background: var(--lbp-surface-2) !important;
+  color: var(--lbp-text) !important;
+}
+
 /* No extra margin-left — container-fluid gap handles spacing */
 .app-header .nav-link.text-secondary,
 .app-header .dropdown > a.nav-link.text-secondary,
 .app-header button.nav-link.text-secondary {
   margin-left: 0;
+}
+
+/* Normalize header icon heights — fas and bi render at different
+   intrinsic heights, which made the pills uneven (bell 41px, moon 30px).
+   Force the icon to a fixed square so every control is the same pill. */
+.app-header .nav-link.text-secondary i,
+.app-header button.nav-link.text-secondary i {
+  width: 1.125rem;
+  height: 1.125rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Same min-height so the bell, theme toggle, and user menu pills align
+   even when their icon fonts disagree on intrinsic height. */
+.app-header .nav-link.text-secondary,
+.app-header button.nav-link.text-secondary,
+.app-header .dropdown > a.nav-link.text-secondary {
+  min-height: 36px;
 }
 
 /* Theme toggle button — circular icon, same padding as other header icons */
