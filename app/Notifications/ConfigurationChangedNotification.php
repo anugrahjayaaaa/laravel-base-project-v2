@@ -47,13 +47,14 @@ class ConfigurationChangedNotification extends Notification implements ShouldQue
      * @var array<string, string>
      */
     private const SUBJECTS = [
-        'feature.changed' => 'A feature flag was changed',
-        'setting.changed' => 'System settings were changed',
-        'mail_setting.changed' => 'The mail transport was reconfigured',
-        'channel.changed' => 'Notification channels were changed',
-        'role.changed' => 'A role was changed',
-        'role.deleted' => 'A role was deleted',
-        'user.deleted' => 'An account was deleted',
+        'feature.changed' => 'Feature flag was changed',
+        'setting.changed' => 'System settings were updated',
+        'mail_setting.changed' => 'Mail transport configuration was updated',
+        'channel.changed' => 'Notification channel was modified',
+        'role.changed' => 'Role was updated',
+        'role.deleted' => 'Role was deleted',
+        'user.deleted' => 'User account was deleted',
+        'user.updated' => 'User profile was updated',
     ];
 
     /**
@@ -82,10 +83,10 @@ class ConfigurationChangedNotification extends Notification implements ShouldQue
      */
     public function toMail(User $notifiable): MailMessage
     {
-        $message = new MailMessage;
+        $message = new MailMessage();
 
-        $message->subject(self::SUBJECTS[$this->event] ?? 'Configuration was changed')
-            ->line($this->sentence());
+        $message->subject($this->subject())
+            ->line($this->summary());
 
         return $message;
     }
@@ -96,26 +97,60 @@ class ConfigurationChangedNotification extends Notification implements ShouldQue
     public function toArray(User $notifiable): array
     {
         return [
-            'subject' => self::SUBJECTS[$this->event] ?? 'Configuration was changed',
-            'lines' => [$this->sentence()],
+            'subject' => $this->subject(),
+            'lines' => $this->lines(),
         ];
     }
 
     /**
-     * The one sentence, in the same words for mail and for the inbox.
+     * The notification subject, made specific to the event where a detail exists.
      *
-     * Shared because a mail that says one thing and an inbox row that says
-     * another makes the two look like two different events, and a reader who sees
-     * both has no way to tell that they are the same one.
+     * Falls back to the generic subject for events whose detail is a count or
+     * null — substituting "System setting 2 key(s)" would read worse, not better.
      */
-    private function sentence(): string
+    private function subject(): string
     {
-        $sentence = $this->detail !== null
-            ? sprintf('%s: %s.', rtrim(self::SUBJECTS[$this->event] ?? 'Configuration changed', '.'), $this->detail)
-            : (self::SUBJECTS[$this->event] ?? 'Configuration was changed').'.';
+        $event = $this->event;
 
-        return $this->causer !== null
-            ? $sentence.' Changed by '.$this->causer->name.'.'
-            : $sentence;
+        if ($this->detail !== null) {
+            return match ($event) {
+                'feature.changed' => sprintf("Feature flag '%s' was changed", $this->detail),
+                'role.deleted' => sprintf("Role '%s' was deleted", $this->detail),
+                'user.deleted' => sprintf("User account '%s' was deleted", $this->detail),
+                default => self::SUBJECTS[$event] ?? 'Configuration was changed',
+            };
+        }
+
+        return self::SUBJECTS[$event] ?? 'Configuration was changed';
+    }
+
+    /**
+     * The action line(s) shared by mail and inbox.
+     *
+     * Line 1 names the action and the actor. Line 2 (when a detail is
+     * available) identifies the specific target that changed, so an
+     * administrator reading two notifications can tell them apart.
+     */
+    private function lines(): array
+    {
+        $by = $this->causer !== null
+            ? ' by '.$this->causer->name
+            : '';
+
+        $lines = [(self::SUBJECTS[$this->event] ?? 'Configuration changed').$by.'.'];
+
+        if ($this->detail !== null) {
+            $lines[] = sprintf('Target: %s', $this->detail);
+        }
+
+        return $lines;
+    }
+
+    /**
+     * One sentence for the mail body, matching the inbox lines.
+     */
+    private function summary(): string
+    {
+        return implode(' ', $this->lines());
     }
 }

@@ -81,8 +81,8 @@ class RegisterNotification extends Notification implements ShouldQueue
         return [
             'subject' => 'Verify your email address',
             'lines' => [
-                'Click the verification link to activate your account.',
-                'The link expires in '.$this->expireMinutes.' minutes.',
+                'Welcome to the platform! Click the verification link sent to your email to activate your account.',
+                'Verification link expires in '.$this->expireMinutes.' minutes.',
             ],
         ];
     }

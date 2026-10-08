@@ -2,6 +2,7 @@
 
 namespace App\Notifications;
 
+use App\Models\User;
 use App\Support\NotificationChannel;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -54,7 +55,7 @@ class ChangeEmailVerificationNotification extends Notification implements Should
         );
 
         return (new MailMessage())
-            ->subject('Confirm your email change')
+            ->subject('Confirm your new email address')
             ->line('You requested to change your email address.')
             ->line("New email: {$this->pendingEmail}")
             ->action('Verify Email Change', $verifyUrl)
@@ -81,8 +82,8 @@ class ChangeEmailVerificationNotification extends Notification implements Should
         return [
             'subject' => 'Confirm your new email address',
             'lines' => [
-                'Confirm this address to finish moving your account.',
-                'If you did not request the change, ignore this message.',
+                "Verify your request to change email to {$this->pendingEmail}.",
+                'If you did not request this change, please ignore this notification.',
             ],
         ];
     }
