@@ -8,7 +8,18 @@ use App\Models\User;
 /** The viewer's own notifications, and the two ways they clear them. */
 class NotificationInboxAction
 {
-    /** The viewer's notifications, newest first, plus the unread count. */
+    /**
+     * The viewer's notifications, newest first, plus the unread count.
+     *
+     * The count comes from the cache the bell reads, not from a live query, and
+     * that is the point: the two surfaces are the same number about the same
+     * inbox. Counting live here meant that a row written between the header's
+     * read and this one left the page header showing one figure and the page
+     * body showing another, with nothing on screen to explain the difference.
+     *
+     * Safe for the same reason the bell's is: delivery invalidates on
+     * `NotificationSent`, and both mark-read paths below invalidate here.
+     */
     public function inbox(User $viewer): array
     {
         return [
@@ -16,7 +27,7 @@ class NotificationInboxAction
                 ->notifications()
                 ->latest()
                 ->paginate(30),
-            'unreadCount' => $viewer->unreadNotifications()->count(),
+            'unreadCount' => UnreadNotificationCount::for($viewer),
         ];
     }
 
