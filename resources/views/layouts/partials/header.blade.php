@@ -17,7 +17,7 @@
     </div>
 
     <!-- RIGHT: Notification + Theme + User -->
-    <div class="navbar-nav ms-auto d-flex flex-row align-items-center">
+    <div class="navbar-nav ms-auto d-flex flex-row align-items-center gap-2">
       <!-- Notification: a real link, gated by the same flag as the sidebar item, so
            a switched-off module leaves no icon pointing at a 403. The unread
            badge and the inbox target land with P9-C2; until then it points at
@@ -27,72 +27,7 @@
            option 1 + 2: single column list, icon circle + subject, timestamp
            below the text. -->
       @if ($notificationsVisible ?? false)
-        <li class="nav-item dropdown">
-          <a class="nav-item nav-link px-2 position-relative"
-             href="{{ route('notifications.inbox') }}"
-             data-bs-toggle="dropdown" aria-expanded="false"
-             title="Notifications"
-             @class(['text-decoration-none' => ! $notificationsVisible ?? false])>
-            <i class="far fa-bell"></i>
-            @if ($unreadNotificationCount > 0)
-              <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger fs-8 badge-notification-unread">
-                {{ $unreadNotificationCount }} unread notifications
-              </span>
-            @endif
-          </a>
-          <div class="dropdown-menu dropdown-menu-lg dropdown-menu-end border-0 shadow-sm p-0 rounded-3 mt-2">
-            <div class="dropdown-header bg-transparent border-bottom py-3 px-3 d-flex justify-content-between align-items-center">
-              <h6 class="fw-semibold mb-0">Notifications</h6>
-              <a href="/notifications/inbox" class="text-decoration-none small text-primary">Mark all as read</a>
-            </div>
-
-            <div class="list-group list-group-flush overflow-auto" style="max-height: 320px;">
-              @forelse ($recentNotifications as $notification)
-                @php
-                  $type = $notification->data['type'] ?? '';
-                  $parts = explode('\\', $type);
-                  $class = end($parts) ?: '';
-                  $color = match ($class) {
-                      'UserCreatedNotification', 'UserRegisteredNotification' => 'primary',
-                      'ChangeEmailVerificationNotification' => 'info',
-                      'AccountStateChangedNotification', 'ConfigurationChangedNotification' => 'warning',
-                      'RolesChangedNotification' => 'success',
-                      default => 'secondary',
-                  };
-                  $circle = "bg-{$color}-subtle text-{$color}";
-                @endphp
-                <a href="#"
-                   class="list-group-item list-group-item-action py-3 px-3 border-bottom d-flex align-items-start gap-3 bg-body-tertiary">
-                  <div class="rounded-3 {{ $circle }} p-2" style="width: 36px; height: 36px; flex-shrink: 0;">
-                    @if ($notification->read_at === null)
-                      <i class="bi bi-check2-circle fs-6"></i>
-                    @else
-                      <i class="bi bi-check fs-6"></i>
-                    @endif
-                  </div>
-                  <div class="flex-grow-1 min-w-0">
-                    <div class="fw-semibold small text-body mb-1">
-                      {{ $notification->data['subject'] ?? 'Notification' }}
-                    </div>
-                    <div class="text-muted fs-8">
-                      <i class="bi bi-clock me-1"></i> {{ $notification->created_at->diffForHumans() }}
-                    </div>
-                  </div>
-                </a>
-              @empty
-                <div class="dropdown-item-text text-muted py-3 text-center">
-                  No notifications yet.
-                </div>
-              @endforelse
-            </div>
-
-            <div class="dropdown-footer bg-body-tertiary border-top py-2 text-center">
-              <a href="/notifications/inbox" class="text-decoration-none small fw-semibold text-primary">
-                View all notifications <i class="bi bi-arrow-right ms-1"></i>
-              </a>
-            </div>
-          </div>
-        </li>
+        @include('layouts.partials.notification-dropdown')
       @endif
 
       @include('layouts.partials.scripts.theme-toggle')
