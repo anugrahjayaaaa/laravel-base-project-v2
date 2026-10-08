@@ -143,7 +143,10 @@ class UserUpdateAction
         // `configurationChanged` is a Notification::send of its own, so it
         // carries the same after-commit requirement.
         if ($causer !== null) {
-            $this->notifyAction->configurationChanged('user.updated', 'Profile updated', $causer);
+            // The username, not the words "Profile updated": the detail is the target of
+            // the change, and "Profile updated: Profile updated" is the kind of
+            // sentence that made these rows unreadable.
+            $this->notifyAction->configurationChanged('user.updated', $updated->username, $causer);
         }
 
         return $updated;

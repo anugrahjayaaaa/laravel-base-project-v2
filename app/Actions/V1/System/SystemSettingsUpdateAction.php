@@ -147,11 +147,19 @@ class SystemSettingsUpdateAction
         // the database never accepted.
         AppServiceProvider::bindTokenExpirations();
 
-        // Every `settings.manage` holder. The message names the KEY that changed,
-        // never its value: a settings notification quoting the new value hands a
+        // Every `settings.manage` holder. The message names how many keys changed,
+        // never their values: a settings notification quoting the new value hands a
         // reader nothing they could not already read, and this record is visible
         // to everyone who holds the permission the change required.
-        $this->notifyAction->configurationChanged('setting.changed', count($data).' key(s)', $causer);
+        //
+        // "1 setting" / "3 settings", not "1 key(s)" — the notification is read by
+        // a person deciding whether to look, and the parenthetical plural is the
+        // shape of output, not of language.
+        $this->notifyAction->configurationChanged(
+            'setting.changed',
+            count($data).' setting'.(count($data) === 1 ? '' : 's'),
+            $causer
+        );
     }
 
     /**
