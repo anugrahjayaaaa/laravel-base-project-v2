@@ -21,7 +21,7 @@
 | `config/pulse.php` published | `config/pulse.php` | yes |
 | `pulse` feature flag declared | `config/pennant.php:76` | yes |
 | flag enforced on the route group | `config/pulse.php:137` (`feature:pulse` in `pulse.middleware`) | yes |
-| flag-off returns 403 | `tests/Feature/PulseFeatureGateTest.php` | yes, 3 tests |
+| flag-off returns 403 | `tests/Feature/FeatureFlag/PulseFeatureGateTest.php` | yes, 3 tests |
 | `pulse_tables` migration | `database/migrations/2026_09_29_043034_create_pulse_tables.php` | yes |
 
 So the flag half of this phase is done. What is missing is the **permission**

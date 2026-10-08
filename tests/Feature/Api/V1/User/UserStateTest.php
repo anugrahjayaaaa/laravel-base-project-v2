@@ -6,6 +6,11 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
+use App\Http\Middleware\VerifyCsrfToken;
+use App\Models\RoleLookup;
+use Database\Seeders\PermissionSeeder;
+use Database\Seeders\RoleSeeder;
+use Illuminate\Support\Facades\DB;
 
 class UserStateTest extends TestCase
 {
@@ -14,16 +19,16 @@ class UserStateTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->seed(\Database\Seeders\RoleSeeder::class);
-        $this->seed(\Database\Seeders\PermissionSeeder::class);
+        $this->seed(RoleSeeder::class);
+        $this->seed(PermissionSeeder::class);
         $this->admin = User::factory()->create([
             'name' => 'Admin',
             'email' => 'admin@example.com',
             'is_active' => true,
         ]);
-        $this->admin->assignRole(\App\Models\RoleLookup::find('admin'));
+        $this->admin->assignRole(RoleLookup::find('admin'));
         Sanctum::actingAs($this->admin, ['*']);
-        $this->withoutMiddleware(\App\Http\Middleware\VerifyCsrfToken::class);
+        $this->withoutMiddleware(VerifyCsrfToken::class);
     }
 
     // -- Activate --
@@ -174,7 +179,7 @@ class UserStateTest extends TestCase
     {
         $user = User::factory()->create(['is_active' => true, 'email_verified_at' => now()]);
         $user->createToken('test-token')->plainTextToken;
-        \Illuminate\Support\Facades\DB::table('sessions')->insert([
+        DB::table('sessions')->insert([
             'id' => 'test-session',
             'user_id' => $user->id,
             'ip_address' => '127.0.0.1',

@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Api\V1\Role;
 
+use App\Actions\V1\BulkAction\BulkActionProcessor;
+use App\Actions\V1\Role\RoleBulkActionHandler;
 use App\Actions\V1\Role\RoleCreateAction;
 use App\Actions\V1\Role\RoleDeleteAction;
 use App\Actions\V1\Role\RoleForceDeleteAction;
@@ -9,6 +11,7 @@ use App\Actions\V1\Role\RoleIndexAction;
 use App\Actions\V1\Role\RoleRestoreAction;
 use App\Actions\V1\Role\RoleUpdateAction;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\V1\Role\BulkRoleRequest;
 use App\Http\Requests\V1\Role\DeleteRoleRequest;
 use App\Http\Requests\V1\Role\ForceDeleteRoleRequest;
 use App\Http\Requests\V1\Role\RestoreRoleRequest;
@@ -46,6 +49,8 @@ class RoleController extends Controller
         private readonly RoleDeleteAction $deleteAction,
         private readonly RoleRestoreAction $restoreAction,
         private readonly RoleForceDeleteAction $forceDeleteAction,
+        private readonly BulkActionProcessor $bulkProcessor,
+        private readonly RoleBulkActionHandler $bulkHandler,
     ) {
     }
 
@@ -154,6 +159,42 @@ class RoleController extends Controller
         $this->forceDeleteAction->run($model, $request->user());
 
         return $this->respond('Role permanently deleted.');
+    }
+
+    /**
+     * Act on several roles at once.
+     *
+     * The same processor, handler and Form Request the web bulk bar uses, so the
+     * per-action authorization, the selection cap, the last-superadmin guard and
+     * the per-subject audit rows all apply here without being restated — the same
+     * reason the other methods in this class hold no logic of their own.
+     *
+     * The missing counterpart: users and features had a bulk endpoint on both
+     * surfaces and roles had one only in the browser, so an API client could not
+     * retire a batch of roles without calling the endpoint once per role.
+     *
+     * No `->can()` on the route, matching every other bulk endpoint — the
+     * permission depends on which action was requested, so `BulkRoleRequest`
+     * decides it per action (`roles.delete` for a trash, `roles.restore` for a
+     * restore, and so on).
+     */
+    public function bulkAction(BulkRoleRequest $request): JsonResponse
+    {
+        $data = $request->validated();
+
+        $result = $this->bulkProcessor->run(
+            action: $data['action'],
+            ids: $data['role_ids'],
+            causer: $request->user(),
+            handler: $this->bulkHandler,
+        );
+
+        // No aggregate audit row: every branch of RoleBulkActionHandler loops an
+        // action that records the change per role inside its own transaction
+        // (`role.deleted` carries revoked_users and revoked_permissions), so a row
+        // from here would name the same roles a second time with none of the
+        // properties the action recorded.
+        return $this->respond("{$result['label']} ({$result['count']} roles).");
     }
 
     /**

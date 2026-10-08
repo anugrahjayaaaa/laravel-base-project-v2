@@ -8,6 +8,7 @@ use Database\Seeders\PermissionSeeder;
 use Database\Seeders\RoleSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
+use App\Http\Middleware\VerifyCsrfToken;
 
 class UserStateWebTest extends TestCase
 {
@@ -16,7 +17,7 @@ class UserStateWebTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->withoutMiddleware(\App\Http\Middleware\VerifyCsrfToken::class);
+        $this->withoutMiddleware(VerifyCsrfToken::class);
 
         $this->seed(RoleSeeder::class);
         $this->seed(PermissionSeeder::class);

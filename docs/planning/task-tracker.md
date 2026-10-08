@@ -269,7 +269,7 @@ genuinely open and are the real D1/D2 work.
 | P9-E3 | Inbox isolation — A cannot mark B's notification read (single route nor mark-all) | 9 | P0 | P9-C5 | DONE |
 | P9-E4 | Target Audience Rule — admin event reaches only permission holders, personal reaches only its subject, unclassified reaches nobody, and every event names a declared permission | 9 | P0 | P9-C3 | DONE |
 | P9-E5 | Bell target — href is `/notifications/inbox`, renders for a plain user, badge reflects the count | 9 | P0 | P9-C2 | DONE |
-| P9-E6 | Full suite green (`1111 passed / 4263 assertions` at close; **1301 / 5087** after the 2026-10-08 audit passes) + reconcile `progress.md` / `task-tracker.md` / `feature-tracker.md` / phase doc | 9 | P1 | P9-E1 | DONE |
+| P9-E6 | Full suite green (`1111 passed / 4263 assertions` at close; **1590 / 5396** today, after the 2026-10-08 audit passes and the test-suite regroup) + reconcile `progress.md` / `task-tracker.md` / `feature-tracker.md` / phase doc | 9 | P1 | P9-E1 | DONE |
 | P9-E7 | Reconcile `docs/base/features/notifications.md` — channels trimmed, transport table rewritten, "config/env only" reversed, audience table split | 9 | P1 | P9-B2 | DONE |
 | P9-E8 | Correct the conventions skill — `Permission::featureOf()` does not exist; the sidebar is `AppMenuComposer`, not `@feature()` in Blade | 9 | P2 | — | DONE |
 | P9-E9 | Regression for the null-default binding bug — `an_install_without_a_configured_username_still_binds`, verified load-bearing by reintroducing the bug | 9 | P0 | P9-B6 | DONE |
@@ -1431,7 +1431,7 @@ Detail: `docs/planning/phase-9-notifications-mail.md`.
         "P7-F1"
     ],
     "status": "DONE",
-    "note": "Built 2026-10-01. tests/Feature/BulkActionCopyTest.php cross-checks the RENDERED page against actionOptions and ACTION_CONFIG. Rendered, because the attribute holds @json(...) which is Blade, not JSON, so parsing the template would assert on a string the browser never sees. Both failure modes are silent: populateDropdown skips an action it cannot label, and resolveAction warns and returns null, so a typo renders an empty dropdown with nothing in the console a test run would catch. Also pins enable=>success and disable=>warning in BOTH maps per the Action Color Convention. Sabotage-verified three ways: typo in ACTION_CONFIG, entry removed from actionOptions, variant swapped. Pages leaning on the driver defaults (users) are skipped rather than falsely failed."
+    "note": "Built 2026-10-01. tests/Feature/FeatureFlag/BulkActionCopyTest.php cross-checks the RENDERED page against actionOptions and ACTION_CONFIG. Rendered, because the attribute holds @json(...) which is Blade, not JSON, so parsing the template would assert on a string the browser never sees. Both failure modes are silent: populateDropdown skips an action it cannot label, and resolveAction warns and returns null, so a typo renders an empty dropdown with nothing in the console a test run would catch. Also pins enable=>success and disable=>warning in BOTH maps per the Action Color Convention. Sabotage-verified three ways: typo in ACTION_CONFIG, entry removed from actionOptions, variant swapped. Pages leaning on the driver defaults (users) are skipped rather than falsely failed."
 },
   {
     "id": "P7-F3",
@@ -1476,7 +1476,7 @@ Detail: `docs/planning/phase-9-notifications-mail.md`.
         "P7-F5"
     ],
     "status": "DONE",
-    "note": "Built 2026-10-01. tests/Feature/FeatureFlagBulkTest.php, 11 tests: one audit row for a multi-flag change; from read before the write; undeclared slug refused over HTTP AND directly against the action, since a queued job or console command never runs the form request; unknown action refused; duplicate slug applied once; unauthorised caller refused; state survives a store re-read. All three sabotage checks passed only after the assertions were tightened: filtering on the bulk event alone hid a stray per-slug row."
+    "note": "Built 2026-10-01. tests/Feature/FeatureFlag/FeatureFlagBulkTest.php, 11 tests: one audit row for a multi-flag change; from read before the write; undeclared slug refused over HTTP AND directly against the action, since a queued job or console command never runs the form request; unknown action refused; duplicate slug applied once; unauthorised caller refused; state survives a store re-read. All three sabotage checks passed only after the assertions were tightened: filtering on the bulk event alone hid a stray per-slug row."
 },
   {
     "id": "P7-E1",

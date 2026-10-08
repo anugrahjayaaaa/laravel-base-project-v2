@@ -24,7 +24,7 @@
 | View: reset-password hint | `resources/views/pages/auth/reset-password.blade.php` | ✅ |
 | View: profile hint | `resources/views/pages/profile/edit.blade.php` | ✅ |
 | View: settings fields | `resources/views/pages/settings/index.blade.php` | ✅ |
-| Tests | `tests/Feature/PasswordHistoryTest.php` | ✅ |
+| Tests | `tests/Feature/Auth/PasswordHistoryTest.php` | ✅ |
 
 ### Settings
 
@@ -40,7 +40,7 @@
 | Real-time strength JS | `resources/js/helpers/password-strength.js` | ✅ |
 | Strength indicator partial | `resources/views/layouts/partials/password-strength.blade.php` | ✅ |
 | Settings integration | `database/seeders/SystemSettingSeeder.php` | ✅ |
-| Tests (13 unit + 8 feature) | `tests/Unit/PasswordPolicyTest.php`, `tests/Feature/PasswordPolicyTest.php` | ✅ |
+| Tests (13 unit + 8 feature) | `tests/Unit/PasswordPolicyTest.php`, `tests/Feature/Auth/PasswordPolicyTest.php` | ✅ |
 | Pentest | clean (1 LOW: homoglyph bypass) | ✅ |
 
 **Rules enforced (IM8):**
@@ -91,7 +91,7 @@ Group C — Password Expiration & Inactivity Lock ✅ DONE
 | Expired password view | `resources/views/pages/auth/password-expired.blade.php` | ✅ |
 | Warning banner partial | `resources/views/partials/password-expiry-warning.blade.php` | ✅ |
 | Settings UI | `resources/views/pages/settings/index.blade.php` | ✅ |
-| Tests (26 focused) | `tests/Feature/PasswordExpiryTest.php`, `tests/Feature/InactivityLockTest.php`, `tests/Feature/PasswordLifecycleUiTest.php` | ✅ |
+| Tests (26 focused) | `tests/Feature/Auth/PasswordExpiryTest.php`, `tests/Feature/Auth/InactivityLockTest.php`, `tests/Feature/Auth/PasswordLifecycleUiTest.php` | ✅ |
 
 ### Settings
 

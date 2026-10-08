@@ -23,6 +23,8 @@ use Illuminate\Support\Facades\Notification;
 use PHPUnit\Framework\Attributes\Test;
 use Spatie\Permission\PermissionRegistrar;
 use Tests\TestCase;
+use Spatie\Permission\Models\Permission;
+use Spatie\Permission\Models\Role;
 
 /**
  * The Target Audience Rule, wired to real events.
@@ -58,13 +60,13 @@ class AccountStateNotificationTest extends TestCase
      */
     private function holderOf(string $permission): User
     {
-        $role = \Spatie\Permission\Models\Role::create([
+        $role = Role::create([
             'name' => 'holder-'.str_replace('.', '-', $permission).'-'.uniqid(),
             'guard_name' => RoleLookup::guard(),
         ]);
 
         $role->givePermissionTo(
-            \Spatie\Permission\Models\Permission::where('name', $permission)
+            Permission::where('name', $permission)
                 ->where('guard_name', RoleLookup::guard())
                 ->firstOrFail()
         );

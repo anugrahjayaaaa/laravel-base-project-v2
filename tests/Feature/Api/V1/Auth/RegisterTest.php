@@ -10,6 +10,8 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Notification;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
+use App\Http\Middleware\VerifyCsrfToken;
+use Database\Seeders\SystemSettingSeeder;
 
 /**
  * POST /api/v1/auth/register
@@ -25,7 +27,7 @@ class RegisterTest extends TestCase
     {
         parent::setUp();
 
-        $this->seed(\Database\Seeders\SystemSettingSeeder::class);
+        $this->seed(SystemSettingSeeder::class);
     }
 
     private function enable(): void
@@ -136,7 +138,7 @@ class RegisterTest extends TestCase
      */
     public function test_the_limiter_is_shared_between_web_and_api(): void
     {
-        $this->withoutMiddleware(\App\Http\Middleware\VerifyCsrfToken::class);
+        $this->withoutMiddleware(VerifyCsrfToken::class);
         Notification::fake();
         $this->enable();
         SystemSetting::set('registration_rate_limit_per_minute', '2');

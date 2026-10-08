@@ -10,6 +10,10 @@ use Illuminate\Support\Facades\Hash;
 use Laravel\Sanctum\Sanctum;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
+use App\Models\RoleLookup;
+use Database\Seeders\PermissionSeeder;
+use Database\Seeders\RoleSeeder;
+use Spatie\Permission\PermissionRegistrar;
 
 class UserCrudApiTest extends TestCase
 {
@@ -20,16 +24,16 @@ class UserCrudApiTest extends TestCase
     {
         parent::setUp();
 
-        $this->app->make(\Spatie\Permission\PermissionRegistrar::class)->forgetCachedPermissions();
+        $this->app->make(PermissionRegistrar::class)->forgetCachedPermissions();
 
         // Seeded, and on the guard the app actually resolves for a User. The
         // hand-made row was on the 'api' guard and carried no permissions, so it
         // was invisible to every users.* check.
-        $this->seed(\Database\Seeders\RoleSeeder::class);
-        $this->seed(\Database\Seeders\PermissionSeeder::class);
+        $this->seed(RoleSeeder::class);
+        $this->seed(PermissionSeeder::class);
 
         $adminRole = Role::where('name', 'admin')
-            ->where('guard_name', \App\Models\RoleLookup::guard())
+            ->where('guard_name', RoleLookup::guard())
             ->firstOrFail();
         $admin = User::factory()->create([
             'name' => 'Admin',

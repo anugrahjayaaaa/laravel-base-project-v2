@@ -27,6 +27,13 @@ use PHPUnit\Framework\Attributes\Test;
 use ReflectionClass;
 use RuntimeException;
 use Tests\TestCase;
+use App\Actions\V1\Auth\AuthLoginCompletedAction;
+use App\Actions\V1\Auth\AuthLogoutAllDevicesAction;
+use App\Actions\V1\Auth\AuthVerifyEmailAction;
+use App\Http\Middleware\VerifyCsrfToken;
+use App\Jobs\PasswordExpirySweep;
+use App\Services\InactivityLock;
+use Spatie\Permission\PermissionRegistrar;
 
 /**
  * The Action-first audit standard, pinned on the user delete path.
@@ -58,10 +65,10 @@ class ActionFirstAuditTest extends TestCase
         $this->admin = User::factory()->create(['email_verified_at' => now()]);
         $this->admin->assignRole(RoleLookup::find(SystemRole::SUPERADMIN));
 
-        app(\Spatie\Permission\PermissionRegistrar::class)->forgetCachedPermissions();
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
 
         // VerifyCsrfToken::runningUnitTests() is hardcoded false in this app.
-        $this->withoutMiddleware(\App\Http\Middleware\VerifyCsrfToken::class);
+        $this->withoutMiddleware(VerifyCsrfToken::class);
     }
 
     private function deletedRows(int $userId)
@@ -501,7 +508,7 @@ class ActionFirstAuditTest extends TestCase
             'inactivity lock' => [
                 'auth.inactivity_lock',
                 ['last_activity_at' => now()->subDays(35)],
-                fn (User $user) => \App\Services\InactivityLock::lock($user),
+                fn (User $user) => InactivityLock::lock($user),
                 fn (User $user) => ! $user->fresh()->is_locked,
             ],
             // `email_verified_at => null` is required, not cosmetic: the factory
@@ -511,13 +518,13 @@ class ActionFirstAuditTest extends TestCase
             'email verified' => [
                 'auth.email_verified',
                 ['email_verified_at' => null],
-                fn (User $user) => app(\App\Actions\V1\Auth\AuthVerifyEmailAction::class)->run($user),
+                fn (User $user) => app(AuthVerifyEmailAction::class)->run($user),
                 fn (User $user) => $user->fresh()->email_verified_at === null,
             ],
             'logout all' => [
                 'auth.logout_all',
                 [],
-                fn (User $user) => app(\App\Actions\V1\Auth\AuthLogoutAllDevicesAction::class)->run($user),
+                fn (User $user) => app(AuthLogoutAllDevicesAction::class)->run($user),
                 // Sessions and tokens are deleted inside the transaction now, so
                 // there is no column to read back for this one; the audit-row
                 // count above is the assertion.
@@ -528,13 +535,13 @@ class ActionFirstAuditTest extends TestCase
                 // The job's own query needs an expired password and a user not
                 // already flagged, so the guard and the chunk both admit it.
                 ['must_change_password' => false, 'password_expires_at' => now()->subDay()],
-                fn (User $user) => (new \App\Jobs\PasswordExpirySweep())->handle(),
+                fn (User $user) => (new PasswordExpirySweep())->handle(),
                 fn (User $user) => ! $user->fresh()->must_change_password,
             ],
             'login' => [
                 'auth.login',
                 ['last_activity_at' => null],
-                fn (User $user) => app(\App\Actions\V1\Auth\AuthLoginCompletedAction::class)
+                fn (User $user) => app(AuthLoginCompletedAction::class)
                     ->run($user, false),
                 fn (User $user) => $user->fresh()->last_activity_at === null,
             ],

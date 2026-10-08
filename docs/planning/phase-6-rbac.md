@@ -59,7 +59,7 @@ Sources: Spatie official docs v6 (package installed is `spatie/laravel-permissio
 - `UserCreateAction` already assigns roles through `RoleLookup::find()`
 - `partials/user-role-picker.blade.php` — shared role checkbox partial
 - `<x-ui.confirm-action>` + `ACTION_CONFIG` — 8 action keys, all destructive/state
-- `tests/Feature/RoleGuardTest.php` — pins the guard resolver
+- `tests/Feature/Role/RoleGuardTest.php` — pins the guard resolver
 - Package cache is on: `config/permission.php` `cache.expiration_time` 24h,
   `CACHE_STORE=database`, cache table migration exists
 
@@ -216,7 +216,7 @@ zero permissions still reaches `/dashboard`, `/profile`, `/sessions`.
 | P6-A6 | `resources/views/pages/permissions/index.blade.php` — **read-only** catalogue. Grouped by resource, badge per permission showing how many roles hold it. No create/edit/delete buttons at all | — | medium |
 | P6-A7 | Add `delete_role` key to `resources/js/helpers/action-config.js` (`variant: 'danger'`, `msg: 'Delete <b>__ITEM__</b>? Users with this role lose its permissions immediately.'`) | A2 | tiny |
 | P6-A8 | Static menu group in `AppMenuComposer` already lists Roles/Permissions — **no change in this group**; the `permission` key is added in Group D | A1 | — |
-| P6-A9 | Gate: `tests/Feature/RbacUiRenderTest.php` — render each new view with a hand-built array (`view('pages.roles.index', ['roles' => collect()])`) and assert: no exception, no forbidden class present in output, delete button absent when `$role->is_system` is true | A1–A7 | medium |
+| P6-A9 | Gate: `tests/Feature/Role/RbacUiRenderTest.php` — render each new view with a hand-built array (`view('pages.roles.index', ['roles' => collect()])`) and assert: no exception, no forbidden class present in output, delete button absent when `$role->is_system` is true | A1–A7 | medium |
 
 **Group A status: ✅ DONE** (2026-09-28). Audited against the filesystem; the
 table below is the audit, not a wish list.
@@ -233,7 +233,7 @@ table below is the audit, not a wish list.
 | P6-A6 | Permissions index — read-only catalogue, `roles_count` badge | ✅ DONE | `resources/views/pages/permissions/index.blade.php` (65 lines) |
 | P6-A7 | `delete_role` key in `ACTION_CONFIG` | ✅ DONE | `resources/js/helpers/action-config.js:74` |
 | P6-A8 | `AppMenuComposer` unchanged | ✅ as specified | no diff — its `Roles` / `Permissions` items were already listed; `Route::has()` now resolves instead of falling back to `'#'` |
-| P6-A9 | Gate test | ✅ DONE | `tests/Feature/RbacUiRenderTest.php` — 14 tests, 49 assertions, green |
+| P6-A9 | Gate test | ✅ DONE | `tests/Feature/Role/RbacUiRenderTest.php` — 14 tests, 49 assertions, green |
 
 ### Shipped beyond the plan (the build needed reachable pages)
 
@@ -306,7 +306,7 @@ Request, and no `can:` gate.
 
 | Check | Result |
 |---|---|
-| `php artisan test tests/Feature/RbacUiRenderTest.php` | 14 passed, 49 assertions |
+| `php artisan test tests/Feature/Role/RbacUiRenderTest.php` | 14 passed, 49 assertions |
 | Full suite | 398 passed, 1235 assertions, 1 risky (pre-existing `DebugRateLimiterTest`) |
 | `vendor/bin/pint --test --dirty` | passed |
 | `npm run build` | built in 1.31s |
@@ -330,8 +330,8 @@ Request, and no `can:` gate.
 | P6-B4 | Add `'is_system'` derivation — `App\Support\SystemRole::isSystem(string $name): bool` for `superadmin`/`admin`/`user`, plus `SystemRole::names()`. Replaces the bare array literal in `RoleSeeder` and is the single place that answers "is this a system role" | B1 | tiny |
 | P6-B5 | Update `RoleSeeder` to use `SystemRole::names()` (comment at `:16-18` already says permissions come in RBAC-004 — that comment becomes true, keep it accurate) | B4 | tiny |
 | P6-B6 | `Gate::before` in `AuthServiceProvider::boot()`: `return $user->hasRole('superadmin') ? true : null;` — **`null`, never `false`**. Comment records why: returning `false` would short-circuit every policy and deny everyone | B1 | tiny |
-| P6-B7 | `tests/Feature/PermissionSeedTest.php` — every name in `PermissionCatalog::all()` exists on the resolved guard; `superadmin` has **zero** `role_has_permissions` rows and passes `can('anything')`; `admin` has all 11 `users.*`; `user` has none; re-running the seeder twice changes no counts; a role does not exist twice on the same guard | B1–B6 | medium |
-| P6-B8 | `tests/Feature/PermissionCacheTest.php` — after `forgetCachedPermissions()` in `setUp()`, `can()` reflects a fresh DB change; assert a seeded permission is visible to a user assigned after `setUp()` | B7 | small |
+| P6-B7 | `tests/Feature/Role/PermissionSeedTest.php` — every name in `PermissionCatalog::all()` exists on the resolved guard; `superadmin` has **zero** `role_has_permissions` rows and passes `can('anything')`; `admin` has all 11 `users.*`; `user` has none; re-running the seeder twice changes no counts; a role does not exist twice on the same guard | B1–B6 | medium |
+| P6-B8 | `tests/Feature/Role/PermissionCacheTest.php` — after `forgetCachedPermissions()` in `setUp()`, `can()` reflects a fresh DB change; assert a seeded permission is visible to a user assigned after `setUp()` | B7 | small |
 
 **Gate B:** `php artisan db:seed` twice is idempotent, `PermissionSeedTest`
 green, `hasRole('superadmin')` → `can()` true while `role_has_permissions` is
@@ -789,9 +789,9 @@ sidebar items and can reach exactly those three areas.
 | P6-E4 | Last-superadmin: `RoleAssignAction` (C11) already counts. Add the two remaining paths — **delete** the last superadmin user and **deactivate** the last superadmin user — both must be refused. `UserDeleteAction` / `UserDeactivateAction` call the same count helper | C11 | medium |
 | P6-E5 | "Superadmin assignment restricted to the most privileged path" — assigning `superadmin` requires `roles.update` **and** an explicit `confirm_superadmin` flag on the payload; without it the request is rejected. The UI asks via the confirm modal. This is the "removing superadmin requires explicit audited confirmation" rule, applied to both directions | C11, A7 | medium |
 | P6-E6 | Confirm modal copy for E4/E5 — add `remove_superadmin` key to `ACTION_CONFIG` (`variant: 'danger'`, names the account) | E4 | tiny |
-| P6-E7 | `tests/Feature/RbacAuthorizationMatrixTest.php` — the brief's two cases, as tests: **User A** role `user`, zero permissions → 403 on `/users`, `/settings`, `/roles`, `/permissions`; 200 on `/dashboard`, `/profile`, `/sessions`; sidebar HTML contains no `Users`, `Roles`, `Settings` link. **User B** role `staff` with `users.view` + `users.update` + `settings.manage` → 200 on `/users` + `/settings`; 403 on `/roles`; sidebar contains `Users` + `Settings`, not `Roles` | D | medium |
-| P6-E8 | `tests/Feature/RbacRoleSyncTest.php` — user A `user` → change to `staff` → `$user->fresh()->can('users.view')` is true and `can('roles.view')` is false; the DB shows no row in `model_has_permissions` (role-derived, ADR-004, no physical copy); replace roles swaps; `roles => []` clears; **omitting** `roles` leaves them untouched; a payload naming a non-existent role is rejected with a validation error | C9 | medium |
-| P6-E9 | `tests/Feature/RbacPentestTest.php` — replay the RBAC-006 exploit list verbatim: every request in the table at the top of this doc, as a zero-permission user, web **and** API, expecting 403. Plus: mass-assignment of `roles` on `PUT /profile` (self endpoint) must not assign roles; `PUT /users/{other}` with `roles[]=superadmin` must 403; `POST /settings` with a valid `settings.manage` holder still requires CSRF | D, C | medium | **DONE, zero-permission half** — the exploit replay runs as a caller with nothing. **Superseded on the 6D surface by `GateD6DPentestTest`**, which attacks with a SIBLING permission instead — see § Adversarial (6D) |
+| P6-E7 | `tests/Feature/Role/RbacAuthorizationMatrixTest.php` — the brief's two cases, as tests: **User A** role `user`, zero permissions → 403 on `/users`, `/settings`, `/roles`, `/permissions`; 200 on `/dashboard`, `/profile`, `/sessions`; sidebar HTML contains no `Users`, `Roles`, `Settings` link. **User B** role `staff` with `users.view` + `users.update` + `settings.manage` → 200 on `/users` + `/settings`; 403 on `/roles`; sidebar contains `Users` + `Settings`, not `Roles` | D | medium |
+| P6-E8 | `tests/Feature/Role/RbacRoleSyncTest.php` — user A `user` → change to `staff` → `$user->fresh()->can('users.view')` is true and `can('roles.view')` is false; the DB shows no row in `model_has_permissions` (role-derived, ADR-004, no physical copy); replace roles swaps; `roles => []` clears; **omitting** `roles` leaves them untouched; a payload naming a non-existent role is rejected with a validation error | C9 | medium |
+| P6-E9 | `tests/Feature/Role/RbacPentestTest.php` — replay the RBAC-006 exploit list verbatim: every request in the table at the top of this doc, as a zero-permission user, web **and** API, expecting 403. Plus: mass-assignment of `roles` on `PUT /profile` (self endpoint) must not assign roles; `PUT /users/{other}` with `roles[]=superadmin` must 403; `POST /settings` with a valid `settings.manage` holder still requires CSRF | D, C | medium | **DONE, zero-permission half** — the exploit replay runs as a caller with nothing. **Superseded on the 6D surface by `GateD6DPentestTest`**, which attacks with a SIBLING permission instead — see § Adversarial (6D) |
 | P6-E10 | Performance check — `PermissionCatalog::all()` and the matrix view add **zero** queries per row (`assertQueryCount` or Telescope-free manual count): roles index uses `withCount`, permissions index uses `withCount('roles')`, the sidebar composer makes at most one permission-cache read per request (package cache is on; `Gate::before` does `hasRole` on an already-loaded relation, not a fresh query). Record the numbers in the phase report | C, D | small | **DONE (2026-09-30, re-measured after D3/D5/D7/D8)** — every Group C **and** every 6D surface measured and pinned by `RbacPerformanceTest` (13 tests); numbers in `phase-6-rbac.md` § Performance. No regression anywhere: the roles index is flat at 5 queries from 10 rows to 100, and three warm `can()` calls cost 0. One real N+1 found and fixed on the way (`a4b33ab`). The sidebar half is no longer blocked: the composer now runs 5 `can()` gates and still costs 0 queries, and the D5/D6/D7 view gates cost 0 per row (3 total for 11 users). Both are asserted absolutely rather than as a delta, because `perPage` caps the row count and Spatie resolves from one global cache. The D7 role picker is the exception and IS a delta (5 queries at 4 roles, 5 at 34 — the one 6D collection not capped by a page size), and the create/show/settings pages are pinned absolutely at 2/5/3. Every gate was sabotaged and confirmed to turn its test red before restore — reasoning and evidence in § Performance |
 | P6-E11 | Docs — update `docs/base/features/roles-permissions.md` (fill the permission table, mark seeded roles with real sets, resolve the `guard_name` open question from §Seeding Strategy: `RoleLookup::guard()`), `docs/base/security/authorization.md` (Gate::before is the superadmin mechanism), `docs/planning/task-tracker.md` (RBAC-001..006 → DONE with group refs), `docs/planning/progress.md` (phase 6 row), `docs/planning/qa-tracker.md` (QA-RBAC-* rows → DONE with the manual scenario each one covers) | A–E | medium |
 | P6-E12 | Full regression — `php artisan test` green, `npm run build` clean, `vendor/bin/pint --test` clean. Every pre-existing user test that calls a now-gated endpoint gets a permission grant in `setUp()`, not a deleted assertion | A–E | medium |

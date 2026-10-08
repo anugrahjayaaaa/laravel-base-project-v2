@@ -8,6 +8,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\URL;
 use Tests\TestCase;
+use App\Http\Middleware\VerifyCsrfToken;
 
 class AuthControllerTest extends TestCase
 {
@@ -16,7 +17,7 @@ class AuthControllerTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->withoutMiddleware(\App\Http\Middleware\VerifyCsrfToken::class);
+        $this->withoutMiddleware(VerifyCsrfToken::class);
     }
 
     // === Existing tests ===
@@ -202,7 +203,7 @@ class AuthControllerTest extends TestCase
 
     public function test_web_forgot_password_handles_mail_failure(): void
     {
-        \Password::shouldReceive('sendResetLink')
+        Password::shouldReceive('sendResetLink')
             ->andThrow(new \Exception('Mail service down'));
 
         $user = User::factory()->create();

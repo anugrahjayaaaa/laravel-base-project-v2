@@ -10,6 +10,16 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\ViewErrorBag;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
+use App\Models\RoleLookup;
+use Database\Seeders\FeatureFlagSeeder;
+use Database\Seeders\PermissionSeeder;
+use Database\Seeders\RoleSeeder;
+use Illuminate\Support\MessageBag;
+use ReflectionProperty;
+use Spatie\Permission\Models\Permission;
+use Spatie\Permission\Models\Role;
+use Spatie\Permission\PermissionRegistrar;
+use Symfony\Component\Finder\Finder;
 
 /**
  * Phase 9 Group A gate (P9-A3): both notifications pages render, obey the design
@@ -43,14 +53,14 @@ class NotificationUiRenderTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->seed(\Database\Seeders\RoleSeeder::class);
-        $this->seed(\Database\Seeders\PermissionSeeder::class);
+        $this->seed(RoleSeeder::class);
+        $this->seed(PermissionSeeder::class);
         // The `notifications` flag is fail-closed on the `database` store: the
         // routes carry `feature:notifications`, and a slug with no row in
         // `features` reads as OFF — so without this every HTTP-path assertion in
         // this file is a 403 measuring the flag, not the page.
-        $this->seed(\Database\Seeders\FeatureFlagSeeder::class);
-        $this->app->make(\Spatie\Permission\PermissionRegistrar::class)->forgetCachedPermissions();
+        $this->seed(FeatureFlagSeeder::class);
+        $this->app->make(PermissionRegistrar::class)->forgetCachedPermissions();
 
         // Real roles, built once. `manage` WITHOUT `send_test` is the combination
         // the send-test gate test needs and no seeded system role has, so it has
@@ -61,7 +71,7 @@ class NotificationUiRenderTest extends TestCase
         $this->managerWithoutSendRole = $this->roleWith(['notifications.view', 'notifications.manage']);
         $this->sendTestOnlyRole = $this->roleWith(['notifications.view', 'notifications.send_test']);
 
-        $this->app->make(\Spatie\Permission\PermissionRegistrar::class)->forgetCachedPermissions();
+        $this->app->make(PermissionRegistrar::class)->forgetCachedPermissions();
     }
 
     /** @var \Spatie\Permission\Models\Role */
@@ -85,16 +95,16 @@ class NotificationUiRenderTest extends TestCase
      *
      * @param  array<int, string>  $permissions
      */
-    private function roleWith(array $permissions): \Spatie\Permission\Models\Role
+    private function roleWith(array $permissions): Role
     {
-        $role = \Spatie\Permission\Models\Role::create([
+        $role = Role::create([
             'name' => 'notif-fixture-'.implode('-', $permissions),
-            'guard_name' => \App\Models\RoleLookup::guard(),
+            'guard_name' => RoleLookup::guard(),
         ]);
 
         $role->givePermissionTo(
-            \Spatie\Permission\Models\Permission::whereIn('name', $permissions)
-                ->where('guard_name', \App\Models\RoleLookup::guard())
+            Permission::whereIn('name', $permissions)
+                ->where('guard_name', RoleLookup::guard())
                 ->get()
         );
 
@@ -123,7 +133,7 @@ class NotificationUiRenderTest extends TestCase
     }
 
     /** The role the last `grant*()` applied. */
-    private ?\Spatie\Permission\Models\Role $currentRole = null;
+    private ?Role $currentRole = null;
 
     /**
      * Put the signed-in user on a role, dropping both permission caches.
@@ -134,7 +144,7 @@ class NotificationUiRenderTest extends TestCase
      * from the stale one, which renders the wrong branch and reports a styling
      * failure.
      */
-    private function applyRole(\Spatie\Permission\Models\Role $role): void
+    private function applyRole(Role $role): void
     {
         $this->currentRole = $role;
 
@@ -149,7 +159,7 @@ class NotificationUiRenderTest extends TestCase
         // render the form this test asserts is absent. A test that narrows
         // permissions must actually narrow them.
         $user->syncRoles([$role]);
-        $this->app->make(\Spatie\Permission\PermissionRegistrar::class)->forgetCachedPermissions();
+        $this->app->make(PermissionRegistrar::class)->forgetCachedPermissions();
 
         // And the model's OWN memo, which is a separate cache from Spatie's:
         // `User::can()` short-circuits on `$this->canMemo[$ability]`, so a role
@@ -157,7 +167,7 @@ class NotificationUiRenderTest extends TestCase
         // saying true for a user who no longer holds it. Forget the registrar and
         // miss this, and the page renders the branch the viewer cannot reach —
         // a test that passes for the wrong reason.
-        $memo = new \ReflectionProperty($user, 'canMemo');
+        $memo = new ReflectionProperty($user, 'canMemo');
         $memo->setAccessible(true);
         $memo->setValue($user, []);
     }
@@ -176,7 +186,7 @@ class NotificationUiRenderTest extends TestCase
 
         if ($this->currentRole !== null) {
             $user->assignRole($this->currentRole);
-            $this->app->make(\Spatie\Permission\PermissionRegistrar::class)->forgetCachedPermissions();
+            $this->app->make(PermissionRegistrar::class)->forgetCachedPermissions();
         }
 
         $this->actingAs($user);
@@ -374,7 +384,7 @@ class NotificationUiRenderTest extends TestCase
      */
         public function test_no_view_casts_booleans_with_filter_var(): void
     {
-        $files = \Symfony\Component\Finder\Finder::create()
+        $files = Finder::create()
             ->files()
             ->in(resource_path('views/pages/notifications'))
             ->name('*.blade.php');
@@ -796,7 +806,7 @@ class NotificationUiRenderTest extends TestCase
         $this->grantAll();
 
         $errors = new ViewErrorBag();
-        $errors->put('default', new \Illuminate\Support\MessageBag([
+        $errors->put('default', new MessageBag([
             'mail_host' => ['The mail host field is required.'],
             'mail_port' => ['The mail port must be between 1 and 65535.'],
         ]));

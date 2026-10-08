@@ -8,6 +8,10 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Notification;
 use Spatie\Activitylog\Models\Activity;
 use Tests\TestCase;
+use App\Actions\V1\Auth\AuthLogoutAction;
+use App\Actions\V1\Auth\AuthResendVerificationAction;
+use App\Models\SystemSetting;
+use Illuminate\Http\Request;
 
 /**
  * The auth audit rows, after AUD-007/008.
@@ -197,10 +201,10 @@ class AuthAuditTest extends TestCase
 
         $this->actingAs($user, 'sanctum');
 
-        $request = \Illuminate\Http\Request::create('/api/v1/auth/logout', 'POST');
+        $request = Request::create('/api/v1/auth/logout', 'POST');
         $request->setUserResolver(fn () => auth()->guard('sanctum')->user() ?? $user);
 
-        app(\App\Actions\V1\Auth\AuthLogoutAction::class)->run($request);
+        app(AuthLogoutAction::class)->run($request);
 
         $activity = Activity::where('event', 'auth.logout')
             ->where('subject_id', $user->id)
@@ -232,7 +236,7 @@ class AuthAuditTest extends TestCase
 
         $user = $this->makeUser(['email_verified_at' => null]);
 
-        app(\App\Actions\V1\Auth\AuthResendVerificationAction::class)
+        app(AuthResendVerificationAction::class)
             ->run($user->email, '127.0.0.1');
 
         $this->assertSame(
@@ -298,8 +302,8 @@ class AuthAuditTest extends TestCase
      */
     public function test_registration_writes_registered_and_not_created(): void
     {
-        \App\Models\SystemSetting::create(['key' => 'registration_enabled', 'value' => '1']);
-        \App\Models\SystemSetting::bustCache();
+        SystemSetting::create(['key' => 'registration_enabled', 'value' => '1']);
+        SystemSetting::bustCache();
 
         $this->postJson(route('api.v1.auth.register'), [
             'username' => 'newsignup',

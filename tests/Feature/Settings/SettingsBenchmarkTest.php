@@ -9,6 +9,10 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
+use App\Models\RoleLookup;
+use Database\Seeders\PermissionSeeder;
+use Database\Seeders\RoleSeeder;
+use Database\Seeders\SystemSettingSeeder;
 
 /**
  * Phase 8 performance measurement — settings read path and write path.
@@ -39,9 +43,9 @@ class SettingsBenchmarkTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->seed(\Database\Seeders\RoleSeeder::class);
-        $this->seed(\Database\Seeders\PermissionSeeder::class);
-        $this->seed(\Database\Seeders\SystemSettingSeeder::class);
+        $this->seed(RoleSeeder::class);
+        $this->seed(PermissionSeeder::class);
+        $this->seed(SystemSettingSeeder::class);
     }
 
     /**
@@ -131,7 +135,7 @@ class SettingsBenchmarkTest extends TestCase
 
         $action = app(SystemSettingsUpdateAction::class);
         $admin = User::factory()->create(['email_verified_at' => now()]);
-        $admin->assignRole(\App\Models\RoleLookup::find('admin'));
+        $admin->assignRole(RoleLookup::find('admin'));
 
         $keyCount = SystemSetting::query()->count();
         fwrite(STDERR, "  settings in table: {$keyCount}\n");
@@ -178,7 +182,7 @@ class SettingsBenchmarkTest extends TestCase
 
         $action = app(SystemSettingsUpdateAction::class);
         $admin = User::factory()->create(['email_verified_at' => now()]);
-        $admin->assignRole(\App\Models\RoleLookup::find('admin'));
+        $admin->assignRole(RoleLookup::find('admin'));
 
         $action->run($this->validPayload()); // warm, so seeding is not measured
 
@@ -285,7 +289,7 @@ class SettingsBenchmarkTest extends TestCase
         fwrite(STDERR, "\n[Phase 8] settings page — full HTTP GET\n");
 
         $admin = User::factory()->create(['email_verified_at' => now()]);
-        $admin->assignRole(\App\Models\RoleLookup::find('admin'));
+        $admin->assignRole(RoleLookup::find('admin'));
         $this->actingAs($admin);
 
         $result = $this->measure(fn () => $this->get(route('settings.index')));

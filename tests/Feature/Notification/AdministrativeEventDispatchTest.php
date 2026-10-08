@@ -24,6 +24,10 @@ use Illuminate\Support\Facades\Notification;
 
 use Spatie\Permission\PermissionRegistrar;
 use Tests\TestCase;
+use App\Notifications\UserCreatedNotification;
+use App\Support\NotificationAudience;
+use Laravel\Pennant\Feature;
+use Spatie\Permission\Models\Permission;
 
 /**
  * Every declared administrative event is actually dispatched.
@@ -60,13 +64,13 @@ class AdministrativeEventDispatchTest extends TestCase
      */
     private function holderOf(string $permission): User
     {
-        $role = \App\Models\Role::create([
+        $role = Role::create([
             'name' => 'holder-'.str_replace('.', '-', $permission).'-'.uniqid(),
             'guard_name' => RoleLookup::guard(),
         ]);
 
         $role->givePermissionTo(
-            \Spatie\Permission\Models\Permission::where('name', $permission)
+            Permission::where('name', $permission)
                 ->where('guard_name', RoleLookup::guard())
                 ->firstOrFail()
         );
@@ -192,7 +196,7 @@ class AdministrativeEventDispatchTest extends TestCase
 
         // The distinguishing assertion: the notification that went out is NOT the
         // one carrying the password.
-        Notification::assertNotSentTo($operator, \App\Notifications\UserCreatedNotification::class);
+        Notification::assertNotSentTo($operator, UserCreatedNotification::class);
     }
 
     /**
@@ -279,7 +283,7 @@ class AdministrativeEventDispatchTest extends TestCase
     {
         $operator = $this->holderOf('roles.delete');
 
-        $role = \App\Models\Role::create([
+        $role = Role::create([
             'name' => 'temporary-role-'.uniqid(),
             'guard_name' => RoleLookup::guard(),
         ]);
@@ -318,7 +322,7 @@ class AdministrativeEventDispatchTest extends TestCase
         // RoleAssignAction.
         $unwired = ['permission.changed'];
 
-        $declared = array_keys(\App\Support\NotificationAudience::ADMINISTRATIVE_EVENTS);
+        $declared = array_keys(NotificationAudience::ADMINISTRATIVE_EVENTS);
 
         $this->assertSame(
             [],
@@ -354,7 +358,7 @@ class AdministrativeEventDispatchTest extends TestCase
         // The toggle happened.
         $this->assertFalse($result['to'], 'precondition: the flag is off');
         $this->assertFalse(
-            \Laravel\Pennant\Feature::active('translations'),
+            Feature::active('translations'),
             'the flag change was rolled back by a mail failure'
         );
     }

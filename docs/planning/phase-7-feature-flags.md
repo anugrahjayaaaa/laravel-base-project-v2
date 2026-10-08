@@ -190,7 +190,7 @@ observability is now `laravel/pulse`.
 | P7-A1 | `resources/views/pages/features/index.blade.php` — content-header + breadcrumb, 4 metric cards (Features / Enabled / Disabled / Modules), one card per group with `card-header` = group name, `table-responsive`, session flash alerts | ✅ DONE |
 | P7-A2 | `resources/views/components/ui/feature-toggle.blade.php` — manager → `form-check form-switch` + `<x-ui.confirm-action tag="input">`; non-manager → `<x-ui.badge>`. `role="switch"`, `aria-label`, intended new state in the toggle URL's `enabled` param | ✅ DONE |
 | P7-A3 | `<x-ui.confirm-action>` gains a `tag` prop so a trigger can be `<input type="checkbox">`. The 8 existing button triggers render unchanged | ✅ DONE |
-| P7-A4 | `tests/Feature/FeatureFlagUiRenderTest.php` — render gate for both branches | ✅ DONE |
+| P7-A4 | `tests/Feature/FeatureFlag/FeatureFlagUiRenderTest.php` — render gate for both branches | ✅ DONE |
 | P7-A5 | Audit pass — `align-middle` on all five `<th>` (house convention, was on the `<table>` only), and `ConfirmActionUsageTest` extended to see the `<input>` switch. See § Group A audit below | ✅ DONE |
 
 **Group A audit (2026-10-01).** Audited against the code, not the plan. Group A
@@ -229,7 +229,7 @@ render.
 | P7-B3 | `App\Support\FeatureCatalog` — `slugs()`, `all()`, `grouped()`, `find()`, `has()`, `isDisabledInConfig()`, `isActive()`. Same role `PermissionCatalog` plays for permissions: one source, so seeder / menu / view / tests cannot disagree | ✅ DONE |
 | P7-B4 | `database/seeders/FeatureFlagSeeder.php` — activates every catalogue slug when absent; deactivates **only** when config says `disabled => true`. Idempotent; never blanket-activates, so a flag an operator turned off stays off across a reseed | ✅ DONE |
 | P7-B5 | Registered in `DatabaseSeeder` | ✅ DONE |
-| P7-B6 | `tests/Feature/FeatureFlagCatalogTest.php` | ✅ DONE |
+| P7-B6 | `tests/Feature/FeatureFlag/FeatureFlagCatalogTest.php` | ✅ DONE |
 | P7-B7 | Audit pass — 8 tests verified green, seeder non-destructiveness proven live, `stores` block diffed against vendor. See § Group B audit below | ✅ DONE |
 
 **Group B audit (2026-10-01).** Audited against the code and the database, not
@@ -292,7 +292,7 @@ flags as though they were the installation's.
 | P7-C2 | Registered as `'feature'` in `bootstrap/app.php` | C1 | ✅ DONE |
 | P7-C3 | `@feature` / `@endfeature` — **already registered** by the package (`PennantServiceProvider.php:46`, `:54`). Verified, not re-registered | B6 | ✅ DONE |
 | P7-C4 | `Gate::before()` deliberately NOT extended — no superadmin bypass | C1 | ✅ DONE |
-| P7-C5 | `tests/Feature/FeatureFlagMiddlewareTest.php` — 9 tests | C2 | ✅ DONE |
+| P7-C5 | `tests/Feature/FeatureFlag/FeatureFlagMiddlewareTest.php` — 9 tests | C2 | ✅ DONE |
 
 **Why Pennant's own middleware cannot be aliased.** Two reasons, both measured
 rather than read off the docs:
@@ -349,7 +349,7 @@ throwaway routes before 59 real ones depended on it.
 | P7-D7 | `routes/web.php` — one `feature:{slug}` group per flag, not a call per route | C2 | ✅ DONE — 33 routes |
 | P7-D8 | `routes/api.php` — the same matrix | D7 | ✅ DONE — 29 routes |
 | P7-D9 | `AppMenuComposer` — a `feature` key per item, checked **before** `permission` | D7 | ✅ DONE — 7 items |
-| P7-D10 | `tests/Feature/FeatureFlagMenuTest.php` | D9 | ✅ DONE — 9 tests |
+| P7-D10 | `tests/Feature/FeatureFlag/FeatureFlagMenuTest.php` | D9 | ✅ DONE — 9 tests |
 
 **Gate D: PASSED.** 62 of 62 module routes resolve a `feature:` middleware,
 verified by walking `gatherMiddleware()` at runtime rather than by reading the
@@ -400,14 +400,14 @@ UNSEEDED database; that assertion was not weakened to go green.
 | ID | Task | Depends | Status |
 |----|------|---------|--------|
 | P7-F1 | `enable_feature` / `disable_feature` keys in `ACTION_CONFIG` (`resources/js/helpers/action-config.js`) — variants per § Action Color Convention: `enable => success`, `disable => warning`. Needed because `data-bulk-keys` resolves copy through `ACTION_CONFIG` and neither key exists yet (12 keys today, none flag-related) | — | ✅ DONE |
-| P7-F2 | `tests/Feature/BulkActionCopyTest.php` — every action the bulk bar offers must resolve to both a dropdown label (`actionOptions`) and modal copy (`ACTION_CONFIG`). Both miss silently, so a typo renders an empty dropdown with nothing for a test run to catch | F1 | ✅ DONE |
+| P7-F2 | `tests/Feature/FeatureFlag/BulkActionCopyTest.php` — every action the bulk bar offers must resolve to both a dropdown label (`actionOptions`) and modal copy (`ACTION_CONFIG`). Both miss silently, so a typo renders an empty dropdown with nothing for a test run to catch | F1 | ✅ DONE |
 | P7-F3 | `App\Actions\V1\Feature\FeatureBulkToggleAction` — one POST, all selected slugs, one audit entry `feature.bulk_toggled` with the full slug list and per-slug `from`/`to`. **Read all `from` values before writing any** | D3 | ✅ DONE |
 | P7-F4 | `POST /features/bulk-action` (`features.bulk-action`, `can('features.manage')`) + `App\Http\Requests\V1\Feature\BulkFeatureRequest` — one `features.manage` gate for both directions. **Not** `AuthorizesBulkAction`: the trait maps `action -> <prefix>.<suffix>`, so it would demand a `features.delete_feature` permission that does not exist | F3 | ✅ DONE |
 | P7-F5 | `#bulkBar` on `pages/features/index.blade.php`: `data-bulk-states='{"active":["disable_feature"],"inactive":["enable_feature"]}'`, `data-bulk-mixed="disable_feature"`, `data-bulk-keys` from F1, `data-bulk-field="features[]"` | F1, F4 | ✅ DONE |
-| P7-F6 | `tests/Feature/FeatureFlagBulkTest.php` — bulk enable and disable; mixed selection offers only actions safe for all rows; a slug outside the catalogue is refused; `features.manage` holder only | F5 | ✅ DONE |
-| P7-F7 | `tests/Feature/AssetBundleFreshnessTest.php` — the built bundle must contain the feature actions, and the driver's select-all selector must match every page's markup. Added after the dropdown shipped empty: no PHP test can see JavaScript, so 800+ tests passed while the browser ran a stale bundle | F1, F5 | ✅ DONE |
-| P7-F8 | `tests/Feature/FeatureSelectAllTest.php` — runs the real bundle over both page shapes in separate vm contexts. Proves select-all works on users/roles (id) and features (class, one table per module), and that a card header ticks only its own card | F5, F7 | ✅ DONE |
-| P7-F9 | `tests/Feature/FeatureBulkDropdownTest.php` — the dropdown offers only actions safe for the selection: active→disable, inactive→enable, mixed→only the one safe action. Forces an active/inactive spread, since the seeder activates every flag | F1, F5 | ✅ DONE |
+| P7-F6 | `tests/Feature/FeatureFlag/FeatureFlagBulkTest.php` — bulk enable and disable; mixed selection offers only actions safe for all rows; a slug outside the catalogue is refused; `features.manage` holder only | F5 | ✅ DONE |
+| P7-F7 | `tests/Feature/CrossCutting/AssetBundleFreshnessTest.php` — the built bundle must contain the feature actions, and the driver's select-all selector must match every page's markup. Added after the dropdown shipped empty: no PHP test can see JavaScript, so 800+ tests passed while the browser ran a stale bundle | F1, F5 | ✅ DONE |
+| P7-F8 | `tests/Feature/FeatureFlag/FeatureSelectAllTest.php` — runs the real bundle over both page shapes in separate vm contexts. Proves select-all works on users/roles (id) and features (class, one table per module), and that a card header ticks only its own card | F5, F7 | ✅ DONE |
+| P7-F9 | `tests/Feature/FeatureFlag/FeatureBulkDropdownTest.php` — the dropdown offers only actions safe for the selection: active→disable, inactive→enable, mixed→only the one safe action. Forces an active/inactive spread, since the seeder activates every flag | F1, F5 | ✅ DONE |
 
 **Gate F:** the bar appears on first tick and clears after submit · a mixed
 selection cannot apply `disable_feature` to an already-active flag's twin ·

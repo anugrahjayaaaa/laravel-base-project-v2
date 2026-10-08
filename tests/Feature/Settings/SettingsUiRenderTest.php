@@ -9,6 +9,13 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\ViewErrorBag;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
+use App\Http\Requests\V1\System\SystemSettingRequest;
+use App\Models\RoleLookup;
+use App\Models\SystemSetting;
+use Database\Seeders\PermissionSeeder;
+use Database\Seeders\RoleSeeder;
+use Illuminate\Support\MessageBag;
+use Spatie\Permission\PermissionRegistrar;
 
 /**
  * Phase 8 Group A gate: the settings page renders, obeys the design system, and
@@ -31,9 +38,9 @@ class SettingsUiRenderTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->seed(\Database\Seeders\RoleSeeder::class);
-        $this->seed(\Database\Seeders\PermissionSeeder::class);
-        $this->app->make(\Spatie\Permission\PermissionRegistrar::class)->forgetCachedPermissions();
+        $this->seed(RoleSeeder::class);
+        $this->seed(PermissionSeeder::class);
+        $this->app->make(PermissionRegistrar::class)->forgetCachedPermissions();
     }
 
     /**
@@ -47,7 +54,7 @@ class SettingsUiRenderTest extends TestCase
     private function login(string $role = 'admin'): User
     {
         $user = User::factory()->create(['email_verified_at' => now()]);
-        $user->assignRole(\App\Models\RoleLookup::find($role));
+        $user->assignRole(RoleLookup::find($role));
 
         $this->actingAs($user);
 
@@ -302,7 +309,7 @@ class SettingsUiRenderTest extends TestCase
         // And the association is exercised for real: a validation error must
         // produce a visible, associated message on the field that caused it.
         $errors = new ViewErrorBag();
-        $errors->put('default', new \Illuminate\Support\MessageBag([
+        $errors->put('default', new MessageBag([
             'login_max_attempts' => ['The login max attempts field is required.'],
         ]));
 
@@ -395,7 +402,7 @@ class SettingsUiRenderTest extends TestCase
             'password_uncompromised',
         ];
 
-        $rules = (new \App\Http\Requests\V1\System\SystemSettingRequest())->rules();
+        $rules = (new SystemSettingRequest())->rules();
         $missing = array_values(array_diff(array_keys($rules), $rendered, $loop));
 
         $this->assertSame([], $missing, implode(
@@ -414,7 +421,7 @@ class SettingsUiRenderTest extends TestCase
         $this->login();
         $html = $this->render();
 
-        $rules = (new \App\Http\Requests\V1\System\SystemSettingRequest())->rules();
+        $rules = (new SystemSettingRequest())->rules();
 
         preg_match_all('/<input[^>]*type="number"[^>]*name="([a-z_]+)"[^>]*min="(\d+)" max="(\d+)"/', $html, $inputs, PREG_SET_ORDER);
 
@@ -444,8 +451,8 @@ class SettingsUiRenderTest extends TestCase
     {
         $this->login();
 
-        \App\Models\SystemSetting::set('allow_email_change', 'false');
-        \App\Models\SystemSetting::set('registration_enabled', 'true');
+        SystemSetting::set('allow_email_change', 'false');
+        SystemSetting::set('registration_enabled', 'true');
 
         $response = $this->get(route('settings.index'));
 

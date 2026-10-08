@@ -8,6 +8,9 @@ use App\Support\SystemRole;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
+use App\Http\Middleware\VerifyCsrfToken;
+use Database\Seeders\PermissionSeeder;
+use Database\Seeders\RoleSeeder;
 
 class UserCrudWebTest extends TestCase
 {
@@ -16,13 +19,13 @@ class UserCrudWebTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->withoutMiddleware(\App\Http\Middleware\VerifyCsrfToken::class);
+        $this->withoutMiddleware(VerifyCsrfToken::class);
         // The admin paths are permission-gated (P6-C14/C15), so a bare factory
         // user would 403 every request. The superadmin role and the permission
         // catalogue have to exist first — the same pairing
         // ActionErrorVisibilityTest uses.
-        $this->seed(\Database\Seeders\RoleSeeder::class);
-        $this->seed(\Database\Seeders\PermissionSeeder::class);
+        $this->seed(RoleSeeder::class);
+        $this->seed(PermissionSeeder::class);
         $this->user = User::factory()->create([
             'name' => 'Admin User',
             'email' => 'admin@example.com',

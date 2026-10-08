@@ -22,6 +22,12 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification as NotificationFacade;
 use Spatie\Permission\PermissionRegistrar;
 use Tests\TestCase;
+use App\Actions\V1\Notification\NotificationAccountStateAction;
+use App\Http\Middleware\VerifyCsrfToken;
+use App\Support\PermissionCatalog;
+use Laravel\Pennant\Feature;
+use Spatie\Permission\Models\Permission;
+use Spatie\Permission\Models\Role;
 
 /**
  * Phase 9 Group C gate: the inbox shows a user their own notifications and
@@ -49,7 +55,7 @@ class NotificationInboxTest extends TestCase
 
         // VerifyCsrfToken::runningUnitTests() is hardcoded false in this app, so
         // every POST here would 419 before reaching the thing under test.
-        $this->withoutMiddleware(\App\Http\Middleware\VerifyCsrfToken::class);
+        $this->withoutMiddleware(VerifyCsrfToken::class);
     }
 
     private function login(string $role = SystemRole::USER): User
@@ -428,11 +434,11 @@ class NotificationInboxTest extends TestCase
         // Warm it.
         $this->get(route('dashboard'))->assertOk();
 
-        \Illuminate\Support\Facades\DB::flushQueryLog();
-        \Illuminate\Support\Facades\DB::enableQueryLog();
+        DB::flushQueryLog();
+        DB::enableQueryLog();
         $this->get(route('dashboard'))->assertOk();
-        $queries = \Illuminate\Support\Facades\DB::getQueryLog();
-        \Illuminate\Support\Facades\DB::disableQueryLog();
+        $queries = DB::getQueryLog();
+        DB::disableQueryLog();
 
         $countQueries = array_filter(
             $queries,
@@ -482,7 +488,7 @@ class NotificationInboxTest extends TestCase
         // And the event still reaches them, not just the resolver.
         NotificationFacade::fake();
 
-        app(\App\Actions\V1\Notification\NotificationAccountStateAction::class)
+        app(NotificationAccountStateAction::class)
             ->run($subject, 'user.locked', $direct);
 
         NotificationFacade::assertSentTo($direct, AccountStateChangedNotification::class);
@@ -577,7 +583,7 @@ class NotificationInboxTest extends TestCase
     public function test_a_disabled_flag_hides_the_bell_and_closes_the_inbox(): void
     {
         $this->login();
-        \Laravel\Pennant\Feature::deactivate('notifications');
+        Feature::deactivate('notifications');
 
         $this->assertStringNotContainsString('bi-bell', $this->get(route('dashboard'))->getContent());
         $this->get(route('notifications.inbox'))->assertForbidden();
@@ -670,22 +676,22 @@ class NotificationInboxTest extends TestCase
         foreach (NotificationAudience::ADMINISTRATIVE_EVENTS as $event => $permission) {
             $this->assertContains(
                 $permission,
-                \App\Support\PermissionCatalog::all(),
+                PermissionCatalog::all(),
                 "[{$event}] names [{$permission}], which the catalogue does not declare"
             );
         }
     }
 
     /** One real role holding exactly the named permission. */
-    private function roleWith(string $permission): \Spatie\Permission\Models\Role
+    private function roleWith(string $permission): Role
     {
-        $role = \Spatie\Permission\Models\Role::create([
+        $role = Role::create([
             'name' => 'holder-of-'.str_replace('.', '-', $permission),
             'guard_name' => RoleLookup::guard(),
         ]);
 
         $role->givePermissionTo(
-            \Spatie\Permission\Models\Permission::where('name', $permission)
+            Permission::where('name', $permission)
                 ->where('guard_name', RoleLookup::guard())
                 ->firstOrFail()
         );
