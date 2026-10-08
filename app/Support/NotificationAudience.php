@@ -4,7 +4,6 @@ namespace App\Support;
 
 use App\Models\RoleLookup;
 use App\Models\User;
-use App\Support\SystemRole;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 
@@ -35,15 +34,36 @@ class NotificationAudience
             return collect();
         }
 
+        // Through a ROLE or DIRECTLY on the person. Spatie grants permissions both
+        // ways, `User::can()` honours both, and a resolver that only read one of
+        // them disagreed with the gate it exists to serve: a holder assigned a
+        // permission directly passed `can('users.lock')` and was resolved to
+        // nobody, so the one operator qualified to undo an action was never told
+        // it happened. Nothing in the application does this today — Phase 6
+        // grants through roles — but "holds the permission" has to mean what the
+        // Gate says it means, or the two answers drift the first time one code
+        // path does.
         $holders = User::query()
-            ->whereHas('roles.permissions', fn (Builder $q) => $q
-                ->where('name', $permission)
-                ->where('guard_name', RoleLookup::guard())
-            )
+            ->where(function (Builder $q) use ($permission): void {
+                $q->whereHas(
+                    'roles.permissions',
+                    fn (Builder $roles) => $roles
+                    ->where('name', $permission)
+                    ->where('guard_name', RoleLookup::guard())
+                )
+                    ->orWhereHas(
+                        'permissions',
+                        fn (Builder $direct) => $direct
+                        ->where('name', $permission)
+                        ->where('guard_name', RoleLookup::guard())
+                    );
+            })
             ->get();
 
         return $holders
-            ->merge(User::query()->whereHas('roles', fn (Builder $q) => $q
+            ->merge(User::query()->whereHas(
+                'roles',
+                fn (Builder $q) => $q
                 ->where('name', SystemRole::SUPERADMIN)
                 ->where('guard_name', RoleLookup::guard())
             )->get())
