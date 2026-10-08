@@ -25,7 +25,6 @@ use Illuminate\Support\Facades\URL;
  */
 class UserCreateAction
 {
-
     public function __construct(
         private readonly AuthRecordPasswordHistoryAction $recordHistoryAction,
         private readonly RoleAssignAction $assignRolesAction,
@@ -96,7 +95,7 @@ class UserCreateAction
             );
 
             Notification::send($user, $isTemporary
-                ? new UserCreatedNotification($password, $user->username, $verificationUrl, $minutes)
+                ? new UserCreatedNotification($password, $user->username, $verificationUrl, $minutes, $causer)
                 : new RegisterNotification($user->username, $verificationUrl, $minutes));
 
             // Only a password the user chose belongs in the reuse history. A

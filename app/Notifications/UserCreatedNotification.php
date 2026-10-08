@@ -19,18 +19,20 @@ class UserCreatedNotification extends Notification implements ShouldQueue
     /**
      * Create the notification with temp credentials and verification URL.
      *
-     * @param  string  $tempPassword
-     * @param  string  $username
-     * @param  string  $verificationUrl
-     * @param  int     $expireMinutes  Lifetime of the verification link, stated
-     *                                in the mail so it matches what the
-     *                                signature actually enforces.
+     * @param  string     $tempPassword
+     * @param  string     $username
+     * @param  string     $verificationUrl
+     * @param  int        $expireMinutes  Lifetime of the verification link, stated
+     *                                    in the mail so it matches what the
+     *                                    signature actually enforces.
+     * @param  User|null  $causer         Who created the account, when known.
      */
     public function __construct(
         private readonly string $tempPassword,
         private readonly string $username,
         private readonly string $verificationUrl,
         private readonly int $expireMinutes,
+        private readonly ?User $causer = null,
     ) {
     }
 
@@ -54,6 +56,7 @@ class UserCreatedNotification extends Notification implements ShouldQueue
     public function toMail(User $notifiable): MailMessage
     {
         return (new MailMessage())
+            ->subject('Your account has been created')
             ->markdown('vendor.notifications.user-created', [
                 'username' => $this->username,
                 'tempPassword' => $this->tempPassword,
@@ -79,11 +82,13 @@ class UserCreatedNotification extends Notification implements ShouldQueue
      */
     public function toArray(User $notifiable): array
     {
+        $by = $this->causer !== null ? ' by '.$this->causer->name : '';
+
         return [
-            'subject' => 'An account was created for you',
+            'subject' => 'Your account has been created',
             'lines' => [
-                'Your temporary password is '.e($this->tempPassword),
-                'Sign in and change it at your first opportunity.',
+                sprintf('An account was created for you%s.', $by),
+                'Please sign in and change your password at your first opportunity.',
             ],
         ];
     }
