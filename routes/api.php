@@ -166,6 +166,20 @@ Route::prefix('v1')->group(function () {
             Route::delete('/roles/{role}', [RoleController::class, 'destroy'])->name('api.v1.roles.destroy')->can('roles.delete');
             Route::post('/roles/{role}/restore', [RoleController::class, 'restore'])->name('api.v1.roles.restore')->can('roles.restore');
             Route::delete('/roles/{role}/force', [RoleController::class, 'forceDelete'])->name('api.v1.roles.force-delete')->can('roles.force_delete');
+
+            // Bulk — the counterpart the web surface had and this one did not, so a
+            // non-browser client could retire a batch of roles only by calling the
+            // single-role endpoint once per role.
+            //
+            // Same reasoning as `users.bulk-action` above: no `->can()` on the
+            // route, because the permission depends on the requested action and
+            // `BulkRoleRequest` decides it per action.
+            //
+            // Declared after `/roles/{role}` deliberately. It matches nothing
+            // there — that route binds a model and accepts only GET/PUT/DELETE —
+            // and putting a literal segment after a parameter segment is exactly
+            // the shape that stops matching the moment someone adds a POST to it.
+            Route::post('/roles/bulk-action', [RoleController::class, 'bulkAction'])->name('api.v1.roles.bulk-action')->middleware('throttle:bulk-action');
         });
 
 
