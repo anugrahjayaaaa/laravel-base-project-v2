@@ -6,6 +6,7 @@ use App\Support\NotificationAudience;
 use App\Support\UnreadNotificationCount;
 use App\Models\RoleLookup;
 use App\Models\User;
+use App\Notifications\AccountStateChangedNotification;
 use App\Notifications\RegisterNotification;
 use App\Support\SystemRole;
 use Database\Seeders\FeatureFlagSeeder;
@@ -445,6 +446,85 @@ class NotificationInboxTest extends TestCase
             [],
             array_values($countQueries),
             'the bell re-reads the unread count on every page render'
+        );
+    }
+
+    /**
+     * A permission granted DIRECTLY on the person, rather than through a role,
+     * still makes them an audience member.
+     *
+     * Spatie grants both ways and `can()` honours both. The resolver read only
+     * `roles.permissions`, so such a holder passed `can('users.lock')` and was
+     * resolved to nobody — the one operator qualified to undo an action was never
+     * told it happened. Phase 6 grants through roles only, so this could not be
+     * reached from the UI; it is asserted here because "holds the permission" has
+     * to keep meaning what the Gate says it means.
+     */
+    #
+    public function test_a_directly_granted_permission_holder_is_an_audience_member(): void
+    {
+        $subject = $this->login();
+        $direct = User::factory()->create(['email_verified_at' => now()]);
+
+        // Not a role: the permission sits on the pivot for the user itself.
+        $direct->givePermissionTo('users.lock');
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
+
+        $this->assertTrue($direct->can('users.lock'), 'precondition: the Gate grants it');
+
+        $audience = NotificationAudience::administratorsFor('user.locked');
+
+        $this->assertTrue(
+            $audience->contains('id', $direct->getKey()),
+            'a holder the Gate recognises is not in the audience — the resolver and the gate disagree'
+        );
+
+        // And the event still reaches them, not just the resolver.
+        NotificationFacade::fake();
+
+        app(\App\Actions\V1\Notification\NotificationAccountStateAction::class)
+            ->run($subject, 'user.locked', $direct);
+
+        NotificationFacade::assertSentTo($direct, AccountStateChangedNotification::class);
+    }
+
+    /**
+     * The inbox and the bell are the same number about the same inbox.
+     *
+     * They were two different reads: the bell's came from a cache invalidated on
+     * delivery, the inbox's was counted live on every visit. A row written between
+     * them left one screen saying 3 and the other saying 4, with nothing on screen
+     * to explain it.
+     *
+     * Written straight to the table, deliberately: that is what makes the two
+     * reads disagree, because no `NotificationSent` fires and the cached number
+     * stays where it was. A normal delivery would invalidate and hide this.
+     */
+    #
+    public function test_the_inbox_and_the_bell_agree_on_the_unread_count(): void
+    {
+        $user = $this->login();
+        $this->notify($user, 'Before the gap');
+
+        // Warm the bell's cached number.
+        $this->get(route('dashboard'))->assertOk();
+
+        // A row that bypasses the dispatch path.
+        $this->notify($user, 'After the gap');
+
+        $bell = $this->get(route('dashboard'))->assertOk()->getContent();
+        $inbox = $this->get(route('notifications.inbox'))->assertOk()->getContent();
+
+        preg_match('/badge-notification-unread[^>]*>(\d+)</', $bell, $badge);
+        preg_match('/(\d+) unread\./', $inbox, $body);
+
+        $this->assertNotEmpty($badge, 'precondition: the bell shows a count');
+        $this->assertNotEmpty($body, 'precondition: the inbox states a count');
+
+        $this->assertSame(
+            $badge[1],
+            $body[1],
+            'the bell and the inbox report different unread counts for the same inbox'
         );
     }
 

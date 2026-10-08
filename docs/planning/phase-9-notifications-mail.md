@@ -719,16 +719,23 @@ Full suite: **1290 passed / 4979 assertions**.
 
 ---
 
-## Open item (unresolved by decision)
+## Open items — both closed
 
-**A directly-granted permission resolves to no notification audience.** The
-audience map joins through `roles.permissions`; a permission held on the user
-record itself passes `can()` and is skipped by the resolver. Latent, not live:
-Phase 6 grants permissions through roles only. Latent, not live — no shipped path
-attaches one to a person — and the fix (`orWhereHas('permissions')`) widens who
-receives administrative notifications, which is an owner's call rather than a
-refactor. Carried here and in `docs/base/features/notifications.md` rather than
-closed.
+**A directly-granted permission resolved to no notification audience.** The
+audience map joined through `roles.permissions`; a permission held on the user
+record itself passes `can()` and was skipped by the resolver, so the operator
+qualified to undo an action was never told it happened. Latent, not live: Phase 6
+grants through roles only, and there is no UI that attaches one to a person. The
+resolver now reads both, because "holds the permission" has to keep meaning what
+the Gate says it means. `NotificationInboxTest::test_a_directly_granted_permission_holder_is_an_audience_member`
+— verified load-bearing by deleting the second branch.
+
+**The inbox page held the module's last uncached notification read.** It counted
+unread rows live while the bell read a cache invalidated on delivery, so a row
+written between the two reads left one screen saying 3 and the other saying 4.
+It reads the same cached count now, which is also one query fewer per visit
+(`NotificationInboxTest::test_the_inbox_and_the_bell_agree_on_the_unread_count`
+— verified load-bearing by restoring the live count).
 
 ---
 

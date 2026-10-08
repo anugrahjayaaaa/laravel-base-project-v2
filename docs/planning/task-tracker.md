@@ -286,6 +286,8 @@ genuinely open and are the real D1/D2 work.
 | P9-X7 | **`NotificationBenchmarkTest`** — 8 measurements + 3 query-count assertions; no N+1, nothing over 2.85 ms, warm bell 0 queries, inbox bounded by pagination, audience 2 queries at 1 or 21 admins | 9 | P2 | — | DONE |
 | P9-X8 | **`NotificationPentestTest`** — 11 probes / 108 assertions: authorization ×4 levels ×2 surfaces, inbox isolation ×4, credential ×4 read paths, 8 injection payloads, 5 switch shapes, relay abuse, stored XSS, flag enforcement. No findings | 9 | P0 | — | DONE |
 | P9-X9 | **Docs reconciled** — phase doc carries both audit passes; `notifications.md` carries the copy rules, the credential/retention limits and the audience gap; `progress.md` / `feature-tracker.md` / `implementation-roadmap.md` updated | 9 | P1 | P9-X1..X8 | DONE |
+| P9-X10 | **Audience = the Gate's definition** — `NotificationAudience` reached holders only through `roles.permissions`, so a permission attached directly to a person passed `can()` and resolved to nobody; both branches now read. Mutation-checked | 9 | P0 | P9-C3 | DONE |
+| P9-X11 | **One unread number** — the inbox counted unread rows live while the bell read the cache invalidated on delivery, so two screens could disagree on the same inbox; both read `UnreadNotificationCount` now. One query fewer per visit. Mutation-checked | 9 | P1 | P9-C2 | DONE |
 
 **Group A ships. B–E do not exist yet.** The pages render and are reachable
 behind the full auth stack, but nothing persists: no write endpoint, no
