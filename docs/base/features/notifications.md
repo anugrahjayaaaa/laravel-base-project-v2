@@ -67,11 +67,11 @@ administrator.
 The trigger permissions are not `notifications.*`. A `notifications.admin_target`
 would gate the rule behind the mechanism it serves.
 
-**Known limit.** `NotificationAudience` reaches holders through
-`roles.permissions`, so a permission attached to a person record directly passes
-`can()` and is resolved to nobody. Nothing in the application does this — Phase 6
-grants permissions through roles only — but the resolver and the gate do not
-currently agree on what "holds the permission" means.
+**Audience membership is the Gate's own definition.** A holder is anyone the Gate
+would let perform the action: through a role **or** through a permission attached
+to the person directly, since Spatie grants both ways and `can()` honours both. A
+resolver reading only one of them disagrees with the gate it exists to serve —
+the operator qualified to undo an action is not told it happened.
 
 ## Mail Configuration
 
@@ -203,6 +203,23 @@ data (`$hasPassword` is a bool), and is **excluded from `SystemSetting::getAll()
 `settings.view` holder, a wider audience than the `notifications.view` gate the
 credential was built for. Read it with `SystemSetting::getString()`, which is
 what `bindMailConfig()` does.
+
+## The Unread Count
+
+One number, one source. The bell (header composer) and the inbox both read it
+through `UnreadNotificationCount`, and both are invalidated on delivery
+(`NotificationSent`) and on both mark-read paths. The inbox used to count live on
+every visit, which meant a row written between the header's read and the page's
+left one screen showing 3 and the other showing 4 with nothing on screen to
+explain the difference.
+
+Two cache entries back it — the count, and the five rows the dropdown shows — and
+they are cleared **together**. Clearing only the count is the worst version of
+that bug: the badge updates instantly and the list beside it keeps showing the
+previous five, so a delivered notification looks like it failed.
+
+It also means the inbox needs no queue worker to become visible: the badge
+updates when the delivery happens, not when somebody clicks.
 
 ## Retention
 
