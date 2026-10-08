@@ -49,7 +49,7 @@ class UserCreateAction
             $password = $this->generateTempPassword();
         }
 
-        return DB::transaction(function () use ($data, $password, $isTemporary, $causer) {
+        $user = DB::transaction(function () use ($data, $password, $isTemporary, $causer) {
             $user = User::create([
                 'name' => strip_tags($data['name']),
                 'email' => $data['email'],
@@ -84,20 +84,6 @@ class UserCreateAction
                 }
             }
 
-            // Read the lifetime once and hand the same number to the URL and
-            // to the mail, so the email states what the link actually enforces.
-            $minutes = SystemSetting::getInt('email_verification_expire_minutes', 60);
-
-            $verificationUrl = URL::temporarySignedRoute(
-                'verification.verify',
-                now()->addMinutes($minutes),
-                ['id' => $user->getKey(), 'hash' => sha1($user->getEmailForVerification())]
-            );
-
-            Notification::send($user, $isTemporary
-                ? new UserCreatedNotification($password, $user->username, $verificationUrl, $minutes, $causer)
-                : new RegisterNotification($user->username, $verificationUrl, $minutes));
-
             // Only a password the user chose belongs in the reuse history. A
             // generated one is never typed by them, so recording it would only
             // block that exact string from being chosen later for no reason.
@@ -117,18 +103,44 @@ class UserCreateAction
                 $user->audit('user.registered');
             }
 
-            // Administrators who can create accounts, and the account itself.
-            // Inside the closure: this method RETURNS the transaction, so anything
-            // after `});` never runs — which is how a dispatch with passing tests
-            // shipped without a caller.
-            //
-            // `UserCreatedNotification` is NOT reused. It carries a temporary
-            // password, and copying that into every `users.create` holder's inbox
-            // would turn a permission into a credential distribution list.
-            $this->notifyAction->userRegistered($user->fresh(), $causer);
-
             return $user;
         });
+
+        // Read the lifetime once and hand the same number to the URL and to the
+        // mail, so the email states what the link actually enforces.
+        $minutes = SystemSetting::getInt('email_verification_expire_minutes', 60);
+
+        $verificationUrl = URL::temporarySignedRoute(
+            'verification.verify',
+            now()->addMinutes($minutes),
+            ['id' => $user->getKey(), 'hash' => sha1($user->getEmailForVerification())]
+        );
+
+        // Sent AFTER the commit, never inside the transaction.
+        //
+        // Every one of these classes implements ShouldQueue and the queue
+        // connections run with `after_commit => false`, so a dispatch in here
+        // lets a worker pick the job up before the row commits — and a rollback
+        // still delivers a working temporary password and a signed verification
+        // link for an account that does not exist. The URL is built here rather
+        // than inside the closure for the same reason: it is only consumed by
+        // the notification, so there is nothing to gain by signing it against
+        // uncommitted state.
+        Notification::send($user, $isTemporary
+            ? new UserCreatedNotification($password, $user->username, $verificationUrl, $minutes, $causer)
+            : new RegisterNotification($user->username, $verificationUrl, $minutes));
+
+        // Administrators who can create accounts, and the account itself.
+        // Outside the closure, which RETURNS the transaction — that is why this
+        // dispatch shipped with passing tests and no caller when it sat one line
+        // further up.
+        //
+        // `UserCreatedNotification` is NOT reused. It carries a temporary
+        // password, and copying that into every `users.create` holder's inbox
+        // would turn a permission into a credential distribution list.
+        $this->notifyAction->userRegistered($user->fresh(), $causer);
+
+        return $user;
     }
 
     /**

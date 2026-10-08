@@ -4,7 +4,6 @@ namespace App\Notifications;
 
 use App\Support\NotificationChannel;
 use App\Models\User;
-use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
@@ -14,7 +13,23 @@ use Illuminate\Notifications\Notification;
  */
 class UserCreatedNotification extends Notification implements ShouldQueue
 {
-    use Queueable;
+    /**
+     * Delivery follows the OUTERMOST commit, not this method's return.
+     *
+     * The framework default is null, which means "enqueue immediately" — and
+     * every queue connection here runs `after_commit => false`. Left null, a
+     * worker can send before the row that produced this notification commits,
+     * and a rollback still delivers: a working temporary password, a signed
+     * verification link, for an account that does not exist.
+     *
+     * This is the property `Illuminate\Bus\Queueable` would have declared with
+     * a null default, declared here instead because a trait cannot change a
+     * default the class already composes. See
+     * `docs/planning/phase-9-notifications-mail.md`, audit finding 2.
+     *
+     * @var bool
+     */
+    public $afterCommit = true;
 
     /**
      * Create the notification with temp credentials and verification URL.

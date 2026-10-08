@@ -36,7 +36,11 @@ class UserUpdateAction
         // separate `update()` calls used to run unguarded, so a failure in the
         // second or third left the first applied — and once the audit moved in
         // here, a row claiming a profile save that did not fully happen.
-        return DB::transaction(function () use ($user, $data, $causer): User {
+        // Out-param for the one notification this method sends: built inside the
+        // transaction, dispatched after it. See the note at the dispatch.
+        $emailChangeToken = null;
+
+        $updated = DB::transaction(function () use ($user, $data, $causer, &$emailChangeToken): User {
             // Captured before any write, and as plain values: after the
             // updates below these are the new state, and a properties bag
             // reading "old => new" is worse than no properties at all.
@@ -73,7 +77,9 @@ class UserUpdateAction
                         'email_change_token_expires_at' => now()->addHours(24),
                     ]);
 
-                    Notification::send($user->fresh(), new ChangeEmailVerificationNotification($data['email'], $token));
+                    // Sent after the transaction commits, below. See the note
+                    // there.
+                    $emailChangeToken = $token;
                 } else {
                     $user->update(['email' => $data['email']]);
                 }
@@ -117,14 +123,30 @@ class UserUpdateAction
                 }
             }
 
-            // Inside the closure, because the method RETURNS the transaction —
-            // anything written after `});` is unreachable.
-            if ($causer !== null) {
-                $this->notifyAction->configurationChanged('user.updated', 'Profile updated', $causer);
-            }
-
             return $user->fresh();
         });
+
+        // Dispatched AFTER the commit.
+        //
+        // `ChangeEmailVerificationNotification` implements ShouldQueue and the
+        // queue connections run with `after_commit => false`, so dispatching it
+        // inside the transaction let a worker send before the `pending_email`
+        // row committed — and a rollback still delivered a verification link
+        // for a token the database never stored, so the link could never work.
+        if ($emailChangeToken !== null) {
+            Notification::send(
+                $updated->fresh(),
+                new ChangeEmailVerificationNotification($data['email'], $emailChangeToken)
+            );
+        }
+
+        // `configurationChanged` is a Notification::send of its own, so it
+        // carries the same after-commit requirement.
+        if ($causer !== null) {
+            $this->notifyAction->configurationChanged('user.updated', 'Profile updated', $causer);
+        }
+
+        return $updated;
     }
 
     /**

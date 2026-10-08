@@ -22,20 +22,25 @@ class UserRequestEmailChangeAction
      */
     public function run(User $user, string $newEmail, ?User $causer = null): void
     {
-        DB::transaction(function () use ($user, $newEmail, $causer) {
-            $token = Str::random(64);
+        $token = Str::random(64);
 
+        DB::transaction(function () use ($user, $newEmail, $causer, $token) {
             $user->update([
                 'pending_email' => $newEmail,
                 'email_change_token' => $token,
                 'email_change_token_expires_at' => now()->addHours(24),
             ]);
 
-            Notification::send($user->fresh(), new ChangeEmailVerificationNotification($newEmail, $token));
-
             if ($causer !== null) {
                 $user->audit('user.email_change_requested', $causer, ['pending_email' => $newEmail]);
             }
         });
+
+        // Sent AFTER the commit. The notification implements ShouldQueue and
+        // the queue connections run with `after_commit => false`, so dispatching
+        // inside the transaction let a worker send before the token row
+        // committed — a rollback would still have delivered a verification link
+        // whose token the database never stored, so the link could never work.
+        Notification::send($user->fresh(), new ChangeEmailVerificationNotification($newEmail, $token));
     }
 }

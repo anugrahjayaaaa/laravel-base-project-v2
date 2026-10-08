@@ -9,13 +9,22 @@ use App\Actions\V1\User\UserDeleteAction;
 use App\Models\RoleLookup;
 use App\Models\SystemSetting;
 use App\Models\User;
+use App\Notifications\AccountStateChangedNotification;
+use App\Notifications\ChangeEmailVerificationNotification;
+use App\Notifications\ConfigurationChangedNotification;
+use App\Notifications\RegisterNotification;
+use App\Notifications\RolesChangedNotification;
+use App\Notifications\UserCreatedNotification;
+use App\Notifications\UserRegisteredNotification;
 use App\Support\SystemRole;
 use Database\Seeders\PermissionSeeder;
 use Database\Seeders\RoleSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Notification;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
+use ReflectionClass;
 use RuntimeException;
 use Tests\TestCase;
 
@@ -86,7 +95,7 @@ class ActionFirstAuditTest extends TestCase
      * The controller used to add its own `$user->audit('user.deleted')` on top
      * of the action, which is the double-write this standard forbids.
      */
-        public function test_a_single_delete_writes_exactly_one_audit_record (): void
+    public function test_a_single_delete_writes_exactly_one_audit_record(): void
     {
         $user = User::factory()->create();
 
@@ -108,7 +117,7 @@ class ActionFirstAuditTest extends TestCase
      * records come from the same code path the row button uses — there is no
      * bulk-specific audit writer to keep in sync.
      */
-        public function test_a_bulk_delete_records_every_deleted_user (): void
+    public function test_a_bulk_delete_records_every_deleted_user(): void
     {
         $users = User::factory()->count(3)->create();
 
@@ -137,7 +146,7 @@ class ActionFirstAuditTest extends TestCase
      * double-write, one layer up. Driven through the HTTP route rather than the
      * processor, because the controller's skip is part of what is under test.
      */
-        public function test_a_bulk_delete_writes_no_aggregate_row (): void
+    public function test_a_bulk_delete_writes_no_aggregate_row(): void
     {
         $users = User::factory()->count(2)->create();
 
@@ -167,8 +176,8 @@ class ActionFirstAuditTest extends TestCase
      * @param  string  $routeName
      * @param  array<string, mixed>  $state  Starting state the route requires.
      */
-        #[DataProvider('singleMutationCases')]
-    public function test_a_single_user_mutation_writes_exactly_one_audit_record (
+    #[DataProvider('singleMutationCases')]
+    public function test_a_single_user_mutation_writes_exactly_one_audit_record(
         string $event,
         string $method,
         string $routeName,
@@ -226,8 +235,8 @@ class ActionFirstAuditTest extends TestCase
      * @param string $event
      * @param array<string, mixed> $state
      */
-        #[DataProvider('bulkStateCases')]
-    public function test_a_bulk_state_action_records_every_subject_once (
+    #[DataProvider('bulkStateCases')]
+    public function test_a_bulk_state_action_records_every_subject_once(
         string $action,
         string $event,
         array $state,
@@ -272,7 +281,7 @@ class ActionFirstAuditTest extends TestCase
      * audit list is filtered on properties, and a state row carrying only a
      * subject id cannot be searched by the address it was applied to.
      */
-        public function test_a_state_change_records_the_target_it_affected (): void
+    public function test_a_state_change_records_the_target_it_affected(): void
     {
         $subject = User::factory()->create(['is_active' => false]);
 
@@ -302,7 +311,7 @@ class ActionFirstAuditTest extends TestCase
      * reading through it here would report a false failure for a save that
      * correctly changed nothing.
      */
-        public function test_a_rolled_back_settings_save_leaves_no_value_or_audit_row (): void
+    public function test_a_rolled_back_settings_save_leaves_no_value_or_audit_row(): void
     {
         $before = DB::table('system_settings')->where('key', 'password_min_length')->value('value');
 
@@ -337,7 +346,7 @@ class ActionFirstAuditTest extends TestCase
     /**
      * A committed settings save writes exactly one row, attributed to the caller.
      */
-        public function test_a_settings_save_writes_exactly_one_audit_record (): void
+    public function test_a_settings_save_writes_exactly_one_audit_record(): void
     {
         $this->actingAs($this->admin)
             ->post(route('settings.update'), ['password_min_length' => 14])
@@ -355,7 +364,7 @@ class ActionFirstAuditTest extends TestCase
      * The action writes its record inside the transaction, so an outer failure
      * discards both the deletion and the claim that it happened.
      */
-        public function test_a_rolled_back_delete_leaves_no_audit_record (): void
+    public function test_a_rolled_back_delete_leaves_no_audit_record(): void
     {
         $user = User::factory()->create();
 
@@ -393,8 +402,8 @@ class ActionFirstAuditTest extends TestCase
      * @param  callable(User): mixed  $mutate
      * @param  callable(User): bool  $assertRolledBack
      */
-        #[DataProvider('unguardedAuditCases')]
-    public function test_a_rolled_back_mutation_leaves_no_audit_record (
+    #[DataProvider('unguardedAuditCases')]
+    public function test_a_rolled_back_mutation_leaves_no_audit_record(
         string $event,
         array $state,
         callable $mutate,
@@ -422,6 +431,65 @@ class ActionFirstAuditTest extends TestCase
             $assertRolledBack($user),
             "the {$event} state change was not rolled back with its audit row"
         );
+    }
+
+    /**
+     * Every notification this application sends defers its delivery to the
+     * commit that produced it.
+     *
+     * Every notification implements `ShouldQueue` and every connection in
+     * `config/queue.php` runs `after_commit => false`, so a class without this
+     * property is queued the moment it is dispatched: a worker can send before the
+     * row exists, and a rollback still delivers a working temporary password, a
+     * signed verification link, an email-change link whose token was never
+     * written. This file's own subject is audit integrity, and a notification
+     * that outlives the transaction it describes is the same defect as an audit
+     * row that does.
+     *
+     * A NEW class that forgets the property inherits all of it with nothing to
+     * point at it, which is the reason this is a data provider over the whole
+     * directory rather than a line in the one class that happened to need it
+     * today.
+     *
+     * Asserted by reflection rather than by observing a delivery, and that is a
+     * deliberate choice worth recording: this trait holds every test inside a
+     * transaction that is never committed, so a deferred send is never delivered
+     * at all and there is nothing to count. Worse, every fake in the toolbox
+     * intercepts ABOVE the decision — `Notification::fake()` records the `send()`
+     * call, `Bus::fake()` the dispatch, `Queue::fake()` the push — while the
+     * deferral lives in `Illuminate\Queue\Queue::enqueueUsing()`, which none of
+     * them run. An end-to-end version of this test would have passed with the
+     * property deleted; this one does not. Reverting `afterCommit` to `false`
+     * turns it red.
+     */
+    #[DataProvider('notificationClasses')]
+    public function test_every_notification_defers_to_the_commit(string $class): void
+    {
+        // Reflected, not instantiated: the constructors take the event's own
+        // arguments, and this is a question about a class-level default.
+        $defaults = (new ReflectionClass($class))->getDefaultProperties();
+
+        $this->assertArrayHasKey('afterCommit', $defaults, "{$class} does not declare the property at all");
+        $this->assertTrue(
+            $defaults['afterCommit'],
+            "{$class} defaults \$afterCommit to false, so a worker can deliver before its row commits"
+        );
+    }
+
+    /**
+     * @return array<string, array{0: class-string}>
+     */
+    public static function notificationClasses(): array
+    {
+        return [
+            'account state changed' => [AccountStateChangedNotification::class],
+            'change email verification' => [ChangeEmailVerificationNotification::class],
+            'configuration changed' => [ConfigurationChangedNotification::class],
+            'register' => [RegisterNotification::class],
+            'roles changed' => [RolesChangedNotification::class],
+            'user created' => [UserCreatedNotification::class],
+            'user registered' => [UserRegisteredNotification::class],
+        ];
     }
 
     /**
