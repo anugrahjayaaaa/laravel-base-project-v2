@@ -2,6 +2,7 @@
 
 namespace App\Actions\V1\User;
 
+use App\Actions\V1\Notification\NotificationAccountStateAction;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -13,6 +14,17 @@ use Illuminate\Validation\ValidationException;
  */
 class UserLockAction
 {
+    /**
+     * @param  NotificationAccountStateAction  $notifyAction  Notifies both
+     *         audiences after the state change commits. Injected rather than
+     *         resolved so the action stays testable and the dispatch has one
+     *         seam, not two.
+     */
+    public function __construct(
+        private readonly NotificationAccountStateAction $notifyAction,
+    ) {
+    }
+
     /**
      * Lock the user.
      *
@@ -40,6 +52,12 @@ class UserLockAction
                 'target_email' => $user->email,
             ]);
         });
+
+        // Both audiences, after the transaction: the account is already in its
+        // new state, so a notification failure cannot roll back a lock the admin
+        // asked for. See NotificationAccountStateAction for why this is a
+        // separate step rather than an event listener on the update above.
+        $this->notifyAction->run($user, 'user.locked', $causer);
 
         return ['user' => $user];
     }

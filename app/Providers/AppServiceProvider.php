@@ -5,6 +5,7 @@ namespace App\Providers;
 use App\Auth\LoginThrottle;
 use App\Models\Role;
 use App\Models\SystemSetting;
+use App\Support\UnreadNotificationCount;
 use App\Models\User;
 use App\Observers\RoleObserver;
 use App\Observers\SystemSettingObserver;
@@ -18,6 +19,7 @@ use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Pagination\Paginator;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\View\View;
 use Laravel\Pennant\Feature;
@@ -56,6 +58,32 @@ class AppServiceProvider extends ServiceProvider
         // sidebar first: 1 feature-store read per page; header first: 2.
         view()->composer('layouts.partials.header', function (View $view): void {
             $view->with('sessionsVisible', FeatureCatalog::isActive('sessions'));
+
+            // The bell points at the inbox, so it follows the INBOX's gate — the
+            // flag only, no permission. It previously carried
+            // `notifications.view` because its target was the configuration page,
+            // which is permission-gated; the inbox is every user's own rows, and
+            // keeping the check would hide the bell from exactly the people an
+            // inbox is for.
+            $view->with('notificationsVisible', FeatureCatalog::isActive('notifications'));
+
+            // The unread count, read HERE rather than in the partial: the partial
+            // renders on every authenticated page and a count read in its markup
+            // is a query per render.
+            //
+            // Cached, so it is a query on a cold cache rather than on every
+            // render — see `UnreadNotificationCount` for why it is invalidated on
+            // the notification event and not when the inbox is opened.
+            //
+            // a flag-off module leaves no icon pointing at a 403. The unread
+            // badge and the inbox target land with P9-C2; until then it points
+            // at the inbox, which every authenticated user can open.
+            $show = auth()->check();
+
+            $view->with([
+                'unreadNotificationCount' => $show ? UnreadNotificationCount::for(auth()->user()) : 0,
+                'recentNotifications' => $show ? UnreadNotificationCount::recent(auth()->user()) : collect(),
+            ]);
         });
         view()->composer('layouts.partials.password-strength', PasswordStrengthComposer::class);
 
@@ -81,6 +109,11 @@ class AppServiceProvider extends ServiceProvider
                 'passwordExpiryDaysRemaining' => $user ? PasswordExpiry::daysUntilExpiry($user) : 0,
             ]);
         });
+
+        // The bell's cached count is invalidated when a notification is delivered,
+        // not when the inbox is opened — see the class for why the second is too
+        // late to be correct.
+        UnreadNotificationCount::listen();
 
         User::observe(UserObserver::class);
         SystemSetting::observe(SystemSettingObserver::class);
@@ -132,6 +165,25 @@ class AppServiceProvider extends ServiceProvider
             return Limit::perMinute(15)
                 ->by($key)
                 ->response($throttle->responseFor('user'));
+        });
+
+        // Sending test mail is the one action in the app that puts a message on
+        // someone else's server with an address the caller typed.
+        // `notifications.send_test` is already a separate permission from
+        // `notifications.manage`, but a permission answers "may this person" and
+        // not "how often" — without a ceiling, a compromised operator account
+        // turns this route into a mail relay pointed at any third party.
+        //
+        // Keyed on the recipient address as well as the operator, so the limit
+        // holds even when one account sprays many different addresses.
+        RateLimiter::for('send-test-mail', function ($request) use ($throttle) {
+            $to = strtolower(trim((string) $request->input('email', '')));
+            $key = $throttle->key('send-test-mail', (string) $request->user()?->id, $request->ip())
+                .':'.$to;
+
+            return Limit::perMinute(5)
+                ->by($key)
+                ->response($throttle->responseFor('email'));
         });
 
         RateLimiter::for('bulk-action', function ($request) use ($throttle) {
@@ -186,6 +238,120 @@ class AppServiceProvider extends ServiceProvider
         } catch (Throwable $e) {
             // No settings table yet — leave the config defaults in place.
         }
+    }
+
+    /**
+     * Push the stored mail transport onto the runtime config.
+     *
+     * `config/mail.php` reads `env('MAIL_HOST')` and friends, which no admin can
+     * change from the UI. Storing the value in `system_settings` while the
+     * transport kept using the .env is the same failure `bindTokenExpirations()`
+     * documents for token lifetimes: the field looks live, the save returns 200,
+     * and nothing changes.
+     *
+     * `.env` is the fallback for every read, so an install that never saved a
+     * row behaves exactly as it did before this existed.
+     *
+     * ## Called at the same moment as bindTokenExpirations(), for the same reason
+     *
+     * Not from boot(): boot runs before the settings table exists on a fresh
+     * install and before `RefreshDatabase` migrates in tests, and the query
+     * failure takes the whole boot down. Binding happens after a save commits,
+     * so the admin who saved sees it enforced in the same process.
+     *
+     * `scheme`, not `encryption`: `config/mail.php` declares no `encryption` key
+     * on the smtp mailer, so a stored value written under that name would be a
+     * row nothing reads. See the phase doc's D-1 divergence.
+     *
+     * ponytail: a queue worker started before a transport change keeps enforcing
+     * the transport it bound until it is restarted (`queue:restart`). Accepted
+     * for the reason it is accepted for token lifetimes — a value that changes
+     * perhaps quarterly is not worth a query per outgoing mail.
+     */
+    public static function bindMailConfig(): void
+    {
+        // The try/catch matches bindTokenExpirations(): `config:cache` and a
+        // console command can reach this before the table does.
+        try {
+            $smtp = 'mail.mailers.smtp';
+
+            // Cast every config fallback to string/int before it reaches the
+            // typed getters. `config('mail.mailers.smtp.username')` is `null`
+            // whenever `MAIL_USERNAME` is unset — which is most installs, and
+            // every install using a relay that needs no authentication — and
+            // `getString(string $key, string $default)` rejects null with a
+            // TypeError. The exception then landed in the catch below and NO
+            // key was bound, so a perfectly good configuration silently left the
+            // transport on its .env values. A single unconfigured field took the
+            // whole binding down.
+            $text = fn (string $path): string => (string) (config($path) ?? '');
+
+            config()->set([
+                'mail.default' => SystemSetting::getString('mail_mailer', $text('mail.default')),
+
+                // Read as one array and written back with one spread: writing six
+                // `mail.mailers.smtp.*` keys means six `config()->set()` calls
+                // that each have to remember they are editing one nested array.
+                $smtp => array_replace(config($smtp) ?? [], [
+                    'host' => SystemSetting::getString('mail_host', $text($smtp . '.host')),
+                    'port' => SystemSetting::getInt('mail_port', (int) ($text($smtp . '.port') ?: 2525)),
+                    'username' => SystemSetting::getString('mail_username', $text($smtp . '.username')),
+                    'password' => self::mailPassword(SystemSetting::getString('mail_password', '')),
+                    // No fallback argument at all: an unconfigured scheme must
+                    // stay null (plaintext relay), not inherit the .env value —
+                    // an operator who stored `none` chose that, and re-reading
+                    // MAIL_SCHEME here would silently re-enable the TLS they
+                    // turned off.
+                    'scheme' => SystemSetting::getString('mail_encryption', '') ?: null,
+                ]),
+
+                'mail.from' => [
+                    'address' => SystemSetting::getString('mail_from_address', $text('mail.from.address')),
+                    'name' => SystemSetting::getString('mail_from_name', $text('mail.from.name')),
+                ],
+            ]);
+        } catch (Throwable $e) {
+            // Logged, not swallowed. A silent catch here makes a broken binding
+            // indistinguishable from a transport nobody configured: the admin saves
+            // a host, the page reloads showing the old one, and nothing says why.
+            // `bindTokenExpirations()` may swallow because its failure means "no
+            // table yet", which is expected during migrate. This one would be a real
+            // bug, so it has to be visible.
+            Log::warning('Could not bind the stored mail configuration', [
+                'exception' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * The stored SMTP password, decrypted, or null when there is none.
+     *
+     * A separate method because the credential is the one setting whose stored
+     * form is NOT its usable form: `mail_password` holds `encrypt()` output, so
+     * anything reading it raw gets ciphertext. Decrypting where it is written
+     * means the transport gets a usable password and no other caller can
+     * accidentally take the raw column for one.
+     *
+     * `decrypt()` throws on a value that was never encrypted — a row written
+     * before this existed, or by hand. That is caught by the caller's
+     * try/catch and falls back to the .env credential, which is the right
+     * outcome: a value we cannot read is not a value we should send.
+     */
+    private static function mailPassword(string $stored): ?string
+    {
+        return $stored === '' ? null : decrypt($stored);
+    }
+
+    /**
+     * Whether a mail password is stored, without revealing it.
+     *
+     * The view renders `$hasPassword` rather than the credential — an SMTP
+     * password echoed into the markup is readable by everyone who can open the
+     * page, which is the exact audience it exists to hide from.
+     */
+    public static function hasMailPassword(): bool
+    {
+        return SystemSetting::getString('mail_password') !== '';
     }
 
     /**

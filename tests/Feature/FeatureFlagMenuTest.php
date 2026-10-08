@@ -84,9 +84,8 @@ class FeatureFlagMenuTest extends TestCase
         return $m[1];
     }
 
-    #[Test]
-    #[DataProvider('flaggedItems')]
-    public function a_disabled_flag_removes_its_menu_item_for_superadmin(string $flag, string $label): void
+        #[DataProvider('flaggedItems')]
+    public function test_a_disabled_flag_removes_its_menu_item_for_superadmin (string $flag, string $label): void
     {
         $this->login(SystemRole::SUPERADMIN);
 
@@ -120,8 +119,7 @@ class FeatureFlagMenuTest extends TestCase
         ];
     }
 
-    #[Test]
-    public function a_permissionless_item_is_hidden_by_its_flag(): void
+        public function test_a_permissionless_item_is_hidden_by_its_flag (): void
     {
         // Sessions carries no permission — every authenticated user reaches it —
         // so the flag is the only thing that can remove it. A filter that ran the
@@ -135,8 +133,7 @@ class FeatureFlagMenuTest extends TestCase
         $this->assertStringNotContainsString('Sessions', $this->sidebar());
     }
 
-    #[Test]
-    public function the_header_dropdown_hides_sessions_with_its_flag(): void
+        public function test_the_header_dropdown_hides_sessions_with_its_flag (): void
     {
         // The header dropdown carries its OWN Sessions link, outside $menuGroups,
         // so filtering the sidebar alone left a live link pointing at a route
@@ -152,8 +149,7 @@ class FeatureFlagMenuTest extends TestCase
         $this->assertStringNotContainsString('Sessions', $this->headerDropdown());
     }
 
-    #[Test]
-    public function an_unflagged_item_survives_every_flag_being_off(): void
+        public function test_an_unflagged_item_survives_every_flag_being_off (): void
     {
         // The converse: gating must not become a blunt instrument. Dashboard
         // names no flag, and Feature Flags must stay reachable or a bad flag
@@ -171,8 +167,7 @@ class FeatureFlagMenuTest extends TestCase
         $this->assertStringNotContainsString('Users', $html);
     }
 
-    #[Test]
-    public function the_features_page_is_never_gated_on_a_flag(): void
+        public function test_the_features_page_is_never_gated_on_a_flag (): void
     {
         // The trap `routes/web.php` records in a comment: gating the page that
         // re-enables a flag means the switch disappears with the module.

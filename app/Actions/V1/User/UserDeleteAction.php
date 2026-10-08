@@ -2,6 +2,7 @@
 
 namespace App\Actions\V1\User;
 
+use App\Actions\V1\Notification\NotificationAdminEventAction;
 use App\Models\User;
 use App\Support\LastSuperadmin;
 use Illuminate\Support\Facades\DB;
@@ -13,6 +14,11 @@ use Illuminate\Validation\ValidationException;
  */
 class UserDeleteAction
 {
+    public function __construct(
+        private readonly NotificationAdminEventAction $notifyAction,
+    ) {
+    }
+
     /**
      * Soft-delete the user.
      *
@@ -35,6 +41,10 @@ class UserDeleteAction
 
             $user->audit('user.deleted', $causer);
         });
+
+        // The account no longer exists, so it cannot be the recipient — only the
+        // administrators who could have deleted it.
+        $this->notifyAction->configurationChanged('user.deleted', $user->username, $causer);
 
         return ['user' => $user];
     }

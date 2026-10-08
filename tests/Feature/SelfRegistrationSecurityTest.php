@@ -73,8 +73,7 @@ class SelfRegistrationSecurityTest extends TestCase
      * columns, a visitor could post is_active=0 and lock themselves out, or
      * post the other way and skip a check.
      */
-    #[Test]
-    public function test_cannot_set_account_state_through_registration(): void
+        public function test_cannot_set_account_state_through_registration(): void
     {
         $this->register([
             'is_active' => false,
@@ -97,8 +96,7 @@ class SelfRegistrationSecurityTest extends TestCase
      * The sharpest version of vector 1: self-verify the address, then use the
      * password-reset flow to take over any mailbox the attacker can name.
      */
-    #[Test]
-    public function test_cannot_self_verify_the_email_address(): void
+        public function test_cannot_self_verify_the_email_address(): void
     {
         $this->register(['email_verified_at' => '2020-01-01 00:00:00'])->assertSessionHasNoErrors();
 
@@ -113,8 +111,7 @@ class SelfRegistrationSecurityTest extends TestCase
      * form supplies one. A self-registering visitor must get the default role
      * and nothing else, or public sign-up is a free admin grant.
      */
-    #[Test]
-    public function test_cannot_choose_own_roles(): void
+        public function test_cannot_choose_own_roles(): void
     {
         Role::create(['name' => 'admin', 'guard_name' => RoleLookup::guard()]);
         Role::create(['name' => 'user', 'guard_name' => RoleLookup::guard()]);
@@ -139,8 +136,7 @@ class SelfRegistrationSecurityTest extends TestCase
      * account is unverified and every page behind `verified` would bounce it —
      * but the session cookie would already be a live credential.
      */
-    #[Test]
-    public function test_registration_does_not_start_a_session(): void
+        public function test_registration_does_not_start_a_session(): void
     {
         $this->register()->assertRedirect(route('login'));
 
@@ -156,8 +152,7 @@ class SelfRegistrationSecurityTest extends TestCase
      * The account exists but is unverified, so login must be refused until the
      * emailed link is followed. Otherwise the verification email is theatre.
      */
-    #[Test]
-    public function test_a_fresh_account_cannot_log_in_until_verified(): void
+        public function test_a_fresh_account_cannot_log_in_until_verified(): void
     {
         $this->register()->assertSessionHasNoErrors();
 
@@ -181,8 +176,7 @@ class SelfRegistrationSecurityTest extends TestCase
      * redirect to a page that explains — confirms the feature exists, and a
      * public endpoint that can still be reached by guessing is not off.
      */
-    #[Test]
-    public function test_disabled_registration_404s_on_both_surfaces(): void
+        public function test_disabled_registration_404s_on_both_surfaces(): void
     {
         SystemSetting::set('registration_enabled', 'false');
         SystemSetting::bustCache();
@@ -210,8 +204,7 @@ class SelfRegistrationSecurityTest extends TestCase
      * caps how fast those answers can be collected, and that is the only
      * thing standing between the form and a harvested user list.
      */
-    #[Test]
-    public function test_duplicate_accounts_are_rejected_not_overwritten(): void
+        public function test_duplicate_accounts_are_rejected_not_overwritten(): void
     {
         $this->register()->assertSessionHasNoErrors();
 
@@ -232,8 +225,7 @@ class SelfRegistrationSecurityTest extends TestCase
      * behind it. The unique rule is Laravel's, and the throttle is what caps
      * how fast the difference can be harvested.
      */
-    #[Test]
-    public function test_a_duplicate_rejection_does_not_echo_the_attacker_input(): void
+        public function test_a_duplicate_rejection_does_not_echo_the_attacker_input(): void
     {
         $this->register()->assertSessionHasNoErrors();
 
@@ -257,8 +249,7 @@ class SelfRegistrationSecurityTest extends TestCase
      * is the one worth poisoning. UserCreateAction strips tags; this asserts
      * that still holds rather than trusting the comment.
      */
-    #[Test]
-    public function test_script_tags_in_the_name_do_not_survive(): void
+        public function test_script_tags_in_the_name_do_not_survive(): void
     {
         $this->register(['name' => '<script>alert(1)</script>Budi'])->assertSessionHasNoErrors();
 
@@ -272,8 +263,7 @@ class SelfRegistrationSecurityTest extends TestCase
      * Both identifier fields are interpolated into lookups and into
      * attributes, so quote-bearing payloads must survive as data.
      */
-    #[Test]
-    public function test_quote_and_sql_payloads_are_stored_not_executed(): void
+        public function test_quote_and_sql_payloads_are_stored_not_executed(): void
     {
         $payload = "'; DROP TABLE users; --";
 
@@ -291,8 +281,7 @@ class SelfRegistrationSecurityTest extends TestCase
      * reaches the login form, where a lookalike name is a phishing surface.
      * Recording the reachable set, since alpha_dash is the only filter.
      */
-    #[Test]
-    public function test_alpha_dash_is_the_only_username_filter(): void
+        public function test_alpha_dash_is_the_only_username_filter(): void
     {
         // Rejected: outside alpha_dash.
         $this->register(['username' => 'budi santoso'])->assertSessionHasErrors('username');
@@ -322,8 +311,7 @@ class SelfRegistrationSecurityTest extends TestCase
      * validation finds out the username is taken. Writes are the thing that
      * must not happen.
      */
-    #[Test]
-    public function test_a_rejected_registration_writes_nothing_and_hashes_nothing(): void
+        public function test_a_rejected_registration_writes_nothing_and_hashes_nothing(): void
     {
         $queries = [];
         DB::listen(function ($query) use (&$queries) {
@@ -346,8 +334,7 @@ class SelfRegistrationSecurityTest extends TestCase
      * a bypass on one surface must not exist on the other. Specifically: the
      * feature switch and the role grant.
      */
-    #[Test]
-    public function test_the_api_cannot_register_when_the_web_form_is_disabled(): void
+        public function test_the_api_cannot_register_when_the_web_form_is_disabled(): void
     {
         SystemSetting::set('registration_enabled', 'false');
         SystemSetting::bustCache();

@@ -82,8 +82,7 @@ class ConfirmActionUsageTest extends TestCase
         ];
     }
 
-    #[Test]
-    #[DataProvider('pages')]
+        #[DataProvider('pages')]
     public function test_every_trigger_carries_the_attributes_the_driver_reads(
         string $page,
         string $status,
@@ -157,8 +156,7 @@ class ConfirmActionUsageTest extends TestCase
      * ACTION_CONFIG. Converting it to the component must not have changed the
      * words a user reads, so the legacy branch is still wired.
      */
-    #[Test]
-    public function test_the_user_detail_unlock_keeps_its_own_copy(): void
+        public function test_the_user_detail_unlock_keeps_its_own_copy(): void
     {
         $admin = $this->admin();
 
@@ -232,8 +230,7 @@ class ConfirmActionUsageTest extends TestCase
      * go through resolveAction(), which returns null and warns instead — this
      * fails if a driver ever goes back to a silent fall back.
      */
-    #[Test]
-    public function test_no_driver_borrows_another_actions_copy(): void
+        public function test_no_driver_borrows_another_actions_copy(): void
     {
         foreach (['confirmation-modal.js', 'bulk-actions.js'] as $driver) {
             $source = (string) file_get_contents(base_path("resources/js/helpers/{$driver}"));
@@ -256,8 +253,7 @@ class ConfirmActionUsageTest extends TestCase
      * to guess: the bulk dropdown is built from actionOptions, and the triggers
      * are checked by the data-provider test above.
      */
-    #[Test]
-    public function test_every_key_the_bulk_dropdown_can_send_exists(): void
+        public function test_every_key_the_bulk_dropdown_can_send_exists(): void
     {
         $source = (string) file_get_contents(base_path('resources/js/helpers/bulk-actions.js'));
         preg_match_all('/var actionOptions = \{(.*?)\n    \};/s', $source, $block);

@@ -41,7 +41,7 @@ class FeatureFlagCatalogTest extends TestCase
      * @var array<int, string> tests that assert an UNSEEDED database
      */
     private const EMPTY_STATE_TESTS = [
-        'every_catalogued_flag_resolves_off_until_it_is_seeded',
+        'test_every_catalogued_flag_resolves_off_until_it_is_seeded',
     ];
 
     protected function shouldSeedFeatureFlags(): bool
@@ -61,8 +61,7 @@ class FeatureFlagCatalogTest extends TestCase
         $this->app->make(\Spatie\Permission\PermissionRegistrar::class)->forgetCachedPermissions();
     }
 
-    #[Test]
-    public function every_catalogued_flag_resolves_off_until_it_is_seeded(): void
+        public function test_every_catalogued_flag_resolves_off_until_it_is_seeded(): void
     {
         // The trap, stated as a test: a fresh database with a full catalogue
         // has every module switched off.
@@ -74,8 +73,7 @@ class FeatureFlagCatalogTest extends TestCase
         }
     }
 
-    #[Test]
-    public function seeding_activates_every_flag_and_is_idempotent(): void
+        public function test_seeding_activates_every_flag_and_is_idempotent(): void
     {
         $this->seed(FeatureFlagSeeder::class);
 
@@ -95,8 +93,7 @@ class FeatureFlagCatalogTest extends TestCase
      * already looks wrong. A seeder that re-activates everything would silently
      * undo the operator's decision at the worst possible moment.
      */
-    #[Test]
-    public function reseeding_does_not_undo_an_operators_decision(): void
+        public function test_reseeding_does_not_undo_an_operators_decision(): void
     {
         $this->seed(FeatureFlagSeeder::class);
 
@@ -127,8 +124,7 @@ class FeatureFlagCatalogTest extends TestCase
      * the row records the operator's decision, config overrides it, and
      * removing the `disabled` key restores the operator's answer untouched.
      */
-    #[Test]
-    public function a_config_kill_switch_wins_over_a_stored_row(): void
+        public function test_a_config_kill_switch_wins_over_a_stored_row (): void
     {
         $this->seed(FeatureFlagSeeder::class);
         Feature::activateForEveryone('users');
@@ -154,8 +150,7 @@ class FeatureFlagCatalogTest extends TestCase
      * user's state and write it for everyone, and the sidebar would disagree
      * with the routes depending on who asked. A kill switch is one switch.
      */
-    #[Test]
-    public function the_scope_is_global_not_per_user(): void
+        public function test_the_scope_is_global_not_per_user (): void
     {
         $this->seed(FeatureFlagSeeder::class);
 
@@ -166,8 +161,7 @@ class FeatureFlagCatalogTest extends TestCase
         );
     }
 
-    #[Test]
-    public function an_undeclared_slug_is_never_active(): void
+        public function test_an_undeclared_slug_is_never_active (): void
     {
         $this->assertFalse(
             Feature::active('no_such_flag'),
@@ -175,8 +169,7 @@ class FeatureFlagCatalogTest extends TestCase
         );
     }
 
-    #[Test]
-    public function the_catalogue_reports_labels_groups_and_descriptions(): void
+        public function test_the_catalogue_reports_labels_groups_and_descriptions (): void
     {
         $grouped = FeatureCatalog::grouped();
 
@@ -199,8 +192,7 @@ class FeatureFlagCatalogTest extends TestCase
      * `registration_enabled` system setting in four places, and a flag as well
      * would be two writers for one question.
      */
-    #[Test]
-    public function registration_is_not_a_flag_because_it_is_already_a_setting(): void
+        public function test_registration_is_not_a_flag_because_it_is_already_a_setting(): void
     {
         $this->assertFalse(
             FeatureCatalog::has('registration'),

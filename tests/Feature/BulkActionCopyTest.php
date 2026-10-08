@@ -32,7 +32,7 @@ class BulkActionCopyTest extends TestCase
     use RefreshDatabase;
 
     #[\PHPUnit\Framework\Attributes\Test]
-    public function every_bulk_action_resolves_to_dropdown_and_modal_copy(): void
+    public function test_every_bulk_action_resolves_to_dropdown_and_modal_copy(): void
     {
         foreach ($this->bulkBars() as $where => $bar) {
             // A page may set none of these and lean on the driver's built-in
@@ -106,7 +106,7 @@ class BulkActionCopyTest extends TestCase
      * is invisible until someone reads the modal.
      */
     #[\PHPUnit\Framework\Attributes\Test]
-    public function the_feature_actions_use_the_mapped_variants(): void
+    public function test_the_feature_actions_use_the_mapped_variants (): void
     {
         // design-system.md, Action Color Convention: enable => success,
         // disable => warning. Reversible consequences never wear the

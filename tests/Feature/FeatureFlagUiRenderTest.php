@@ -135,8 +135,7 @@ class FeatureFlagUiRenderTest extends TestCase
         return $matches[0];
     }
 
-    #[Test]
-    public function it_renders_and_queries_nothing(): void
+        public function test_it_renders_and_queries_nothing (): void
     {
         $this->login();
 
@@ -174,8 +173,7 @@ class FeatureFlagUiRenderTest extends TestCase
      * they pointed at. Asserting the count per table catches that at the markup
      * level; the behaviour half is covered by the bundle test.
      */
-    #[Test]
-    public function each_module_card_has_its_own_scoped_select_all(): void
+        public function test_each_module_card_has_its_own_scoped_select_all(): void
     {
         $html = $this->render();
 
@@ -243,8 +241,7 @@ class FeatureFlagUiRenderTest extends TestCase
         );
     }
 
-    #[Test]
-    public function it_never_builds_a_features_route_from_the_view(): void
+        public function test_it_never_builds_a_features_route_from_the_view (): void
     {
         $this->login();
 
@@ -271,8 +268,7 @@ class FeatureFlagUiRenderTest extends TestCase
         );
     }
 
-    #[Test]
-    public function the_forbidden_classes_never_appear(): void
+        public function test_the_forbidden_classes_never_appear (): void
     {
         $this->login();
         $html = $this->render();
@@ -286,8 +282,7 @@ class FeatureFlagUiRenderTest extends TestCase
         );
     }
 
-    #[Test]
-    public function the_header_and_metric_strip_render(): void
+        public function test_the_header_and_metric_strip_render (): void
     {
         $this->login();
         $html = $this->render();
@@ -321,8 +316,7 @@ class FeatureFlagUiRenderTest extends TestCase
      * has one": a second card without it is exactly the misalignment this
      * guards, and a first-table-only assertion would stay green through it.
      */
-    #[Test]
-    public function every_tables_columns_are_pinned_identically(): void
+        public function test_every_tables_columns_are_pinned_identically(): void
     {
         $this->login();
         $html = $this->render();
@@ -404,8 +398,7 @@ class FeatureFlagUiRenderTest extends TestCase
      * block box with the input positioned inside its left edge. Setting only the
      * cell looks centred and is not.
      */
-    #[Test]
-    public function the_toggle_column_is_centred(): void
+        public function test_the_toggle_column_is_centred (): void
     {
         $this->login();
         $html = $this->render();
@@ -431,8 +424,7 @@ class FeatureFlagUiRenderTest extends TestCase
         );
     }
 
-    #[Test]
-    public function every_flag_row_carries_its_key_and_status(): void
+        public function test_every_flag_row_carries_its_key_and_status(): void
     {
         $this->login();
         $html = $this->render();
@@ -451,8 +443,7 @@ class FeatureFlagUiRenderTest extends TestCase
      * attribute the shared driver reads. A missing one falls back to "Confirm"
      * in danger red, silently — which is the failure this asserts.
      */
-    #[Test]
-    public function every_switch_carries_the_attributes_the_modal_driver_reads(): void
+        public function test_every_switch_carries_the_attributes_the_modal_driver_reads(): void
     {
         $this->login();
         $switches = $this->switches($this->render());
@@ -478,8 +469,7 @@ class FeatureFlagUiRenderTest extends TestCase
         }
     }
 
-    #[Test]
-    public function the_switch_targets_the_intended_new_state(): void
+        public function test_the_switch_targets_the_intended_new_state (): void
     {
         $this->login();
         $switches = $this->switches($this->render());
@@ -501,8 +491,7 @@ class FeatureFlagUiRenderTest extends TestCase
      * read-only shape `pages/settings` uses, for the same reason: a control
      * that looks editable and silently discards input is worse than none.
      */
-    #[Test]
-    public function a_viewer_without_manage_gets_badges_and_no_switch(): void
+        public function test_a_viewer_without_manage_gets_badges_and_no_switch (): void
     {
         // `user` holds no permissions at all, so this is a real 403-shaped
         // viewer rather than a stubbed Gate answer.
@@ -522,8 +511,7 @@ class FeatureFlagUiRenderTest extends TestCase
         $this->assertStringContainsString('You can view these flags but not change them.', $html);
     }
 
-    #[Test]
-    public function a_manager_is_not_shown_the_read_only_banner(): void
+        public function test_a_manager_is_not_shown_the_read_only_banner (): void
     {
         $this->login();
 
@@ -537,8 +525,7 @@ class FeatureFlagUiRenderTest extends TestCase
      * An empty catalogue is a real state — Phase 7 Group B has not declared a
      * flag yet, and the page must render rather than fatal on `count([])`.
      */
-    #[Test]
-    public function an_empty_catalogue_renders_an_empty_state(): void
+        public function test_an_empty_catalogue_renders_an_empty_state (): void
     {
         $this->login();
 

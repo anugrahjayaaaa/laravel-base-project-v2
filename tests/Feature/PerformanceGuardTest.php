@@ -114,8 +114,7 @@ class PerformanceGuardTest extends TestCase
      * "under 5" passes for a memo that only half works; asking the same
      * question 5 times and requiring exactly one evaluation cannot.
      */
-    #[Test]
-    public function repeated_permission_checks_for_one_ability_evaluate_the_gate_once(): void
+        public function test_repeated_permission_checks_for_one_ability_evaluate_the_gate_once(): void
     {
         $user = $this->viewerWithEveryPermission();
         $gateEvaluations = $this->countGateEvaluations();
@@ -143,8 +142,7 @@ class PerformanceGuardTest extends TestCase
      * the test above and hand `users.view`'s answer to `roles.view`. Two
      * distinct abilities must therefore cost two evaluations.
      */
-    #[Test]
-    public function the_memo_is_keyed_per_ability_not_shared(): void
+        public function test_the_memo_is_keyed_per_ability_not_shared (): void
     {
         $user = $this->viewerWithEveryPermission();
         $gateEvaluations = $this->countGateEvaluations();
@@ -169,8 +167,7 @@ class PerformanceGuardTest extends TestCase
      * pins the fall-through, because it is the one place where memoizing would
      * be a correctness bug rather than a slow path.
      */
-    #[Test]
-    public function a_check_with_arguments_is_not_memoized(): void
+        public function test_a_check_with_arguments_is_not_memoized (): void
     {
         $user = $this->viewerWithEveryPermission();
         $gateEvaluations = $this->countGateEvaluations();
@@ -198,8 +195,7 @@ class PerformanceGuardTest extends TestCase
      *
      * 1 is the point: not "at most", not "the query count looks fine".
      */
-    #[Test]
-    public function the_menu_composer_composes_exactly_once_per_authenticated_page(): void
+        public function test_the_menu_composer_composes_exactly_once_per_authenticated_page (): void
     {
         $runs = 0;
 
@@ -251,8 +247,7 @@ class PerformanceGuardTest extends TestCase
      * reports green on cold work, which is how a doubled composer once passed
      * this very assertion.
      */
-    #[Test]
-    public function the_header_flag_is_bound_from_the_warmed_catalogue(): void
+        public function test_the_header_flag_is_bound_from_the_warmed_catalogue (): void
     {
         $this->seed(RoleSeeder::class);
 

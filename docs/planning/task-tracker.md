@@ -234,6 +234,67 @@ none of which carry a route-level `can:`. The role writes are already refused by
 their Form Requests, so those are defence in depth; the user state routes are
 genuinely open and are the real D1/D2 work.
 
+### Phase 9 — Notifications & Mail
+
+> Groups A–E shipped (2026-10-05) and the shipped phase was re-audited 2026-10-08. P9-X1..X4 below are that audit's tasks: each is a defect found in shipped code, not a design change.
+
+| ID | Task | Phase | Priority | Depends On | Status |
+|----|------|-------|----------|-----------|--------|
+| P9-A1 | `pages/notifications/index.blade.php` — `col-lg-8` SMTP form + `col-lg-4` Send Test Mail, `card border-0 shadow-sm mb-4`, footer `bg-body-tertiary` | 9 | P0 | — | DONE |
+| P9-A2 | `pages/notifications/channels.blade.php` — per-channel toggles, hidden `value="0"` + checkbox `value="1"` | 9 | P0 | P9-A1 | DONE |
+| P9-A3 | `NotificationUiRenderTest` (19 tests / 119 assertions) — zero queries from inside the views, forbidden classes, `filter_var` ban, sibling-page link + card-header action styling on both permission branches | 9 | P0 | P9-A1..A2 | DONE |
+| P9-A4 | `NotificationController` stub (`index`/`channels`) + `notifications.index` / `notifications.channels` routes | 9 | P0 | P9-A1 | DONE |
+| P9-A5 | Group A audit — mutation-verified guards, `p-4` revert, narrowing `send_test` gate; re-audited 2026-10-05 after D1/D2/D4, one gap closed (no sibling link on the mail page) | 9 | P0 | P9-A1..A4 | DONE |
+| P9-B1 | `UpdateMailSettingsRequest` — authorize `notifications.manage`, port 1–65535, mailer `Rule::in(config('mail.mailers'))`, encryption `Rule::in(smtp/tls/ssl/none)`; `none` stored as the empty value | 9 | P0 | P9-A4 | DONE |
+| P9-B2 | `NotificationMailSettingUpdateAction` — transaction, `encrypt()` on the password (written only when a new one was submitted), audit inside, rebind AFTER commit; `$partial` for API | 9 | P0 | P9-B1 | DONE |
+| P9-B3 | `NotificationTestMailSendAction` — `Mail::raw` probe; every transport failure becomes a message + `Log::error` + `test_mail.failed`, never a 500 | 9 | P0 | P9-B1 | DONE |
+| P9-B4 | `Web\V1` + `Api\V1` NotificationController sharing every action; API returns booleans + `has_password`, 502 on transport failure | 9 | P0 | P9-B2, B3 | DONE |
+| P9-B5 | `route()` URLs in the controller + `->can('notifications.manage')` / `->can('notifications.send_test')` on the write routes | 9 | P0 | P9-B4 | DONE |
+| P9-B6 | `AppServiceProvider::bindMailConfig()` — **called from the action after commit, NOT boot** (boot runs before the table exists) + 8 seeder keys | 9 | P0 | P9-B1 | DONE |
+| P9-B7 | `NotificationChannelUpdateAction` + `UpdateNotificationChannelsRequest` + 3 `notification_channel_*` keys — admin-owned, no per-user table | 9 | P0 | P9-B6 | DONE |
+| P9-C1 | `notifications` migration from `make:notifications-table` — Laravel's own stub, no hand-written schema | 9 | P0 | P9-B7 | DONE |
+| P9-C2 | **DONE** — see phase doc for the correction and the reasoning | 9 | P0 | P9-B7 | DONE |
+| P9-C3 | **DONE** — see phase doc for the correction and the reasoning | 9 | P0 | P9-B7 | DONE |
+| P9-C4 | **DONE with D2** — one flat entry per admin page; the inbox gets NO entry, it is reached from the bell | 9 | P0 | P9-B7 | DONE |
+| P9-C5 | **DONE** — see phase doc for the correction and the reasoning | 9 | P0 | P9-B7 | DONE |
+| P9-C6 | **DONE** — see phase doc for the correction and the reasoning | 9 | P0 | P9-B7 | DONE |
+| P9-D1 | `notifications.view`/`.manage`/`.send_test` in `PermissionCatalog` + `can()` on both web routes, same commit | 9 | P0 | — | DONE |
+| P9-D2 | `feature:notifications` — pennant flag + routes + composer. **403, not 404** | 9 | P0 | P9-D1 | DONE |
+| P9-D3 | Action-first audit `mail_setting.updated` + `test_mail.sent` / `test_mail.failed` + `notification_channels.updated`, inside the action and the transaction | 9 | P0 | P9-B2, B3 | DONE |
+| P9-D4 | Header bell is a real `<a>` with the same two gates as the sidebar entry — `NotificationAccessTest` (14 tests) | 9 | P0 | P9-D1, D2 | DONE |
+| P9-D5 | `feature:notifications` on `/notifications/inbox` — flag only, **no** permission (D-2) | 9 | P0 | P9-C5 | DONE |
+| P9-D6 | Swap `NotificationUiRenderTest`'s `Gate::before` fixture for real seeded roles + precondition assertions | 9 | P1 | P9-D1 | DONE |
+| P9-E1 | `NotificationSettingsTest` (19 tests) — SMTP round-trip into config, encryption at rest, RBAC 403, flag 403, audit rows, validation bounds | 9 | P0 | P9-D3 | DONE |
+| P9-E2 | `mail_password` encrypted at rest — DB row holds no plaintext, decrypts back, transport receives the usable value | 9 | P0 | P9-B2 | DONE |
+| P9-E3 | Inbox isolation — A cannot mark B's notification read (single route nor mark-all) | 9 | P0 | P9-C5 | DONE |
+| P9-E4 | Target Audience Rule — admin event reaches only permission holders, personal reaches only its subject, unclassified reaches nobody, and every event names a declared permission | 9 | P0 | P9-C3 | DONE |
+| P9-E5 | Bell target — href is `/notifications/inbox`, renders for a plain user, badge reflects the count | 9 | P0 | P9-C2 | DONE |
+| P9-E6 | Full suite green (`1111 passed / 4263 assertions` at close; **1301 / 5087** after the 2026-10-08 audit passes) + reconcile `progress.md` / `task-tracker.md` / `feature-tracker.md` / phase doc | 9 | P1 | P9-E1 | DONE |
+| P9-E7 | Reconcile `docs/base/features/notifications.md` — channels trimmed, transport table rewritten, "config/env only" reversed, audience table split | 9 | P1 | P9-B2 | DONE |
+| P9-E8 | Correct the conventions skill — `Permission::featureOf()` does not exist; the sidebar is `AppMenuComposer`, not `@feature()` in Blade | 9 | P2 | — | DONE |
+| P9-E9 | Regression for the null-default binding bug — `an_install_without_a_configured_username_still_binds`, verified load-bearing by reintroducing the bug | 9 | P0 | P9-B6 | DONE |
+| P9-E10 | Bell count cache — invalidated on delivery AND on mark-read; warm cache costs no query per render | 9 | P0 | P9-C2 | DONE |
+| P9-E11 | `NotificationAccountStateAction` wired to the four user-state actions — the audience rule now has callers (was zero) | 9 | P0 | P9-C3 | DONE |
+| P9-E12 | `notification_channel_in_app` read as the `database` gate in `NotificationChannel::for()` — was a switch that saved and changed nothing | 9 | P0 | P9-C1 | DONE |
+| P9-E13 | `docs/base/features/notifications.md` rewritten to name only shipped events; declared-but-undispatched ones marked unreachable | 9 | P1 | P9-E7 | DONE |
+| P9-X1 | **Credential boundary** — `SystemSetting::getAll()` returned `mail_password` ciphertext to the Phase 8 settings module, whose `settings.view` gate is wider than `notifications.view`; filtered by `SECRET_KEYS` and asserted on four read paths | 9 | P0 | P9-B2 | DONE |
+| P9-X2 | **Delivery boundary** — 3 actions dispatched inside a transaction against `after_commit => false` queues; moved out, and every notification class now declares `$afterCommit = true` (the property alone is what survives a caller that owns the transaction) | 9 | P0 | P9-C3 | DONE |
+| P9-X3 | **Cache + retention** — the bell's five-row list shared the count's TTL but not its invalidation; `forgetAllFor()` clears both. Plus a daily `notification-retention` sweep (read rows > 90 days), which the table had none of | 9 | P0 | P9-C2 | DONE |
+| P9-X4 | **Abuse + channel boundaries** — `throttle:send-test-mail` on web and API (a permission is not a rate limit); `NotificationChannel::for(essential: true)` for the four flows with no alternative channel; dead `app/Models/Notification.php` deleted | 9 | P0 | P9-B3 | DONE |
+| P9-X5 | **Copy** — every class repeated its own title in the body, and `sprintf('Your roles%s were changed.', $by)` produced a broken sentence. Rewritten against researched guidance; subjects now stand alone because the bell shows subjects only | 9 | P1 | P9-E7 | DONE |
+| P9-X6 | **`NotificationCopyTest`** — 5 mechanical rules × 7 classes × both audiences, mutation-checked against the old wording | 9 | P1 | P9-X5 | DONE |
+| P9-X7 | **`NotificationBenchmarkTest`** — 8 measurements + 3 query-count assertions; no N+1, nothing over 2.85 ms, warm bell 0 queries, inbox bounded by pagination, audience 2 queries at 1 or 21 admins | 9 | P2 | — | DONE |
+| P9-X8 | **`NotificationPentestTest`** — 11 probes / 108 assertions: authorization ×4 levels ×2 surfaces, inbox isolation ×4, credential ×4 read paths, 8 injection payloads, 5 switch shapes, relay abuse, stored XSS, flag enforcement. No findings | 9 | P0 | — | DONE |
+| P9-X9 | **Docs reconciled** — phase doc carries both audit passes; `notifications.md` carries the copy rules, the credential/retention limits and the audience gap; `progress.md` / `feature-tracker.md` / `implementation-roadmap.md` updated | 9 | P1 | P9-X1..X8 | DONE |
+
+**Group A ships. B–E do not exist yet.** The pages render and are reachable
+behind the full auth stack, but nothing persists: no write endpoint, no
+`notifications` table, no permission, no flag. That is deliberate — a `->can()`
+against an unseeded permission is a 403 on every page, so each gate lands with the
+permission it checks.
+
+Detail: `docs/planning/phase-9-notifications-mail.md`.
+
 ## Full Task List (JSON for AI parsing)
 
 ```json[

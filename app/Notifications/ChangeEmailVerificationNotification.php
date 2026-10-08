@@ -2,7 +2,8 @@
 
 namespace App\Notifications;
 
-use Illuminate\Bus\Queueable;
+use App\Models\User;
+use App\Support\NotificationChannel;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
@@ -13,7 +14,23 @@ use Illuminate\Support\Facades\URL;
  */
 class ChangeEmailVerificationNotification extends Notification implements ShouldQueue
 {
-    use Queueable;
+    /**
+     * Delivery follows the OUTERMOST commit, not this method's return.
+     *
+     * The framework default is null, which means "enqueue immediately" — and
+     * every queue connection here runs `after_commit => false`. Left null, a
+     * worker can send before the row that produced this notification commits,
+     * and a rollback still delivers: a working temporary password, a signed
+     * verification link, for an account that does not exist.
+     *
+     * This is the property `Illuminate\Bus\Queueable` would have declared with
+     * a null default, declared here instead because a trait cannot change a
+     * default the class already composes. See
+     * `docs/planning/phase-9-notifications-mail.md`, audit finding 2.
+     *
+     * @var bool
+     */
+    public $afterCommit = true;
 
     /**
      * Create the notification with pending email and verification token.
@@ -24,16 +41,23 @@ class ChangeEmailVerificationNotification extends Notification implements Should
     public function __construct(
         private readonly string $pendingEmail,
         private readonly string $token,
-    ) {}
+    ) {
+    }
 
     /**
-     * Deliver via mail only.
+     * Deliver on the channels the admin has enabled.
      *
      * @return array<string>
      */
     public function via($notifiable): array
     {
-        return ['mail'];
+        // From the admin's global switches rather than a hardcoded list, so the
+        // channels page controls something that is actually read.
+        //
+        // Essential: this link is the only thing that completes the email change.
+        // Mail off would strand the request — the account keeps its old address
+        // and the pending one is never confirmed. See `NotificationChannel::for()`.
+        return NotificationChannel::for(essential: true);
     }
 
     /**
@@ -49,11 +73,40 @@ class ChangeEmailVerificationNotification extends Notification implements Should
             ['user' => $notifiable->id, 'token' => $this->token],
         );
 
-        return (new MailMessage)
-            ->subject('Confirm your email change')
+        return (new MailMessage())
+            ->subject('Confirm your new email address')
             ->line('You requested to change your email address.')
             ->line("New email: {$this->pendingEmail}")
             ->action('Verify Email Change', $verifyUrl)
             ->line('This link expires in 24 hours. If you did not request this, ignore this email.');
+    }
+
+    /**
+     * The in-app representation, stored verbatim in `notifications.data`.
+     *
+     * Required the moment `database` is a channel — without it Laravel throws
+     * rather than writing an empty row. The shape (`subject` + `lines`) is what
+     * `pages/notifications/inbox` reads, so the two are a contract: a class that
+     * stores different keys renders as a bare "Notification" placeholder rather
+     * than an undefined-variable fatal on someone's inbox.
+     *
+     * `lines` is escaped here, not in the view: this string is persisted and
+     * re-rendered later, so escaping at write time is the only place the value
+     * can be trusted.
+     *
+     * @return array<string, mixed>
+     */
+    public function toArray(User $notifiable): array
+    {
+        return [
+            'subject' => 'Confirm your new email address',
+            'lines' => [
+                // The inbox row carries no link, so it names where the link is and
+                // which address it moves to — the two facts a person needs before
+                // they go looking for an email.
+                "Open the link we emailed you to confirm the change to {$this->pendingEmail}.",
+                'If you did not request this, your address has not changed.',
+            ],
+        ];
     }
 }

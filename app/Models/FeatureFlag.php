@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Concerns\Auditable;
+use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 
 /**
@@ -29,6 +30,7 @@ use Illuminate\Database\Eloquent\Model;
  * @property string $scope
  * @property string $value
  */
+#[Fillable(['name', 'scope', 'value'])]
 class FeatureFlag extends Model
 {
     use Auditable;
@@ -37,11 +39,6 @@ class FeatureFlag extends Model
      * @var string
      */
     protected $table = 'features';
-
-    /**
-     * @var list<string>
-     */
-    protected $fillable = ['name', 'scope', 'value'];
 
     /**
      * Pennant serialises the value, so it is not a boolean column. Reading it

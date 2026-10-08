@@ -120,6 +120,9 @@ class SettingsBenchmarkTest extends TestCase
                 SystemSetting::getString('locale_default');
             }
         }));
+
+        // Measures, does not assert — counts as one by PHPUnit 12's rules.
+        $this->addToAssertionCount(1);
     }
 
     public function test_write_path_full_and_partial(): void
@@ -156,6 +159,8 @@ class SettingsBenchmarkTest extends TestCase
         $this->record('update ALL keys (no audit)', $this->measure(function () use ($action) {
             $action->run($this->validPayload());
         }));
+
+        $this->addToAssertionCount(1);
     }
 
     /**
@@ -288,6 +293,8 @@ class SettingsBenchmarkTest extends TestCase
         $this->record('GET settings.index (full kernel)', $result);
 
         static::$results['page load'] = $result;
+
+        $this->addToAssertionCount(1);
     }
 
     /**

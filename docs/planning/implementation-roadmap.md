@@ -13,7 +13,8 @@
 | 6 | RBAC & authorization | P0 | PLANNED |
 | 7 | Feature availability / feature flags | P1 | PLANNED |
 | 8 | Settings | P1 | PLANNED |
-| 9 | Notification/mail/queue | P1 | PLANNED |
+| 9 | Notification/mail/queue | P1 | DONE |
+
 | 10 | Audit Trail | P0 | PLANNED |
 | 11 | Monitoring/observability | P1 | PLANNED |
 | 12 | API V1 | P0 | PLANNED |
@@ -129,9 +130,16 @@ email-verification-notice, password-change pages using AdminLTE auth layout.
 - Status: PLANNED
 
 ### Phase 9: Notifications & Mail
-- Mail configuration
-- Notification channels
-- Status: PLANNED
+- Mail configuration — **DONE** (`SystemSetting` + `encrypt()`, rebound into `config('mail')` after commit)
+- Notification channels — **DONE** (global admin switches; `via()` reads them)
+- In-app inbox — **DONE** (`/notifications/inbox`, Laravel's `database` channel, no permission)
+- Audience rule — **DONE** (`NotificationAudience`, per-action trigger permissions)
+- Re-audit of the shipped phase — **DONE** (7 findings, all closed): credential reachable through the settings module, in-transaction dispatch on 3 actions + `$afterCommit` on all 7 classes, badge/list cache divergence, no retention, no rate limit, a dead model, and the mail switch able to break the four flows with no alternative channel
+- Notification copy — **DONE** (researched and rewritten: subjects stand alone, bodies add the actor and the next step; `NotificationCopyTest` pins the contract)
+- Performance — **MEASURED** (`NotificationBenchmarkTest`: no N+1, warm bell 0 queries, inbox bounded by pagination, audience 2 queries at any admin count)
+- Security — **DONE** (`NotificationPentestTest`: 11 probes / 108 assertions, no findings)
+- Retention — **DONE** (daily scheduled sweep, read notifications older than 90 days)
+- Status: DONE
 
 ### Phase 10: Audit Trail
 - Audit package integration

@@ -83,8 +83,7 @@ class SecurityAuditTest extends TestCase
     // A. BRUTE-FORCE & RATE LIMITING
     // =====================================================================
 
-    #[Test]
-    public function test_api_login_rate_limits_after_5_failed_attempts(): void
+        public function test_api_login_rate_limits_after_5_failed_attempts(): void
     {
         [$admin] = $this->makeUsers();
         for ($i = 0; $i < 5; $i++) {
@@ -106,8 +105,7 @@ class SecurityAuditTest extends TestCase
         $resp->assertStatus(429);
     }
 
-    #[Test]
-    public function test_api_login_does_not_enumerate_user_existence(): void
+        public function test_api_login_does_not_enumerate_user_existence(): void
     {
         User::factory()->create(['email' => 'existing@example.com', 'email_verified_at' => now()]);
         $exists = $this->postJson(route('api.v1.auth.login'), [
@@ -121,8 +119,7 @@ class SecurityAuditTest extends TestCase
         $this->assertEquals($exists->json('data.message'), $notExists->json('data.message'));
     }
 
-    #[Test]
-    public function test_forgot_password_rate_limited_per_identifier(): void
+        public function test_forgot_password_rate_limited_per_identifier(): void
     {
         [$admin] = $this->makeUsers();
         // First 3 requests should succeed
@@ -137,8 +134,7 @@ class SecurityAuditTest extends TestCase
         ])->assertStatus(429);
     }
 
-    #[Test]
-    public function test_resend_verification_rate_limited_per_user(): void
+        public function test_resend_verification_rate_limited_per_user(): void
     {
         [$admin, $regular] = $this->makeUsers();
         $this->actingAsApi($admin);
@@ -154,8 +150,7 @@ class SecurityAuditTest extends TestCase
     // B. PRIVILEGE ESCALATION / IDOR / BOLA
     // =====================================================================
 
-    #[Test]
-    /**
+        /**
      * A user without users.view cannot read another user's record by id.
      *
      * INVERTED in Phase 6, same as the CRUD test above: this one was named
@@ -178,8 +173,7 @@ class SecurityAuditTest extends TestCase
             ->assertJsonPath('data.user.name', 'Target');
     }
 
-    #[Test]
-    /**
+        /**
      * A user with no users.* permission is refused every admin endpoint.
      *
      * INVERTED in Phase 6. This test used to assert that a "regular" user could
@@ -219,8 +213,7 @@ class SecurityAuditTest extends TestCase
         $this->assertNull($victim->fresh()->deleted_at);
     }
 
-    #[Test]
-    public function test_unauthenticated_access_to_protected_api_returns_401(): void
+        public function test_unauthenticated_access_to_protected_api_returns_401(): void
     {
         $this->getJson(route('api.v1.users.index'))->assertStatus(401);
         $this->postJson(route('api.v1.auth.logout'))->assertStatus(401);
@@ -230,8 +223,7 @@ class SecurityAuditTest extends TestCase
     // C. SESSION INVALIDATION ON STATE CHANGE
     // =====================================================================
 
-    #[Test]
-    public function test_api_token_revoked_when_user_deactivated(): void
+        public function test_api_token_revoked_when_user_deactivated(): void
     {
         [$admin, $regular] = $this->makeUsers();
         $this->actingAsApi($regular);
@@ -244,8 +236,7 @@ class SecurityAuditTest extends TestCase
         $this->getJson(route('api.v1.profile.show'))->assertStatus(403);
     }
 
-    #[Test]
-    public function test_api_token_revoked_when_user_locked(): void
+        public function test_api_token_revoked_when_user_locked(): void
     {
         [$admin, $regular] = $this->makeUsers();
         $this->actingAsApi($regular);
@@ -258,8 +249,7 @@ class SecurityAuditTest extends TestCase
         $this->getJson(route('api.v1.profile.show'))->assertStatus(403);
     }
 
-    #[Test]
-    public function test_api_token_revoked_when_user_soft_deleted(): void
+        public function test_api_token_revoked_when_user_soft_deleted(): void
     {
         [$admin, $regular] = $this->makeUsers();
         $this->actingAsApi($regular);
@@ -272,8 +262,7 @@ class SecurityAuditTest extends TestCase
         $this->getJson(route('api.v1.profile.show'))->assertStatus(403);
     }
 
-    #[Test]
-    public function test_web_session_invalidation_on_deactivation_via_checkaccountstate(): void
+        public function test_web_session_invalidation_on_deactivation_via_checkaccountstate(): void
     {
         [$admin, $regular] = $this->makeUsers();
         $middleware = new CheckAccountState();
@@ -291,8 +280,7 @@ class SecurityAuditTest extends TestCase
     // D. SIGNED URL TAMPERING
     // =====================================================================
 
-    #[Test]
-    public function test_email_verify_change_rejects_tampered_token(): void
+        public function test_email_verify_change_rejects_tampered_token(): void
     {
         [$admin] = $this->makeUsers();
         $this->actingAsApi($admin);
@@ -304,8 +292,7 @@ class SecurityAuditTest extends TestCase
         ]))->assertStatus(400);
     }
 
-    #[Test]
-    public function test_email_verify_change_rejects_missing_token(): void
+        public function test_email_verify_change_rejects_missing_token(): void
     {
         [$admin] = $this->makeUsers();
         $this->actingAsApi($admin);
@@ -315,8 +302,7 @@ class SecurityAuditTest extends TestCase
             ->assertStatus(400);
     }
 
-    #[Test]
-    public function test_signed_url_tampering_rejected(): void
+        public function test_signed_url_tampering_rejected(): void
     {
         [$admin] = $this->makeUsers();
         $this->actingAsApi($admin);
@@ -334,8 +320,7 @@ class SecurityAuditTest extends TestCase
     // E. SQL INJECTION / MASS ASSIGNMENT
     // =====================================================================
 
-    #[Test]
-    public function test_user_index_sort_whitelist_prevents_sql_injection(): void
+        public function test_user_index_sort_whitelist_prevents_sql_injection(): void
     {
         [$admin] = $this->makeUsers();
         $this->actingAsApi($admin);
@@ -346,8 +331,7 @@ class SecurityAuditTest extends TestCase
         $this->assertDatabaseHas('users', ['email' => 'admin@example.com']);
     }
 
-    #[Test]
-    public function test_mass_assignment_protected_on_user_create(): void
+        public function test_mass_assignment_protected_on_user_create(): void
     {
         [$admin] = $this->makeUsers();
         $this->actingAsApi($admin);
@@ -372,8 +356,7 @@ class SecurityAuditTest extends TestCase
     // F. XSS — STORED & REFLECTED
     // =====================================================================
 
-    #[Test]
-    public function test_stored_xss_payload_in_user_name(): void
+        public function test_stored_xss_payload_in_user_name(): void
     {
         [$admin] = $this->makeUsers();
         $this->actingAsApi($admin);
@@ -392,8 +375,7 @@ class SecurityAuditTest extends TestCase
         $this->assertStringNotContainsString('<script>', $user->name);
     }
 
-    #[Test]
-    public function test_reflected_xss_in_search_query_escaped(): void
+        public function test_reflected_xss_in_search_query_escaped(): void
     {
         [$admin] = $this->makeUsers();
         $this->actingAsApi($admin);
@@ -409,8 +391,7 @@ class SecurityAuditTest extends TestCase
     // G. CSRF PROTECTION
     // =====================================================================
 
-    #[Test]
-    public function test_web_state_changing_forms_require_csrf(): void
+        public function test_web_state_changing_forms_require_csrf(): void
     {
         [$admin, $regular] = $this->makeUsers();
         $this->actingAs($admin, 'web');
@@ -419,8 +400,7 @@ class SecurityAuditTest extends TestCase
             ->assertStatus(419);
     }
 
-    #[Test]
-    public function test_api_routes_use_sanctum_not_csrf(): void
+        public function test_api_routes_use_sanctum_not_csrf(): void
     {
         [$admin, $regular] = $this->makeUsers();
         $this->actingAsApi($admin);
@@ -432,8 +412,7 @@ class SecurityAuditTest extends TestCase
     // H. PASSWORD POLICY
     // =====================================================================
 
-    #[Test]
-    public function test_temp_password_minimum_length_enforced(): void
+        public function test_temp_password_minimum_length_enforced(): void
     {
         [$admin] = $this->makeUsers();
         $this->actingAsApi($admin);
@@ -448,8 +427,7 @@ class SecurityAuditTest extends TestCase
         ])->assertStatus(422);
     }
 
-    #[Test]
-    public function test_must_change_password_bypass_blocks_access(): void
+        public function test_must_change_password_bypass_blocks_access(): void
     {
         [$admin] = $this->makeUsers();
         $user = User::factory()->create(['must_change_password' => true]);
@@ -461,8 +439,7 @@ class SecurityAuditTest extends TestCase
     // I. INFORMATION DISCLOSURE
     // =====================================================================
 
-    #[Test]
-    public function test_error_responses_do_not_leak_stack_traces(): void
+        public function test_error_responses_do_not_leak_stack_traces(): void
     {
         [$admin] = $this->makeUsers();
         $this->actingAsApi($admin);

@@ -14,6 +14,7 @@ use App\Http\Controllers\Api\V1\Permission\PermissionController;
 use App\Http\Controllers\Api\V1\ProfileController;
 use App\Http\Controllers\Api\V1\Role\RoleController;
 use App\Http\Controllers\Api\V1\SessionController;
+use App\Http\Controllers\Api\V1\NotificationController;
 use App\Http\Controllers\Api\V1\SystemSettingController;
 use App\Http\Controllers\Api\V1\User\UserController;
 use App\Http\Controllers\Api\V1\User\UserStateController;
@@ -80,6 +81,26 @@ Route::prefix('v1')->group(function () {
             Route::controller(SystemSettingController::class)->group(function () {
                 Route::get('/settings', 'index')->name('api.v1.settings.index')->can('settings.view');
                 Route::put('/settings', 'update')->name('api.v1.settings.update')->can('settings.manage');
+            });
+        });
+
+        // Notifications & Mail — Phase 9 Group B, mirroring the web matrix.
+        //
+        // The same three permissions on both channels: `.view` reads, `.manage`
+        // writes the transport and the channel switches, `.send_test` may mail an
+        // address the caller typed. `PUT`, not `POST`, matching
+        // `api.v1.settings.update` — a partial update that replaces the transport
+        // configuration, not a request to append to it.
+        Route::middleware('feature:notifications')->group(function () {
+            Route::controller(NotificationController::class)->group(function () {
+                Route::get('/notifications', 'index')->name('api.v1.notifications.index')->can('notifications.view');
+                Route::put('/notifications', 'update')->name('api.v1.notifications.update')->can('notifications.manage');
+                Route::put('/notifications/channels', 'updateChannels')
+                    ->name('api.v1.notifications.channels.update')->can('notifications.manage');
+                // `throttle:send-test-mail` — a permission is not a rate limit, and this route
+                // mails an address the caller typed.
+                Route::post('/notifications/test-mail', 'sendTestMail')->middleware('throttle:send-test-mail')
+                            ->name('api.v1.notifications.test-mail')->can('notifications.send_test');
             });
         });
 

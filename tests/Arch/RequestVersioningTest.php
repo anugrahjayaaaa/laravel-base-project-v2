@@ -76,9 +76,8 @@ final class RequestVersioningTest extends TestCase
      * nothing else — shared behaviour moved to app/Concerns, so there is no
      * exempt subtree left here to carve out.
      */
-    #[Test]
-    #[DataProvider('requestPaths')]
-    public function it_places_versioned_requests_under_a_version_directory(string $path): void
+        #[DataProvider('requestPaths')]
+    public function test_it_places_versioned_requests_under_a_version_directory (string $path): void
     {
         $relative = self::relativeToRoot($path);
 
@@ -93,8 +92,7 @@ final class RequestVersioningTest extends TestCase
      * The base class is the one exception: it sits at the root and carries the
      * error contract for every Request below it.
      */
-    #[Test]
-    public function it_keeps_only_the_base_request_at_the_root(): void
+        public function test_it_keeps_only_the_base_request_at_the_root (): void
     {
         $root = realpath(__DIR__.'/../../app/Http/Requests');
         self::assertIsString($root);
@@ -124,8 +122,7 @@ final class RequestVersioningTest extends TestCase
      * Every concrete Request extends the base, so the 422 contract cannot be
      * forgotten by an endpoint that omits the trait.
      */
-    #[Test]
-    public function it_gives_every_request_the_shared_error_contract(): void
+        public function test_it_gives_every_request_the_shared_error_contract (): void
     {
         foreach (self::requestPaths() as $paths) {
             $path = $paths[0];
@@ -142,9 +139,8 @@ final class RequestVersioningTest extends TestCase
         }
     }
 
-    #[Test]
-    #[DataProvider('requestPaths')]
-    public function it_declares_a_namespace_matching_its_path(string $path): void
+        #[DataProvider('requestPaths')]
+    public function test_it_declares_a_namespace_matching_its_path (string $path): void
     {
         // Read the declared namespace rather than relying on the autoloader:
         // a PSR-4 violation must fail this assertion, not raise a fatal error.
@@ -174,9 +170,8 @@ final class RequestVersioningTest extends TestCase
      * autoloader cannot find it. Traits and interfaces are held to the same
      * rule.
      */
-    #[Test]
-    #[DataProvider('requestPaths')]
-    public function it_names_each_class_after_its_file(string $path): void
+        #[DataProvider('requestPaths')]
+    public function test_it_names_each_class_after_its_file (string $path): void
     {
         $contents = (string) file_get_contents($path);
         $declared = preg_match('/^\s*(?:final\s+)?(?:class|trait|interface|enum)\s+(\w+)/m', $contents, $matches);

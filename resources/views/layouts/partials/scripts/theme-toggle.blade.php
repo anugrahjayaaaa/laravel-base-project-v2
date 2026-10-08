@@ -1,6 +1,7 @@
 <button type="button" class="theme-toggle {{ $class ?? 'nav-link text-secondary' }}" title="Toggle theme">
-    <i class="theme-icon"></i>
+    <i class="theme-icon fs-6"></i>
 </button>
+@push('scripts')
 <script>
     (function() {
         var saved = localStorage.getItem('theme');
@@ -28,3 +29,4 @@
         });
     });
 </script>
+@endpush

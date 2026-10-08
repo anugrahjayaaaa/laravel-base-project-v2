@@ -65,6 +65,22 @@ class PermissionCatalog
         'settings.manage',
     ];
 
+    /**
+     * Notifications & mail — the transport every outgoing message uses, plus
+     * the send-test escape hatch.
+     *
+     * ponytail: `view` is read-only configuration, `manage` writes it, and
+     * `send_test` is separate because mailing an arbitrary address a user typed
+     * is an abuse vector, not a subset of configuring the transport.
+     *
+     * @var array<int, string>
+     */
+    private const NOTIFICATIONS = [
+        'notifications.view',
+        'notifications.manage',
+        'notifications.send_test',
+    ];
+
     /** @var array<int, string> */
     private const FEATURES = [
         'features.view',
@@ -88,6 +104,7 @@ class PermissionCatalog
             ...self::ROLES,
             ...self::PERMISSIONS,
             ...self::SETTINGS,
+            ...self::NOTIFICATIONS,
             ...self::FEATURES,
         ];
     }

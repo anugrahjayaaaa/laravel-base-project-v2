@@ -17,11 +17,18 @@
     </div>
 
     <!-- RIGHT: Notification + Theme + User -->
-    <div class="navbar-nav ms-auto d-flex flex-row align-items-center">
-      <!-- Notification -->
-      <button type="button" class="nav-link text-secondary" title="Notifications">
-        <i class="far fa-bell"></i>
-      </button>
+    <div class="navbar-nav ms-auto d-flex flex-row align-items-center gap-2">
+      <!-- Notification: a real link, gated by the same flag as the sidebar item, so
+           a switched-off module leaves no icon pointing at a 403. The unread
+           badge and the inbox target land with P9-C2; until then it points at
+           the module root, which is the configuration page. -->
+      <!-- Notification: bell opens the viewer's recent-notification list.
+           Bootstrap 5 data-api owns the toggle (no custom JS here). Combined
+           option 1 + 2: single column list, icon circle + subject, timestamp
+           below the text. -->
+      @if ($notificationsVisible ?? false)
+        @include('layouts.partials.notification-dropdown')
+      @endif
 
       @include('layouts.partials.scripts.theme-toggle')
 

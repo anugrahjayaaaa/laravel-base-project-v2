@@ -3,6 +3,8 @@
 use App\Http\Controllers\Web\V1\Auth\AuthController;
 use App\Http\Controllers\Web\V1\DashboardController;
 use App\Http\Controllers\Web\V1\FeatureController;
+use App\Http\Controllers\Web\V1\NotificationController;
+use App\Http\Controllers\Web\V1\NotificationInboxController;
 use App\Http\Controllers\Web\V1\PermissionController;
 use App\Http\Controllers\Web\V1\ProfileController;
 use App\Http\Controllers\Web\V1\RoleController;
@@ -207,4 +209,62 @@ Route::middleware(['auth:web,sanctum', 'verified', 'password.change.required', '
     Route::post('/features/bulk-action', [FeatureController::class, 'bulkAction'])
         ->name('features.bulk-action')->middleware('throttle:bulk-action');
     Route::post('/features/{feature}/toggle', [FeatureController::class, 'toggle'])->name('features.toggle')->can('features.manage');
+
+    // -----------------------------------------------------------------------
+    // Notifications & Mail — Phase 9 Groups A and B.
+    //
+    // Read routes render; the write routes persist. Every one of them carries
+    // the module gate, and the write routes carry their own permission on top:
+    // `notifications.manage` configures the transport, `notifications.send_test`
+    // may mail an address a user typed. Sending to an arbitrary address is an
+    // abuse vector, not a subset of configuring a transport.
+    //
+    // `password.change.required` sits ABOVE in the stack: a user with an expired
+    // password cannot reconfigure the transport that would mail them the
+    // reminder, which is the intended order — fix your credential before it is
+    // used.
+    // -----------------------------------------------------------------------
+    Route::middleware('feature:notifications')->group(function () {
+        Route::controller(NotificationController::class)->group(function () {
+            Route::get('/notifications', 'index')->name('notifications.index')->can('notifications.view');
+            Route::get('/notifications/channels', 'channels')->name('notifications.channels')->can('notifications.view');
+
+            Route::post('/notifications', 'update')->name('notifications.update')->can('notifications.manage');
+            Route::post('/notifications/channels', 'updateChannels')
+                ->name('notifications.channels.update')->can('notifications.manage');
+            // `throttle:send-test-mail` — `notifications.send_test` answers "may this
+            // person" and not "how often", so the ceiling has to be its own
+            // concern. Every other write route in this file is throttled.
+            Route::post('/notifications/test-mail', 'sendTestMail')
+                ->name('notifications.test-mail')->middleware('throttle:send-test-mail')
+                ->can('notifications.send_test');
+        });
+    });
+
+    // -----------------------------------------------------------------------
+    // The user's own notification inbox — Phase 9 Group C (P9-C5/D5).
+    //
+    // `feature:notifications` and the auth stack, and NOTHING else. No
+    // `notifications.view`: this page reads the viewer's OWN rows, so there is
+    // no permission to hold — a user cannot reach another user's notifications
+    // through it, which is why `NotificationInboxAction` scopes every query to
+    // the relation and never accepts a bare id (D-2).
+    //
+    // It is behind the flag because it is part of the module and must vanish
+    // with it. It is NOT behind a permission because the inbox is exactly what
+    // most users would have no permission to reach.
+    //
+    // Separate controller, separate block: the admin pages and the inbox have
+    // different gates, and merging them would mean one of the two gates is
+    // applied to both.
+    // -----------------------------------------------------------------------
+    Route::middleware('feature:notifications')->group(function () {
+        Route::controller(NotificationInboxController::class)->group(function () {
+            Route::get('/notifications/inbox', 'index')->name('notifications.inbox');
+            Route::post('/notifications/inbox/{id}/read', 'markAsRead')
+                ->name('notifications.inbox.read');
+            Route::post('/notifications/inbox/read-all', 'markAllAsRead')
+                ->name('notifications.inbox.read-all');
+        });
+    });
 });

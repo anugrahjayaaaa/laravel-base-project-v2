@@ -1,16 +1,13 @@
 @component('mail::message')
-# Welcome
+# Verify your email to activate your account
 
-Welcome aboard. Your account is ready, {{ $username }}.
-
-Verify your email address to activate it. You can sign in once the link below is used.
+Open the link below to activate your account, then sign in as **{{ $username }}**.
 
 @component('mail::button', ['url' => $url])
-Verify Email
+Verify email address
 @endcomponent
 
-This verification link expires in **{{ $expireMinutes }} minutes**.
+This link expires in **{{ $expireMinutes }} minutes**.
 
 If you did not create this account, no action is needed.
-
 @endcomponent

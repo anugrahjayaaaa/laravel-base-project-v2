@@ -2,6 +2,7 @@
 
 namespace App\Actions\V1\Feature;
 
+use App\Actions\V1\Notification\NotificationAdminEventAction;
 use App\Models\FeatureFlag;
 use App\Models\User;
 use App\Support\FeatureCatalog;
@@ -21,6 +22,11 @@ use Laravel\Pennant\Feature;
  */
 class FeatureToggleAction
 {
+    public function __construct(
+        private readonly NotificationAdminEventAction $notifyAction,
+    ) {
+    }
+
     /**
      * The audit event name. Stable string — the audit viewer filters on it.
      */
@@ -103,6 +109,11 @@ class FeatureToggleAction
         // either leaves the page showing the state the operator just replaced.
         Feature::flushCache();
         Cache::forget(self::SNAPSHOT);
+
+
+        // Every `features.manage` holder, after the commit. A flag flipped and
+        // nobody told is two operators disagreeing about whether it is on.
+        $this->notifyAction->configurationChanged('feature.changed', $slug, $causer);
 
         return [
             'slug' => $slug,

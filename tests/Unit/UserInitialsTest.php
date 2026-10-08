@@ -27,8 +27,7 @@ class UserInitialsTest extends TestCase
         ];
     }
 
-    #[Test]
-    #[DataProvider('names')]
+        #[DataProvider('names')]
     public function test_initials_follow_the_documented_rule(string $name, string $expected): void
     {
         $user = new User(['name' => $name]);
@@ -36,8 +35,7 @@ class UserInitialsTest extends TestCase
         $this->assertSame($expected, $user->initials());
     }
 
-    #[Test]
-    public function test_a_trashed_user_is_badged_danger(): void
+        public function test_a_trashed_user_is_badged_danger(): void
     {
         $this->assertSame('bg-danger text-white', UserStatusEnum::ACTIVE->badgeClass(trashed: true));
         $this->assertNotSame(
@@ -50,8 +48,7 @@ class UserInitialsTest extends TestCase
      * Every case has to be handled. A new status with no arm here is an
      * UnhandledMatchError on the user list page, so the test walks them all.
      */
-    #[Test]
-    public function test_every_status_has_a_badge_class(): void
+        public function test_every_status_has_a_badge_class(): void
     {
         foreach (UserStatusEnum::cases() as $status) {
             $this->assertNotSame('', $status->badgeClass(), "{$status->value} has no badge class");
