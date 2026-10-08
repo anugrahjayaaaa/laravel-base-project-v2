@@ -65,11 +65,15 @@ class RolesChangedNotification extends Notification implements ShouldQueue
      */
     public function toMail(User $notifiable): MailMessage
     {
-        $message = new MailMessage;
+        $isPersonal = $this->isSelf($notifiable);
+        $message = new MailMessage();
 
-        $message->subject('Your roles have changed')
-            ->line($this->summary())
-            ->line('Contact an administrator if you did not expect this.');
+        $message->subject(
+            $isPersonal
+                ? 'Your account roles have been updated'
+                : sprintf("Roles for user '%s' were updated", $this->user->username)
+        )
+            ->line($this->summary());
 
         if ($this->added !== []) {
             $message->line('Added: '.implode(', ', $this->added));
@@ -79,6 +83,8 @@ class RolesChangedNotification extends Notification implements ShouldQueue
             $message->line('Removed: '.implode(', ', $this->removed));
         }
 
+        $message->line('Contact an administrator if you did not expect this.');
+
         return $message;
     }
 
@@ -87,14 +93,18 @@ class RolesChangedNotification extends Notification implements ShouldQueue
      */
     public function toArray(User $notifiable): array
     {
+        $isPersonal = $this->isSelf($notifiable);
+
         return [
-            'subject' => 'Your roles have changed',
-            'lines' => [$this->summary()],
+            'subject' => $isPersonal
+                ? 'Your account roles have been updated'
+                : sprintf("Roles for user '%s' were updated", $this->user->username),
+            'lines' => $this->lines(),
         ];
     }
 
     /**
-     * One sentence naming the actor.
+     * The summary line naming the actor.
      *
      * Falls back to a neutral wording when the change was made by a system job or
      * an API without an actor — "your roles were changed" is still true, and a
@@ -105,5 +115,33 @@ class RolesChangedNotification extends Notification implements ShouldQueue
         $by = $this->causer !== null ? ' by '.$this->causer->name : '';
 
         return sprintf('Your roles%s were changed.', $by);
+    }
+
+    /**
+     * The detail lines listing granted and revoked roles.
+     */
+    private function lines(): array
+    {
+        $by = $this->causer !== null ? ' by '.$this->causer->name : '';
+
+        $lines = [sprintf('Your roles%s were changed.', $by)];
+
+        if ($this->added !== []) {
+            $lines[] = sprintf('Granted roles: %s.', implode(', ', $this->added));
+        }
+
+        if ($this->removed !== []) {
+            $lines[] = sprintf('Revoked roles: %s.', implode(', ', $this->removed));
+        }
+
+        return $lines;
+    }
+
+    /**
+     * Is this recipient the user whose access changed?
+     */
+    private function isSelf(User $notifiable): bool
+    {
+        return $notifiable->getKey() === $this->user->getKey();
     }
 }

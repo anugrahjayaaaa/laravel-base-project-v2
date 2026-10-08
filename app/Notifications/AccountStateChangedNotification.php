@@ -56,17 +56,24 @@ class AccountStateChangedNotification extends Notification implements ShouldQueu
      *
      * @var array<string, string>
      */
-    private const SUBJECTS = [
+    private const PERSONAL_SUBJECTS = [
         'user.locked' => 'Your account has been locked',
         'user.unlocked' => 'Your account has been unlocked',
         'user.deactivated' => 'Your account has been deactivated',
         'user.activated' => 'Your account has been activated',
     ];
 
+    private const ADMIN_SUBJECTS = [
+        'user.locked' => 'Account was locked',
+        'user.unlocked' => 'Account was unlocked',
+        'user.deactivated' => 'Account was deactivated',
+        'user.activated' => 'Account was activated',
+    ];
+
     /**
      * @param  User      $subject  The account that changed.
      * @param  User|null $causer   The administrator who changed it, when known.
-     * @param  string    $event    One of the keys in self::SUBJECTS.
+     * @param  string    $event    One of the keys in self::PERSONAL_SUBJECTS or ADMIN_SUBJECTS.
      */
     public function __construct(
         private readonly User $subject,
@@ -90,10 +97,15 @@ class AccountStateChangedNotification extends Notification implements ShouldQueu
      */
     public function toMail(User $notifiable): MailMessage
     {
+        $isPersonal = $this->isSelf($notifiable);
         $message = new MailMessage();
 
-        $message->subject(self::SUBJECTS[$this->event] ?? 'Your account has changed')
-            ->line($this->explanation())
+        $message->subject(
+            $isPersonal
+                ? self::PERSONAL_SUBJECTS[$this->event] ?? 'Your account has changed'
+                : self::ADMIN_SUBJECTS[$this->event] ?? 'Account status changed'
+        )
+            ->line($this->explanation($isPersonal))
             ->line('If you believe this is a mistake, contact an administrator.');
 
         return $message;
@@ -110,9 +122,13 @@ class AccountStateChangedNotification extends Notification implements ShouldQueu
      */
     public function toArray(User $notifiable): array
     {
+        $isPersonal = $this->isSelf($notifiable);
+
         return [
-            'subject' => self::SUBJECTS[$this->event] ?? 'Your account has changed',
-            'lines' => [$this->explanation()],
+            'subject' => $isPersonal
+                ? self::PERSONAL_SUBJECTS[$this->event] ?? 'Your account has changed'
+                : (self::ADMIN_SUBJECTS[$this->event] ?? 'Account status changed'),
+            'lines' => [$this->explanation($isPersonal)],
         ];
     }
 
@@ -124,18 +140,30 @@ class AccountStateChangedNotification extends Notification implements ShouldQueu
      * it was. The subject's own name is included because the notification also
      * reaches administrators who did not perform it.
      */
-    private function explanation(): string
+    private function explanation(bool $isPersonal = true): string
     {
         $by = $this->causer !== null
             ? ' by '.$this->causer->name
             : '';
 
+        if ($isPersonal) {
+            return sprintf('Your account was %s.%s', $this->pastTense(), $by);
+        }
+
         return sprintf(
-            'The account %s%s was %s.',
+            "The account '%s' was %s.%s",
             $this->subject->username,
-            $by,
-            $this->pastTense()
+            $this->pastTense(),
+            $by
         );
+    }
+
+    /**
+     * Is this recipient the account itself?
+     */
+    private function isSelf(User $notifiable): bool
+    {
+        return $notifiable->getKey() === $this->subject->getKey();
     }
 
     /**

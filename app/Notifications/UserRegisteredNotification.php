@@ -53,17 +53,23 @@ class UserRegisteredNotification extends Notification implements ShouldQueue
      */
     public function toMail(User $notifiable): MailMessage
     {
-        $message = new MailMessage;
+        $isSelf = $this->isSelf($notifiable);
+        $message = new MailMessage();
 
-        $message->subject($this->isSelf($notifiable) ? 'Your account is ready' : 'A new account was created')
-            ->line(sprintf(
-                'The account %s (%s) was created%s.',
-                $this->user->username,
-                $this->user->email,
-                $this->causer !== null ? ' by '.$this->causer->name : ''
-            ));
+        $message->subject(
+            $isSelf
+                ? 'Your account registration is complete'
+                : sprintf('New registration: %s', $this->user->username)
+        )
+            ->line($isSelf
+                ? sprintf("Your account '%s' has been successfully created.", $this->user->username)
+                : sprintf("New user '%s' (%s) registered.", $this->user->username, $this->user->email));
 
-        if (! $this->isSelf($notifiable)) {
+        if ($this->causer !== null) {
+            $message->line(sprintf('Registered by %s.', $this->causer->name));
+        }
+
+        if (! $isSelf) {
             $message->line('No credentials are included in this message.');
         }
 
@@ -75,9 +81,23 @@ class UserRegisteredNotification extends Notification implements ShouldQueue
      */
     public function toArray(User $notifiable): array
     {
+        $isSelf = $this->isSelf($notifiable);
+        $by = $this->causer !== null ? ' by '.$this->causer->name : '';
+
+        if ($isSelf) {
+            return [
+                'subject' => 'Your account registration is complete',
+                'lines' => [
+                    sprintf("Your account '%s' has been successfully created.", $this->user->username),
+                ],
+            ];
+        }
+
         return [
-            'subject' => $this->isSelf($notifiable) ? 'Your account is ready' : 'A new account was created',
-            'lines' => [sprintf('The account %s was created.', $this->user->username)],
+            'subject' => sprintf('New registration: %s', $this->user->username),
+            'lines' => [
+                sprintf("New user '%s' (%s) registered%s.", $this->user->username, $this->user->email, $by),
+            ],
         ];
     }
 
