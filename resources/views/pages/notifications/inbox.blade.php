@@ -92,7 +92,7 @@
                     </thead>
                     <tbody>
                         @forelse ($notifications as $notification)
-                            <tr @class(['table-light' => $notification->read_at === null])>
+                            <tr @class(['table-row-unread' => $notification->read_at === null])>
                                 <td class="align-middle">
                                     {{-- Colour is not the only signal (design system
                                          §Accessibility): the state is a word, so the row

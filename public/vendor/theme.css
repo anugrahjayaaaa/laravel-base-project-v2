@@ -363,6 +363,15 @@ body.sidebar-collapse .app-sidebar:not(:hover) .sidebar-brand i {
   padding: .65rem 1rem;
 }
 
+/* Unread notification rows: subtle primary tint that adapts to dark mode.
+   Replaces Bootstrap's table-light which hardcodes #f8f9fa (always light). */
+.table-row-unread > td {
+  background: color-mix(in srgb, var(--lbp-primary) 8%, transparent);
+}
+[data-bs-theme="dark"] .table-row-unread > td {
+  background: color-mix(in srgb, var(--lbp-primary) 10%, transparent);
+}
+
 .table thead th {
   font-size: .7rem;
   text-transform: uppercase;
