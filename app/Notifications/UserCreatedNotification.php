@@ -60,7 +60,12 @@ class UserCreatedNotification extends Notification implements ShouldQueue
     {
         // From the admin's global switches rather than a hardcoded list, so the
         // channels page controls something that is actually read.
-        return NotificationChannel::for();
+        //
+        // Essential: the temporary password travels in this mail and nowhere
+        // else. Mail off would create an account nobody, including the
+        // administrator who created it, can sign in to. See
+        // `NotificationChannel::for()`.
+        return NotificationChannel::for(essential: true);
     }
 
     /**

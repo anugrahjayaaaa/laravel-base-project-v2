@@ -104,7 +104,11 @@ class AccountStateChangedNotification extends Notification implements ShouldQueu
      */
     public function via(User $notifiable): array
     {
-        return NotificationChannel::for();
+        // Essential: a locked or deactivated account cannot open the inbox that
+        // would otherwise carry this — `account.state` refuses the login first.
+        // Withholding the mail would leave the user unable to learn why they are
+        // locked out. See `NotificationChannel::for()`.
+        return NotificationChannel::for(essential: true);
     }
 
     /**

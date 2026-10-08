@@ -53,7 +53,11 @@ class ChangeEmailVerificationNotification extends Notification implements Should
     {
         // From the admin's global switches rather than a hardcoded list, so the
         // channels page controls something that is actually read.
-        return NotificationChannel::for();
+        //
+        // Essential: this link is the only thing that completes the email change.
+        // Mail off would strand the request — the account keeps its old address
+        // and the pending one is never confirmed. See `NotificationChannel::for()`.
+        return NotificationChannel::for(essential: true);
     }
 
     /**

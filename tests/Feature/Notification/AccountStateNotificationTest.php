@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Notification;
 
+use App\Actions\V1\Notification\NotificationAdminEventAction;
 use App\Actions\V1\User\UserDeactivateAction;
 use App\Actions\V1\User\UserLockAction;
 use App\Actions\V1\User\UserUnlockAction;
@@ -11,6 +12,7 @@ use App\Models\RoleLookup;
 use App\Models\SystemSetting;
 use App\Models\User;
 use App\Notifications\AccountStateChangedNotification;
+use App\Notifications\ConfigurationChangedNotification;
 use App\Support\SystemRole;
 use Database\Seeders\FeatureFlagSeeder;
 use Database\Seeders\PermissionSeeder;
@@ -93,7 +95,7 @@ class AccountStateNotificationTest extends TestCase
      * This is the test that would have caught the gap. Before this was wired,
      * `NotificationAudience` had four passing tests and zero callers.
      */
-        public function test_locking_an_account_reaches_both_audiences(): void
+    public function test_locking_an_account_reaches_both_audiences(): void
     {
         // Fixtures FIRST, then the fake. Building a role grants permissions, and
         // Spatie fires its own model events through the Notification facade — so
@@ -133,7 +135,7 @@ class AccountStateNotificationTest extends TestCase
      * between the events is a string, and a rule enforced in one place cannot be
      * enforced in four.
      */
-        public function test_every_account_state_event_notifies_both_audiences(): void
+    public function test_every_account_state_event_notifies_both_audiences(): void
     {
         foreach ([
             // The operator holds the permission for THAT event, not a generic
@@ -170,7 +172,7 @@ class AccountStateNotificationTest extends TestCase
      * only consulted for undeclared ones. Writing it that way is a one-word
      * mistake that silently drops the person the notification is about.
      */
-        public function test_the_subject_is_notified_even_though_the_event_is_administrative (): void
+    public function test_the_subject_is_notified_even_though_the_event_is_administrative(): void
     {
         Notification::fake();
 
@@ -194,7 +196,7 @@ class AccountStateNotificationTest extends TestCase
      * it happens exactly when the rule works — an admin is in the permission set
      * by definition.
      */
-        public function test_a_recipient_in_both_audiences_is_notified_once (): void
+    public function test_a_recipient_in_both_audiences_is_notified_once(): void
     {
         Notification::fake();
 
@@ -212,7 +214,7 @@ class AccountStateNotificationTest extends TestCase
      * worse outcome than a missed notification: the admin asked for a lock, the
      * lock did not happen, and nothing says why.
      */
-        public function test_a_delivery_failure_does_not_undo_the_state_change (): void
+    public function test_a_delivery_failure_does_not_undo_the_state_change(): void
     {
         Notification::shouldReceive('send')->andThrow(new \RuntimeException('transport down'));
 
@@ -236,7 +238,7 @@ class AccountStateNotificationTest extends TestCase
      * `NotificationChannel::for()` ignored it — the same category of defect as a
      * `pending` feature flag, and the reason this assertion exists.
      */
-        public function test_the_in_app_switch_gates_the_database_channel (): void
+    public function test_the_in_app_switch_gates_the_database_channel(): void
     {
         SystemSetting::set('notification_channel_mail', 'false');
         SystemSetting::set('notification_channel_database', 'true');
@@ -246,7 +248,7 @@ class AccountStateNotificationTest extends TestCase
         $this->assertContains('database', NotificationChannel::for());
     }
 
-        public function test_turning_mail_off_stops_mail(): void
+    public function test_turning_mail_off_stops_mail(): void
     {
         SystemSetting::set('notification_channel_mail', 'false');
         SystemSetting::bustCache();
@@ -259,8 +261,13 @@ class AccountStateNotificationTest extends TestCase
      *
      * `NotificationChannel::for()` returning the right array proves nothing if
      * nothing calls it — the defect this file exists to catch, one level down.
+     *
+     * This is the ORDINARY half: an administrative notice nobody is waiting on
+     * follows the switch like anything else. The essential half is asserted
+     * below, and the contrast between them is the point — one switch, two
+     * behaviours, both deliberate.
      */
-        public function test_the_switches_reach_the_dispatched_notification (): void
+    public function test_the_switches_reach_the_dispatched_notification(): void
     {
         Notification::fake();
 
@@ -269,15 +276,34 @@ class AccountStateNotificationTest extends TestCase
         SystemSetting::bustCache();
 
         $subject = $this->ordinaryUser();
-        app(UserLockAction::class)->run($subject, $this->holderOf('users.lock'));
+        $admin = $this->holderOf('users.lock');
+        // `user.updated` resolves its audience through `users.update`, so the
+        // holder here is a different person — reusing `$admin` would assert
+        // against an empty audience and read as "nothing was sent".
+        $editor = $this->holderOf('users.update');
 
-        Notification::assertSentTo($subject, AccountStateChangedNotification::class);
+        app(UserLockAction::class)->run($subject, $admin);
+        app(NotificationAdminEventAction::class)
+            ->configurationChanged('user.updated', 'Profile updated', $editor);
 
         // `assertSentTo` returns void in this framework, so the sent instance is
         // read off the fake rather than captured from the assertion.
-        $sent = Notification::sent($subject, AccountStateChangedNotification::class)->first();
+        $accountState = Notification::sent($subject, AccountStateChangedNotification::class)->first();
 
-        $this->assertNotNull($sent, 'precondition: the subject was notified');
-        $this->assertSame(['database'], $sent->via($subject));
+        $this->assertNotNull($accountState, 'precondition: the subject was notified');
+        $this->assertSame(
+            ['mail', 'database'],
+            $accountState->via($subject),
+            'a locked account cannot open the inbox, so mail is the only channel that reaches it'
+        );
+
+        $administrative = Notification::sent($editor, ConfigurationChangedNotification::class)->first();
+
+        $this->assertNotNull($administrative, 'precondition: the administrator was notified');
+        $this->assertSame(
+            ['database'],
+            $administrative->via($admin),
+            'an administrative notice has an inbox to land in and follows the switch'
+        );
     }
 }

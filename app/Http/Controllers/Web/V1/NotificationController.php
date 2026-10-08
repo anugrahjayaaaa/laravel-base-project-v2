@@ -65,7 +65,13 @@ class NotificationController extends Controller
         ],
         'mail' => [
             'label' => 'Mail',
-            'description' => 'Send the notification to the account email address.',
+            // Says what the switch does NOT do, because a switch that silently
+            // does not apply to four of the module's notifications is a switch
+            // that lies about its own effect. See `NotificationChannel::for()`.
+            'description' => 'Send the notification to the account email address. '
+                .'Account verification, email-change confirmation, account state changes '
+                .'and temporary passwords are always emailed — turning this off would leave '
+                .'those flows with no way to complete.',
         ],
         'database' => [
             'label' => 'Database',

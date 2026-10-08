@@ -57,7 +57,11 @@ class RegisterNotification extends Notification implements ShouldQueue
     {
         // From the admin's global switches rather than a hardcoded list, so the
         // channels page controls something that is actually read.
-        return NotificationChannel::for();
+        //
+        // Essential: this link is the only thing that activates the account. Mail
+        // off would leave a registered user permanently unable to finish signing
+        // up. See `NotificationChannel::for()`.
+        return NotificationChannel::for(essential: true);
     }
 
     /**
