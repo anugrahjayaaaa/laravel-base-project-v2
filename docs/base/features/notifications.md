@@ -153,6 +153,31 @@ Mail/notification templates:
   project-wide phase (`docs/planning/progress.md`). Do not add `__()` calls
   against a source that does not exist yet.
 
+### Copy rules
+
+The rules below are not style preferences; they come from where these strings are
+read. `NotificationCopyTest` asserts the mechanical ones across all seven classes
+and both audiences, so the defects it was written for cannot return unnoticed.
+
+| Rule | Why |
+|---|---|
+| **The body never repeats the subject.** | The subject says what changed; the lines say who did it, what moved, and what to do. A body that restates its own title makes a notification with something to say look empty. |
+| **The subject stands alone.** | The bell dropdown shows the subject and nothing else, and truncates it. "Account was locked" names no account; "Locked account: jane" does, and survives truncation because the kind of thing comes first. |
+| **Sentence case, no terminal punctuation on the subject.** | Titles in a list, not headlines. Lines are full sentences and keep their full stops. |
+| **Address the reader, and name the actor once.** | Personal copy is second person; administrative copy names the account in the subject and the operator at most once between the two. |
+| **Say where the next step happens when the notification cannot perform it.** | These payloads carry no link and the inbox has no controls, so a reader who has to go elsewhere is told where — in the mail, or on the page that owns the setting. |
+| **Present tense, active voice.** | A notification reports what is true now. "Your account is locked" is shorter and truer than "your account has been locked", and a passive subject spends its first four words on grammar. |
+
+One audience can produce two rows for one event — a self-registration writes both
+`RegisterNotification` and `UserRegisteredNotification` — so those two word
+different questions deliberately: one carries the action ("Verify your email to
+activate your account"), the other the status ("Registration received").
+
+Sentence case itself is **not** asserted by the test: a subject can legitimately
+carry a person's name ("Ana Silva changed the roles of jane"), and no mechanical
+check separates that from Title Case without a name list. The convention lives in
+the template constants; the assertions cover what a machine can judge.
+
 ## Settings Integration
 
 Every transport value above is an operational setting, managed in the UI at

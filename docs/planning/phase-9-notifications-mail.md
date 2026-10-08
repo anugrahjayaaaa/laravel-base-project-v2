@@ -578,6 +578,51 @@ this one that was checked against the code and the test suite.
 
 ---
 
+## Audit of the shipped copy — 2026-10-08, findings closed
+
+A separate pass on the wording rather than the code, because the copy was
+readable-looking and wrong in the same way on all seven classes. Researched
+against notification-copy guidance (OneSignal, Braze, Appcues, Microsoft Fluent 2
+content design) and then applied to every class that reaches the inbox.
+
+| # | Defect | Example as it shipped | Now |
+|---|---|---|---|
+| **1** | **The body repeated the subject.** | Subject "Role was updated", only line "Role was updated by Ana Silva." | The lines carry the actor, the target, and the next step — nothing the subject already said |
+| **2** | **Broken sentences from string concatenation.** | `sprintf('Your roles%s were changed.', $by)` → **"Your roles by Ana Silva were changed."** | The actor is its own line, or lives in the subject when the subject has room |
+| **3** | **Subjects that do not identify themselves.** | "Account was locked" — in the bell, with no body and a truncation | "Locked account: jane", kind first, target after a colon |
+| **4** | **Copy addressed to the wrong surface.** | An inbox row reading "Click the verification link sent to your email" | The row says the link was emailed, because the inbox has no link in it |
+| **5** | **Two rows, two claims, one signup.** | "Your account registration is complete" beside "Verify your email to activate your account" | One carries the status, one carries the action |
+| **6** | **Passive, present-perfect, Title Case.** | "Your account has been created", "# Your Account Has Been Created" | Present tense, active, sentence case, and no terminal punctuation on a list title |
+| **7** | **Debug strings in a reader's face.** | "2 key(s)", "Target: billing_v2", "No credentials are included in this message." | "3 settings saved.", the target in the subject, and the sentence about the mail deleted — it told a reader nothing they could use |
+
+`NEXT_STEPS` and `ACTIONS` were added so the body answers "what do I do", which
+none of them did. The two `detail` call sites that passed fragments rather than
+targets were corrected (`user.updated` passed "Profile updated", which produced
+"Profile updated: Profile updated"; `setting.changed` passed "2 key(s)").
+
+**`NotificationCopyTest`** pins what a machine can judge, across all seven
+classes and both audiences: no line may contain everything the subject already
+says, subjects carry no terminal punctuation while lines are full sentences,
+subjects fit a truncating bell, and no line is a fragment or carries markup. Two
+rules I wrote first and then removed, because they were wrong:
+
+- **"The subject must end in a full stop."** The opposite is the convention for a
+  list title, and the codebase's own rows never had one.
+- **"Every word of the subject must be lowercase."** Fails on "Ana Silva changed
+  the roles of jane" — a proper noun is capitalised, and no mechanical check
+  separates that from Title Case. Kept as a documented convention in the template
+  constants rather than a test that would get switched off for being noisy.
+
+Mutation-checked: restoring the old "Role was updated by Ana Silva." line turns
+the redundancy test red.
+
+One finding is a harness trap worth remembering, because it looks exactly like a
+copy bug: `isSelf()` compares `getKey()`, and two unsaved factory models both
+have a null key, so every operator row rendered as the personal copy and the
+administrative half of the test proved nothing. The test now pins ids.
+
+---
+
 ## Out of scope (deferred, stated not forgotten)
 
 - Email template editing UI (the brief's "template email" has no task; `A1` only
