@@ -12,6 +12,9 @@ use Database\Seeders\FeatureFlagSeeder;
 use Database\Seeders\PermissionSeeder;
 use Database\Seeders\RoleSeeder;
 use Database\Seeders\SystemSettingSeeder;
+use Illuminate\Console\Scheduling\Event;
+use Illuminate\Console\Scheduling\Schedule;
+use Illuminate\Contracts\Container\Container;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Notifications\Events\NotificationSent;
 use Illuminate\Support\Facades\DB;
@@ -339,6 +342,80 @@ class NotificationInboxTest extends TestCase
             $html,
             'the dropdown still renders the row as unread after it was marked read'
         );
+    }
+
+    /**
+     * The `notifications` table has no ceiling on it. The inbox paginates, which
+     * is exactly what hides this: every screen that reads the table looks fine
+     * while it keeps filling. The scheduled sweep is the only thing that deletes
+     * from it.
+     *
+     * Asserted on the SCHEDULE rather than on the closure, because a pruning
+     * query that is never registered passes every test that runs the query by
+     * hand — the same shape as the audience rule that shipped with four passing
+     * tests and no caller.
+     */
+    #
+    public function test_read_notifications_are_pruned_and_unread_ones_are_not(): void
+    {
+        $user = $this->login();
+
+        $staleRead = $this->notify($user, 'Read long ago', read: true);
+        $freshRead = $this->notify($user, 'Read yesterday', read: true);
+        $staleUnread = $this->notify($user, 'Unread for months');
+
+        // Age the rows by writing the timestamps directly: the model casts
+        // `created_at`, so a mass update through Eloquent would fight it, and
+        // these three rows differ only in WHEN they were read.
+        foreach ([$staleRead, $freshRead, $staleUnread] as $id) {
+            DB::table('notifications')->where('id', $id)->update([
+                'created_at' => now()->subDays(200),
+            ]);
+        }
+
+        DB::table('notifications')->where('id', $staleRead)->update([
+            'read_at' => now()->subDays(200),
+        ]);
+
+        $event = $this->scheduledEvent('notification-retention');
+
+        $this->assertNotNull(
+            $event,
+            'nothing prunes the notifications table; it grows one row per delivery, forever'
+        );
+
+        // The event's own callback, run the way the scheduler would — not a
+        // query copied into this test, which would keep passing if the sweep were
+        // unregistered.
+        $event->run(app(Container::class));
+
+        $remaining = DB::table('notifications')->pluck('id')->all();
+
+        $this->assertNotContains($staleRead, $remaining, 'a read notification past the window survived');
+        $this->assertContains($freshRead, $remaining, 'a read notification inside the window was deleted');
+        $this->assertContains(
+            $staleUnread,
+            $remaining,
+            'an unread notification was deleted — that is a badge the user was never shown'
+        );
+    }
+
+    /**
+     * The registered event with this name, or null.
+     *
+     * Read out of the schedule rather than inferred from a delete that happened,
+     * so a sweep that runs but is never scheduled fails here rather than passing
+     * because the test invoked the closure by hand.
+     */
+    private function scheduledEvent(string $name): ?Event
+    {
+        foreach (app(Schedule::class)->events() as $event) {
+            if ($event->description === $name) {
+                return $event;
+            }
+        }
+
+        return null;
     }
 
     #
