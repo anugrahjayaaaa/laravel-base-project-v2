@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use App\Exceptions\LastSuperadminException;
 use App\Models\User;
 
 /**
@@ -43,7 +44,7 @@ class LastSuperadmin
             return;
         }
 
-        throw new \App\Exceptions\LastSuperadminException(
+        throw new LastSuperadminException(
             __("The last superadmin cannot be :verb.", ['verb' => $verb])
         );
     }
