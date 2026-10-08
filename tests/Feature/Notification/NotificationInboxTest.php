@@ -223,10 +223,13 @@ class NotificationInboxTest extends TestCase
         $user = $this->login();
 
         $this->notify($user, 'First');
-        $this->assertStringContainsString('1 unread notifications', $this->get(route('dashboard'))->getContent());
+        $html = $this->get(route('dashboard'))->getContent();
+        $this->assertStringContainsString('badge-notification-unread', $html);
+        $this->assertStringContainsString('>1</span>', $html);
 
         // Second render: served from cache, still correct.
-        $this->assertStringContainsString('1 unread notifications', $this->get(route('dashboard'))->getContent());
+        $html = $this->get(route('dashboard'))->getContent();
+        $this->assertStringContainsString('>1</span>', $html);
 
         // A notification arriving on ANOTHER user's request — an admin creating a
         // user, a queued job — must clear this user's cached count.
@@ -234,7 +237,7 @@ class NotificationInboxTest extends TestCase
         UnreadNotificationCount::forget($user);
 
         $this->assertStringContainsString(
-            '2 unread notifications',
+            '>2</span>',
             $this->get(route('dashboard'))->getContent()
         );
     }
@@ -250,13 +253,14 @@ class NotificationInboxTest extends TestCase
         $user = $this->login();
         $id = $this->notify($user);
 
-        $this->assertStringContainsString('1 unread notifications', $this->get(route('dashboard'))->getContent());
+        $this->assertStringContainsString('>1</span>', $this->get(route('dashboard'))->getContent());
 
         $this->post(route('notifications.inbox.read', $id))->assertRedirect();
 
+        $html = $this->get(route('dashboard'))->getContent();
         $this->assertStringNotContainsString(
-            'unread notifications',
-            $this->get(route('dashboard'))->getContent(),
+            'badge-notification-unread',
+            $html,
             'the bell still shows a count after everything was marked read'
         );
     }
@@ -306,7 +310,7 @@ class NotificationInboxTest extends TestCase
 
         $html = $this->get(route('dashboard'))->assertOk()->getContent();
 
-        $this->assertStringContainsString('fa-bell', $html, 'an ordinary user does not see the bell');
+        $this->assertStringContainsString('bi-bell', $html, 'an ordinary user does not see the bell');
         $this->assertStringContainsString(route('notifications.inbox'), $html);
     }
 
@@ -321,7 +325,7 @@ class NotificationInboxTest extends TestCase
 
         $html = $this->get(route('dashboard'))->assertOk()->getContent();
 
-        $this->assertStringContainsString('3 unread notifications', $html);
+        $this->assertStringContainsString('>3</span>', $html);
     }
 
     #
@@ -332,8 +336,8 @@ class NotificationInboxTest extends TestCase
 
         $html = $this->get(route('dashboard'))->assertOk()->getContent();
 
-        $this->assertStringContainsString('fa-bell', $html);
-        $this->assertStringNotContainsString('unread notifications', $html);
+        $this->assertStringContainsString('bi-bell', $html);
+        $this->assertStringNotContainsString('badge-notification-unread', $html);
     }
 
     #
@@ -342,7 +346,7 @@ class NotificationInboxTest extends TestCase
         $this->login();
         \Laravel\Pennant\Feature::deactivate('notifications');
 
-        $this->assertStringNotContainsString('fa-bell', $this->get(route('dashboard'))->getContent());
+        $this->assertStringNotContainsString('bi-bell', $this->get(route('dashboard'))->getContent());
         $this->get(route('notifications.inbox'))->assertForbidden();
     }
 

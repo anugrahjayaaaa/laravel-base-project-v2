@@ -267,10 +267,14 @@ class NotificationAccessTest extends TestCase
         $this->login(SystemRole::ADMIN);
 
         Feature::activate('notifications');
-        $this->assertStringContainsString('fa-bell', $this->header());
+
+        $this->assertStringContainsString('bi-bell', $this->header());
+        $this->assertStringContainsString('data-bs-toggle="dropdown"', $this->header());
+        $this->assertStringContainsString('href="#"', $this->header());
+        $this->assertStringNotContainsString('fa-bell', $this->header());
 
         Feature::deactivate('notifications');
-        $this->assertStringNotContainsString('fa-bell', $this->header());
+        $this->assertStringNotContainsString('bi-bell', $this->header());
     }
 
     #
@@ -283,7 +287,7 @@ class NotificationAccessTest extends TestCase
         // The bell now points at the inbox, which every authenticated user can
         // open — the old permission-gated assertion was inverted by Group C.
         $this->assertStringContainsString(
-            'fa-bell',
+            'bi-bell',
             $this->header(),
             'the bell is still hidden from the users an inbox exists for'
         );
@@ -303,7 +307,7 @@ class NotificationAccessTest extends TestCase
         $header = $this->header();
 
         $this->assertMatchesRegularExpression(
-            '/<a[^>]*href="[^"]*notifications\/inbox"[^>]*>[\s\S]*?<i class="far fa-bell"/',
+            '/<a[^>]*href="[^"]*notifications\/inbox"[^>]*data-bs-toggle="dropdown"[^>]*>[\s\S]*?<i class="bi bi-bell[^"]*"/',
             $header,
             'the bell is not a link into the notifications module'
         );

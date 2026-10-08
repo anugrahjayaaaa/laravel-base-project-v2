@@ -93,7 +93,7 @@ class DashboardTest extends TestCase
         \Laravel\Pennant\Feature::activate('notifications');
 
         $response = $this->get('/dashboard');
-        $response->assertSee('fa-bell');
+        $response->assertSee('bi-bell');
     }
 
     public function test_dashboard_includes_user_menu(): void

@@ -33,10 +33,17 @@
 - **Height**: 3.5rem (`--lbp-app-chrome-height`) — shared CSS variable with `.sidebar-brand` so header and sidebar brand area align exactly.
 - Contains: sidebar toggle, notification icon, theme toggle, user dropdown, **search features**. Search is grouped with sidebar toggle on the left side of the header.
 - Sidebar toggle button: chevron icon, `data-lte-toggle="sidebar"`, visible on desktop only (`d-none d-md-inline-flex`).
-- Icons: `fas` (solid) for all interactive elements, `far` for notification bell. Consistent 1x sizing.
+- Icons: `fas` (solid) for all interactive chrome elements (sidebar toggle, theme toggle, user menu), `bi bi-bell` for the notification bell (per NotificationAccessTest). Icon size `fs-6` on the right cluster so all three icon controls match visually.
 - Right elements use `ms-auto` for user dropdown to push to far right.
 - Neutralize AdminLTE's fixed 2.5rem nav-link height — use `height: auto; display: flex; align-items: center`.
-- User dropdown: uses Bootstrap 5 `dropdown-menu dropdown-menu-end` with Profile / Settings / Logout.
+- User dropdown: uses Bootstrap 5 `dropdown-menu dropdown-menu-end` with Profile / Sessions / Logout. Stays an `<a data-bs-toggle="dropdown">` anchor (Bootstrap 5 dropdown contract).
+
+### Header icon controls (spacing & hit target)
+
+- Every icon control (bell, theme toggle, user menu) renders as a pill: `border-radius: 9999px`, padding `.5rem .6rem` via the `.app-header .nav-link.text-secondary` theme rule — spacing between controls comes ONLY from `.container-fluid` `gap: .75rem`. No manual `margin-left`, no per-icon `px-4`/`px-3` padding: extra horizontal padding on an icon makes controls look "mepet" (cramped) and inconsistent.
+- Icon `<i>` tags carry NO padding of their own — the nav-link wrapper owns the padding. An icon with `px-3` inside a padded nav-link doubles the gap.
+- **Unread badge**: `position-absolute top-0 start-100 translate-middle` anchored to the bell's nav-link (NOT `top-200`, which floats it off the icon). Classes: `badge rounded-pill bg-danger badge-notification-unread`; `min-width: 1rem`, `font-size: .6rem` from theme.css so 1–2 digit counts stay a compact pill. Count capped at `99+`. Rendered inline inside the `<span>` (no inner whitespace) and `aria-hidden="true"` — the accessible count lives on the anchor's `aria-label="Notifications, N unread"`.
+- **Accessibility**: icon-only controls need `title` + `aria-label`; decorative icons `aria-hidden="true"`.
 
 ## 5. Sidebar (`.app-sidebar`)
 
