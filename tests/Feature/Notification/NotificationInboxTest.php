@@ -13,8 +13,9 @@ use Database\Seeders\PermissionSeeder;
 use Database\Seeders\RoleSeeder;
 use Database\Seeders\SystemSettingSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Notifications\Events\NotificationSent;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification as NotificationFacade;
-
 use Spatie\Permission\PermissionRegistrar;
 use Tests\TestCase;
 
@@ -78,7 +79,7 @@ class NotificationInboxTest extends TestCase
      * open is not an inbox.
      */
     #
-    public function test_an_ordinary_user_reaches_their_inbox (): void
+    public function test_an_ordinary_user_reaches_their_inbox(): void
     {
         $user = $this->login();
         $this->assertFalse($user->can('notifications.view'), 'precondition: holds no notifications.view');
@@ -87,7 +88,7 @@ class NotificationInboxTest extends TestCase
     }
 
     #
-    public function test_the_inbox_shows_the_viewers_notifications (): void
+    public function test_the_inbox_shows_the_viewers_notifications(): void
     {
         $user = $this->login();
         $this->notify($user, 'Welcome aboard');
@@ -98,7 +99,7 @@ class NotificationInboxTest extends TestCase
     }
 
     #
-    public function test_the_inbox_counts_every_unread_not_just_the_page (): void
+    public function test_the_inbox_counts_every_unread_not_just_the_page(): void
     {
         $user = $this->login();
 
@@ -113,7 +114,7 @@ class NotificationInboxTest extends TestCase
     }
 
     #
-    public function test_an_empty_inbox_renders_rather_than_erroring (): void
+    public function test_an_empty_inbox_renders_rather_than_erroring(): void
     {
         $this->login();
 
@@ -131,7 +132,7 @@ class NotificationInboxTest extends TestCase
      * their own inbox to try against this endpoint.
      */
     #
-    public function test_a_user_cannot_mark_another_users_notification_read (): void
+    public function test_a_user_cannot_mark_another_users_notification_read(): void
     {
         $this->login(SystemRole::ADMIN);
 
@@ -174,7 +175,7 @@ class NotificationInboxTest extends TestCase
     }
 
     #
-    public function test_the_viewer_can_mark_their_own_notification_read (): void
+    public function test_the_viewer_can_mark_their_own_notification_read(): void
     {
         $user = $this->login();
         $id = $this->notify($user);
@@ -187,7 +188,7 @@ class NotificationInboxTest extends TestCase
     }
 
     #
-    public function test_an_already_read_notification_is_reported_not_silently_accepted (): void
+    public function test_an_already_read_notification_is_reported_not_silently_accepted(): void
     {
         $user = $this->login();
         $id = $this->notify($user, read: true);
@@ -198,7 +199,7 @@ class NotificationInboxTest extends TestCase
     }
 
     #
-    public function test_an_unknown_notification_id_is_reported_not_a_500 (): void
+    public function test_an_unknown_notification_id_is_reported_not_a_500(): void
     {
         $this->login();
 
@@ -218,7 +219,7 @@ class NotificationInboxTest extends TestCase
      * most.
      */
     #
-    public function test_the_bell_count_is_cached_and_invalidated_when_a_notification_arrives (): void
+    public function test_the_bell_count_is_cached_and_invalidated_when_a_notification_arrives(): void
     {
         $user = $this->login();
 
@@ -265,8 +266,83 @@ class NotificationInboxTest extends TestCase
         );
     }
 
+    /**
+     * The badge and the list under it are two cache entries, cached by the same
+     * class and read from the same page. Invalidation that clears only the count
+     * is the worst version of this bug: the badge updates instantly and the list
+     * beside it still shows the previous five, which reads as the delivery
+     * having failed.
+     *
+     * Asserted through rendered HTML, because the defect is that the two views
+     * disagree — asserting two cache keys would pass with a bug that made the
+     * composer read the wrong one.
+     */
     #
-    public function test_the_bell_count_costs_no_query_on_a_warm_cache (): void
+    public function test_the_bell_list_refreshes_with_the_badge(): void
+    {
+        $user = $this->login();
+        $this->notify($user, 'First notice');
+
+        // Warm both entries, then deliver. `Notification::send` is what fires
+        // NotificationSent in production; creating the row directly does not, so
+        // the invalidation under test is the one a delivery triggers.
+        $this->get(route('dashboard'))->assertOk()->assertSee('First notice');
+
+        $this->notify($user, 'Second notice');
+        $this->notify($user, 'Third notice');
+
+        // Firing the event rather than sending: `Notification::fake()` is on for
+        // every test in this repository, so a real send writes no row and fires
+        // nothing. The event is what production delivery raises, and the listener
+        // under test is the one that drops the cache — the transport that raised
+        // it is not the subject here.
+        event(new NotificationSent($user, new RegisterNotification('someone', 'https://example.test', 60), 'database'));
+
+        $html = $this->get(route('dashboard'))->assertOk()->getContent();
+
+        $this->assertStringContainsString('Third notice', $html, 'the list did not pick up a new notification');
+        $this->assertStringContainsString('>3</span>', $html, 'the badge and the list disagree on the same page');
+    }
+
+    /**
+     * The read half. `markAsRead` fires no notification event, so the action has
+     * to clear both entries itself.
+     *
+     * Asserted on the read STATE, not on the row's presence: the dropdown lists
+     * the five most recent notifications whether they are read or not, so a row
+     * disappearing would be the wrong expectation. What must change is the icon
+     * beside it — and with a stale `recent()` entry that icon stays on the unread
+     * marker for the five minutes the TTL allows, next to a badge that already
+     * dropped.
+     */
+    #
+    public function test_marking_read_clears_the_bell_list_too(): void
+    {
+        $user = $this->login();
+        $id = $this->notify($user, 'Only notice');
+
+        // Warm both entries while the notification is unread.
+        $before = $this->get(route('dashboard'))->assertOk()->getContent();
+        $this->assertStringContainsString('bi-check2-circle', $before, 'precondition: rendered as unread');
+
+        $this->post(route('notifications.inbox.read', $id))->assertRedirect();
+
+        $html = $this->get(route('dashboard'))->assertOk()->getContent();
+
+        $this->assertStringNotContainsString(
+            'badge-notification-unread',
+            $html,
+            'the badge still shows a count after everything was marked read'
+        );
+        $this->assertStringNotContainsString(
+            'bi-check2-circle',
+            $html,
+            'the dropdown still renders the row as unread after it was marked read'
+        );
+    }
+
+    #
+    public function test_the_bell_count_costs_no_query_on_a_warm_cache(): void
     {
         $user = $this->login();
         $this->notify($user);
@@ -304,7 +380,7 @@ class NotificationInboxTest extends TestCase
      * target is now a page any authenticated user can open.
      */
     #
-    public function test_the_bell_points_at_the_inbox_for_an_ordinary_user (): void
+    public function test_the_bell_points_at_the_inbox_for_an_ordinary_user(): void
     {
         $this->login(SystemRole::USER);
 
@@ -315,7 +391,7 @@ class NotificationInboxTest extends TestCase
     }
 
     #
-    public function test_the_bell_shows_the_unread_count (): void
+    public function test_the_bell_shows_the_unread_count(): void
     {
         $user = $this->login();
 
@@ -329,7 +405,7 @@ class NotificationInboxTest extends TestCase
     }
 
     #
-    public function test_the_bell_shows_no_badge_when_everything_is_read (): void
+    public function test_the_bell_shows_no_badge_when_everything_is_read(): void
     {
         $user = $this->login();
         $this->notify($user, 'Done', read: true);
@@ -341,7 +417,7 @@ class NotificationInboxTest extends TestCase
     }
 
     #
-    public function test_a_disabled_flag_hides_the_bell_and_closes_the_inbox (): void
+    public function test_a_disabled_flag_hides_the_bell_and_closes_the_inbox(): void
     {
         $this->login();
         \Laravel\Pennant\Feature::deactivate('notifications');
@@ -360,7 +436,7 @@ class NotificationInboxTest extends TestCase
      * a comment does not keep a mail-out from going to everyone in the table.
      */
     #
-    public function test_an_administrative_event_reaches_only_permission_holders (): void
+    public function test_an_administrative_event_reaches_only_permission_holders(): void
     {
         $operator = User::factory()->create(['email_verified_at' => now()]);
         $operator->assignRole($this->roleWith('users.create'));
@@ -400,7 +476,7 @@ class NotificationInboxTest extends TestCase
      * administrator, who is not opted out of their own account's alerts.
      */
     #
-    public function test_a_personal_event_reaches_only_its_subject (): void
+    public function test_a_personal_event_reaches_only_its_subject(): void
     {
         $admin = User::factory()->create(['email_verified_at' => now()]);
         $admin->assignRole(RoleLookup::find(SystemRole::ADMIN));
@@ -419,7 +495,7 @@ class NotificationInboxTest extends TestCase
      * every administrator in the system.
      */
     #
-    public function test_an_unclassified_event_reaches_nobody_when_there_is_no_subject (): void
+    public function test_an_unclassified_event_reaches_nobody_when_there_is_no_subject(): void
     {
         $this->assertCount(0, NotificationAudience::forEvent('typo.in.the.event.name'));
         $this->assertCount(0, NotificationAudience::forEvent('user.registeredd'));

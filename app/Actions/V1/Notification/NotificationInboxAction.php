@@ -30,7 +30,11 @@ class NotificationInboxAction
         }
 
         $notification->markAsRead();
-        UnreadNotificationCount::forget($viewer);
+
+        // Both cached views, not just the count: the dropdown list sits under
+        // the badge, and a row that stays bold because only the count was
+        // cleared is a read notification that still claims to be unread.
+        UnreadNotificationCount::forgetAllFor($viewer);
 
         return true;
     }
@@ -39,7 +43,7 @@ class NotificationInboxAction
     public function markAllAsRead(User $viewer): int
     {
         $marked = $viewer->unreadNotifications()->update(['read_at' => now()]);
-        UnreadNotificationCount::forget($viewer);
+        UnreadNotificationCount::forgetAllFor($viewer);
 
         return $marked;
     }

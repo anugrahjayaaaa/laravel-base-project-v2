@@ -62,6 +62,28 @@ class UnreadNotificationCount
     }
 
     /**
+     * Drop every cached view of this user's notifications.
+     *
+     * BOTH the count and the recent list, and both are read from the same page:
+     * the badge is the count, the dropdown below it is `recent()`. Clearing only
+     * the count is the worst version of this bug — the badge updates the instant
+     * a notification arrives and the list next to it still shows the previous
+     * five, which reads as the delivery having failed. `forget()` was clearing
+     * the count alone for exactly that long.
+     *
+     * The list is keyed by limit, so there is no single key to forget. The
+     * default limit covers the one caller; a future caller passing a different
+     * limit must be added here, or its list goes stale until the TTL expires.
+     */
+    public static function forgetAllFor(User|int $user): void
+    {
+        $id = $user instanceof User ? $user->getKey() : $user;
+
+        self::forget($id);
+        Cache::forget(self::recentKey($id, self::RECENT_LIMIT));
+    }
+
+    /**
      * Build a Collection of stdClass rows from cached arrays. No query — the
      * caller already has the data serialized as primitives.
      */
@@ -97,7 +119,7 @@ class UnreadNotificationCount
         Event::listen(NotificationSent::class, function (NotificationSent $event): void {
             $notifiable = $event->notifiable;
             if ($notifiable instanceof User) {
-                self::forget($notifiable);
+                self::forgetAllFor($notifiable);
             }
         });
     }
