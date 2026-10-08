@@ -72,7 +72,7 @@ class RegisterNotification extends Notification implements ShouldQueue
     public function toMail(User $notifiable): MailMessage
     {
         return (new MailMessage())
-            ->subject('Verify your email address')
+            ->subject('Verify your email to activate your account')
             ->markdown('vendor.notifications.register', [
                 'username' => $this->username,
                 'url' => $this->verificationUrl,
@@ -98,10 +98,18 @@ class RegisterNotification extends Notification implements ShouldQueue
     public function toArray(User $notifiable): array
     {
         return [
-            'subject' => 'Verify your email address',
+            // The action, not the noun. "Verify your email address" describes the
+            // mail; "Verify your email to activate your account" describes the one
+            // thing the reader has to do, which is what the notification is for.
+            'subject' => 'Verify your email to activate your account',
             'lines' => [
-                'Welcome to the platform! Click the verification link sent to your email to activate your account.',
-                'Verification link expires in '.$this->expireMinutes.' minutes.',
+                // The reader of an inbox row is already signed in, and the inbox
+                // has no link in it — so the copy has to say where the link is.
+                // The old line ("Click the verification link sent to your email")
+                // was addressed to someone who has no way to tell which surface
+                // they are reading.
+                'Open the verification link we emailed you.',
+                'The link expires in '.$this->expireMinutes.' minutes.',
             ],
         ];
     }

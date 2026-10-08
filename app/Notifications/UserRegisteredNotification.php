@@ -70,22 +70,10 @@ class UserRegisteredNotification extends Notification implements ShouldQueue
     {
         $isSelf = $this->isSelf($notifiable);
         $message = new MailMessage();
+        $message->subject($this->subject($isSelf));
 
-        $message->subject(
-            $isSelf
-                ? 'Your account registration is complete'
-                : sprintf('New registration: %s', $this->user->username)
-        )
-            ->line($isSelf
-                ? sprintf("Your account '%s' has been successfully created.", $this->user->username)
-                : sprintf("New user '%s' (%s) registered.", $this->user->username, $this->user->email));
-
-        if ($this->causer !== null) {
-            $message->line(sprintf('Registered by %s.', $this->causer->name));
-        }
-
-        if (! $isSelf) {
-            $message->line('No credentials are included in this message.');
+        foreach ($this->lines($isSelf) as $line) {
+            $message->line($line);
         }
 
         return $message;
@@ -97,32 +85,74 @@ class UserRegisteredNotification extends Notification implements ShouldQueue
     public function toArray(User $notifiable): array
     {
         $isSelf = $this->isSelf($notifiable);
-        $by = $this->causer !== null ? ' by '.$this->causer->name : '';
-
-        if ($isSelf) {
-            return [
-                'subject' => 'Your account registration is complete',
-                'lines' => [
-                    sprintf("Your account '%s' has been successfully created.", $this->user->username),
-                ],
-            ];
-        }
 
         return [
-            'subject' => sprintf('New registration: %s', $this->user->username),
-            'lines' => [
-                sprintf("New user '%s' (%s) registered%s.", $this->user->username, $this->user->email, $by),
-            ],
+            'subject' => $this->subject($isSelf),
+            'lines' => $this->lines($isSelf),
         ];
     }
 
     /**
-     * Is this recipient the account itself?
+     * One line, two very different questions.
      *
-     * Two wordings rather than one neutral sentence: an administrator reading
-     * "your account is ready" has to work out that it is not theirs, and a new
-     * user reading "a new account was created" cannot tell whether it is about
-     * them. Both misreadings are silent, so the wording branches instead.
+     * ## Why the two audiences need different sentences
+     *
+     * A self-registration produces TWO rows in one person's inbox: this one and
+     * `RegisterNotification`. Before this, they read "Your account registration is
+     * complete" beside "Verify your email to activate your account", which are not
+     * two facts but two contradictory readings of one. So this row states a STATUS
+     * ("waiting for verification") and the other carries the ACTION. A reader who
+     * has just signed up now has a status and a next step, not two claims about
+     * the same account.
+     *
+     * The administrator's copy answers a different question again — who registered
+     * — and the actor belongs in the subject for the same reason it does
+     * elsewhere: an administrator's inbox is a list, and a subject that does not
+     * identify itself is unreadable in the bell, which shows subjects only.
+     */
+    private function subject(bool $isSelf): string
+    {
+        if ($isSelf) {
+            return 'Registration received';
+        }
+
+        return $this->causer !== null
+            ? sprintf('%s registered a new account', $this->causer->name)
+            : sprintf('New account registered: %s', $this->user->username);
+    }
+
+    /**
+     * What the reader needs to know next, which is different for each audience.
+     *
+     * The old copy ended every administrative copy with "No credentials are
+     * included in this message." — a sentence about the email rather than about
+     * anything the reader can do. It was reassurance addressed to nobody who
+     * needed it: the person who creates accounts knows what the mail contains.
+     */
+    private function lines(bool $isSelf): array
+    {
+        if ($isSelf) {
+            return [
+                'Your account activates once you confirm the verification link.',
+            ];
+        }
+
+        // Sentences rather than a field list. "Username: jane" reads as a column
+        // header in a table cell and as nothing at all to a screen reader, which
+        // reads the row as prose — and these rows are read in an admin's list,
+        // where the two details matter less than the sentence that says what to
+        // do with them.
+        $lines = [
+            sprintf('The username is %s.', $this->user->username),
+            sprintf('The account email is %s.', $this->user->email),
+            'Review the account from the Users page.',
+        ];
+
+        return $lines;
+    }
+
+    /**
+     * Is this recipient the account that registered?
      */
     private function isSelf(User $notifiable): bool
     {

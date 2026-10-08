@@ -61,15 +61,45 @@ class ConfigurationChangedNotification extends Notification implements ShouldQue
      *
      * @var array<string, string>
      */
+    /**
+     * What changed, per event — the `<thing> <verb>` half of the subject.
+     *
+     * Active and past-participle rather than "was updated": this is an audit
+     * record read in a list, and a passive subject spends its first four words on
+     * grammar instead of on which setting moved.
+     *
+     * @var array<string, string>
+     */
     private const SUBJECTS = [
-        'feature.changed' => 'Feature flag was changed',
-        'setting.changed' => 'System settings were updated',
-        'mail_setting.changed' => 'Mail transport configuration was updated',
-        'channel.changed' => 'Notification channel was modified',
-        'role.changed' => 'Role was updated',
-        'role.deleted' => 'Role was deleted',
-        'user.deleted' => 'User account was deleted',
-        'user.updated' => 'User profile was updated',
+        'feature.changed' => 'Feature flag changed',
+        'setting.changed' => 'System settings changed',
+        'mail_setting.changed' => 'Mail transport updated',
+        'channel.changed' => 'Notification channels updated',
+        'role.changed' => 'Role changed',
+        'role.deleted' => 'Role deleted',
+        'user.deleted' => 'User account deleted',
+        'user.updated' => 'User profile updated',
+    ];
+
+    /**
+     * Where the reader goes next, per event.
+     *
+     * Every one of these reaches an audience of operators who will want to look
+     * at the thing that changed, and none of them can act from the notification
+     * itself: the payload carries no link and the inbox has no controls. Saying
+     * where it lives is the difference between a record and a notification.
+     *
+     * @var array<string, string>
+     */
+    private const NEXT_STEPS = [
+        'feature.changed' => 'Review the flag on the Feature Flags page.',
+        'setting.changed' => 'Review the values on the Settings page.',
+        'mail_setting.changed' => 'Send a test mail if this change was not yours.',
+        'channel.changed' => 'Review the switches on the Notification Channels page.',
+        'role.changed' => 'Review the permissions on the Roles page.',
+        'role.deleted' => 'Review the remaining roles on the Roles page.',
+        'user.deleted' => 'The full record is in the activity log.',
+        'user.updated' => 'Review the profile from the Users page.',
     ];
 
     /**
@@ -99,9 +129,11 @@ class ConfigurationChangedNotification extends Notification implements ShouldQue
     public function toMail(User $notifiable): MailMessage
     {
         $message = new MailMessage();
+        $message->subject($this->subject());
 
-        $message->subject($this->subject())
-            ->line($this->summary());
+        foreach ($this->lines() as $line) {
+            $message->line($line);
+        }
 
         return $message;
     }
@@ -118,54 +150,59 @@ class ConfigurationChangedNotification extends Notification implements ShouldQue
     }
 
     /**
-     * The notification subject, made specific to the event where a detail exists.
+     * What changed, and which one.
      *
-     * Falls back to the generic subject for events whose detail is a count or
-     * null — substituting "System setting 2 key(s)" would read worse, not better.
+     * The target goes after a colon rather than inside the sentence, for two
+     * reasons that both come from where this string is read: the bell dropdown
+     * shows the subject and nothing else, so the subject has to identify itself,
+     * and it truncates. Leading with the kind of thing keeps "Feature flag
+     * changed" readable when "billing_v2" is the part that got cut.
+     *
+     * `setting.changed` is the one event that ignores its detail: that detail is a
+     * count, and "System settings changed: 2 key(s)" says less than the subject
+     * alone while costing the reader a moment to decode it.
      */
     private function subject(): string
     {
-        $event = $this->event;
+        $subject = self::SUBJECTS[$this->event] ?? 'Configuration changed';
 
-        if ($this->detail !== null) {
-            return match ($event) {
-                'feature.changed' => sprintf("Feature flag '%s' was changed", $this->detail),
-                'role.deleted' => sprintf("Role '%s' was deleted", $this->detail),
-                'user.deleted' => sprintf("User account '%s' was deleted", $this->detail),
-                default => self::SUBJECTS[$event] ?? 'Configuration was changed',
-            };
+        if ($this->detail === null || $this->event === 'setting.changed') {
+            return $subject;
         }
 
-        return self::SUBJECTS[$event] ?? 'Configuration was changed';
+        return $subject.': '.$this->detail;
     }
 
     /**
-     * The action line(s) shared by mail and inbox.
+     * Who changed it, and where to look.
      *
-     * Line 1 names the action and the actor. Line 2 (when a detail is
-     * available) identifies the specific target that changed, so an
-     * administrator reading two notifications can tell them apart.
+     * The old copy opened with "Role was updated by Ana Silva." under a subject
+     * that already read "Role was updated" — the notification spent its entire
+     * body repeating its own title, which is a large part of why these rows read
+     * as noise. What the subject cannot carry is the actor and the next step.
      */
     private function lines(): array
     {
-        $by = $this->causer !== null
-            ? ' by '.$this->causer->name
-            : '';
+        $lines = [
+            // Never a bare nothing: a system job or an API call without an actor
+            // still happened, and "changed by no one" reads as a bug in the app.
+            $this->causer !== null
+                ? sprintf('Changed by %s.', $this->causer->name)
+                : 'Changed by another operator.',
+        ];
 
-        $lines = [(self::SUBJECTS[$this->event] ?? 'Configuration changed').$by.'.'];
+        if ($this->event === 'setting.changed' && $this->detail !== null) {
+            // The count the subject deliberately drops lands here instead, where
+            // it is information rather than a subtitle.
+            $lines[] = $this->detail.' saved.';
+        }
 
-        if ($this->detail !== null) {
-            $lines[] = sprintf('Target: %s', $this->detail);
+        $next = self::NEXT_STEPS[$this->event] ?? null;
+
+        if ($next !== null) {
+            $lines[] = $next;
         }
 
         return $lines;
-    }
-
-    /**
-     * One sentence for the mail body, matching the inbox lines.
-     */
-    private function summary(): string
-    {
-        return implode(' ', $this->lines());
     }
 }

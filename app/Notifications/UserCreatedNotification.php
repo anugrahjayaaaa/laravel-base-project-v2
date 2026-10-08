@@ -76,12 +76,16 @@ class UserCreatedNotification extends Notification implements ShouldQueue
     public function toMail(User $notifiable): MailMessage
     {
         return (new MailMessage())
-            ->subject('Your account has been created')
+            ->subject('Your new account is ready')
             ->markdown('vendor.notifications.user-created', [
                 'username' => $this->username,
                 'tempPassword' => $this->tempPassword,
                 'url' => $this->verificationUrl,
                 'expireMinutes' => $this->expireMinutes,
+                // The template names the operator rather than saying "by an
+                // administrator": the inbox copy does, and a mail that knows less
+                // than the inbox row about the same event is a second version of it.
+                'causer' => $this->causer?->name,
             ]);
     }
 
@@ -102,14 +106,21 @@ class UserCreatedNotification extends Notification implements ShouldQueue
      */
     public function toArray(User $notifiable): array
     {
-        $by = $this->causer !== null ? ' by '.$this->causer->name : '';
+        $lines = [
+            // The password is in the mail and deliberately not here, so the row
+            // has to point at it. Telling someone to "sign in and change your
+            // password" without saying where the password is leaves them stuck at
+            // a form they cannot pass.
+            'Sign in with the temporary password we emailed you, then change it right away.',
+        ];
+
+        if ($this->causer !== null) {
+            $lines[] = sprintf('Your account was created by %s.', $this->causer->name);
+        }
 
         return [
-            'subject' => 'Your account has been created',
-            'lines' => [
-                sprintf('An account was created for you%s.', $by),
-                'Please sign in and change your password at your first opportunity.',
-            ],
+            'subject' => 'Your new account is ready',
+            'lines' => $lines,
         ];
     }
 }

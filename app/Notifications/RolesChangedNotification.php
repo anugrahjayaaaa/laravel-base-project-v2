@@ -82,23 +82,11 @@ class RolesChangedNotification extends Notification implements ShouldQueue
     {
         $isPersonal = $this->isSelf($notifiable);
         $message = new MailMessage();
+        $message->subject($this->subject($isPersonal));
 
-        $message->subject(
-            $isPersonal
-                ? 'Your account roles have been updated'
-                : sprintf("Roles for user '%s' were updated", $this->user->username)
-        )
-            ->line($this->summary());
-
-        if ($this->added !== []) {
-            $message->line('Added: '.implode(', ', $this->added));
+        foreach ($this->lines($isPersonal) as $line) {
+            $message->line($line);
         }
-
-        if ($this->removed !== []) {
-            $message->line('Removed: '.implode(', ', $this->removed));
-        }
-
-        $message->line('Contact an administrator if you did not expect this.');
 
         return $message;
     }
@@ -111,43 +99,73 @@ class RolesChangedNotification extends Notification implements ShouldQueue
         $isPersonal = $this->isSelf($notifiable);
 
         return [
-            'subject' => $isPersonal
-                ? 'Your account roles have been updated'
-                : sprintf("Roles for user '%s' were updated", $this->user->username),
-            'lines' => $this->lines(),
+            'subject' => $this->subject($isPersonal),
+            'lines' => $this->lines($isPersonal),
         ];
     }
 
     /**
-     * The summary line naming the actor.
+     * What changed, and to whom.
      *
-     * Falls back to a neutral wording when the change was made by a system job or
-     * an API without an actor — "your roles were changed" is still true, and a
-     * notification that names nobody reads as though nobody did it.
+     * For the account holder: second person, present tense, no "has been".
+     *
+     * For an administrator the actor goes IN the subject, because an
+     * administrator's inbox is a list and "Roles were updated" does not say whose
+     * roles or who touched them. It also means the lines can spend themselves on
+     * what actually moved instead of on the sentence the subject already said.
      */
-    private function summary(): string
+    private function subject(bool $isPersonal): string
     {
-        $by = $this->causer !== null ? ' by '.$this->causer->name : '';
+        if ($isPersonal) {
+            return 'Your account roles changed';
+        }
 
-        return sprintf('Your roles%s were changed.', $by);
+        if ($this->causer !== null) {
+            return sprintf('%s changed the roles of %s', $this->causer->name, $this->user->username);
+        }
+
+        // No actor: a system job or an API call. Still names the account, which is
+        // the half that makes the row findable.
+        return sprintf('Roles changed for %s', $this->user->username);
     }
 
     /**
-     * The detail lines listing granted and revoked roles.
+     * Who did it, what moved, and what to do if it was a mistake.
+     *
+     * The old first line was `sprintf('Your roles%s were changed.', $by)` — which
+     * produced "Your roles by Ana Silva were changed." That is not a style
+     * complaint, it is a broken sentence, and it sat under a subject saying the
+     * same thing again.
+     *
+     * Each fact appears exactly once: the actor in the subject where the subject
+     * has room for it, the roles here, the next step last.
      */
-    private function lines(): array
+    private function lines(bool $isPersonal): array
     {
-        $by = $this->causer !== null ? ' by '.$this->causer->name : '';
+        $lines = [];
 
-        $lines = [sprintf('Your roles%s were changed.', $by)];
+        // The actor is in the subject when there is one, so the body names them
+        // only when the subject could not. "Ana Silva changed the roles of jane"
+        // over a line reading "Changed by Ana Silva." says one thing twice, which
+        // is the defect this class was rewritten for.
+        if ($this->causer === null) {
+            $lines[] = 'Changed by another operator.';
+        }
 
+        // The roles themselves, one line each, with the verbs that distinguish
+        // them. "Granted" and "revoked" were the old words; "Added" and "Removed"
+        // match what the change actually did and what an operator calls it.
         if ($this->added !== []) {
-            $lines[] = sprintf('Granted roles: %s.', implode(', ', $this->added));
+            $lines[] = 'Added: '.implode(', ', $this->added).'.';
         }
 
         if ($this->removed !== []) {
-            $lines[] = sprintf('Revoked roles: %s.', implode(', ', $this->removed));
+            $lines[] = 'Removed: '.implode(', ', $this->removed).'.';
         }
+
+        $lines[] = $isPersonal
+            ? 'Contact an administrator if this was not expected.'
+            : 'Review the assignment from the user\'s page if this was a mistake.';
 
         return $lines;
     }

@@ -1,20 +1,21 @@
 @component('mail::message')
-# Your Account Has Been Created
+# Your new account is ready
 
-Your account has been created by an administrator.
+Sign in with the temporary password below, then change it right away.
 
 Username: **{{ $username }}**
 
-Temporary Password: **{{ $tempPassword }}**
+Temporary password: **{{ $tempPassword }}**
 
-Please verify your email before logging in.
+@if ($causer)
+    This account was created for you by **{{ $causer }}**.
+@endif
 
 @component('mail::button', ['url' => $url])
-Verify Email
+Verify email address
 @endcomponent
 
-This verification link expires in **{{ $expireMinutes }} minutes**.
+This link expires in **{{ $expireMinutes }} minutes**.
 
-You must change this password upon first login.
-
+You must change the temporary password at your first sign-in.
 @endcomponent

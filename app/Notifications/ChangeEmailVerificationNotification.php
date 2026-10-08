@@ -101,8 +101,11 @@ class ChangeEmailVerificationNotification extends Notification implements Should
         return [
             'subject' => 'Confirm your new email address',
             'lines' => [
-                "Verify your request to change email to {$this->pendingEmail}.",
-                'If you did not request this change, please ignore this notification.',
+                // The inbox row carries no link, so it names where the link is and
+                // which address it moves to — the two facts a person needs before
+                // they go looking for an email.
+                "Open the link we emailed you to confirm the change to {$this->pendingEmail}.",
+                'If you did not request this, your address has not changed.',
             ],
         ];
     }

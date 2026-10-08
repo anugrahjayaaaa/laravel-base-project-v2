@@ -69,20 +69,67 @@ class AccountStateChangedNotification extends Notification implements ShouldQueu
      * it. An event name that is not here has no wording, and
      * `NotificationAudience` will send it to nobody anyway.
      *
+     * Present tense and no "has been": a notification says what is true now, and
+     * "your account is locked" is both shorter and truer than "your account has
+     * been locked" — the past perfect implies an end that has not come.
+     *
      * @var array<string, string>
      */
     private const PERSONAL_SUBJECTS = [
-        'user.locked' => 'Your account has been locked',
-        'user.unlocked' => 'Your account has been unlocked',
-        'user.deactivated' => 'Your account has been deactivated',
-        'user.activated' => 'Your account has been activated',
+        'user.locked' => 'Your account is locked',
+        'user.unlocked' => 'Your account is unlocked',
+        'user.deactivated' => 'Your account is deactivated',
+        'user.activated' => 'Your account is active',
     ];
 
+    /**
+     * The same event, for the administrators who did it.
+     *
+     * Names the account, because an administrator's inbox is a list of rows and
+     * "Account was locked" tells them nothing about which one. The subject is
+     * also all the bell dropdown ever shows — it has no body — so a subject that
+     * does not identify its own subject is unreadable in the one place most
+     * people will actually meet it.
+     *
+     * @var array<string, string>
+     */
     private const ADMIN_SUBJECTS = [
-        'user.locked' => 'Account was locked',
-        'user.unlocked' => 'Account was unlocked',
-        'user.deactivated' => 'Account was deactivated',
-        'user.activated' => 'Account was activated',
+        'user.locked' => 'Locked account: %s',
+        'user.unlocked' => 'Unlocked account: %s',
+        'user.deactivated' => 'Deactivated account: %s',
+        'user.activated' => 'Reactivated account: %s',
+    ];
+
+    /**
+     * What the reader can do about it, per event, per audience.
+     *
+     * The second half of a notification is not a restatement of the first: the
+     * subject says what happened, and this says what it means for you. A reader
+     * who is told only that an account was locked has to guess whether they are
+     * the locked one and what to do about it.
+     *
+     * `null` means there is genuinely nothing to do, which is more honest than a
+     * line that says so.
+     *
+     * @var array<string, array{0: string|null, 1: string|null}>
+     */
+    private const ACTIONS = [
+        'user.locked' => [
+            'Contact an administrator if this was not expected.',
+            'You can unlock the account from the user\'s page.',
+        ],
+        'user.unlocked' => [
+            'Contact an administrator if this was not expected.',
+            null,
+        ],
+        'user.deactivated' => [
+            'Contact an administrator if this was not expected.',
+            'You can reactivate the account from the user\'s page.',
+        ],
+        'user.activated' => [
+            null,
+            null,
+        ],
     ];
 
     /**
@@ -118,14 +165,11 @@ class AccountStateChangedNotification extends Notification implements ShouldQueu
     {
         $isPersonal = $this->isSelf($notifiable);
         $message = new MailMessage();
+        $message->subject($this->subject($isPersonal));
 
-        $message->subject(
-            $isPersonal
-                ? self::PERSONAL_SUBJECTS[$this->event] ?? 'Your account has changed'
-                : self::ADMIN_SUBJECTS[$this->event] ?? 'Account status changed'
-        )
-            ->line($this->explanation($isPersonal))
-            ->line('If you believe this is a mistake, contact an administrator.');
+        foreach ($this->lines($isPersonal) as $line) {
+            $message->line($line);
+        }
 
         return $message;
     }
@@ -144,62 +188,67 @@ class AccountStateChangedNotification extends Notification implements ShouldQueu
         $isPersonal = $this->isSelf($notifiable);
 
         return [
-            'subject' => $isPersonal
-                ? self::PERSONAL_SUBJECTS[$this->event] ?? 'Your account has changed'
-                : (self::ADMIN_SUBJECTS[$this->event] ?? 'Account status changed'),
-            'lines' => [$this->explanation($isPersonal)],
+            'subject' => $this->subject($isPersonal),
+            'lines' => $this->lines($isPersonal),
         ];
     }
 
     /**
-     * One sentence naming the actor and the account.
+     * One line: what happened, and to which account.
      *
-     * Reads differently for the two audiences: an administrator reading it knows
-     * the account already, while the account holder needs to know whose action
-     * it was. The subject's own name is included because the notification also
-     * reaches administrators who did not perform it.
+     * Built in one place because a mail subject and an inbox row that word the
+     * same event differently are two events to the reader, and nothing on either
+     * surface tells them they are the same one.
      */
-    private function explanation(bool $isPersonal = true): string
+    private function subject(bool $isPersonal): string
     {
-        $by = $this->causer !== null
-            ? ' by '.$this->causer->name
-            : '';
-
         if ($isPersonal) {
-            return sprintf('Your account was %s.%s', $this->pastTense(), $by);
+            return self::PERSONAL_SUBJECTS[$this->event] ?? 'Your account status changed';
         }
 
         return sprintf(
-            "The account '%s' was %s.%s",
-            $this->subject->username,
-            $this->pastTense(),
-            $by
+            self::ADMIN_SUBJECTS[$this->event] ?? 'Account changed: %s',
+            $this->subject->username
         );
     }
 
     /**
+     * Who did it, and what the reader can do about it.
+     *
+     * Not a second version of the subject. The old copy opened with "Your account
+     * was locked" under a subject that already said "Your account has been
+     * locked" — the same fact twice, which made a notification that had
+     * something important to say look empty. What the subject cannot carry is the
+     * actor and the consequence, and those are what the lines are for.
+     */
+    private function lines(bool $isPersonal): array
+    {
+        // Never a bare nothing. A system job or an API call without an actor still
+        // happened, and "changed by no one" reads as a bug in the app.
+        $lines[] = $this->causer !== null
+            ? sprintf('Done by %s.', $this->causer->name)
+            : 'Changed by another operator.';
+
+        [$personalAction, $adminAction] = self::ACTIONS[$this->event] ?? [null, null];
+        $action = $isPersonal ? $personalAction : $adminAction;
+
+        if ($action !== null) {
+            $lines[] = $action;
+        }
+
+        return $lines;
+    }
+
+    /**
      * Is this recipient the account itself?
+     *
+     * The two copies below are not variations on one message — they answer
+     * different questions for different readers, and a recipient who is both the
+     * account and an operator gets the personal one, because "your account is
+     * locked" is the fact they cannot get anywhere else.
      */
     private function isSelf(User $notifiable): bool
     {
         return $notifiable->getKey() === $this->subject->getKey();
-    }
-
-    /**
-     * The event as a past-tense verb phrase.
-     *
-     * Derived from the event name rather than carried as a second string: two
-     * strings describing one event can disagree, and the disagreement renders as
-     * "The account was locked" on a notification about an unlock.
-     */
-    private function pastTense(): string
-    {
-        return match ($this->event) {
-            'user.locked' => 'locked',
-            'user.unlocked' => 'unlocked',
-            'user.deactivated' => 'deactivated',
-            'user.activated' => 'activated',
-            default => 'changed',
-        };
     }
 }
