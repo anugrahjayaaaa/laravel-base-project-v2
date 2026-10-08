@@ -623,6 +623,114 @@ administrative half of the test proved nothing. The test now pins ids.
 
 ---
 
+## Verification — performance (2026-10-08)
+
+`tests/Feature/Notification/NotificationBenchmarkTest.php`, 8 tests, numbers in
+`/tmp/phase9_notifications_benchmark.json`. Same shape as Phase 8's
+`SettingsBenchmarkTest`: warm-up outside the measured window, query log + wall
+clock + memory, results to /tmp for a before/after diff.
+
+Timings are measured and **not** asserted — a latency assertion fails a suite on a
+loaded box for reasons unrelated to the code. The three query-count assertions at
+the end of the file are a different matter: exact integers that depend on the
+code, not the machine, so they are allowed to fail the run.
+
+### Results (SQLite `:memory:` — the query counts are the portable part)
+
+| Path | Queries | Latency |
+|---|---|---|
+| **Bell: unread count, warm** (every authenticated page) | **0** | 0.10 ms |
+| Bell: unread count, cold (after a deploy or any cache bust) | 1 | 0.59 ms |
+| Bell: recent list, warm | 0 | 0.15 ms |
+| Bell: invalidate + refill (the price of one delivery) | 2 | 1.53 ms |
+| Inbox: 30 rows out of 2,120 | 3 | 2.40 ms |
+| Inbox: mark one read / mark all read | 1 / 1 | 0.40 / 0.66 ms |
+| Audience resolution: 4 holders, 65 users | 2 | 2.85 ms |
+| Audience resolution: unmapped event (narrow fallback) | 0 | 0.00 ms |
+| Role change end to end (assign + audit + resolve) | 8 | 7.16 ms |
+| Role change: no-op save | 8 | 7.01 ms |
+| Retention sweep: scan 5,100 rows, none expired | 1 | 0.59 ms |
+| Retention sweep: delete 4,000 expired rows | 1 | 0.24 ms |
+
+### What the numbers say
+
+**The composer is the only Phase 9 code multiplied by the whole user base.** It
+runs on every authenticated page render for every user, whether or not they have
+ever received a notification — so warm at 0 queries is the number that decides
+whether the module is affordable, and it is the one assertion in this file. This
+is what E10's cache bought, and it is also why fifteen query guards elsewhere in
+the suite are still intact rather than relaxed. The cold figure is 1 query: the
+first render after a deploy, once.
+
+**Audience resolution is 2 queries at any number of administrators**, measured at
+1 and at 21. That is the `whereHas` shape from C3 doing its job — a `foreach`
+with `can()` in it would also pass the notification tests and fail this one,
+because `User::can()` memoises per instance.
+
+**The inbox does not grow with the inbox.** 15 notifications and 1,015 cost the
+same, which is the pagination doing its job; nothing reads the table unbounded.
+
+**The role-change no-op save costs the same 8 queries as a real change**, and
+that is correct: the diff guard saves *notifications*, not queries. It is a PHP
+array comparison on two short arrays. Worth stating because "the guard made it
+cheap" would be the natural misreading.
+
+### Two findings from the benchmark
+
+**1. A directly-granted permission is invisible to the audience.**
+`NotificationAudience::administratorsFor()` reaches holders through
+`roles.permissions`, so a permission attached to a person rather than to a role is
+never resolved:
+
+```
+User::can(users.lock) = true
+in audience            = NO
+```
+
+Not live today — Phase 6 has no UI for attaching a permission to a person, so
+every holder in the application gets it through a role. It is a silent hole the
+moment one code path grants directly: the operator qualifies for the action and
+is never told it happened. One clause fixes it (`orWhereHas('permissions')`) and
+it is **not** applied here, because it changes who receives notifications and
+that is an owner's decision. Recorded in "Open item" below.
+
+**2. The inbox page holds the module's last uncached notification read.**
+`NotificationInboxAction::inbox()` counts unread rows live — the third of the
+three queries above — while the header reads the cached count. One query per
+visit, no defect, but it is the one place where a person can see two different
+unread numbers for the same inbox on two different screens if the cache is stale
+between them.
+
+### Two mistakes this benchmark made first
+
+Recorded because both produced numbers that looked fine:
+
+- `Cache::flush()` was placed **outside** the measured closure. The helper warms
+  up before starting the clock, so "cold" measured a second warm render — and
+  reported **cold: 0 queries**, which would have been the most convincing lie in
+  the file. The flush now lives inside.
+- Fixture users were given permissions with `givePermissionTo()`, which does not
+  go through a role, so the audience resolver found nobody and two benchmarks
+  quietly measured an empty result. The fixture grants through a role now, which
+  is also how the application grants.
+
+Full suite: **1290 passed / 4979 assertions**.
+
+---
+
+## Open item (unresolved by decision)
+
+**A directly-granted permission resolves to no notification audience.** The
+audience map joins through `roles.permissions`; a permission held on the user
+record itself passes `can()` and is skipped by the resolver. Latent, not live:
+Phase 6 grants permissions through roles only. Latent, not live — no shipped path
+attaches one to a person — and the fix (`orWhereHas('permissions')`) widens who
+receives administrative notifications, which is an owner's call rather than a
+refactor. Carried here and in `docs/base/features/notifications.md` rather than
+closed.
+
+---
+
 ## Out of scope (deferred, stated not forgotten)
 
 - Email template editing UI (the brief's "template email" has no task; `A1` only

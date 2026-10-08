@@ -67,6 +67,12 @@ administrator.
 The trigger permissions are not `notifications.*`. A `notifications.admin_target`
 would gate the rule behind the mechanism it serves.
 
+**Known limit.** `NotificationAudience` reaches holders through
+`roles.permissions`, so a permission attached to a person record directly passes
+`can()` and is resolved to nobody. Nothing in the application does this — Phase 6
+grants permissions through roles only — but the resolver and the gate do not
+currently agree on what "holds the permission" means.
+
 ## Mail Configuration
 
 Storage: `system_settings` rows, read through `SystemSetting` with the `.env`
