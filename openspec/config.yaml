@@ -1,0 +1,65 @@
+schema: spec-driven
+
+context: |
+  Laravel Base Project v2. Docs are authoritative: `docs/base/` is the design
+  the code MUST follow; `docs/planning/ai-execution-guide.md` is the execution
+  contract. Never override existing docs silently — if a change conflicts with
+  them, stop and record an ADR in `docs/planning/decisions.md`.
+
+  Constraints an agent cannot infer from the code:
+  - Branch `feature/<task-id>-<desc>`. Never commit or merge to `main`.
+  - Authorization is gated on the ROUTE (`can:` + `feature:` middleware),
+    never in a controller constructor. Pennant flags fail closed: OFF means
+    403 for everyone, no superadmin bypass, and `FeatureFlagSeeder` must write
+    the row.
+  - Validation only via dedicated FormRequest + `$request->validated()`.
+  - Controllers are thin; business logic belongs in Actions/Services.
+  - Audits are written inside the transaction by the Action layer via
+    `Auditable::audit()` — never by a model observer.
+  - Jobs and events dispatch after commit (`dispatchAfterCommit()`).
+  - Laravel facades only in application code (`Cache`, `Queue`, `RateLimiter`,
+    `Lock`). No Redis-specific APIs. Cache primitives only, never Eloquent
+    models, Collections or Carbon.
+  - UI stays replaceable: a value the API also needs belongs in an
+    Action/Service/model, never in a View Composer.
+  - Tests: PHPUnit 12, `test_*` method prefix, suites `tests/{Unit,Feature,Arch}`,
+    SQLite `:memory:`. `php artisan test` green or the task is not done.
+    Never delete a test to pass. Never weaken security to pass a test.
+  - No i18n during normal feature development (deferred to a project-wide
+    phase). Do not add translation abstractions speculatively.
+  - New Composer package requires an ADR plus `docs/planning/changelog.md`
+    entry before installation.
+  - Every proposed change must name the task ID it serves in
+    `docs/planning/task-tracker.md` and state explicitly what is out of scope.
+
+rules:
+  proposal:
+    - Always state what is out of scope.
+    - Reference the existing docs under `docs/base/` and `docs/planning/` that
+      the change must stay consistent with.
+  tasks:
+    - Every task must name the test file or test suite that proves it.
+    - Order tasks so `vendor/bin/pint --test` and `php artisan test` pass at the
+      end of the change.
+
+# Per-artifact rules (optional)
+# Add custom rules for specific artifacts.
+# Example:
+#   rules:
+#     proposal:
+#       - Keep proposals under 500 words
+#       - Always state what is out of scope
+#     tasks:
+#       - Break tasks into chunks of max 2 hours
+
+# Per-operation guidance (optional)
+# Add advisory guidance for how apply and archive work should be conducted.
+# This is separate from artifact rules above.
+# Example:
+#   operations:
+#     apply:
+#       guidance:
+#         - Keep test summaries concise
+#     archive:
+#       guidance:
+#         - Summarize the archive outcome before finishing
