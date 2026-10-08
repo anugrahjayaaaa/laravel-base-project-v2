@@ -87,10 +87,13 @@ assertion-free. Read `docs/planning/progress.md` for the live picture.
   `canMemo` cache. Skipping the memo clear makes tests pass for the wrong reason.
 - `input-group` breaks Bootstrap's sibling `invalid-feedback` selector — error
   text goes invisible. Do not wrap validated inputs in `input-group`.
-- i18n: `lang/{en,id}/{ui,messages,validation}.php` is the file source of truth,
-  `spatie/language_lines` is the runtime override. `ui()` for UI terminology,
-  `__('messages.*')` for feedback. Never hardcode English in Blade. Mixing the
-  two namespaces is a silent-fallback bug.
+- i18n is **not implemented**. There is no `lang/` directory, no `ui()`
+  helper, no `spatie/language_lines`, and no `__('messages.*')` — every string
+  in Blade and in the notification classes is literal English by design
+  (`docs/planning/progress.md` defers it to a final project-wide phase). Do
+  not write `__()` / `@lang` calls against a source that does not exist, and
+  do not treat the absence as a bug to fix inline: a half-adopted i18n is worse
+  than none, because half the strings stay English anyway.
 
 ## Verify before reporting done
 `vendor/bin/pint --test` · `php artisan test` · docs updated · no regression in

@@ -32,10 +32,21 @@ Two disjoint audiences, and no third category.
 | Account created with a temporary password | mail | The affected user | `UserCreatedNotification` |
 | Confirm a new email address | mail | The affected user | `ChangeEmailVerificationNotification` |
 | Account locked / unlocked / activated / deactivated | mail, database | The affected user **and** every holder of the matching action permission | `AccountStateChangedNotification` |
+| New registration (administrative copy) | mail, database | Every holder of `users.create` | `UserRegisteredNotification` |
+| Roles granted / revoked | mail, database | The affected user, **and** `roles.assign` holders when an administrator did it | `RolesChangedNotification` |
+| Configuration changed — role, feature flag, system setting, mail transport, channels, user profile | mail, database | The holders of the permission that performs the change | `ConfigurationChangedNotification` |
 
 `UserCreatedNotification` carries a temporary password, which is why it is
 personal only: it is handed to the account holder, never to administrators. The
 permission that created the account did not receive a copy of the credential.
+
+**Four of these ignore the mail switch** — verification, email-change
+confirmation, account state, and the temporary password. Their absence does not
+make a notification quieter, it makes a flow uncompletable: a locked account
+cannot open the inbox that would carry the news, and the other three carry the
+only link or the only credential the user will ever be sent. `NotificationChannel::for(essential: true)`
+is what says so, and the channels page states the exception rather than letting
+a switch imply an effect it does not have.
 
 ### The rule, for events not yet dispatched
 
@@ -46,11 +57,12 @@ catalogue). A personal event goes to the affected user only. An ordinary user is
 never an administrative recipient, and an administrator is not opted out of their
 own account's alerts.
 
-`NotificationAudience` resolves this and `NotificationAccountStateAction`
-dispatches it. The map declares events whose notification classes do not exist
-yet — role changes, feature toggles, setting changes. Those are **declared and
-unreachable**, and an undeclared event fails toward the narrower audience so a
-typo cannot broadcast to every administrator.
+`NotificationAudience` resolves this, `NotificationAccountStateAction` and
+`NotificationAdminEventAction` dispatch it. The map declares two events no
+dispatcher reaches yet — `permission.changed` and `user.deleted`. Those are
+**declared and unreachable**; every other mapped event ships. An undeclared event
+fails toward the narrower audience, so a typo cannot broadcast to every
+administrator.
 
 The trigger permissions are not `notifications.*`. A `notifications.admin_target`
 would gate the rule behind the mechanism it serves.
@@ -88,32 +100,58 @@ user typed is an abuse vector, not a subset of configuring a transport.
 
 ## Queue Integration
 
-All notifications and mail sending should be queued (not synchronous):
-- Use `ShouldQueue` on notification classes.
-- Mail Mailable should be queued via `Mail::queue()`.
-- Queue connection is `database` by default (Redis-compatible, see queue.md).
+Every notification class implements `ShouldQueue`, so delivery is asynchronous
+when a worker is running and synchronous when one is not.
+
+Every notification also declares `public $afterCommit = true`. Without it the
+framework queues the moment `send()` is reached, and every queue connection here
+runs `after_commit => false` — so a worker can deliver before the row that
+produced the notification exists, and a rollback still delivers. The property is
+what the framework reads to defer the job to the **outermost** commit, so it
+holds however deeply a caller nests the action; `UserCreateAction`,
+`UserUpdateAction` and `UserRequestEmailChangeAction` additionally send after
+their own transaction closes, which is not redundant with the property.
+
+`Illuminate\Bus\Queueable` was removed from these classes along with it: it
+declares `$afterCommit` with a null default, and PHP will not let a class
+redeclare a trait property with a different default. Nothing in these classes
+used any other member of it.
 
 ### Scaling
 
-- Notification queue uses the `notifications` queue/connection.
-- Horizon is used for monitoring queue workers, retry tracking, and failure
-  inspection (see `queue.md`).
-- Scale workers horizontally based on notification volume.
+- **Not implemented.** No notification queue or connection is named (no
+  `$queue` / `viaQueue`), and Horizon is not installed. Workers run on the
+  default connection; see `queue.md` for what exists.
+- Dispatch to a dedicated queue is the natural next step if notification volume
+  ever competes with other work — it is a per-class `$queue`, not a new
+  connection.
 
 ### Failure Handling
 
-- Failed notifications go to the `failed_jobs` table (dead-letter pattern,
-  see `queue.md`).
-- Retry policy: default exponential backoff with max attempts configurable.
-- Critical notifications (security alerts, password resets) should bypass
-  queue fallback to synchronous delivery on queue failure.
+- Failed jobs go to the `failed_jobs` table (dead-letter pattern, see `queue.md`).
+- Retry policy is the framework default. No notification class declares
+  `$tries`, `$timeout` or `$backoff`, so a permanently undeliverable address
+  retries on the connection's own schedule and then sits in `failed_jobs`.
+- Critical notifications are **not** routed around the queue. What protects them
+  is that the four account-critical ones ignore the mail switch (see
+  Notification Categories), not a synchronous fallback.
 
 ## Template
 
 Mail/notification templates:
-- Use Laravel Mailable/Notifications classes.
-- Templates in `resources/views/mail/`.
-- Support localization (see i18n dual-source).
+- Laravel `Notification` classes, not Mailables. The inbox needs `toArray()` and
+  the mail needs `toMail()` from one class, because the same event goes to two
+  audiences.
+- Markdown templates live in `resources/views/vendor/notifications/`
+  (`register`, `user-created`). Everything else builds its `MailMessage`
+  inline.
+- `toArray()`'s `subject` + `lines` shape is a contract with the inbox view and
+  the bell dropdown. Escaping happens in the view, because the payload is
+  persisted and re-rendered later.
+- Localization is **not implemented**: there is no `lang/` directory and every
+  string in the notification classes is literal English. Deferred to a final
+  project-wide phase (`docs/planning/progress.md`). Do not add `__()` calls
+  against a source that does not exist yet.
 
 ## Settings Integration
 
@@ -125,6 +163,27 @@ settings "remain technical (config/env only)". That was true while the mail
 page was a stub with nowhere to save; it is no longer true, and a base doc that
 contradicts the implementation sends the next reader looking for a mechanism
 that does not exist.
+
+`mail_password` is the one setting that is a credential rather than
+configuration. It is `encrypt()`ed at rest, is never part of a controller's view
+data (`$hasPassword` is a bool), and is **excluded from `SystemSetting::getAll()`**
+— that array renders the settings module's read-only table and answers
+`GET /api/v1/settings`, so returning it would hand the ciphertext to every
+`settings.view` holder, a wider audience than the `notifications.view` gate the
+credential was built for. Read it with `SystemSetting::getString()`, which is
+what `bindMailConfig()` does.
+
+## Retention
+
+The `notifications` table has no ceiling on it, so a daily scheduled sweep
+(`notification-retention`) deletes **read** notifications older than 90 days.
+Unread rows are kept until they are read: an unread notification is state the
+user has not acted on, and deleting it removes a badge nobody was shown.
+
+A direct `DELETE` rather than `model:prune`, which would need a `Prunable`
+model and an override of `Notifiable::notifications()` — the relation every
+delivery, read and count goes through — to reach a table the framework already
+queries correctly.
 
 ## Dependency
 

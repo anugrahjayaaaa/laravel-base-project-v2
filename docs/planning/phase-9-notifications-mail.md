@@ -245,7 +245,7 @@ is meant to serve.
 | **P9-A1** | `pages/notifications/index.blade.php` — two-column, `col-lg-8` SMTP form, `col-lg-4` Send Test Mail card. Wrapper `card border-0 shadow-sm mb-4`, footer `card-footer bg-body-tertiary border-top py-3 d-flex justify-content-end align-items-center gap-2`. No query in Blade. | DONE |
 | **P9-A2** | `pages/notifications/channels.blade.php` — per-channel toggles, hidden `value="0"` + checkbox `value="1"`, hidden placed directly BEFORE. | DONE |
 | **P9-A3** | `NotificationUiRenderTest` — 19 tests / 119 assertions: zero queries from inside the views, forbidden classes, `filter_var` ban, checkbox pairs, both permission branches, sibling-page link in both branches and its card-header action styling. | DONE |
-| **P9-A4** | `NotificationController` stub (`index`/`channels`) + 2 routes. Every variable assembled in the controller, never in Blade. | DONE |
+| **P9-A4** | `NotificationController` stub (`index`/`channels`) + 2 routes. Every variable assembled in the controller, never in Blade. | DONE — the controller grew to five methods when Group B landed the write path; the re-audit row below saying "index/channels only" is stale. |
 | **P9-A5** | Group A audit — findings below. | DONE |
 
 A1/A2 are `@can`-gated like the settings page: `notifications.view` alone renders
@@ -265,7 +265,7 @@ run per claim, not a re-read of this document.
 | A1 no query in Blade | **HELD** | 0 hits for `SystemSetting::` / `DB::` / `config(` / `Notification::` |
 | A2 hidden companion directly BEFORE each checkbox | **HELD** | verified in markup and by `every_channel_switch_has_a_hidden_companion` |
 | A3 test count | **HELD, count corrected** | 17/98 → **19/119** after the sibling-link and action-styling tests |
-| A4 controller is `index`/`channels` only | **HELD** | asserted by the method-list test |
+| A4 controller is `index`/`channels` only | **STALE** | Group B added `update`/`updateChannels`/`sendTestMail` to the same controller; the test now asserts the three write methods EXIST. The variable-assembly claim still holds. |
 | A4 route middleware stack | **HELD** | `auth:web,sanctum` → `verified` → `password.change.required` → `account.state` → `feature:notifications` → `can:notifications.view` |
 | A5 "routes carry no `->can()`" | **STALE — fixed above** | both gates landed in D1/D2 |
 
@@ -307,7 +307,7 @@ row.
 | **P9-B4** | **DONE** — `Web\V1\NotificationController` (`index`/`channels`/`update`/`updateChannels`/`sendTestMail`) + `Api\V1\NotificationController` sharing every action. API returns booleans for the channel switches, `has_password` instead of the credential, and 502 on a transport failure (the request was understood; the mail server is what failed). | API `PUT`, not `POST` — matches `api.v1.settings.update`. |
 | **P9-B5** | **DONE** — the controller builds `$updateUrl` / `$sendTestUrl` / the channels URL from `route()`. Write routes carry `->can('notifications.manage')`; the test route carries `->can('notifications.send_test')`. | The views needed **no** change — the URLs were already the seam Group A left. This is what stops the form POSTing to a 404. |
 | **P9-B6** | **DONE, with a correction** — `bindMailConfig()` is called from the ACTION after commit, **not** from `boot()`, matching `bindTokenExpirations()`'s own reasoning: boot runs before the settings table exists and the query failure would take the boot down. 8 `SystemSettingSeeder` keys added. | See "Group B correction" below — the typed-getter call with a null default bound nothing at all. |
-| **P9-B7** | **DONE** — 3 `notification_channel_*` keys seeded, plus `NotificationChannelUpdateAction` and `UpdateNotificationChannelsRequest`. `in_app` is seeded **off** until Group C ships the badge that gives it a meaning. | Same seeder, same store as the SMTP keys. A switch that reports success and controls nothing is the same category error as a `pending` feature flag. |
+| **P9-B7** | **DONE** — 3 `notification_channel_*` keys seeded, plus `NotificationChannelUpdateAction` and `UpdateNotificationChannelsRequest`. `in_app` was seeded **off** until Group C shipped the badge that gives it a meaning, then flipped on by GAP 2. | Same seeder, same store as the SMTP keys. A switch that reports success and controls nothing is the same category error as a `pending` feature flag. The seeder default is now `'true'`; this row's original "off" is the pre-GAP-2 state. |
 
 ### Group B correction — a null default bound nothing at all
 
@@ -431,7 +431,7 @@ The badge is a count on an existing composer, not a component library.
 | **P9-E3** | **DONE** — two tests in `NotificationInboxTest`: a user cannot mark another's notification read through the single route, and `markAllAsRead` leaves the other user's rows untouched. | The inbox has no permission, so isolation is the only thing between two users' data. Both were verified load-bearing by replacing the relation scope with a raw `DB::table('notifications')` read — two tests go red, exactly on the isolation assertions. |
 | **P9-E4** | **DONE** — four tests: an administrative event reaches only permission holders and an ordinary user receives nothing; superadmin is a recipient despite holding no permission rows; a personal event reaches only its subject; an unclassified event reaches nobody. Plus a totality check that every event in the map names a permission `PermissionCatalog` declares. | The last one exists because the first draft of the map named `users.manage` and `roles.manage`, which do not exist — the events silently routed to an empty audience, which is indistinguishable from "nobody is an admin". |
 | **P9-E5** | **DONE** — the bell's href is `/notifications/inbox`, it renders for a plain user holding no `notifications.*` permission, and the unread badge reflects the count. | `NotificationAccessTest::the_header_bell_is_hidden_from_a_user_the_route_refuses` was **inverted** rather than deleted: it asserted the old behaviour (permission-gated, because the target was the configuration page) and now asserts the bell is no longer permission-gated, with a comment naming what replaced it. Keeping the shape means the next person to move the bell has to change a test rather than find a missing one. |
-| **P9-E6** | **DONE** — `1111 passed / 4263 assertions` (5 risky pre-existing), Pint clean on every touched file. `progress.md`, `task-tracker.md`, `feature-tracker.md` and this document reconciled; `feature-tracker.md:34` already read `done`. | |
+| **P9-E6** | **DONE** — `1111 passed / 4263 assertions` (5 risky pre-existing), Pint clean on every touched file. `progress.md`, `task-tracker.md`, `feature-tracker.md` and this document reconciled; `feature-tracker.md:34` already read `done`. | The counts are dated; `progress.md` carries the live figure. |
 | **P9-E7** | **DONE** — channels trimmed to `mail` and `database`; the phantom `mail.default_transport` key replaced by the eight real ones; "transport settings remain config/env only" reversed explicitly; the category table split into the two disjoint audiences with their trigger permissions. | Audit finding 6. The reversal is stated rather than silently deleted — a reader comparing two documents needs to know which one changed and why. |
 | **P9-E8** | **DONE** — correct the project conventions skill: `Permission::featureOf()` does not exist (audit finding 5). | Fixed 2026-10-05 in the `laravel-base-project-conventions` skill, along with the `@feature()`-in-Blade claim that does not match this repo's composer. |
 | **P9-E9** | **DONE** — regression for the null-default bug: `an_install_without_a_configured_username_still_binds`. | New, not in the original plan. Verified load-bearing by reintroducing the bug and watching the host assertion go red — the exact symptom, where the transport silently kept its `.env` values. A test that cannot fail is not a guard. |
@@ -499,6 +499,62 @@ so confidently that nobody would look for it.
 Replaced with what ships, what does not, and the rule for the events the audience
 map declares but nothing dispatches yet. Those are now described as declared and
 unreachable rather than as features.
+
+**Regressed after this was written, corrected 2026-10-08.** The replacement
+described role changes, feature toggles and setting changes as "declared and
+unreachable" — all three dispatch (`RoleAssignAction`,
+`FeatureToggleAction`, `SystemSettingsUpdateAction`), and the three classes that
+shipped with them were missing from the table entirely. The only genuinely
+undispatched mapped events are `permission.changed` and `user.deleted`. The same
+failure GAP 3 describes, committed a second time by a doc that had already learned
+it: describing an absent mechanism confidently is worse than listing nothing.
+
+---
+
+## Audit of the shipped phase — 2026-10-08, findings closed
+
+A second audit, run against Groups A–E as they stood rather than against this
+document's own tables. Method: every claim re-checked in the code; three
+failures by the document itself were found and are corrected above (A4, B7, E6).
+
+The architecture held up. What failed were seven things the tables do not
+describe, and they share a shape: each is a decision that was correct inside the
+module and wrong at its boundary — where another module could reach it, where the
+queue could reach it, or where time could reach it.
+
+| # | Finding | Closed by |
+|---|---|---|
+| **1** | **The SMTP credential left through the settings module.** `mail_password` is a Phase 9 key in Phase 8's store, and `SystemSetting::getAll()` had no redaction — so `GET /api/v1/settings` (`settings.view`), `PUT /api/v1/settings`, and the settings page's read-only table (it prints every key) all handed out the ciphertext. `settings.view` is a much wider gate than the `notifications.view` the credential was built for, and Group A's `$hasPassword` finding was scoped to the notifications pages only. | `SECRET_KEYS` on the model; `getAll()` filters them. `getString()` is unchanged, so `bindMailConfig()` still reads the credential. Asserted on all three surfaces by `SettingsPentestTest::the_smtp_credential_never_leaves_the_settings_module`. |
+| **2** | **Queued notifications dispatched inside a transaction.** `UserCreateAction`, `UserUpdateAction` and `UserRequestEmailChangeAction` all called `Notification::send` within `DB::transaction`, every class implements `ShouldQueue`, and every queue connection runs `after_commit => false`. A worker could send before commit, and a rollback still delivered a working temporary password, a verification link for a token the database never stored, and an email-change link that could never be used. The phase's own "dispatch after commit" rule held at the four state-change call sites and nowhere else. | Two things, because one of them is not enough. The three actions send after their transaction closes — which covers the case where the action owns the transaction. And every notification class declares `public $afterCommit = true`, which is what covers the case where something ABOVE it owns one: `SendQueuedNotifications` reads that property and the framework defers the job to the outermost commit. Moving the call out is not sufficient on its own, and I only learned that by writing the rollback test that disproved it. |
+| **3** | **The badge and the list under it could disagree.** `UnreadNotificationCount::forget()` cleared the count key only. The `recent()` key was never forgotten, so the badge updated instantly while the dropdown kept showing the previous five, and a row read as unread next to a count that had already dropped. | `forgetAllFor()` clears both; the `NotificationSent` listener and both mark-read paths call it. Two tests, both asserted through rendered HTML. |
+| **4** | **The `notifications` table grew without a ceiling.** Nothing deleted from it. The inbox paginates, which hides this from every screen that reads the table while it keeps filling. | Daily scheduled sweep `notification-retention`: read notifications older than 90 days. Unread rows are kept — deleting one removes a badge the user was never shown. A direct `DELETE`, because `model:prune` needs a `Prunable` model and an override of `Notifiable::notifications()`, the relation every delivery, read and count goes through. |
+| **5** | **Send-test-mail had no rate limit.** `notifications.send_test` is already a third permission, but a permission answers "may this person" and not "how often". Every other write route in `routes/web.php` carries a named limiter; this one did not. | `throttle:send-test-mail` on web and API, 5/minute keyed on operator **and** recipient, so spraying addresses does not buy a fresh budget. |
+| **6** | **`app/Models/Notification.php` was dead code.** No import anywhere in `app/`, `tests/`, `database/`, `routes/`. Laravel resolves `Illuminate\Notifications\DatabaseNotification`; the class was also inconsistent with its own table (`HasUlids` on a uuid-keyed table). | Deleted. The pruning decision in #4 is why it is not coming back in a corrected form. |
+| **7** | **The global mail switch could break four flows.** `NotificationChannel::for()` applied the switch to everything, and for verification, email-change confirmation, account state changes and the temporary password the mail is not one channel among several — it is the only delivery. A locked account cannot open the inbox that would otherwise carry the news, because `account.state` refuses the login first. | `NotificationChannel::for(essential: true)`. The in-app switch is not bypassed. The channels page states the exception rather than letting a switch imply an effect it does not have. The contrast is asserted: an administrative notice follows the switch, an account-state notice does not. |
+
+**What the audit did not find.** No notification dispatches inside a transaction
+any more; every class that can reach `database` has a `toArray()`; the inbox is
+scoped at every entry point; no credential reaches a view, a response or a log
+line; the audience map is total against `PermissionCatalog` and fails toward the
+narrow audience; the flag is written by the seeder, so no declared-and-dead gate
+is left behind.
+
+**Open, recorded not fixed** — none worth a change on their own:
+
+- The bell dropdown renders `bi-check2-circle` for an **unread** row and `bi-check`
+  for a read one (`notification-dropdown.blade.php:41`). The markers are inverted.
+- `SystemSettingSeeder` seeds `mail_mailer` to `config('mail.default')`, which is
+  `log` in `.env.example`, while the form's placeholder reads `smtp`. A fresh
+  install therefore shows a transport in force that differs from the hint.
+- `mail_from_address` is `nullable` while `mail_host` and `mail_port` are
+  `required`. Clearing the from-address is accepted; clearing the host is not.
+- The audit-event inventory is not written down anywhere. `mail_setting.updated`
+  and `test_mail.sent`/`test_mail.failed` are in D-3; `notification_channels.updated`
+  is not in this document, and the last two are written outside a transaction
+  (`test_mail.*` has nothing to commit — the probe is not a change to anything).
+- No notification class declares `$tries`, `$timeout` or `$backoff`. The
+  framework defaults are adequate until a permanently undeliverable address
+  matters more than the retries cost.
 
 ---
 
