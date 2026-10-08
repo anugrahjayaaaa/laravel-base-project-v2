@@ -232,8 +232,12 @@ Route::middleware(['auth:web,sanctum', 'verified', 'password.change.required', '
             Route::post('/notifications', 'update')->name('notifications.update')->can('notifications.manage');
             Route::post('/notifications/channels', 'updateChannels')
                 ->name('notifications.channels.update')->can('notifications.manage');
+            // `throttle:send-test-mail` — `notifications.send_test` answers "may this
+            // person" and not "how often", so the ceiling has to be its own
+            // concern. Every other write route in this file is throttled.
             Route::post('/notifications/test-mail', 'sendTestMail')
-                ->name('notifications.test-mail')->can('notifications.send_test');
+                ->name('notifications.test-mail')->middleware('throttle:send-test-mail')
+                ->can('notifications.send_test');
         });
     });
 

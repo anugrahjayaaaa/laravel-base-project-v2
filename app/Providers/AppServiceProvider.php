@@ -150,10 +150,10 @@ class AppServiceProvider extends ServiceProvider
         // would show one user's answer and write it for everyone, and the
         // sidebar would disagree with the routes depending on who asked. A
         // kill switch is one switch.
-        Feature::resolveScopeUsing(fn() => 'global');
+        Feature::resolveScopeUsing(fn () => 'global');
 
         foreach (array_keys(config('pennant.features', [])) as $slug) {
-            Feature::define($slug, fn(): bool => false);
+            Feature::define($slug, fn (): bool => false);
         }
 
         // Both are reachable from the API, so both need the JSON branch too.
@@ -165,6 +165,25 @@ class AppServiceProvider extends ServiceProvider
             return Limit::perMinute(15)
                 ->by($key)
                 ->response($throttle->responseFor('user'));
+        });
+
+        // Sending test mail is the one action in the app that puts a message on
+        // someone else's server with an address the caller typed.
+        // `notifications.send_test` is already a separate permission from
+        // `notifications.manage`, but a permission answers "may this person" and
+        // not "how often" — without a ceiling, a compromised operator account
+        // turns this route into a mail relay pointed at any third party.
+        //
+        // Keyed on the recipient address as well as the operator, so the limit
+        // holds even when one account sprays many different addresses.
+        RateLimiter::for('send-test-mail', function ($request) use ($throttle) {
+            $to = strtolower(trim((string) $request->input('email', '')));
+            $key = $throttle->key('send-test-mail', (string) $request->user()?->id, $request->ip())
+                .':'.$to;
+
+            return Limit::perMinute(5)
+                ->by($key)
+                ->response($throttle->responseFor('email'));
         });
 
         RateLimiter::for('bulk-action', function ($request) use ($throttle) {
@@ -265,7 +284,7 @@ class AppServiceProvider extends ServiceProvider
             // key was bound, so a perfectly good configuration silently left the
             // transport on its .env values. A single unconfigured field took the
             // whole binding down.
-            $text = fn(string $path): string => (string) (config($path) ?? '');
+            $text = fn (string $path): string => (string) (config($path) ?? '');
 
             config()->set([
                 'mail.default' => SystemSetting::getString('mail_mailer', $text('mail.default')),

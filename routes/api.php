@@ -97,8 +97,10 @@ Route::prefix('v1')->group(function () {
                 Route::put('/notifications', 'update')->name('api.v1.notifications.update')->can('notifications.manage');
                 Route::put('/notifications/channels', 'updateChannels')
                     ->name('api.v1.notifications.channels.update')->can('notifications.manage');
-                Route::post('/notifications/test-mail', 'sendTestMail')
-                    ->name('api.v1.notifications.test-mail')->can('notifications.send_test');
+                // `throttle:send-test-mail` — a permission is not a rate limit, and this route
+                // mails an address the caller typed.
+                Route::post('/notifications/test-mail', 'sendTestMail')->middleware('throttle:send-test-mail')
+                            ->name('api.v1.notifications.test-mail')->can('notifications.send_test');
             });
         });
 
