@@ -561,7 +561,7 @@ and the Phase 11 ladder in `implementation-roadmap.md`.
 
 - Disable Pulse in the test environment (recording is overhead).
 - `tests/Feature/PulsePermissionGateTest.php` and
-  `tests/Feature/PulseFeatureGateTest.php` cover the two gates.
+  `tests/Feature/FeatureFlag/PulseFeatureGateTest.php` cover the two gates.
 
 ### Application-Level Abstraction
 

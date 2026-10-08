@@ -58,7 +58,7 @@
 - `resources/js/helpers/password-strength.js` — vanilla JS
 - 2 views updated: `auth/reset-password`, `profile/edit` (P5-A5 skipped — no password field)
 - SystemSettingSeeder: 6 new keys
-- Tests: `tests/Feature/PasswordPolicyTest.php`, `tests/Unit/PasswordPolicyTest.php`
+- Tests: `tests/Feature/Auth/PasswordPolicyTest.php`, `tests/Unit/PasswordPolicyTest.php`
 
 **Additional fixes (out of scope but shipped):**
 - Eye icon positioning (`right: Xrem` + `z-index: 5`) on `is-invalid` overlay — 6 buttons fixed across 3 views
@@ -94,7 +94,7 @@
 - 2 views updated: `auth/reset-password`, `profile/edit`
 - `settings/index.blade.php` — new "Password History" section
 - SystemSettingSeeder: 2 new keys
-- Tests: `tests/Feature/PasswordHistoryTest.php`
+- Tests: `tests/Feature/Auth/PasswordHistoryTest.php`
 
 **Gate:** B verified + tested. Proceed to Group C.
 
@@ -129,7 +129,7 @@
 - `settings/index.blade.php` — Password Expiration & Inactivity Lock section
 - `routes/console.php` — minute schedule guard; `bin/run-workers.sh` — local/cron/queue runners
 - SystemSettingSeeder: lifecycle and schedule keys
-- Tests: `tests/Feature/PasswordExpiryTest.php`, `tests/Feature/InactivityLockTest.php`, `tests/Feature/PasswordLifecycleUiTest.php`
+- Tests: `tests/Feature/Auth/PasswordExpiryTest.php`, `tests/Feature/Auth/InactivityLockTest.php`, `tests/Feature/Auth/PasswordLifecycleUiTest.php`
 
 **Gate:** C verified + tested. Phase 5 complete. The canonical expiration setting is `password_expiry_days`; the legacy `password_expiration_days` key is removed by migration.
 
