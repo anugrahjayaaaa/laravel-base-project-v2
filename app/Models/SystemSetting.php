@@ -107,13 +107,32 @@ class SystemSetting extends Model
     }
 
     /**
-     * Get all settings as key-value pairs.
+     * Keys whose stored value is a credential.
+     *
+     * The mail transport keeps its SMTP password in this store (D-1), which
+     * makes it the one setting that is not merely configuration. `getAll()` is
+     * how the settings module renders its read-only table and answers
+     * `GET /api/v1/settings`, so without this list the encrypted credential
+     * reaches anyone holding `settings.view` — a wider audience than
+     * `notifications.view`, which is the gate the credential was built for.
+     * Redacting at the accessor keeps that out of every current and future
+     * caller instead of trusting each one to remember.
+     *
+     * Read the credential through `getString()` (as `bindMailConfig()` does),
+     * never through the collection accessors.
+     *
+     * @var array<int, string>
+     */
+    private const SECRET_KEYS = ['mail_password'];
+
+    /**
+     * Get all settings as key-value pairs, minus the credentials.
      *
      * @return array<string, string>
      */
     public static function getAll(): array
     {
-        return static::loadSettings();
+        return array_diff_key(static::loadSettings(), array_flip(static::SECRET_KEYS));
     }
 
     /**
