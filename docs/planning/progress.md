@@ -15,7 +15,7 @@
 | 6 | RBAC & authorization | IN PROGRESS — Groups A (UI) and B (permission set + seeders) DONE; C–E pending |
 | 7 | Feature availability / feature flags | DONE — Groups A–F. The kill switch is real: a flag off 403s its routes (62/62 across web + API) and drops its menu item, with no superadmin bypass |
 | 8 | Settings | DONE — Groups A–E closed 2026-10-03 on `feature/phase-8-settings`. Groups A–D were already shipped by Phase 4F/5 (`SystemSettingRequest`, `SystemSettingsUpdateAction`, the two-column page, `feature:settings` on web + API, `@can` read-only, audit inside the transaction). Group A fixed four design-system defects (error messages invisible on 18 of 22 fields — `input-group` breaks Bootstrap's sibling selector) and added a render gate. Group E closed both gaps: `P8-E1a` proves all 40 numeric bounds reject out-of-range, `P8-E1b` proves the API audit row and partial-key semantics. Added since: `SettingsBenchmarkTest` (read path healthy at 1 query; save is 39 constant queries, **not** an N+1 — scales with whitelist length, not rows) and `SettingsPentestTest` (23 adversarial tests — authorization, role escalation, policy sabotage, unknown-key injection, mass assignment, audit integrity — all pass). Full suite **1015 passed / 3874 assertions**. See `phase-8-settings-management.md` |
-| 9 | Notification/mail/queue | **DONE** — Groups A–E complete, every task verified. Mail transport in `system_settings` with `.env` as fallback, `mail_password` encrypted and never sent to a view; `bindMailConfig()` rebinds `config('mail')` after commit; test-mail probe; Web + API. In-app engine on Laravel's own primitives: `make:notifications-table`, `/notifications/inbox` (flag + auth, **no permission**) with mark-read and mark-all-read scoped through the viewer's relation, a cached bell badge invalidated on delivery and on mark-read, and `NotificationAudience` resolving the Target Audience Rule through the permission that performs each change. **Five corrections to the brief, each caught by a test rather than by reading:** the unread count cannot live on the `layouts.app` composer (`@include` shares scope, so a child renders first); the audience map must use per-action permissions because `users.manage`/`roles.manage` do not exist and an undeclared permission routes an event to nobody; `config/mail.php` has `scheme`, not `encryption`, so `none` is stored as empty and binds as null; `bindMailConfig()` belongs after the commit, not at boot; and the bell's count is cached because reading it live costs a query on every authenticated page. **D6 closed too** — `NotificationUiRenderTest` no longer fakes permissions through a `Gate::before` override; it builds four real Spatie roles. That took three things a role swap is not: `syncRoles` rather than `assignRole` (Spatie's adds, so narrowing a test's permissions would not narrow them), a `PermissionRegistrar` forget per swap, and clearing `User::can()`'s own `canMemo` — a **separate** cache from Spatie's, and forgetting only the registrar leaves `can('…manage')` answering true for a user who no longer holds it, which makes the test pass for the wrong reason. Verified by removing the memo clear and watching the send-test gate go red. Two bugs found and fixed: a null config default passed to `SystemSetting::getString(string, string)` raised a TypeError the catch swallowed, binding **no** key at all — save returned 200, row written, transport unchanged; and a rename script added a `User` type hint to a class that never had one, 500-ing every email-change path. Tests: 73 across four files (`NotificationUiRenderTest` 19, `NotificationAccessTest` 14, `NotificationSettingsTest` 19, `NotificationInboxTest` 21). Full suite **1111 passed / 4263 assertions**, 5 risky pre-existing, Pint clean. See `phase-9-notifications-mail.md` |
+| 9 | Notification/mail/queue | **DONE** — Groups A–E complete, every task verified, plus three post-ship passes (code audit, copy rewrite, performance, security). Mail transport in `system_settings` with `.env` as fallback, `mail_password` encrypted and never sent to a view; `bindMailConfig()` rebinds `config('mail')` after commit; test-mail probe; Web + API. In-app engine on Laravel's own primitives: `make:notifications-table`, `/notifications/inbox` (flag + auth, **no permission**) with mark-read and mark-all-read scoped through the viewer's relation, a cached bell badge invalidated on delivery and on mark-read, and `NotificationAudience` resolving the Target Audience Rule through the permission that performs each change. **Five corrections to the brief, each caught by a test rather than by reading:** the unread count cannot live on the `layouts.app` composer (`@include` shares scope, so a child renders first); the audience map must use per-action permissions because `users.manage`/`roles.manage` do not exist and an undeclared permission routes an event to nobody; `config/mail.php` has `scheme`, not `encryption`, so `none` is stored as empty and binds as null; `bindMailConfig()` belongs after the commit, not at boot; and the bell's count is cached because reading it live costs a query on every authenticated page. **D6 closed too** — `NotificationUiRenderTest` no longer fakes permissions through a `Gate::before` override; it builds four real Spatie roles. That took three things a role swap is not: `syncRoles` rather than `assignRole` (Spatie's adds, so narrowing a test's permissions would not narrow them), a `PermissionRegistrar` forget per swap, and clearing `User::can()`'s own `canMemo` — a **separate** cache from Spatie's, and forgetting only the registrar leaves `can('…manage')` answering true for a user who no longer holds it, which makes the test pass for the wrong reason. Verified by removing the memo clear and watching the send-test gate go red. Two bugs found and fixed: a null config default passed to `SystemSetting::getString(string, string)` raised a TypeError the catch swallowed, binding **no** key at all — save returned 200, row written, transport unchanged; and a rename script added a `User` type hint to a class that never had one, 500-ing every email-change path. **Re-audited 2026-10-08 — seven findings, all closed:** the SMTP ciphertext was reachable through the Phase 8 settings module (`GET /api/v1.settings`, `settings.view` is a wider audience than `notifications.view`) — now redacted in `SystemSetting::getAll()`; three actions dispatched notifications INSIDE a transaction against `after_commit => false` queues — moved out, and every notification now declares `$afterCommit = true` because that alone does not survive a caller that owns the transaction; the bell's count was invalidated while its five-row list was not, so badge and dropdown disagreed for five minutes; the `notifications` table had no retention at all (daily sweep, read rows only); send-test-mail had no rate limit; `app/Models/Notification.php` was dead code; and the global mail switch could break the four flows it has no alternative to — verification, email-change, account state, temporary password — which now bypass it via `NotificationChannel::for(essential: true)`. **Copy rewritten** on researched guidance: every class repeated its own title in the body ("Role was updated" over "Role was updated by Ana Silva."), and `sprintf('Your roles%s were changed.', $by)` produced a broken sentence; subjects now stand alone because the bell shows subjects only, and `NotificationCopyTest` pins that across all seven classes and both audiences. **Performance measured:** no N+1, nothing over 2.85 ms, warm bell cache costs 0 queries, inbox is bounded by pagination not by size, audience resolution is 2 queries at 1 or 21 administrators. **Pentest: 11 probes / 108 assertions, no findings** — authorization at four privilege levels on both surfaces, inbox isolation four ways, the credential through four read paths, eight configuration-injection payloads, five channel-switch shapes, relay abuse, stored XSS, and flag enforcement. Tests: **1301 passed / 5087 assertions**, Pint clean. See `phase-9-notifications-mail.md` |
 | 10 | Audit Trail | ARCHITECTURE DONE — action-first standard shipped and reconciled across User, System, Role, Feature and Auth (web + API), with one audit entry point (`Auditable::audit()`) that captures `source`/`ip`/`user_agent` itself. AUD-006 (Profile) still migrates |
 | 11 | Monitoring/observability | PLANNED |
 | 12 | API V1 | PLANNED |
@@ -27,37 +27,39 @@
 
 ## Current Task
 
-Phase 7 — Feature Availability & Feature Flags: DONE
-**Both sides ship, and both were verified by running the app, not by reading the diff.**
+**None in flight.** Phases 0–9 are complete; the next work is Phase 10 (Audit Trail), which is
+architecture-done with `AUD-006` (Profile) still to migrate.
 
-- Group A (UI): ✅ DONE (`9545bce`) — index view, metric strip, grouped table, `feature-toggle` component, render gate
-- Group A audit: ✅ DONE — `align-middle` on all five `<th>`, and `ConfirmActionUsageTest` extended to see the `<input>` switch (it matched `<button\b` only, so the switch was never checked at all). Both sabotage-verified. Closed P7-E3 early
-- Group B (catalogue + activation): ✅ DONE (`b72a5f6`) — `config/pennant.php` (8 flags), `FeatureCatalog`, `FeatureFlagSeeder`, global scope
-- Group B audit: ✅ DONE — seeder non-destructiveness proven by running it (operator's `pulse=off` survived a reseed, row count held at 8), `stores` block diffed IDENTICAL against vendor, `isActive()` confirmed the only reader. Two non-defect gaps recorded: `disabled => true` is unused until routes are gated, and the slug count is deliberately unpinned. Closed P7-B7
-- Group D1–D6 (permissions, index/toggle actions, controller, web routes, sidebar item): ✅ DONE (`e538c49`)
-- Group C (enforcement middleware): ✅ DONE — `EnsureFeatureIsEnabled` (403, no `features.manage` bypass) + the `feature:` alias in `bootstrap/app.php`; 9 tests, three sabotages verified. Pennant's own middleware could not be aliased: it aborts 400, and it resolves through `Feature::active()` so a `disabled => true` kill switch reads as active to it (measured) — status revised 404 → 403 on 2026-10-01
-- Group D7–D10 (route matrix + menu gate): ✅ DONE — 62/62 module routes gated (33 web, 29 API), menu filters on the flag before the permission, `FeatureFlagMenuTest` 9 tests. The first pass shipped a partial gate (bulk-action, state toggles, email-change left outside) and was caught by walking `gatherMiddleware()` at runtime, not by reading the diff
-- Group F (bulk feature actions): ✅ DONE (`0481541`, `f8d23f3`) — `FeatureBulkToggleAction` (one transaction, one `feature.bulk_toggled` row, every `from` read before the first write), `features.bulk-action` behind one `features.manage` gate rather than `AuthorizesBulkAction`, `#bulkBar` with `data-bulk-mixed="disable_feature"`, and 4 tests that run the real Vite bundle — after the dropdown shipped empty once with 800+ green tests
-- Group E (tests + docs): ✅ DONE — E1/E2/E4/E6/E7 closed as planned; E3 closed in the Group A audit; **E5 found a real N+1** (`resolve()` called `isActive()` per slug — 2/4/8 queries for 2/4/8 flags), fixed by `FeatureCatalog::activeMap()` reading the set in one `WHERE name IN (...)`. Sabotage-verified
+**Phase 9 — Notifications & Mail: DONE** (re-audited 2026-10-08)
+The phase did not simply close on a green suite. Four passes ran after Groups A–E shipped, and each
+found something the task tables could not see:
 
-**Follow-up audit (2026-10-02), all fixed:**
-- `bulkAudit()` left the `event` column NULL while writing `description`, so every bulk user row (7 actions × web + API) was invisible to any `where('event', …)` filter. One line in the shared helper; also gives the batch a `batch_uuid`
-- `pulse` was declared but not gated: `/pulse` served **200 with the flag off**. Now gated through `pulse.middleware`, the vendor's own extension point
-- the `SNAPSHOT` cache key was duplicated in 4 files behind docblocks claiming "a rename has to break a compile" — false for PHP string constants. One `public const` on the reader, referenced by all three writers
-- the docs told operators to activate flags via `tinker`, which writes the store row without forgetting the resolved snapshot — `/features` then shows stale state for 30s and a `features.view`-only user cannot self-heal
-- `translations` and `activity_logs` control nothing yet; the page now says so instead of letting a switch that changes nothing borrow the confidence of one that does
-- a report that the API role surface was unaudited was **wrong** — all 5 mutations audit inside their actions. `ApiRoleAuditTrailTest` now proves it by running the routes, so the question does not get re-litigated by the next grep
+- **Code audit** — 7 findings, all closed. Four were boundary defects rather than mistakes inside
+  the module: the SMTP ciphertext was readable through Phase 8's settings API to anyone holding
+  `settings.view`; three actions dispatched notifications inside a transaction against
+  `after_commit => false` queues; the bell's cached count was invalidated while its five-row list
+  was not; and the global mail switch could break the four flows with no alternative channel
+  (verification, email-change, account state, temporary password). The remaining three: no retention
+  on the `notifications` table, no rate limit on send-test-mail, and a dead model class.
+- **Copy rewrite** — every class repeated its own title in the body, and one `sprintf()` produced a
+  broken sentence. Rewritten against researched guidance, with the rule that matters most here
+  pinned: the subject must stand alone, because the bell dropdown shows the subject and nothing else.
+- **Performance** — no N+1, nothing over 2.85 ms, warm bell cache at 0 queries, inbox bounded by
+  pagination rather than by size.
+- **Pentest** — 11 probes, 108 assertions, no findings.
 
-**Known and accepted:** `translations` and `activity_logs` gate nothing until
-Phase 8 builds their routes — the page labels them rather than pretending. Both
-menu entries are already wired to their flag so they start hiding the moment the
-routes land.
+Two things stayed open on purpose rather than being quietly fixed: a permission granted directly to
+a person (rather than through a role) passes `can()` but resolves to no notification audience, and the
+inbox page holds the module's last uncached read. Both are recorded where they are found.
 
-Full detail: `docs/planning/phase-7-feature-flags.md`.
+Full detail: `docs/planning/phase-9-notifications-mail.md`.
 
 ---
 
 ## Previous Task
+
+> Historical log, kept in the order it was current. Phases 7, 8 and 9 each closed with their own
+> audit; their detail lives in their phase documents.
 
 Phase 6 — RBAC & Authorization: COMPLETED / CLOSED (2026-09-30)
 Every gate closed. Full suite 661 passed / 2243 assertions, 0 regressions; pint clean; assets build clean.
@@ -315,23 +317,34 @@ None — no implementation has started yet.
 
 ## Test Status
 
-Not yet started (Phase 15).
+**1301 passed / 5087 assertions** (2026-10-08, Phase 9 re-audit). PHPUnit 12, `test_` prefix, SQLite
+`:memory:`, 5 intentionally assertion-free benchmark cases.
+
+| Area | File | Tests |
+|---|---|---|
+| Notifications — module | `NotificationUiRenderTest` 19 · `NotificationAccessTest` 14 · `NotificationSettingsTest` 20 · `NotificationInboxTest` 24 | 77 |
+| Notifications — rules | `NotificationCopyTest` 5 × 27 cases · `AccountStateNotificationTest` 8 · `AdministrativeEventDispatchTest` 10 | 23 |
+| Notifications — measurement & attack | `NotificationBenchmarkTest` 8 · `NotificationPentestTest` 11 | 19 |
+| Phase 8 spillover | `SettingsPentestTest` 15 (incl. the SMTP-credential disclosure probe) | 15 |
+
+Phase 15 ("comprehensive testing") is still PLANNED — the suite is large, not yet deliberately
+exhaustive per surface.
 
 ## Documentation Status
 
-|| Area | Status |
-||------|--------|
-|| Architecture | Complete |
-|| Dependencies | Complete |
-|| Security | Complete |
-|| API | Complete |
-|| Data | Complete |
-|| Infrastructure | Complete |
-|| Features | Complete |
-|| Testing | Complete |
-|| Operations | Complete |
-|| UI | Complete |
-|| Planning | Complete |
+| Area | Status |
+|------|--------|
+| Architecture | Complete |
+| Dependencies | Complete |
+| Security | Complete |
+| API | Complete |
+| Data | Complete |
+| Infrastructure | Complete |
+| Features | Complete |
+| Testing | Complete |
+| Operations | Complete |
+| UI | Complete |
+| Planning | Complete |
 
 ## Next Steps
 

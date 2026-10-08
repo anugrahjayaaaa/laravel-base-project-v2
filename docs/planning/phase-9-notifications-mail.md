@@ -1,10 +1,11 @@
 # Phase 9 — Notifications & Mail Management System
 
-> Date: 2026-10-03 (spec) · 2026-10-03 (Group A) · 2026-10-05 (D1/D2/D4, Group B, Groups C and E)
+> Date: 2026-10-03 (spec) · 2026-10-03 (Group A) · 2026-10-05 (D1/D2/D4, Group B, Groups C and E) · 2026-10-08 (audit of the shipped phase, copy rewrite, performance, security)
 > Branch: feature/phase-9-notifications-mail
-> Status: **Groups A–E DONE.** Every task in this document is shipped and verified.
+> Status: **Groups A–E DONE, and the shipped phase re-audited 2026-10-08.** Every task is shipped and verified. Four passes ran after the groups closed: a code audit (7 findings, all closed), a copy rewrite, a performance measurement, and a pentest (11 probes, no findings). Full suite **1301 passed / 5087 assertions**.
 > Scope: Mail/SMTP configuration (`SystemSetting`), admin notification configuration, global delivery channel switches, per-user in-app inbox, transactional + system notification delivery.
 > Dependency chain: A → B → C → D → E. Groups A, B and C are shipped; D1/D2/D4 shipped ahead of B because a gate must land with what it guards; D3 and E1/E2 shipped with B.
+> Post-ship work is tracked as **P9-X1..X9** in `task-tracker.md` and recorded here under "Audit of the shipped phase", "Audit of the shipped copy" and "Verification — performance".
 > File note: the brief refers to `docs/planning/phase-9-notifications.md`. **This file is the single source of truth** — `phase-9-notifications-mail.md`. Do not create the second name; two plan files for one phase drift, and the tracker links this one.
 
 **No Git commit without owner approval.**

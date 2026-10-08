@@ -236,7 +236,7 @@ genuinely open and are the real D1/D2 work.
 
 ### Phase 9 — Notifications & Mail
 
-> Added by the 2026-10-03 audit. Group A is the only shipped group; nothing in B–E has started.
+> Groups A–E shipped (2026-10-05) and the shipped phase was re-audited 2026-10-08. P9-X1..X4 below are that audit's tasks: each is a defect found in shipped code, not a design change.
 
 | ID | Task | Phase | Priority | Depends On | Status |
 |----|------|-------|----------|-----------|--------|
@@ -269,7 +269,7 @@ genuinely open and are the real D1/D2 work.
 | P9-E3 | Inbox isolation — A cannot mark B's notification read (single route nor mark-all) | 9 | P0 | P9-C5 | DONE |
 | P9-E4 | Target Audience Rule — admin event reaches only permission holders, personal reaches only its subject, unclassified reaches nobody, and every event names a declared permission | 9 | P0 | P9-C3 | DONE |
 | P9-E5 | Bell target — href is `/notifications/inbox`, renders for a plain user, badge reflects the count | 9 | P0 | P9-C2 | DONE |
-| P9-E6 | Full suite green (`1111 passed / 4263 assertions`) + reconcile `progress.md` / `task-tracker.md` / `feature-tracker.md` / phase doc | 9 | P1 | P9-E1 | DONE |
+| P9-E6 | Full suite green (`1111 passed / 4263 assertions` at close; **1301 / 5087** after the 2026-10-08 audit passes) + reconcile `progress.md` / `task-tracker.md` / `feature-tracker.md` / phase doc | 9 | P1 | P9-E1 | DONE |
 | P9-E7 | Reconcile `docs/base/features/notifications.md` — channels trimmed, transport table rewritten, "config/env only" reversed, audience table split | 9 | P1 | P9-B2 | DONE |
 | P9-E8 | Correct the conventions skill — `Permission::featureOf()` does not exist; the sidebar is `AppMenuComposer`, not `@feature()` in Blade | 9 | P2 | — | DONE |
 | P9-E9 | Regression for the null-default binding bug — `an_install_without_a_configured_username_still_binds`, verified load-bearing by reintroducing the bug | 9 | P0 | P9-B6 | DONE |
@@ -277,6 +277,15 @@ genuinely open and are the real D1/D2 work.
 | P9-E11 | `NotificationAccountStateAction` wired to the four user-state actions — the audience rule now has callers (was zero) | 9 | P0 | P9-C3 | DONE |
 | P9-E12 | `notification_channel_in_app` read as the `database` gate in `NotificationChannel::for()` — was a switch that saved and changed nothing | 9 | P0 | P9-C1 | DONE |
 | P9-E13 | `docs/base/features/notifications.md` rewritten to name only shipped events; declared-but-undispatched ones marked unreachable | 9 | P1 | P9-E7 | DONE |
+| P9-X1 | **Credential boundary** — `SystemSetting::getAll()` returned `mail_password` ciphertext to the Phase 8 settings module, whose `settings.view` gate is wider than `notifications.view`; filtered by `SECRET_KEYS` and asserted on four read paths | 9 | P0 | P9-B2 | DONE |
+| P9-X2 | **Delivery boundary** — 3 actions dispatched inside a transaction against `after_commit => false` queues; moved out, and every notification class now declares `$afterCommit = true` (the property alone is what survives a caller that owns the transaction) | 9 | P0 | P9-C3 | DONE |
+| P9-X3 | **Cache + retention** — the bell's five-row list shared the count's TTL but not its invalidation; `forgetAllFor()` clears both. Plus a daily `notification-retention` sweep (read rows > 90 days), which the table had none of | 9 | P0 | P9-C2 | DONE |
+| P9-X4 | **Abuse + channel boundaries** — `throttle:send-test-mail` on web and API (a permission is not a rate limit); `NotificationChannel::for(essential: true)` for the four flows with no alternative channel; dead `app/Models/Notification.php` deleted | 9 | P0 | P9-B3 | DONE |
+| P9-X5 | **Copy** — every class repeated its own title in the body, and `sprintf('Your roles%s were changed.', $by)` produced a broken sentence. Rewritten against researched guidance; subjects now stand alone because the bell shows subjects only | 9 | P1 | P9-E7 | DONE |
+| P9-X6 | **`NotificationCopyTest`** — 5 mechanical rules × 7 classes × both audiences, mutation-checked against the old wording | 9 | P1 | P9-X5 | DONE |
+| P9-X7 | **`NotificationBenchmarkTest`** — 8 measurements + 3 query-count assertions; no N+1, nothing over 2.85 ms, warm bell 0 queries, inbox bounded by pagination, audience 2 queries at 1 or 21 admins | 9 | P2 | — | DONE |
+| P9-X8 | **`NotificationPentestTest`** — 11 probes / 108 assertions: authorization ×4 levels ×2 surfaces, inbox isolation ×4, credential ×4 read paths, 8 injection payloads, 5 switch shapes, relay abuse, stored XSS, flag enforcement. No findings | 9 | P0 | — | DONE |
+| P9-X9 | **Docs reconciled** — phase doc carries both audit passes; `notifications.md` carries the copy rules, the credential/retention limits and the audience gap; `progress.md` / `feature-tracker.md` / `implementation-roadmap.md` updated | 9 | P1 | P9-X1..X8 | DONE |
 
 **Group A ships. B–E do not exist yet.** The pages render and are reachable
 behind the full auth stack, but nothing persists: no write endpoint, no
