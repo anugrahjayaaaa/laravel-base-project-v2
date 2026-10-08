@@ -12,6 +12,10 @@ use Laravel\Sanctum\Sanctum;
 use Spatie\Permission\Models\Role;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
+use App\Models\RoleLookup;
+use Database\Seeders\PermissionSeeder;
+use Database\Seeders\RoleSeeder;
+use Spatie\Permission\PermissionRegistrar;
 
 /**
  * Security penetration test suite for User Management & Authentication.
@@ -34,9 +38,9 @@ class SecurityAuditTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->seed(\Database\Seeders\RoleSeeder::class);
-        $this->seed(\Database\Seeders\PermissionSeeder::class);
-        $this->app->make(\Spatie\Permission\PermissionRegistrar::class)->forgetCachedPermissions();
+        $this->seed(RoleSeeder::class);
+        $this->seed(PermissionSeeder::class);
+        $this->app->make(PermissionRegistrar::class)->forgetCachedPermissions();
         Cache::flush();
     }
 
@@ -46,7 +50,7 @@ class SecurityAuditTest extends TestCase
         // from PermissionSeeder (RBAC-004), and the hand-made row was on the
         // 'api' guard with no permissions, so it satisfied no users.* gate.
         $adminRole = Role::where('name', 'admin')
-            ->where('guard_name', \App\Models\RoleLookup::guard())
+            ->where('guard_name', RoleLookup::guard())
             ->firstOrFail();
         $admin = User::factory()->create(array_merge([
             'name' => 'Admin',

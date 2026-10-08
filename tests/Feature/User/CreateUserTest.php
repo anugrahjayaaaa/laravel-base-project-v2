@@ -9,6 +9,11 @@ use Illuminate\Support\Facades\Notification;
 use Laravel\Sanctum\Sanctum;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
+use App\Http\Middleware\VerifyCsrfToken;
+use App\Models\RoleLookup;
+use Database\Seeders\PermissionSeeder;
+use Database\Seeders\RoleSeeder;
+use Spatie\Permission\PermissionRegistrar;
 
 class CreateUserTest extends TestCase
 {
@@ -17,18 +22,18 @@ class CreateUserTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->withoutMiddleware(\App\Http\Middleware\VerifyCsrfToken::class);
+        $this->withoutMiddleware(VerifyCsrfToken::class);
 
-        $this->app->make(\Spatie\Permission\PermissionRegistrar::class)->forgetCachedPermissions();
+        $this->app->make(PermissionRegistrar::class)->forgetCachedPermissions();
 
         // Seeded, not hand-made: the admin role's permissions come from
         // PermissionSeeder (RBAC-004), and `Role::create(['name' => 'admin'])`
         // produced a role with no rows, which now fails every users.* gate.
-        $this->seed(\Database\Seeders\RoleSeeder::class);
-        $this->seed(\Database\Seeders\PermissionSeeder::class);
+        $this->seed(RoleSeeder::class);
+        $this->seed(PermissionSeeder::class);
 
         $adminRole = Role::where('name', 'admin')
-            ->where('guard_name', \App\Models\RoleLookup::guard())
+            ->where('guard_name', RoleLookup::guard())
             ->firstOrFail();
 
         $admin = User::factory()->create([

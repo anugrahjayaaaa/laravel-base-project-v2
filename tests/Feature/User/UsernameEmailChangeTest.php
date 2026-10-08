@@ -8,6 +8,12 @@ use App\Notifications\ChangeEmailVerificationNotification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
 use Tests\TestCase;
+use App\Http\Middleware\VerifyCsrfToken;
+use App\Models\RoleLookup;
+use Database\Seeders\PermissionSeeder;
+use Database\Seeders\RoleSeeder;
+use Illuminate\Support\Facades\URL;
+use Illuminate\Support\Str;
 
 class UsernameEmailChangeTest extends TestCase
 {
@@ -16,9 +22,9 @@ class UsernameEmailChangeTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->seed(\Database\Seeders\RoleSeeder::class);
-        $this->seed(\Database\Seeders\PermissionSeeder::class);
-        $this->withoutMiddleware(\App\Http\Middleware\VerifyCsrfToken::class);
+        $this->seed(RoleSeeder::class);
+        $this->seed(PermissionSeeder::class);
+        $this->withoutMiddleware(VerifyCsrfToken::class);
         SystemSetting::set('allow_username_change', 'true');
         SystemSetting::set('allow_email_change', 'true');
         SystemSetting::set('username_change_cooldown_days', '30');
@@ -28,7 +34,7 @@ class UsernameEmailChangeTest extends TestCase
     public function test_admin_can_update_username(): void
     {
         $admin = User::factory()->create(['email' => 'admin@test.com']);
-        $admin->assignRole(\App\Models\RoleLookup::find('admin'));
+        $admin->assignRole(RoleLookup::find('admin'));
         $user = User::factory()->create(['username' => 'oldname']);
 
         $this->actingAs($admin)->put(route('users.update', $user), [
@@ -45,7 +51,7 @@ class UsernameEmailChangeTest extends TestCase
     public function test_username_change_rejected_within_cooldown(): void
     {
         $admin = User::factory()->create(['email' => 'admin@test.com']);
-        $admin->assignRole(\App\Models\RoleLookup::find('admin'));
+        $admin->assignRole(RoleLookup::find('admin'));
         $user = User::factory()->create(['username' => 'oldname', 'username_changed_at' => now()]);
 
         $response = $this->actingAs($admin)->put(route('users.update', $user), [
@@ -62,7 +68,7 @@ class UsernameEmailChangeTest extends TestCase
     public function test_email_change_sends_verification_to_pending_email(): void
     {
         $admin = User::factory()->create(['email' => 'admin@test.com']);
-        $admin->assignRole(\App\Models\RoleLookup::find('admin'));
+        $admin->assignRole(RoleLookup::find('admin'));
         $user = User::factory()->create(['username' => 'testuser123']);
 
         Notification::fake();
@@ -80,15 +86,15 @@ class UsernameEmailChangeTest extends TestCase
     public function test_email_verification_link_updates_email_and_sets_timestamp(): void
     {
         $user = User::factory()->create();
-        $user->assignRole(\App\Models\RoleLookup::find('admin'));
-        $token = \Illuminate\Support\Str::random(64);
+        $user->assignRole(RoleLookup::find('admin'));
+        $token = Str::random(64);
         $user->update([
             'pending_email' => 'new@example.com',
             'email_change_token' => $token,
             'email_change_token_expires_at' => now()->addHours(24),
         ]);
 
-        $url = \Illuminate\Support\Facades\URL::temporarySignedRoute(
+        $url = URL::temporarySignedRoute(
             'email.verify-change',
             now()->addHours(24),
             ['user' => $user, 'token' => $token]
@@ -107,7 +113,7 @@ class UsernameEmailChangeTest extends TestCase
         SystemSetting::set('allow_username_change', 'false');
 
         $admin = User::factory()->create(['email' => 'admin@test.com']);
-        $admin->assignRole(\App\Models\RoleLookup::find('admin'));
+        $admin->assignRole(RoleLookup::find('admin'));
         $user = User::factory()->create(['username' => 'oldname']);
 
         $response = $this->actingAs($admin)->put(route('users.update', $user), [

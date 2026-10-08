@@ -8,6 +8,8 @@ use App\Notifications\ChangeEmailVerificationNotification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
 use Tests\TestCase;
+use App\Http\Middleware\VerifyCsrfToken;
+use Illuminate\Support\Str;
 
 class ProfileUpdateTest extends TestCase
 {
@@ -16,7 +18,7 @@ class ProfileUpdateTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->withoutMiddleware(\App\Http\Middleware\VerifyCsrfToken::class);
+        $this->withoutMiddleware(VerifyCsrfToken::class);
         SystemSetting::set('allow_email_change', 'true');
         SystemSetting::set('allow_username_change', 'true');
     }
@@ -71,7 +73,7 @@ class ProfileUpdateTest extends TestCase
     public function test_email_verify_link_returns_not_found_without_signed_route(): void
     {
         $user = User::factory()->create();
-        $token = \Illuminate\Support\Str::random(64);
+        $token = Str::random(64);
         $user->update([
             'pending_email' => 'new@example.com',
             'email_change_token' => $token,

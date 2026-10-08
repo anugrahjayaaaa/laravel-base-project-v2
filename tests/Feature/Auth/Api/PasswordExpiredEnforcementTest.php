@@ -10,6 +10,7 @@ use Laravel\Sanctum\Sanctum;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
+use Illuminate\Support\Facades\Password;
 
 class PasswordExpiredEnforcementTest extends TestCase
 {
@@ -226,7 +227,7 @@ class PasswordExpiredEnforcementTest extends TestCase
         ]);
 
         Notification::fake();
-        $token = \Illuminate\Support\Facades\Password::broker()->createToken($user);
+        $token = Password::broker()->createToken($user);
 
         $response = $this->postJson('/api/v1/auth/password/reset', [
             'email' => $user->email,

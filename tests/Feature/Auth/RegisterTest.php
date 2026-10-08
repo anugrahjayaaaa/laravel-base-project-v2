@@ -13,6 +13,10 @@ use Database\Seeders\RoleSeeder;
 use Database\Seeders\SystemSettingSeeder;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
+use App\Actions\V1\User\UserCreateAction;
+use App\Http\Middleware\VerifyCsrfToken;
+use App\Models\RoleLookup;
+use App\Support\SystemRole;
 
 /**
  * Self-registration.
@@ -29,7 +33,7 @@ class RegisterTest extends TestCase
     {
         parent::setUp();
 
-        $this->withoutMiddleware(\App\Http\Middleware\VerifyCsrfToken::class);
+        $this->withoutMiddleware(VerifyCsrfToken::class);
         $this->seed(SystemSettingSeeder::class);
         // The superadmin role has to exist for the admin-path causer below:
         // Gate::before keys on the role, and an absent row grants nothing.
@@ -125,10 +129,10 @@ class RegisterTest extends TestCase
         // The same action, reached the admin way: no password argument.
         // causer: required since P6-C10 — a client-supplied `roles` key is a
         // grant, so the admin path checks users.assign_roles.
-        $causer = \App\Models\User::factory()->create();
-        $causer->assignRole(\App\Models\RoleLookup::find(\App\Support\SystemRole::SUPERADMIN));
+        $causer = User::factory()->create();
+        $causer->assignRole(RoleLookup::find(SystemRole::SUPERADMIN));
 
-        $user = app(\App\Actions\V1\User\UserCreateAction::class)->run([
+        $user = app(UserCreateAction::class)->run([
             'name' => 'Admin Made',
             'username' => 'adminmade',
             'email' => 'adminmade@example.com',

@@ -6,6 +6,9 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
+use App\Http\Middleware\VerifyCsrfToken;
+use Database\Seeders\PermissionSeeder;
+use Database\Seeders\RoleSeeder;
 
 /**
  * Role editing on the admin user form.
@@ -25,15 +28,15 @@ class UserRoleEditTest extends TestCase
     {
         parent::setUp();
 
-        $this->withoutMiddleware(\App\Http\Middleware\VerifyCsrfToken::class);
+        $this->withoutMiddleware(VerifyCsrfToken::class);
 
         // The admin form is permission-gated (P6-C14/C15), and a bare
         // `Role::findOrCreate('admin')` holds no permission rows — the matrix
         // lives in PermissionSeeder (RBAC-004), so both must run before the
         // admin is expected to pass `can()`. Kept as `admin` rather than
         // superadmin on purpose: this suite is about a delegated admin.
-        $this->seed(\Database\Seeders\RoleSeeder::class);
-        $this->seed(\Database\Seeders\PermissionSeeder::class);
+        $this->seed(RoleSeeder::class);
+        $this->seed(PermissionSeeder::class);
 
         $this->admin = User::factory()->create();
         $this->admin->assignRole(Role::findOrCreate('admin', 'web'));

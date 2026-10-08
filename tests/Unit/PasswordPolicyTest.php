@@ -5,6 +5,7 @@ namespace Tests\Unit;
 use App\Support\PasswordPolicy;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
+use Database\Seeders\SystemSettingSeeder;
 
 class PasswordPolicyTest extends TestCase
 {
@@ -13,7 +14,7 @@ class PasswordPolicyTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->seed(\Database\Seeders\SystemSettingSeeder::class);
+        $this->seed(SystemSettingSeeder::class);
     }
 
     /** Default policy: 12 chars, upper, lower, digit, symbol, reject-username. */

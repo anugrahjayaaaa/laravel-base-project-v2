@@ -10,6 +10,9 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
+use Database\Seeders\PermissionSeeder;
+use Database\Seeders\RoleSeeder;
+use Spatie\Permission\PermissionRegistrar;
 
 /**
  * The 422 error contract on every Form Request.
@@ -31,10 +34,10 @@ class ValidationErrorContractTest extends TestCase
     {
         parent::setUp();
 
-        $this->app->make(\Spatie\Permission\PermissionRegistrar::class)->forgetCachedPermissions();
+        $this->app->make(PermissionRegistrar::class)->forgetCachedPermissions();
 
-        $this->seed(\Database\Seeders\RoleSeeder::class);
-        $this->seed(\Database\Seeders\PermissionSeeder::class);
+        $this->seed(RoleSeeder::class);
+        $this->seed(PermissionSeeder::class);
 
         $adminRole = Role::where('name', 'admin')
             ->where('guard_name', RoleLookup::guard())

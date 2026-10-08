@@ -5,6 +5,10 @@ namespace Tests\Feature\User;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
+use App\Http\Middleware\VerifyCsrfToken;
+use App\Models\RoleLookup;
+use Database\Seeders\PermissionSeeder;
+use Database\Seeders\RoleSeeder;
 
 class UserExtendedCrudTest extends TestCase
 {
@@ -13,15 +17,15 @@ class UserExtendedCrudTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->seed(\Database\Seeders\RoleSeeder::class);
-        $this->seed(\Database\Seeders\PermissionSeeder::class);
-        $this->withoutMiddleware(\App\Http\Middleware\VerifyCsrfToken::class);
+        $this->seed(RoleSeeder::class);
+        $this->seed(PermissionSeeder::class);
+        $this->withoutMiddleware(VerifyCsrfToken::class);
         $this->admin = User::factory()->create([
             'name' => 'Admin',
             'email' => 'admin@example.com',
             'is_active' => true,
         ]);
-        $this->admin->assignRole(\App\Models\RoleLookup::find('admin'));
+        $this->admin->assignRole(RoleLookup::find('admin'));
         $this->actingAs($this->admin, 'web');
     }
 
