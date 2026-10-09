@@ -424,10 +424,11 @@ class RbacUiRenderTest extends TestCase
         // comparison compare a stale list against a fresh one.
         $asc = $this->get(route('permissions.index', ['sort' => 'name', 'direction' => 'asc']))
             ->viewData('permissions')->pluck('name')->all();
-        // `features.manage` now sorts first — the `features` group arrived with
-        // the flags routes. Pinned by hand rather than computed, so a catalogue
-        // that changes shape has to be looked at.
-        $this->assertSame('features.manage', $asc[0]);
+        // `audit.export` now sorts first — the `audit` group arrived with the Phase 10
+        // viewer routes. Pinned by hand rather than computed, so a catalogue that
+        // changes shape has to be looked at, which is what happened twice now
+        // (`features.*` when the flags shipped, `audit.*` when the viewer did).
+        $this->assertSame('audit.export', $asc[0]);
 
         $desc = $this->get(route('permissions.index', ['sort' => 'name', 'direction' => 'desc']))
             ->viewData('permissions')->pluck('name')->all();

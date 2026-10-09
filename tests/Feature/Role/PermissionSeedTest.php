@@ -54,11 +54,18 @@ class PermissionSeedTest extends TestCase
     {
         // A permission with no route, controller or view grants nothing and
         // still shows up in the permissions UI as though it means something.
-        // This is the guard that keeps `audit.*` (Phase 10) out of the
-        // catalogue while it does not exist, and it is what `features.*` had
-        // to be added to once the routes landed.
+        // This is the guard that kept `audit.*` (Phase 10) out of the catalogue
+        // while it did not exist, and what `features.*` had to be added to once
+        // its routes landed.
+        //
+        // `audit` joins the list in Phase 10 Group B, in the same change that
+        // registers `activity-logs.index` / `activity-logs.show` behind
+        // `feature:activity_logs` + `->can('audit.view')`. The expected list is
+        // updated HERE rather than the assertion loosened: a stale list is a stale
+        // fixture, and dropping the assertion would leave the guard guarding
+        // nothing at all.
         $this->assertEqualsCanonicalizing(
-            ['users', 'roles', 'permissions', 'settings', 'notifications', 'features'],
+            ['users', 'roles', 'permissions', 'settings', 'notifications', 'features', 'audit'],
             array_keys(PermissionCatalog::grouped()),
             'The catalogue has a group with no feature behind it.'
         );
@@ -121,8 +128,16 @@ class PermissionSeedTest extends TestCase
         // cleared. That is how superadmin came to hold all 19 permissions in a
         // database whose seeder and docs both said it holds none: the role left
         // the matrix and its rows stayed.
+        //
+        // `retired.view`, NOT a real permission name. This case used
+        // `audit.view` as its stand-in "permission nothing in the catalogue can
+        // produce", and the day Phase 10 added `audit.view` to the catalogue,
+        // `Permission::create` threw PermissionAlreadyExists and the test failed
+        // for a reason that had nothing to do with the pruning it exists to prove.
+        // A stale-permission fixture must use a name the catalogue can NEVER
+        // contain, so becoming real is impossible.
         $stale = Permission::create([
-            'name' => 'audit.view',
+            'name' => 'retired.view',
             'guard_name' => RoleLookup::guard(),
         ]);
 

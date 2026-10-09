@@ -181,10 +181,13 @@ class AppMenuComposer
                         'icon' => 'fas fa-binoculars',
                         'route' => 'activity-logs.index',
                         'active' => 'activity-logs.*',
-                        // No route ships yet (P8), so this item is dropped by the
-                        // Route::has check above regardless. The flag key is here
-                        // so the entry keeps working — and keeps hiding — when
-                        // that module lands.
+                        // Its own permission, and deliberately NOT a subset of
+                        // `users.view`: the audit trail is behavioural data about
+                        // every account in the system, including the people who
+                        // hold `users.view`. Letting anyone who can list users
+                        // also read who locked whom would put the audit trail
+                        // inside the audience it is supposed to be evidence about.
+                        'permission' => 'audit.view',
                         'feature' => 'activity_logs',
                     ],
                     [

@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Web\V1\ActivityLogController;
 use App\Http\Controllers\Web\V1\Auth\AuthController;
 use App\Http\Controllers\Web\V1\DashboardController;
 use App\Http\Controllers\Web\V1\FeatureController;
@@ -266,5 +267,27 @@ Route::middleware(['auth:web,sanctum', 'verified', 'password.change.required', '
             Route::post('/notifications/inbox/read-all', 'markAllAsRead')
                 ->name('notifications.inbox.read-all');
         });
+    });
+
+    // -----------------------------------------------------------------------
+    // Audit trail viewer — Phase 10 Groups A and C.
+    //
+    // Two gates, both required, both failing as 403 so a caller cannot tell
+    // which fired: `feature:activity_logs` is the deploy-time kill switch and
+    // `audit.view` is the per-role authorization. Same deliberate shape as
+    // Phase 7 and Phase 11 — the two answer different questions, and collapsing
+    // them into one check loses whichever question gets dropped.
+    //
+    // READ-ONLY. There is no POST/PUT/DELETE here, and `App\Models\Activity`
+    // carries `$guarded = ['*']`. An audit row is evidence: a write path here
+    // would let the record of something be edited by the thing that records it.
+    //
+    // The export routes (Group E) are deliberately absent rather than stubbed —
+    // a button posting to a route that does not exist is a 405 waiting to be
+    // clicked, which is worse than the button not being there.
+    // -----------------------------------------------------------------------
+    Route::middleware('feature:activity_logs')->group(function () {
+        Route::get('/activity-logs', [ActivityLogController::class, 'index'])->name('activity-logs.index')->can('audit.view');
+        Route::get('/activity-logs/{activity}', [ActivityLogController::class, 'show'])->name('activity-logs.show')->can('audit.view');
     });
 });

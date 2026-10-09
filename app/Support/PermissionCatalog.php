@@ -87,10 +87,26 @@ class PermissionCatalog
         'features.manage',
     ];
 
-    // ponytail: no `audit.*` yet — the audit viewer is Phase 10 and there is no
-    // route, controller or view behind it today. A permission nothing checks is
-    // a row that lies in the permissions UI and grants nothing. Add each group
-    // in the same commit that adds the page it guards.
+    /**
+     * Audit trail — the read-only viewer over the audit log.
+     *
+     * ponytail: `.export` is separate from `.view` for the reason
+     * `notifications.send_test` is separate from `notifications.manage` — an
+     * export moves the whole table, including every actor's IP and user agent,
+     * out of the application into a file. Reading rows is not the same act as
+     * extracting them, and one permission would let a read-only auditor pull a
+     * copy of everything they can already see.
+     *
+     * `audit.view` is not a generic read permission: it is access to behavioural
+     * data about staff, so it belongs to admin/superadmin rather than to any
+     * role that can read the user list.
+     *
+     * @var array<int, string>
+     */
+    private const AUDIT = [
+        'audit.view',
+        'audit.export',
+    ];
 
     /**
      * Every permission name the application defines.
@@ -106,6 +122,7 @@ class PermissionCatalog
             ...self::SETTINGS,
             ...self::NOTIFICATIONS,
             ...self::FEATURES,
+            ...self::AUDIT,
         ];
     }
 

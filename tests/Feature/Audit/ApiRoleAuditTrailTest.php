@@ -99,7 +99,7 @@ class ApiRoleAuditTrailTest extends TestCase
         $rows = DB::table('activity_log')->where('subject_id', $id)->get();
 
         $this->assertTrue(
-            $rows->contains(fn($r) => $r->event === $event),
+            $rows->contains(fn ($r) => $r->event === $event),
             "[{$mutation}] wrote no `{$event}` row with a non-null event column; got: "
                 . $rows->pluck('event')->implode(', ')
         );

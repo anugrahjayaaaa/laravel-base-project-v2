@@ -74,9 +74,11 @@ return [
             'label' => 'Activity Logs',
             'group' => 'Audit',
             'description' => 'The audit trail viewer.',
-            // See `translations` above. The sidebar entry is dropped by its
-            // Route::has check before the flag is ever consulted.
-            'pending' => 'Module not built yet, this switch records intent only.',
+            // The `pending` key is gone as of Phase 10 Group B: routes ship in
+            // routes/web.php and the sidebar entry is live, so the flag now
+            // controls something. Leaving it would keep `/features` telling an
+            // operator this switch "records intent only" about a module whose
+            // 403s change the moment they flip it.
         ],
         'pulse' => [
             'label' => 'Pulse Dashboard',
