@@ -4,6 +4,7 @@ namespace App\Models\Concerns;
 
 use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -77,6 +78,20 @@ trait Auditable
             'source' => $request->is('api/*') ? 'api' : 'web',
             'ip' => $request->ip(),
             'user_agent' => $request->userAgent(),
+            // The correlation ID, which `GenerateRequestCorrelationId` binds on
+            // every request and echoes back on the `X-Request-ID` header. Without
+            // it, an operator holding a 403 body with `meta.request_id` in it
+            // cannot tie that request to any audit row — the one piece of
+            // metadata that would make the log and the error trace agree was the
+            // one piece never captured.
+            //
+            // `bound()` is load-bearing, not defensive: a queued job has no
+            // request, and `app('request_id')` read blindly throws
+            // `BindingResolutionException` from inside the audit write — turning
+            // a scheduled job into a failure at the moment it tried to record
+            // why something happened. A null here is the honest answer, and the
+            // viewer already renders `—` for it.
+            'request_id' => app()->bound('request_id') ? app('request_id') : null,
         ];
     }
 
@@ -110,6 +125,19 @@ trait Auditable
      * as the single user action they were. Spatie does the same for its own batch
      * logging.
      *
+     * ## `getMorphAlias()`, not the bare class name
+     *
+     * The raw insert bypasses Eloquent, so it also bypasses
+     * `Model::getMorphClass()` — the one place that converts a class into its
+     * morph alias. Writing `$causer::class` here stored `App\Models\User` while
+     * every single-row audit (which goes through Spatie's builder) stored `user`,
+     * so one bulk action left two spellings of the same type in the table. The
+     * viewer accepts either so the divergence is invisible there, and loud in the
+     * filter dropdown and in the export, which compare the stored value verbatim.
+     *
+     * `getMorphAlias()` returns the class unchanged when it is not in the map,
+     * which is the correct answer for a model nobody has aliased.
+     *
      * @param  string  $event
      * @param  array<int, array{subject_id: int|string, properties?: array<string, mixed>}>  $records
      * @param  Model|null  $causer
@@ -129,14 +157,17 @@ trait Auditable
         $batchUuid = (string) Str::uuid();
         $context = static::auditContext();
 
-        $rows = array_map(function (array $record) use ($event, $causer, $subjectType, $now, $batchUuid, $context) {
+        $subjectAlias = Relation::getMorphAlias($subjectType);
+        $causerAlias = $causer === null ? null : Relation::getMorphAlias($causer::class);
+
+        $rows = array_map(function (array $record) use ($event, $subjectAlias, $causerAlias, $causer, $now, $batchUuid, $context) {
             return [
                 'log_name' => 'default',
                 'description' => $event,
                 'event' => $event,
-                'subject_type' => $subjectType,
+                'subject_type' => $subjectAlias,
                 'subject_id' => $record['subject_id'],
-                'causer_type' => $causer === null ? null : $causer::class,
+                'causer_type' => $causerAlias,
                 'causer_id' => $causer?->getKey(),
                 'properties' => json_encode(array_merge($context, $record['properties'] ?? [])),
                 'batch_uuid' => $batchUuid,
