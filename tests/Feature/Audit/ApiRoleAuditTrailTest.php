@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\DB;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Spatie\Permission\PermissionRegistrar;
 use Tests\TestCase;
+use Illuminate\Database\Eloquent\Relations\Relation;
 
 /**
  * The API role surface writes the same audit rows the web one does.
@@ -138,7 +139,7 @@ class ApiRoleAuditTrailTest extends TestCase
         ])->assertRedirect();
 
         $rows = DB::table('activity_log')
-            ->where('subject_type', User::class)
+            ->where('subject_type', Relation::getMorphAlias(User::class))
             ->whereIn('subject_id', $users->pluck('id')->all())
             ->get();
 

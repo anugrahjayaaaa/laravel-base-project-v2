@@ -24,6 +24,7 @@ use Illuminate\Auth\Notifications\VerifyEmail;
 use Illuminate\Notifications\AnonymousNotifiable;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Testing\TestResponse;
+use Illuminate\Database\Eloquent\Relations\Relation;
 
 class SystemSettingUpdateTest extends TestCase
 {
@@ -71,7 +72,7 @@ class SystemSettingUpdateTest extends TestCase
             ->first();
 
         $this->assertNotNull($activity);
-        $this->assertSame(SystemSetting::class, $activity->subject_type);
+        $this->assertSame(Relation::getMorphAlias(SystemSetting::class), $activity->subject_type);
         $this->assertNotNull($activity->subject_id);
         $this->assertSame($user->id, $activity->causer_id);
     }

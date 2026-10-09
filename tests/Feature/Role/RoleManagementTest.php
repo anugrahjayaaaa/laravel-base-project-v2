@@ -19,6 +19,7 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use RuntimeException;
 use Spatie\Permission\Models\Permission;
 use Tests\TestCase;
+use Illuminate\Database\Eloquent\Relations\Relation;
 
 /**
  * Role writes over HTTP (Phase 6, Group C).
@@ -271,7 +272,7 @@ class RoleManagementTest extends TestCase
         $this->assertSoftDeleted('roles', ['id' => $role->id]);
 
         $this->assertDatabaseHas('activity_log', [
-            'subject_type' => Role::class,
+            'subject_type' => Relation::getMorphAlias(Role::class),
             'event' => 'role.deleted',
         ]);
     }
@@ -469,7 +470,7 @@ class RoleManagementTest extends TestCase
             'permission_id' => $permission->id,
         ]);
         $this->assertDatabaseHas('activity_log', [
-            'subject_type' => Role::class,
+            'subject_type' => Relation::getMorphAlias(Role::class),
             'event' => 'role.force_deleted',
         ]);
     }

@@ -18,6 +18,7 @@ use PHPUnit\Framework\Attributes\Test;
 use Spatie\Permission\PermissionRegistrar;
 use Symfony\Component\Finder\Finder;
 use Tests\TestCase;
+use Illuminate\Database\Eloquent\Relations\Relation;
 
 /**
  * Phase 10 Group A gate: the audit viewer renders, obeys the design system, and
@@ -666,24 +667,28 @@ class AuditLogUiRenderTest extends TestCase
     #[Test]
     public function test_the_when_column_shows_the_full_timestamp(): void
     {
-        // Back-dated rather than recorded at `now()`, because the assertion below
-        // is a fixed string and `now()` would need a date-relative matcher to
-        // stay true tomorrow.
+        // A DISTINCTIVE timestamp, because the assertion reads the FIRST When cell
+        // and the setUp rows sit above this one. A value near `now()` would be
+        // indistinguishable from theirs, and the first version of this test used
+        // exactly that — it passed only while the two rows landed in the same
+        // second, and went red on its own hours later with nothing changed.
+        $when = '2019-03-04 05:06:07';
+
         $id = $this->record('user.updated');
         DB::table(config('activitylog.table_name', 'activity_log'))
             ->where('id', $id)
-            ->update(['created_at' => '2026-10-09 14:32:11', 'updated_at' => '2026-10-09 14:32:11']);
+            ->update(['created_at' => $when, 'updated_at' => $when]);
 
-        $html = $this->page($this->get(route('activity-logs.index'))->assertOk()->getContent());
+        $html = $this->page($this->get(route('activity-logs.index', ['sort' => 'id', 'direction' => 'desc']))->assertOk()->getContent());
 
-        // Scoped to the When CELL, not the page: `2026-10-09` also appears in
-        // whatever else renders a date, and a whole-page match would pass against
-        // the filter bar or the breadcrumb rather than the column under test.
-        preg_match('#<td class="text-muted fs-7 text-nowrap">\s*([^<]+?)\s*</td>#', $html, $when);
+        // The row is the newest by id, so sorting by id descending puts it first
+        // and the cell under test is deterministic. Scoped to the CELL rather than
+        // the page, because `2019-03-04` could appear anywhere.
+        preg_match('#<td class="text-muted fs-7 text-nowrap">\s*([^<]+?)\s*</td>#', $html, $cell);
 
         $this->assertSame(
-            '2026-10-09 14:32:11',
-            trim($when[1] ?? ''),
+            $when,
+            trim($cell[1] ?? ''),
             'the When cell does not carry the bare timestamp — a `diffForHumans()` regression would read like this'
         );
     }
@@ -788,10 +793,14 @@ class AuditLogUiRenderTest extends TestCase
         // `subject_type` verbatim, so a prettified value would be a filter that
         // silently returns nothing. What is asserted here is the opposite
         // direction: the human reads a word, not a namespace.
+        // `Relation::getMorphAlias()` rather than a literal: the stored value is
+        // the alias `user`, and pinning that string here means renaming the alias
+        // in `MorphMap::ALIASES` breaks this test for a reason that has nothing to
+        // do with what it is proving.
         $this->assertMatchesRegularExpression(
-            '#<option value="App\\\\Models\\\\User"\s*>\s*\n?\s*User\s*#',
+            '#<option value="'.preg_quote(Relation::getMorphAlias(User::class), '#').'"\s*>\s*\n?\s*User\s*#',
             $html,
-            'the target-type option must carry the raw type as its value and a readable word as its label'
+            'the target-type option must carry the raw stored type as its value and a readable word as its label'
         );
     }
 

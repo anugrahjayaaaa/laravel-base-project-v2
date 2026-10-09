@@ -10,6 +10,7 @@ use Database\Seeders\PermissionSeeder;
 use Database\Seeders\RoleSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
+use Illuminate\Database\Eloquent\Relations\Relation;
 
 /**
  * Bulk actions on the roles index, and the tab-pill parity with users/index.
@@ -214,7 +215,7 @@ class RoleBulkActionTest extends TestCase
         // One row per role, carrying the count — the property that makes the log
         // useful in an incident review.
         $this->assertDatabaseHas('activity_log', [
-            'subject_type' => Role::class,
+            'subject_type' => Relation::getMorphAlias(Role::class),
             'subject_id' => $role->id,
             'description' => 'role.deleted',
         ]);

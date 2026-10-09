@@ -21,6 +21,7 @@ use Illuminate\Support\Facades\Notification;
 use Spatie\Permission\PermissionRegistrar;
 use Tests\TestCase;
 use App\Http\Middleware\VerifyCsrfToken;
+use Illuminate\Database\Eloquent\Relations\Relation;
 
 /**
  * Phase 9 performance measurement — the notification module's hot paths.
@@ -181,7 +182,7 @@ class NotificationBenchmarkTest extends TestCase
             $rows[] = [
                 'id' => (string) str()->uuid(),
                 'type' => 'database',
-                'notifiable_type' => User::class,
+                'notifiable_type' => Relation::getMorphAlias(User::class),
                 'notifiable_id' => $user->getKey(),
                 'data' => json_encode(['subject' => 'Notice '.$i, 'lines' => ['Something happened.']]),
                 'read_at' => null,
@@ -194,7 +195,7 @@ class NotificationBenchmarkTest extends TestCase
             $rows[] = [
                 'id' => (string) str()->uuid(),
                 'type' => 'database',
-                'notifiable_type' => User::class,
+                'notifiable_type' => Relation::getMorphAlias(User::class),
                 'notifiable_id' => $user->getKey(),
                 'data' => json_encode(['subject' => 'Read '.$i, 'lines' => ['Something happened.']]),
                 'read_at' => $now,

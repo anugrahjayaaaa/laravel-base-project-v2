@@ -34,6 +34,7 @@ use App\Http\Middleware\VerifyCsrfToken;
 use App\Jobs\PasswordExpirySweep;
 use App\Services\InactivityLock;
 use Spatie\Permission\PermissionRegistrar;
+use Illuminate\Database\Eloquent\Relations\Relation;
 
 /**
  * The Action-first audit standard, pinned on the user delete path.
@@ -74,7 +75,7 @@ class ActionFirstAuditTest extends TestCase
     private function deletedRows(int $userId)
     {
         return DB::table('activity_log')
-            ->where('subject_type', User::class)
+            ->where('subject_type', Relation::getMorphAlias(User::class))
             ->where('subject_id', $userId)
             ->where('event', 'user.deleted')
             ->get();
@@ -91,7 +92,7 @@ class ActionFirstAuditTest extends TestCase
     private function rowsFor(int $userId)
     {
         return DB::table('activity_log')
-            ->where('subject_type', User::class)
+            ->where('subject_type', Relation::getMorphAlias(User::class))
             ->where('subject_id', $userId)
             ->get();
     }

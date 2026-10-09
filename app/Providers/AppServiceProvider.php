@@ -12,10 +12,12 @@ use App\Observers\SystemSettingObserver;
 use App\Observers\UserObserver;
 use App\Services\PasswordExpiry;
 use App\Support\FeatureCatalog;
+use App\Support\MorphMap;
 use App\View\Composers\AccountOptionsComposer;
 use App\View\Composers\AppMenuComposer;
 use App\View\Composers\PasswordStrengthComposer;
 use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Pagination\Paginator;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -155,6 +157,13 @@ class AppServiceProvider extends ServiceProvider
         foreach (array_keys(config('pennant.features', [])) as $slug) {
             Feature::define($slug, fn (): bool => false);
         }
+
+        // The audit table's polymorphic columns store an ALIAS instead of
+        // `App\Models\Whatever`, so renaming a model does not orphan every
+        // historical row pointing at it. Permissive on purpose — see
+        // `App\Support\MorphMap` for why `enforceMorphMap()` is the wrong call on
+        // a write path that records what just happened.
+        Relation::morphMap(MorphMap::ALIASES);
 
         // Both are reachable from the API, so both need the JSON branch too.
         $throttle = app(LoginThrottle::class);
