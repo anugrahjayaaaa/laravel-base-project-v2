@@ -174,7 +174,7 @@ extra activity row would be the same fact twice in the wrong shape. Do not write
 it, and do not invent a subject for it.
 
 **Whatever you do, there is one entry point.** `Auditable::auditContext()` merges
-`source`, `ip` and `user_agent` into every row. A hand-rolled `activity()` call
+`source`, `ip`, `user_agent` and `request_id` into every row. A hand-rolled `activity()` call
 that omits them is not a stylistic difference — it is the only row in the table
 that cannot be traced back to a request.
 
@@ -222,7 +222,7 @@ written by both an action and a controller (two rows per resend), and one
 
 ### Context is automatic
 
-`Auditable::audit()` adds `source`, `ip` and `user_agent` to every row itself.
+`Auditable::audit()` adds `source`, `ip`, `user_agent` and `request_id` to every row itself.
 A caller passes only what is specific to its event, and may override a derived
 value by including that key in `$properties` (a queued job passes
 `source => system`). The single key is `source`; the former `channel` key is
@@ -230,6 +230,44 @@ retired and must not be reintroduced.
 
 The trait is the single model-level audit entry point. Do NOT audit inside
 observers — the action is responsible for explicit audit logging.
+
+### Two rules the actions are expected to follow
+
+Both shipped in Phase 10 (`P10-D8`, `P10-D9`) and both are pinned by tests, so a
+future action that breaks either fails the suite rather than the incident review.
+
+**Name the actor whenever the account is known.** A self-service event — someone
+signing in, changing their password, saving their own profile — is audited with
+the subject as the causer. `causer_id IS NULL` on those rows is only correct when
+nobody was acting: a failed login, a scheduled sweep, an `InactivityLock` from
+the timer. `AuditActorTest` enumerates them.
+
+**Record what a destructive event destroyed.** `user.force_deleted` whose row
+points at an id that no longer resolves is unactionable — the identity left the
+database, so it has to be in the audit row. The delete, force-delete, restore and
+email-change-cancel actions pass the identifying fields in `properties`
+(`target_id`, `target_email`, `target_username`, and `reactivated` where the
+restore also re-enabled a locked account).
+
+### The type columns store aliases, not class names
+
+`subject_type` and `causer_type` hold `user`, `role`, `feature_flag`,
+`system_setting` — the keys of `App\Support\MorphMap` — because
+`Relation::morphMap()` is registered in `AppServiceProvider`. Renaming a model
+therefore does not orphan its history, and the export does not leak the
+application namespace into an operator's file.
+
+The map is **permissive**, not `enforceMorphMap()`, deliberately: enforcing makes
+`getMorphClass()` throw on an unmapped class, which would fail a mutation from
+inside its own transaction the first time a model gains `Auditable` without a map
+entry. A model that later becomes auditable must be added to `MorphMap::ALIASES`
+— `AuditMorphMapTest` fails the suite when one is missed.
+
+The map is global, so it also governs `model_has_roles`, `model_has_permissions`,
+`personal_access_tokens` and `notifications`. Phase 10 backfilled those too
+(`2026_10_09_010000_backfill_morph_aliases.php`); an un-backfilled FQCN row in
+one of them is *invisible* to a relation query rather than merely wrong, which
+locks users out instead of mislabelling a row.
 
 ## Bulk mutations
 
@@ -252,7 +290,7 @@ than N builder round trips inside a transaction that already holds the locks:
 User::auditBulk('role.bulk.assigned', $records, $causer);
 ```
 
-It derives `source`, `ip` and `user_agent` from the same `auditContext()` as
+It derives `source`, `ip`, `user_agent` and `request_id` from the same `auditContext()` as
 `audit()`. It has no `type` parameter for a caller to get wrong — the earlier
 `Controller::bulkAudit()` took one, no call site passed it, and every bulk row
 taken through the API recorded `source => web`.

@@ -149,9 +149,17 @@ nothing.
 - renaming a model silently orphans every historical row that pointed at it;
 - the export would leak application namespace into a file handed to an operator.
 
-Group D resolves this with `Relation::enforceMorphMap()` + a backfill migration.
-**It is the one task in this phase with a data-migration risk**, so it is
-isolated in its own commit with its own test.
+Group D resolves this with a morph map + a backfill migration. **It is the one
+task in this phase with a data-migration risk**, so it is isolated in its own
+commit with its own test.
+
+> **Shipped, deviating from this document:** `Relation::morphMap()`, not
+> `Relation::enforceMorphMap()`. Enforce makes `Model::getMorphClass()` *throw*
+> for any unmapped class, and that runs on the **write** path — a model that
+> later gains `Auditable` without a map entry would fail the mutation it is
+> trying to describe, inside a transaction. For an audit trail that is the wrong
+> trade. Full reasoning in `App\Support\MorphMap`; `AuditMorphMapTest` pins the
+> choice. Reads are unaffected either way — an FQCN row still resolves.
 
 ### F6 — retention says two different things about export files
 
@@ -274,9 +282,12 @@ noted the same tension and deliberately deferred it — **do not bundle it here.
 | P10-D2 | **Regression test for D1** — an HTTP mutation row carries the same `request_id` as the response header; a job row carries a null `request_id` and `source => system`, without erroring | D1 | medium | The job half is the one that catches an unguarded container read. Pin both |
 | P10-D3 | **Publish `config/activitylog.php`** with `delete_records_older_than_days => null` | — | tiny | From F7. Publish the file, set the key, and add a comment saying *why* — retention for audit rows is a legal decision, not a package default |
 | P10-D4 | **Correct DEP-003** — replace the `Audit` service class / `Audit::record(...)` language with the trait that actually shipped, carrying the reason it won | — | small | From F3. A DEP that names a class nobody can find is worse than no DEP |
-| P10-D5 | **Morph map + backfill** — `Relation::enforceMorphMap()` in a provider; migration rewriting existing `subject_type` / `causer_type` FQCNs to aliases; rollback reverses it | C1 | medium | From F5. **Isolated commit, isolated test.** `enforceMorphMap()` throws on an unmapped morph, so the backfill must land in the same deploy as the map. Write the migration to be idempotent (alias already present → no-op) so a re-run is safe |
+| P10-D5 | **Morph map + backfill** — `Relation::morphMap()` (**shipped**, not `enforceMorphMap()` — see F5) in a provider; migration rewriting existing `subject_type` / `causer_type` FQCNs to aliases; rollback reverses it | C1 | medium | From F5. **Isolated commit, isolated test.** `Relation::morphMap()` is global, so the permission pivots, Sanctum's tokens and Laravel's notifications change behaviour with it — and an un-backfilled FQCN row there is *invisible* (`whereHas('roles')` returns false) rather than degraded. The migration is idempotent (each statement targets one exact FQCN), so a re-run mid-deploy is safe |
 | P10-D6 | **Sensitive-property guard** — `tests/Feature/Audit/AuditPropertyScrubTest.php`: no row's `properties` contains a password, token, secret or `remember_token` value | — | small | DEP-003:64 requires the abstraction to scrub. It does not today — it is a *convention* every call site follows by hand. Today it holds (`auth.password_changed` at `AuthChangePasswordAction.php:78` passes no properties at all), and nothing would notice if it stopped. A test is cheaper and more durable than a scrubber nobody asked for |
 | P10-D7 | **Read-only enforcement test** — no route, controller or mass-assignment path can create, update or delete an `activity_log` row | B2 | medium | `audit-trail.md:19` and DEP-003:73. Pins it structurally: no write route, `Activity` not `$fillable` beyond read fields, no `Model::destroy` path. This is the requirement most likely to be eroded by a future "let admins annotate a row" request |
+
+| P10-D8 | **Name the actor where the account is known** — pass the causer on the nine self-service auth and profile actions that wrote `causer_id = NULL` for an event where the subject *was* the actor | D1 | small | Shipped out of plan (`a3c542c`). Not a table listed in F1–F7; found while executing D1. `auth.login_completed` with an anonymous causer cannot answer "who signed in" without parsing `properties`, which is the first question an incident review asks. `AuditActorTest` pins all nine, including the two where the actor is an admin acting on someone else |
+| P10-D9 | **Record what a destructive event changed** — add `properties` to the delete / force-delete / restore / cancel-email-change actions, so a row says *what it removed*, not only *that* it happened | D1 | small | Shipped out of plan (`73479f0`). A `user.force_deleted` row pointing at an id that no longer resolves is unactionable — the identity is gone from the database, so it has to be in the audit row. `AuditDetailTest` pins it |
 
 **Deliberately not in Group D:** a `properties` scrubber. D6 makes the absence
 safe and observable. Adding scrubbing machinery for a problem no current call
@@ -433,7 +444,7 @@ a feature commit.
 | AUDIT-005 Implement async audit export | PLANNED | PLANNED → satisfied by | A5, B4, E1–E8, and D-3 (retention number) |
 
 New IDs introduced by this document: `P10-A1..A7`, `P10-B1..B5`, `P10-C1..C8`,
-`P10-D1..D7`, `P10-E1..E8`, `P10-F1..F6`. They are local to this phase and map
+`P10-D1..D9`, `P10-E1..E8`, `P10-F1..F6`. They are local to this phase and map
 onto `AUDIT-004` / `AUDIT-005` at F4; they are not added to `task-tracker.md`
 until F4, so the tracker keeps one ID per task rather than two.
 
