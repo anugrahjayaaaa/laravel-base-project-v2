@@ -12,9 +12,10 @@ use Database\Seeders\RoleSeeder;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
+use ReflectionClass;
 use Spatie\Permission\PermissionRegistrar;
-use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 /**
@@ -46,14 +47,10 @@ class AuditMorphMapTest extends TestCase
     {
         return config('activitylog.table_name', 'activity_log');
     }
-
-    #[Test]
     public function test_the_morph_map_is_registered_with_eloquent(): void
     {
         $this->assertSame(MorphMap::ALIASES, Relation::morphMap());
     }
-
-    #[Test]
     public function test_the_map_is_permissive_rather_than_enforced(): void
     {
         // Enforced means `Model::getMorphClass()` throws for an unmapped class,
@@ -66,8 +63,6 @@ class AuditMorphMapTest extends TestCase
             'the map is enforced; an unmapped Auditable model will throw on write'
         );
     }
-
-    #[Test]
     public function test_every_auditable_model_has_an_alias(): void
     {
         $map = MorphMap::classToAlias();
@@ -110,8 +105,6 @@ class AuditMorphMapTest extends TestCase
 
         return $found;
     }
-
-    #[Test]
     public function test_the_backfill_rewrites_fqcn_types_to_aliases(): void
     {
         $user = User::factory()->create();
@@ -136,8 +129,6 @@ class AuditMorphMapTest extends TestCase
         $this->assertSame('user', $row->subject_type);
         $this->assertSame('user', $row->causer_type);
     }
-
-    #[Test]
     public function test_the_backfill_leaves_an_unrecognised_type_alone_and_still_completes(): void
     {
         $before = DB::table($this->table())->count();
@@ -169,8 +160,6 @@ class AuditMorphMapTest extends TestCase
             'an unmapped type was rewritten'
         );
     }
-
-    #[Test]
     public function test_running_the_backfill_twice_changes_nothing(): void
     {
         $user = User::factory()->create();
@@ -196,8 +185,6 @@ class AuditMorphMapTest extends TestCase
         $this->assertSame('user', $row->subject_type);
         $this->assertSame('user', $row->causer_type);
     }
-
-    #[Test]
     public function test_the_backfill_rolls_back_to_fqcns(): void
     {
         $user = User::factory()->create();
@@ -224,8 +211,6 @@ class AuditMorphMapTest extends TestCase
         $this->assertSame(User::class, $row->subject_type);
         $this->assertSame(User::class, $row->causer_type);
     }
-
-    #[Test]
     public function test_a_new_single_row_audit_stores_the_alias(): void
     {
         $actor = User::factory()->create();
@@ -235,8 +220,6 @@ class AuditMorphMapTest extends TestCase
 
         $this->assertSame('user', DB::table($this->table())->latest('id')->first()->subject_type);
     }
-
-    #[Test]
     public function test_a_bulk_audit_stores_the_alias_too(): void
     {
         $actor = User::factory()->create();
@@ -251,8 +234,6 @@ class AuditMorphMapTest extends TestCase
 
         $this->assertSame(['user'], $types, 'a bulk row stored a different spelling than a single row');
     }
-
-    #[Test]
     public function test_a_soft_deleted_subject_still_resolves_by_name(): void
     {
         $actor = User::factory()->create();
@@ -322,26 +303,52 @@ class AuditMorphMapTest extends TestCase
             ],
         ];
 
+        // Fails loudly rather than skipping: a polymorphic column the backfill does not
+        // cover holds FQCNs forever, and the row it hides is a user who cannot log
+        // in rather than a label that reads wrong.
+        $this->assertArrayHasKey(
+            $table,
+            $defaults,
+            "{$table} declares a polymorphic column, so the backfill must cover it — add a legacy row shape here"
+        );
+
         DB::table($table)->insert(array_merge($defaults[$table], $overrides));
     }
 
     /**
-     * Every polymorphic type column in the application.
-     *
-     * @return array<string, array<int, string>>
-     */
+         * The backfill's own coverage list, read off the shipped migration.
+         *
+         * ## Why this is not derived from the migration files
+         *
+         * That was tried and it does not work, which is worth recording. The scan
+         * found `personal_access_tokens` and `notifications` and missed the other
+         * three, because `model_has_roles` declares `string('model_type')` rather
+         * than `morphs()`, and both `create_permission_tables` and
+         * `create_activity_log_table` build their table from a variable or a config
+         * value. A scanner that silently misses the tables that matter most is worse
+         * than a written list, because it reads like coverage.
+         *
+         * ## What this does and does not pin
+         *
+         * The honest half: the backfill rewrites every column it claims to, and every
+         * one of those columns exists. It does NOT notice a polymorphic column
+         * invented next year — nothing cheap does, short of whoever adds the column
+         * also updating the backfill.
+         *
+         * @return array<string, array<int, string>>
+         */
     private function morphColumns(): array
     {
-        return [
-            'activity_log' => ['subject_type', 'causer_type'],
-            'model_has_roles' => ['model_type'],
-            'model_has_permissions' => ['model_type'],
-            'personal_access_tokens' => ['tokenable_type'],
-            'notifications' => ['notifiable_type'],
-        ];
+        $columns = (new ReflectionClass($this->backfillMigration()))
+            ->getReflectionConstant('COLUMNS')
+            ?->getValue();
+
+        $this->assertIsArray($columns, 'the backfill no longer declares a COLUMNS map');
+        $this->assertNotEmpty($columns, 'COLUMNS is empty; this test would pass on any backfill at all');
+
+        return $columns;
     }
 
-    #[Test]
     public function test_the_backfill_covers_every_polymorphic_column_in_the_application(): void
     {
         $this->seedRolesAndPermissions();
@@ -352,12 +359,23 @@ class AuditMorphMapTest extends TestCase
         // all change behaviour with it — and an un-backfilled FQCN row there is
         // INVISIBLE, not degraded. Verified: a legacy `model_has_roles` row makes
         // `whereHas('roles')` return false.
-        foreach ($this->morphColumns() as $table => $columns) {
-            $this->legacyRow($table);
+        $covered = $this->morphColumns();
 
-            $before = DB::table($table)->get()->map(
-                fn ($r): array => (array) $r
-            );
+        foreach ($covered as $table => $columns) {
+            if (! Schema::hasTable($table)) {
+                // A package this project does not load. No table, no rows,
+                // nothing to rewrite — the backfill skips it on purpose too.
+                continue;
+            }
+
+            foreach ($columns as $column) {
+                $this->assertTrue(
+                    Schema::hasColumn($table, $column),
+                    "{$table}.{$column} is claimed by the backfill but does not exist"
+                );
+            }
+
+            $this->legacyRow($table);
 
             $this->runBackfill();
 
@@ -372,8 +390,6 @@ class AuditMorphMapTest extends TestCase
             }
         }
     }
-
-    #[Test]
     public function test_a_backfilled_legacy_row_is_visible_to_a_relation_again(): void
     {
         // The behavioural proof, because the row-count assertions above only say
@@ -402,8 +418,6 @@ class AuditMorphMapTest extends TestCase
         );
         $this->assertContains('user', $user->fresh()->roles->pluck('name')->all());
     }
-
-    #[Test]
     public function test_a_newly_written_role_assignment_matches_a_backfilled_one(): void
     {
         // The two must not diverge. A project upgraded mid-flight writes `user`
