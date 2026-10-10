@@ -29,7 +29,7 @@ class AuthVerifyEmailAction
         DB::transaction(function () use ($user): void {
             $user->markEmailAsVerified();
 
-            $user->audit('auth.email_verified');
+            $user->audit('auth.email_verified', $user);
         });
 
         return ['user' => $user];

@@ -100,7 +100,9 @@ class UserCreateAction
             if ($causer !== null) {
                 $user->audit('user.created', $causer);
             } else {
-                $user->audit('user.registered');
+                // The registering account is the actor. `null` here read as
+                // "nobody did this", which is the opposite of what happened.
+                $user->audit('user.registered', $user);
             }
 
             return $user;

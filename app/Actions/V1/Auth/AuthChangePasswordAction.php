@@ -75,7 +75,7 @@ class AuthChangePasswordAction
             // as well, immediately after this returned — two rows for one
             // password change, and the second one outside this transaction, so
             // it survived a rollback that reverted the password itself.
-            $user->audit('auth.password_changed');
+            $user->audit('auth.password_changed', $user);
 
             return true;
         });

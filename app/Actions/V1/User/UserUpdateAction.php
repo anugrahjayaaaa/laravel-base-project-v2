@@ -110,14 +110,22 @@ class UserUpdateAction
                 // The profile endpoint's own row. It used to be written by the
                 // controller after this returned, which meant it survived a
                 // rollback here and could describe a save that never committed.
-                $user->audit('user.profile_updated', null, $this->changedFields($before, $user));
+                // The causer is `$user`, not `null`. This branch only runs when there is NO
+                // other causer, which means the request came from the account being
+                // updated — the self-service path. Recording it as anonymous claimed
+                // nobody edited this profile, when the whole point of the row is that
+                // somebody did.
+                $user->audit('user.profile_updated', $user, $this->changedFields($before, $user));
 
                 // Separate event, and the one an admin actually needs: knowing
                 // that a profile was saved says nothing about who is trying to
                 // take the account over. `pending_email` is the destination,
                 // which is the whole reason this row exists.
+                // `$causer ?? $user`, matching `UserVerifyEmailChangeAction:46`:
+                // whichever account pressed the button is the actor, on the admin path
+                // and the self-service path alike.
                 if ($emailChanged) {
-                    $user->audit('user.email_change_requested', null, [
+                    $user->audit('user.email_change_requested', $causer ?? $user, [
                         'pending_email' => $user->fresh()->pending_email ?? $data['email'],
                     ]);
                 }

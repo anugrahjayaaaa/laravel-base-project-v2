@@ -44,7 +44,7 @@ class AuthResendVerificationAction
         try {
             $user->sendEmailVerificationNotification();
 
-            $user->audit('auth.verification_resent');
+            $user->audit('auth.verification_resent', $user);
         } catch (\Exception $e) {
             Log::error('Resend verification email failed', [
                 'email' => $email,

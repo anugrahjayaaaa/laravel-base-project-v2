@@ -57,7 +57,7 @@ class AuthLogoutAction
                 $guard->logout();
             }
 
-            $user->audit('auth.logout');
+            $user->audit('auth.logout', $user);
         });
 
         if ($request->hasSession()) {
