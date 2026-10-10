@@ -112,7 +112,7 @@ class AuditReadOnlyTest extends TestCase
 
         $this->expectException(MassAssignmentException::class);
 
-        (new Activity)->fill(['description' => 'rewritten', 'event' => 'rewritten']);
+        (new Activity())->fill(['description' => 'rewritten', 'event' => 'rewritten']);
     }
 
     #[Test]

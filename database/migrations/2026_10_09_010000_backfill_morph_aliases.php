@@ -58,8 +58,7 @@ use Illuminate\Support\Facades\Schema;
  * each, so this migration is safe to run on a partial schema rather than fataling
  * on the first missing one and leaving the rest undone.
  */
-return new class extends Migration
-{
+return new class () extends Migration {
     /**
      * table => the type columns on it.
      *

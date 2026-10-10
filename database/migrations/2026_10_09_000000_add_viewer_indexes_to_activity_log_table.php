@@ -19,8 +19,7 @@ use Illuminate\Support\Facades\Schema;
  * narrow on. Both are named — an unnamed index is a mystery on the next slow
  * query report.
  */
-return new class extends Migration
-{
+return new class () extends Migration {
     public function up(): void
     {
         Schema::connection(config('activitylog.database_connection'))

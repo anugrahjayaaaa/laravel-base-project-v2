@@ -93,7 +93,7 @@ class AuditRequestIdTest extends TestCase
         // The job is run synchronously and directly — no HTTP request, so
         // `request_id` is never bound in the container. A blind
         // `app('request_id')` here throws from inside the audit write.
-        (new AuditProbeJob)->handle();
+        (new AuditProbeJob())->handle();
 
         $properties = $this->properties();
 
