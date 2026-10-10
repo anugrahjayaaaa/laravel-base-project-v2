@@ -6,7 +6,6 @@ use App\Models\Activity;
 use App\Models\User;
 use Illuminate\Support\Collection;
 use PHPUnit\Framework\Attributes\DataProvider;
-use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 /**
@@ -49,7 +48,6 @@ class ActivityModelTest extends TestCase
      * - `unlocked` CONTAINS `lock` — testing only `locked` would pass with the
      *   rules reversed.
      */
-    #[Test]
     #[DataProvider('eventBadgeVariants')]
     public function test_the_event_badge_variant_follows_the_documented_colour_meaning(
         string $event,
@@ -106,7 +104,6 @@ class ActivityModelTest extends TestCase
      * with no error anywhere, so a variant outside the set is a silently
      * different colour on every row of that kind.
      */
-    #[Test]
     public function test_every_badge_variant_is_one_the_badge_component_accepts(): void
     {
         $accepted = ['primary', 'success', 'warning', 'danger', 'info', 'neutral'];
@@ -131,7 +128,6 @@ class ActivityModelTest extends TestCase
      * backfill rewrites history to `user`. Both must resolve, or the backfill
      * turns every label in the table into "Unknown".
      */
-    #[Test]
     #[DataProvider('typeLabels')]
     public function test_a_stored_type_becomes_a_word(?string $stored, string $expected): void
     {
@@ -157,8 +153,6 @@ class ActivityModelTest extends TestCase
     }
 
     // ---------------------------------------------------------- actor labels
-
-    #[Test]
     public function test_a_job_row_reads_as_system_generated(): void
     {
         // The shape `AuditsSystemActivity` actually writes: no causer, and
@@ -183,7 +177,6 @@ class ActivityModelTest extends TestCase
      * a description of a bug. `AuditActorAndDetailTest` pins the successful login
      * to a named actor.
      */
-    #[Test]
     public function test_a_web_row_with_no_causer_is_not_system_generated(): void
     {
         $row = $this->row(['properties' => ['source' => 'web', 'identifier' => 'someone@example.com']]);
@@ -202,7 +195,6 @@ class ActivityModelTest extends TestCase
      * is precisely the N+1 the action's `with(['causer', 'subject'])` prevents in
      * production, and which `AuditLogUiRenderTest` pins at zero queries.
      */
-    #[Test]
     public function test_a_causer_row_that_is_gone_reads_as_the_deleted_id(): void
     {
         $row = $this->row(['causer_id' => 42, 'causer_type' => User::class]);
@@ -210,8 +202,6 @@ class ActivityModelTest extends TestCase
 
         $this->assertSame('Deleted user (#42)', $row->causerLabel());
     }
-
-    #[Test]
     public function test_a_resolved_causer_reads_as_their_name(): void
     {
         $user = new User(['name' => 'Budi Santoso']);
@@ -226,7 +216,6 @@ class ActivityModelTest extends TestCase
     /**
      * A user with no name falls back to the email rather than rendering blank.
      */
-    #[Test]
     public function test_a_resolved_causer_with_no_name_reads_as_their_email(): void
     {
         $user = new User(['name' => '', 'email' => 'ana@example.com']);
@@ -238,8 +227,6 @@ class ActivityModelTest extends TestCase
     }
 
     // --------------------------------------------------------- subject labels
-
-    #[Test]
     public function test_a_missing_subject_reads_as_the_bare_id(): void
     {
         $row = $this->row(['subject_type' => User::class, 'subject_id' => 99]);
@@ -247,8 +234,6 @@ class ActivityModelTest extends TestCase
 
         $this->assertSame('#99', $row->subjectLabel());
     }
-
-    #[Test]
     public function test_a_subject_less_event_reads_as_an_em_dash(): void
     {
         $this->assertSame('—', $this->row(['subject_type' => null, 'subject_id' => null])->subjectLabel());
@@ -264,7 +249,6 @@ class ActivityModelTest extends TestCase
      * whose entire job is to show what was recorded cannot be the thing that
      * crashes on an unusual record.
      */
-    #[Test]
     public function test_properties_are_flattened_into_printable_strings(): void
     {
         $row = $this->row(['properties' => [
@@ -291,7 +275,6 @@ class ActivityModelTest extends TestCase
      * not print `source` and the IP twice — on the one page whose job is to show
      * the record exactly as stored.
      */
-    #[Test]
     public function test_detail_properties_exclude_the_derived_context_keys(): void
     {
         $row = $this->row(['properties' => [
@@ -305,8 +288,6 @@ class ActivityModelTest extends TestCase
         $this->assertSame(['reason' => 'manual'], $row->detailProperties());
         $this->assertCount(5, $row->displayProperties(), 'displayProperties() is the unfiltered set');
     }
-
-    #[Test]
     public function test_a_row_with_null_properties_reads_as_an_empty_set(): void
     {
         $row = $this->row(['properties' => null]);
@@ -326,7 +307,6 @@ class ActivityModelTest extends TestCase
      * which is a method call on null on a row with no properties — the reason the
      * index page 500ed on a legacy row until this existed.
      */
-    #[Test]
     public function test_extra_reads_through_the_cast_collection(): void
     {
         $row = $this->row(['properties' => ['source' => 'api', 'nested' => ['deep' => 'yes']]]);
@@ -335,8 +315,6 @@ class ActivityModelTest extends TestCase
         $this->assertSame('yes', data_get($row->extra('nested'), 'deep'));
         $this->assertSame('fallback', $row->extra('absent', 'fallback'));
     }
-
-    #[Test]
     public function test_properties_are_cast_to_a_collection(): void
     {
         $row = $this->row(['properties' => ['source' => 'web']]);
@@ -352,7 +330,6 @@ class ActivityModelTest extends TestCase
      * `public`, because PHP refuses to let a child narrow a property's visibility
      * — declaring it `protected` is a fatal at class-load, not a lint error.
      */
-    #[Test]
     public function test_nothing_on_the_read_model_is_mass_assignable(): void
     {
         $this->assertSame(['*'], (new Activity())->getGuarded());
@@ -365,7 +342,6 @@ class ActivityModelTest extends TestCase
      * nullable, so a row from before that migration has one and not the other. An
      * empty filter chip is worse than the description.
      */
-    #[Test]
     public function test_the_event_name_falls_back_to_the_description(): void
     {
         $this->assertSame('user.locked', $this->row(['event' => 'user.locked'])->eventName());

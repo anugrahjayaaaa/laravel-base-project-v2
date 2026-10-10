@@ -13,7 +13,6 @@ use Illuminate\Database\Eloquent\MassAssignmentException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Route;
 use PHPUnit\Framework\Attributes\DataProvider;
-use PHPUnit\Framework\Attributes\Test;
 use Spatie\Permission\PermissionRegistrar;
 use Tests\TestCase;
 
@@ -70,8 +69,6 @@ class AuditReadOnlyTest extends TestCase
             'delete show' => ['DELETE', '/activity-logs/1'],
         ];
     }
-
-    #[Test]
     #[DataProvider('writeRouteProvider')]
     public function test_no_write_route_reaches_the_audit_surface(string $method, string $uri): void
     {
@@ -85,8 +82,6 @@ class AuditReadOnlyTest extends TestCase
             ->call($method, $uri)
             ->assertStatus(405);
     }
-
-    #[Test]
     public function test_the_audit_routes_are_read_only_verbs(): void
     {
         foreach (['activity-logs.index', 'activity-logs.show'] as $name) {
@@ -100,8 +95,6 @@ class AuditReadOnlyTest extends TestCase
             );
         }
     }
-
-    #[Test]
     public function test_the_read_model_refuses_mass_assignment(): void
     {
         // The structural half. A `$fillable` or an open `$guarded` would let an
@@ -114,8 +107,6 @@ class AuditReadOnlyTest extends TestCase
 
         (new Activity())->fill(['description' => 'rewritten', 'event' => 'rewritten']);
     }
-
-    #[Test]
     public function test_nothing_in_the_application_writes_through_the_activity_model(): void
     {
         // Stated honestly, because the alternative is a test that lies.
@@ -149,8 +140,6 @@ class AuditReadOnlyTest extends TestCase
             'these call sites write through the audit read model: '.implode(', ', $offenders)
         );
     }
-
-    #[Test]
     public function test_no_controller_receives_an_activity_request(): void
     {
         // A write endpoint needs a FormRequest or a validated array to write from.

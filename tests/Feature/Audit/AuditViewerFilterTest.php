@@ -11,7 +11,6 @@ use Database\Seeders\RoleSeeder;
 use Illuminate\Database\Eloquent\MassAssignmentException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
-use PHPUnit\Framework\Attributes\Test;
 use Spatie\Permission\PermissionRegistrar;
 use Tests\TestCase;
 
@@ -147,8 +146,6 @@ class AuditViewerFilterTest extends TestCase
 
         return $events;
     }
-
-    #[Test]
     public function test_the_unfiltered_list_shows_every_row_newest_first(): void
     {
         $this->record('user.locked', createdAt: '2026-10-01 10:00:00');
@@ -157,8 +154,6 @@ class AuditViewerFilterTest extends TestCase
 
         $this->assertSame(['auth.login', 'user.unlocked', 'user.locked'], $this->renderedEvents());
     }
-
-    #[Test]
     public function test_the_event_filter_narrows_to_one_event(): void
     {
         $this->record('user.locked');
@@ -172,8 +167,6 @@ class AuditViewerFilterTest extends TestCase
         $this->assertSame(2, substr_count($html, 'user.locked</span>'));
         $this->assertStringNotContainsString('user.unlocked</span>', $html);
     }
-
-    #[Test]
     public function test_the_search_matches_event_and_description_but_not_properties(): void
     {
         $this->record('user.locked', properties: ['reason' => 'needle-in-properties']);
@@ -191,8 +184,6 @@ class AuditViewerFilterTest extends TestCase
         // A search on the event name does find it.
         $this->assertSame(['user.locked'], $this->renderedEventsWith(['search' => 'locked']));
     }
-
-    #[Test]
     public function test_the_actor_filter_narrows_to_one_causer(): void
     {
         $second = User::factory()->create();
@@ -205,8 +196,6 @@ class AuditViewerFilterTest extends TestCase
             $this->renderedEventsWith(['causer_id' => $this->viewer->id])
         );
     }
-
-    #[Test]
     public function test_the_date_range_includes_the_whole_end_day(): void
     {
         $this->record('user.locked', createdAt: '2026-10-09 00:00:01');
@@ -225,7 +214,6 @@ class AuditViewerFilterTest extends TestCase
     /**
      * An inverted date range is rejected rather than silently returning nothing.
      */
-    #[Test]
     public function test_a_date_range_that_ends_before_it_starts_is_rejected(): void
     {
         $this->record('auth.login');
@@ -239,7 +227,6 @@ class AuditViewerFilterTest extends TestCase
      * interpolates it as an identifier. A value outside the allowlist must be
      * refused at validation rather than reaching the builder.
      */
-    #[Test]
     public function test_an_unsortable_column_is_rejected(): void
     {
         $this->record('auth.login');
@@ -250,8 +237,6 @@ class AuditViewerFilterTest extends TestCase
         $this->get(route('activity-logs.index', ['sort' => 'created_at); drop table users; --']))
             ->assertSessionHasErrors('sort');
     }
-
-    #[Test]
     public function test_the_sort_direction_flips_the_order(): void
     {
         $this->record('user.locked', createdAt: '2026-10-01 10:00:00');
@@ -267,7 +252,6 @@ class AuditViewerFilterTest extends TestCase
      * The source filter reads the JSON `properties` column, which is a different
      * query shape from the string columns — the reason it has its own code path.
      */
-    #[Test]
     public function test_the_source_filter_reads_the_json_properties_column(): void
     {
         // `system` is what AuditsSystemActivity writes for a job row: no causer,
@@ -293,7 +277,6 @@ class AuditViewerFilterTest extends TestCase
      * Going below the model is also the honest way to simulate a legacy row,
      * because that is exactly how such a row would have been written.
      */
-    #[Test]
     public function test_rows_without_a_source_still_render(): void
     {
         $subject = User::factory()->create();
@@ -320,7 +303,6 @@ class AuditViewerFilterTest extends TestCase
      * see a model that would happily accept the payload — a future write route
      * calling `Activity::create($request->validated())` fails here first.
      */
-    #[Test]
     public function test_the_activity_model_refuses_mass_assignment(): void
     {
         $row = new Activity();
@@ -337,7 +319,6 @@ class AuditViewerFilterTest extends TestCase
      * A bulk write produces many rows in one instant, so without the `id`
      * tiebreaker a row the operator already read can be missing from page 2.
      */
-    #[Test]
     public function test_pagination_is_stable_when_rows_share_a_timestamp(): void
     {
         for ($i = 0; $i < 25; $i++) {
@@ -366,7 +347,6 @@ class AuditViewerFilterTest extends TestCase
      * method would be a 405 rather than a 403. 405 is the answer here: the verb
      * is not registered at all.
      */
-    #[Test]
     public function test_there_is_no_write_route_for_audit_records(): void
     {
         foreach (['post', 'put', 'patch', 'delete'] as $verb) {

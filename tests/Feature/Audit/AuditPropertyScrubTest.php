@@ -13,7 +13,6 @@ use Database\Seeders\RoleSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
-use PHPUnit\Framework\Attributes\Test;
 use Spatie\Permission\PermissionRegistrar;
 use Tests\TestCase;
 
@@ -186,8 +185,6 @@ class AuditPropertyScrubTest extends TestCase
 
         return $flat;
     }
-
-    #[Test]
     public function test_no_audit_row_carries_a_credential_key(): void
     {
         $this->exerciseMutationsThatTouchCredentials();
@@ -212,8 +209,6 @@ class AuditPropertyScrubTest extends TestCase
 
         $this->assertSame([], $offenders, 'these audit properties are named like credentials: '.implode('; ', $offenders));
     }
-
-    #[Test]
     public function test_no_audit_row_carries_a_credential_value(): void
     {
         $this->exerciseMutationsThatTouchCredentials();
@@ -238,8 +233,6 @@ class AuditPropertyScrubTest extends TestCase
 
         $this->assertSame([], $offenders, 'these audit properties contain a credential value: '.implode('; ', $offenders));
     }
-
-    #[Test]
     public function test_the_scrub_test_would_catch_a_leak(): void
     {
         // A guard that has never failed is not evidence. This plants one row that

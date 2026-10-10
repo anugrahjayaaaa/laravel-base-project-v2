@@ -23,7 +23,6 @@ use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
-use PHPUnit\Framework\Attributes\Test;
 use Spatie\Permission\PermissionRegistrar;
 use Tests\TestCase;
 
@@ -103,7 +102,6 @@ class AuditActorTest extends TestCase
      * needs a different fixture state (an unverified account, a changed
      * password) and a provider would have to encode all of them.
      */
-    #[Test]
     public function test_a_successful_login_names_the_account_that_logged_in(): void
     {
         app(AuthLoginCompletedAction::class)->run($this->self, false);
@@ -117,8 +115,6 @@ class AuditActorTest extends TestCase
         );
         $this->assertSame($this->self->name, $row->causerLabel());
     }
-
-    #[Test]
     public function test_the_self_service_auth_events_name_the_account(): void
     {
         $cases = [
@@ -140,8 +136,6 @@ class AuditActorTest extends TestCase
             );
         }
     }
-
-    #[Test]
     public function test_verifying_your_own_email_names_the_account(): void
     {
         $unverified = User::factory()->create(['email_verified_at' => null]);
@@ -154,8 +148,6 @@ class AuditActorTest extends TestCase
             'the account that verified its own email is not anonymous'
         );
     }
-
-    #[Test]
     public function test_resending_your_own_verification_names_the_account(): void
     {
         $unverified = User::factory()->create(['email_verified_at' => null]);
@@ -168,8 +160,6 @@ class AuditActorTest extends TestCase
             'a self-serve resend is attributed to the account it was sent to'
         );
     }
-
-    #[Test]
     public function test_a_self_serve_profile_save_names_the_account(): void
     {
         app(UserUpdateAction::class)->run($this->self, ['name' => 'Renamed Self'], null);
@@ -180,8 +170,6 @@ class AuditActorTest extends TestCase
             'the profile row says nobody edited it, when the account itself did'
         );
     }
-
-    #[Test]
     public function test_self_registration_names_the_registering_account(): void
     {
         $created = app(UserCreateAction::class)->run([
@@ -195,8 +183,6 @@ class AuditActorTest extends TestCase
         $this->assertSame($created->id, $row->causer_id);
         $this->assertSame($created->id, $row->subject_id);
     }
-
-    #[Test]
     public function test_logout_names_the_account_that_logged_out(): void
     {
         // Driven over HTTP because `AuthLogoutAction` reads the guard off the
@@ -218,7 +204,6 @@ class AuditActorTest extends TestCase
      * actor. Both write the same event, so a single assertion could not tell them
      * apart — hence the two halves.
      */
-    #[Test]
     public function test_an_email_change_requested_by_an_admin_names_the_admin(): void
     {
         $target = User::factory()->create();
@@ -230,8 +215,6 @@ class AuditActorTest extends TestCase
         $this->assertSame($this->admin->id, $row->causer_id, 'the admin who requested the change is the actor');
         $this->assertSame($target->id, $row->subject_id);
     }
-
-    #[Test]
     public function test_an_email_change_requested_by_the_user_names_that_user(): void
     {
         app(UserUpdateAction::class)->run(
@@ -266,7 +249,6 @@ class AuditActorTest extends TestCase
      * `auth.login_failed` is the one legitimate exception: nobody authenticated,
      * which is the whole content of that row.
      */
-    #[Test]
     public function test_no_audited_event_ends_up_with_an_unattributed_actor(): void
     {
         $unverified = User::factory()->create(['email_verified_at' => null]);
@@ -313,7 +295,6 @@ class AuditActorTest extends TestCase
      * The sweep for the other half: no event that has an actor recorded should
      * render the word "Anonymous" to a person reading the log.
      */
-    #[Test]
     public function test_no_row_with_a_recorded_actor_renders_as_anonymous(): void
     {
         app(AuthLoginCompletedAction::class)->run($this->self, false);
@@ -344,7 +325,6 @@ class AuditActorTest extends TestCase
      * `Relation::getMorphAlias()` is asserted rather than inlined so the fixture
      * survives an alias rename. Present because the pivot write below needs it.
      */
-    #[Test]
     public function test_the_user_morph_alias_is_used_by_the_pivot_fixture(): void
     {
         $this->assertSame('user', Relation::getMorphAlias(User::class));

@@ -14,7 +14,6 @@ use Database\Seeders\RoleSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\ViewErrorBag;
-use PHPUnit\Framework\Attributes\Test;
 use Spatie\Permission\PermissionRegistrar;
 use Symfony\Component\Finder\Finder;
 use Tests\TestCase;
@@ -200,7 +199,6 @@ class AuditLogUiRenderTest extends TestCase
      * issued no UNCACHED query. A cache-backed accessor never reaches the log at
      * all, which is why the source scan below sits beside it.
      */
-    #[Test]
     public function test_the_index_renders_and_queries_nothing(): void
     {
         // Resolve the data ONCE, outside the log. `AuditIndexAction` legitimately
@@ -227,8 +225,6 @@ class AuditLogUiRenderTest extends TestCase
             'the index view issued '.$count.' queries; a view must read only the variables it was handed'
         );
     }
-
-    #[Test]
     public function test_the_show_page_renders_and_queries_nothing(): void
     {
         $data = $this->showData($this->lockedId);
@@ -261,7 +257,6 @@ class AuditLogUiRenderTest extends TestCase
      * while most files were never opened. The file count is asserted for that
      * reason.
      */
-    #[Test]
     public function test_the_view_sources_never_call_the_gate_or_a_model(): void
     {
         $files = (new Finder())
@@ -306,7 +301,6 @@ class AuditLogUiRenderTest extends TestCase
      * `bg-white` / `bg-light` break in dark mode; `card-body` without `p-4`
      * breaks the one-card-body convention. `design-system.md` §Forbidden Classes.
      */
-    #[Test]
     public function test_the_forbidden_classes_never_appear(): void
     {
         foreach (['index' => $this->renderIndex(), 'show' => $this->renderShow($this->lockedId)] as $page => $html) {
@@ -331,7 +325,6 @@ class AuditLogUiRenderTest extends TestCase
      * regression that renders perfectly, passes every other test in this file,
      * and changes the meaning of the whole table. Asserted as an ABSENCE.
      */
-    #[Test]
     public function test_neither_page_carries_a_write_affordance(): void
     {
         foreach (['index' => $this->renderIndex(), 'show' => $this->renderShow($this->lockedId)] as $page => $html) {
@@ -364,7 +357,6 @@ class AuditLogUiRenderTest extends TestCase
      * Split out from the shared case because the index's GET filter bar is
      * correct there and would mask a form added to the detail page.
      */
-    #[Test]
     public function test_the_detail_page_has_no_form_at_all(): void
     {
         $this->assertStringNotContainsString('<form', $this->renderShow($this->lockedId));
@@ -377,7 +369,6 @@ class AuditLogUiRenderTest extends TestCase
      * legitimately has NO form, so "a form exists" is a precondition of the index
      * alone.
      */
-    #[Test]
     public function test_the_index_filter_bar_is_a_get_form_to_the_index_route(): void
     {
         preg_match_all('/<form\b([^>]*)>/', $this->renderIndex(), $forms);
@@ -394,7 +385,6 @@ class AuditLogUiRenderTest extends TestCase
      * checkbox column — a selection affordance with nothing to select against is
      * dead UI". Also why the bulk bar from `pages/users/index` was not copied.
      */
-    #[Test]
     public function test_the_index_has_no_bulk_selection_column(): void
     {
         $html = $this->renderIndex();
@@ -413,7 +403,6 @@ class AuditLogUiRenderTest extends TestCase
      * a red border and shows nothing — the defect `pages/settings/index` shipped
      * on 18 of 22 fields before Phase 8 fixed it.
      */
-    #[Test]
     public function test_the_filter_bar_wraps_no_input_in_an_input_group(): void
     {
         $this->assertStringNotContainsString('input-group', $this->renderIndex());
@@ -426,7 +415,6 @@ class AuditLogUiRenderTest extends TestCase
      * invisible to a screen reader once the user types into it. Each control
      * needs an `id`, and every `<label for>` must point at an `id` that exists.
      */
-    #[Test]
     public function test_every_filter_control_has_an_associated_label(): void
     {
         $html = $this->renderIndex();
@@ -472,7 +460,6 @@ class AuditLogUiRenderTest extends TestCase
      * `.table-responsive`, and the pagination footer INSIDE the card body —
      * never in `card-footer`, which is reserved for form actions.
      */
-    #[Test]
     public function test_the_index_keeps_the_card_skeleton_and_pagination_placement(): void
     {
         $html = $this->renderIndex();
@@ -499,7 +486,6 @@ class AuditLogUiRenderTest extends TestCase
      * headers are skipped here rather than the component being edited, because
      * changing a shared component is a separate change affecting three modules.
      */
-    #[Test]
     public function test_the_plain_column_headers_carry_a_scope(): void
     {
         preg_match_all('/<th\b([^>]*)>/', $this->renderIndex(), $headers);
@@ -527,7 +513,6 @@ class AuditLogUiRenderTest extends TestCase
      * where the eye reads first. The Actions column is last, matching every other
      * list in the application.
      */
-    #[Test]
     public function test_the_columns_read_event_actor_target_source_when_actions(): void
     {
         preg_match_all('#<th\b[^>]*>(.*?)</th>#s', $this->renderIndex(), $headers);
@@ -555,7 +540,6 @@ class AuditLogUiRenderTest extends TestCase
      * makes "is this a link?" the answer to a question about the badge's
      * semantics rather than about the row.
      */
-    #[Test]
     public function test_the_detail_page_has_exactly_one_link_per_row(): void
     {
         $html = $this->page($this->get(route('activity-logs.index'))->assertOk()->getContent());
@@ -584,7 +568,6 @@ class AuditLogUiRenderTest extends TestCase
      * screen-reader user tabbing down twenty rows hears the same thing twenty
      * times. The event name in the label is what makes each one distinguishable.
      */
-    #[Test]
     public function test_the_detail_control_names_the_record_it_opens(): void
     {
         $html = $this->page($this->get(route('activity-logs.index'))->assertOk()->getContent());
@@ -607,7 +590,6 @@ class AuditLogUiRenderTest extends TestCase
      * bare `title=` attribute. And the driver without Bootstrap loaded above it
      * throws `bootstrap is not defined`, which kills the rest of the page's script.
      */
-    #[Test]
     public function test_the_detail_control_shows_a_hover_label_that_is_wired_up(): void
     {
         // The FULL response, not the `page()` slice: the driver lives in
@@ -664,7 +646,6 @@ class AuditLogUiRenderTest extends TestCase
      * to `diffForHumans()` fails here rather than being noticed during an
      * incident.
      */
-    #[Test]
     public function test_the_when_column_shows_the_full_timestamp(): void
     {
         // A DISTINCTIVE timestamp, because the assertion reads the FIRST When cell
@@ -702,7 +683,6 @@ class AuditLogUiRenderTest extends TestCase
      * from `$hasFilters`, which the render fixture cannot vary without restating
      * the controller's logic.
      */
-    #[Test]
     public function test_the_empty_state_distinguishes_an_empty_table_from_an_empty_filter(): void
     {
         DB::table(config('activitylog.table_name', 'activity_log'))->delete();
@@ -725,7 +705,6 @@ class AuditLogUiRenderTest extends TestCase
      * is the same defect as a disabled button: it advertises an action that does
      * not exist.
      */
-    #[Test]
     public function test_the_reset_control_appears_only_when_a_filter_is_applied(): void
     {
         $this->assertStringNotContainsString('Reset', $this->page(
@@ -740,7 +719,6 @@ class AuditLogUiRenderTest extends TestCase
     /**
      * The detail page shows what actually happened.
      */
-    #[Test]
     public function test_the_detail_page_shows_the_record(): void
     {
         $html = $this->renderShow($this->lockedId);
@@ -761,7 +739,6 @@ class AuditLogUiRenderTest extends TestCase
      * name. Raw output on this page is a stored-XSS sink on the one page an
      * administrator is most likely to open after an incident.
      */
-    #[Test]
     public function test_the_detail_page_never_prints_a_property_raw(): void
     {
         $id = $this->record('user.updated', ['note' => '<script>alert(1)</script>']);
@@ -779,7 +756,6 @@ class AuditLogUiRenderTest extends TestCase
      * exists. A hard-coded list in Blade looks correct here and goes stale in
      * production.
      */
-    #[Test]
     public function test_the_filter_dropdowns_are_built_from_the_data(): void
     {
         $html = $this->renderIndex();
@@ -812,7 +788,6 @@ class AuditLogUiRenderTest extends TestCase
      * accept a payload — a future write route calling
      * `Activity::create($request->validated())` fails here first.
      */
-    #[Test]
     public function test_the_activity_model_refuses_mass_assignment(): void
     {
         $this->assertSame(['*'], (new Activity())->getGuarded());

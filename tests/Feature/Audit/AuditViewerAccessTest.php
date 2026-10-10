@@ -11,7 +11,6 @@ use Database\Seeders\PermissionSeeder;
 use Database\Seeders\RoleSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Pennant\Feature;
-use PHPUnit\Framework\Attributes\Test;
 use Spatie\Permission\PermissionRegistrar;
 use Tests\TestCase;
 
@@ -65,7 +64,6 @@ class AuditViewerAccessTest extends TestCase
     /**
      * Both gates satisfied — the baseline the other three cases are read against.
      */
-    #[Test]
     public function test_the_permission_and_the_flag_open_the_viewer(): void
     {
         $viewer = $this->login(SystemRole::ADMIN);
@@ -83,7 +81,6 @@ class AuditViewerAccessTest extends TestCase
      * The flag alone is not enough. An operator who flipped `activity_logs` off
      * must not be able to read the trail by holding the permission.
      */
-    #[Test]
     public function test_the_flag_off_refuses_even_with_the_permission(): void
     {
         $this->login(SystemRole::ADMIN);
@@ -101,7 +98,6 @@ class AuditViewerAccessTest extends TestCase
      * permission set by design (see `PermissionSeeder::matrix()`), so this is a
      * real role holding no audit capability — not a hand-built one.
      */
-    #[Test]
     public function test_the_permission_missing_refuses_even_with_the_flag_on(): void
     {
         $viewer = $this->login(SystemRole::USER);
@@ -120,7 +116,6 @@ class AuditViewerAccessTest extends TestCase
      * permission to the catalogue never requires re-seeding the role and can
      * never be stripped by editing a role.
      */
-    #[Test]
     public function test_superadmin_reaches_the_viewer_without_a_permission_row(): void
     {
         $superadmin = $this->login(SystemRole::SUPERADMIN);
@@ -136,7 +131,6 @@ class AuditViewerAccessTest extends TestCase
      * be the SAME 403: if one gate were removed, this case would go 200 while
      * cases 2 and 3 still pass, because each of them only removes one gate.
      */
-    #[Test]
     public function test_both_gates_off_is_still_forbidden(): void
     {
         $this->login(SystemRole::USER);
@@ -155,7 +149,6 @@ class AuditViewerAccessTest extends TestCase
      * is the one `AppMenuComposer` was written to prevent (a link that refuses is
      * worse than an absent link).
      */
-    #[Test]
     public function test_the_sidebar_entry_is_shown_to_a_viewer_and_hidden_from_a_non_viewer(): void
     {
         $this->login(SystemRole::USER);
@@ -179,7 +172,6 @@ class AuditViewerAccessTest extends TestCase
      * Phase 7 established no flag bypass and this pins it for this module: a
      * flag-off module leaves no icon pointing at a 403.
      */
-    #[Test]
     public function test_the_flag_off_hides_the_sidebar_entry_from_superadmin_too(): void
     {
         $this->login(SystemRole::SUPERADMIN);
@@ -207,7 +199,6 @@ class AuditViewerAccessTest extends TestCase
      * moment they flip it — a toggle that reports success and changes nothing is
      * worse than no toggle.
      */
-    #[Test]
     public function test_the_flag_is_no_longer_marked_pending(): void
     {
         $flags = config('pennant.features');

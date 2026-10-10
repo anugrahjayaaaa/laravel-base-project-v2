@@ -11,7 +11,6 @@ use Database\Seeders\RoleSeeder;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use PHPUnit\Framework\Attributes\Test;
 use Spatie\Permission\PermissionRegistrar;
 use Tests\TestCase;
 
@@ -62,8 +61,6 @@ class AuditRequestIdTest extends TestCase
 
         return json_decode($row->properties ?? '{}', true) ?: [];
     }
-
-    #[Test]
     public function test_an_http_mutation_row_carries_the_request_id_from_its_own_response_header(): void
     {
         $admin = User::factory()->create(['email_verified_at' => now()]);
@@ -86,8 +83,6 @@ class AuditRequestIdTest extends TestCase
             'the audit row does not carry the correlation ID of the request that wrote it'
         );
     }
-
-    #[Test]
     public function test_a_row_written_with_no_request_in_scope_carries_a_null_request_id(): void
     {
         // The job is run synchronously and directly — no HTTP request, so
@@ -105,8 +100,6 @@ class AuditRequestIdTest extends TestCase
         $this->assertNull($properties['request_id']);
         $this->assertSame('system', $properties['source'] ?? null);
     }
-
-    #[Test]
     public function test_a_generated_request_id_is_captured_when_the_client_sends_none(): void
     {
         $admin = User::factory()->create(['email_verified_at' => now()]);

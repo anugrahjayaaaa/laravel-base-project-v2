@@ -17,7 +17,6 @@ use Database\Seeders\RoleSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
-use PHPUnit\Framework\Attributes\Test;
 use Spatie\Permission\PermissionRegistrar;
 use Tests\TestCase;
 
@@ -74,7 +73,6 @@ class AuditDetailTest extends TestCase
      * no record of the account anywhere in the database, so whatever this row
      * omits is gone permanently.
      */
-    #[Test]
     public function test_a_soft_delete_records_the_address_it_removed(): void
     {
         $target = User::factory()->create(['email' => 'doomed@example.test']);
@@ -86,8 +84,6 @@ class AuditDetailTest extends TestCase
         $this->assertSame('doomed@example.test', $properties['target_email'] ?? null);
         $this->assertSame($target->id, $properties['target_id'] ?? null);
     }
-
-    #[Test]
     public function test_a_force_delete_records_the_identity_that_no_longer_exists(): void
     {
         $target = User::factory()->create([
@@ -112,8 +108,6 @@ class AuditDetailTest extends TestCase
             'precondition: no subject remains, so this row is the only record of the address'
         );
     }
-
-    #[Test]
     public function test_a_restore_records_whether_it_reactivated_the_account(): void
     {
         $target = User::factory()->create(['is_active' => false, 'is_locked' => true]);
@@ -126,8 +120,6 @@ class AuditDetailTest extends TestCase
         $this->assertTrue($properties['reactivated'] ?? null, 'the flag that distinguishes the two restore shapes');
         $this->assertSame($target->email, $properties['target_email'] ?? null);
     }
-
-    #[Test]
     public function test_a_role_force_delete_records_what_it_took_with_it(): void
     {
         $role = Role::create(['name' => 'auditor', 'guard_name' => RoleLookup::guard()]);
@@ -149,8 +141,6 @@ class AuditDetailTest extends TestCase
         $this->assertSame(1, $properties['revoked_permissions'] ?? null);
         $this->assertSame('auditor', $properties['role_name'] ?? null);
     }
-
-    #[Test]
     public function test_cancelling_an_email_change_records_which_address_was_abandoned(): void
     {
         $target = User::factory()->create(['pending_email' => 'takeover@example.test']);
@@ -163,8 +153,6 @@ class AuditDetailTest extends TestCase
             'the destination is nulled one line after the read; without it the cancel says nothing'
         );
     }
-
-    #[Test]
     public function test_creating_an_account_records_what_was_created(): void
     {
         app(UserCreateAction::class)->run([
