@@ -175,7 +175,13 @@ class ActivityModelTest extends TestCase
      * This is the pair that separates "no causer" from "the system". The first
      * version of `isSystemGenerated()` returned `$this->causer === null`, which
      * painted a system gear beside every successful login — because
-     * `AuthLoginCompletedAction` also records `auth.login` with a null causer.
+     * `AuthLoginCompletedAction` also recorded `auth.login` with a null causer.
+     *
+     * That second half is fixed. `auth.login` now names the account that logged
+     * in, so a web row with a genuinely null causer is the failed-login shape and
+     * nothing else — which is what makes THIS test a meaningful claim rather than
+     * a description of a bug. `AuditActorAndDetailTest` pins the successful login
+     * to a named actor.
      */
     #[Test]
     public function test_a_web_row_with_no_causer_is_not_system_generated(): void

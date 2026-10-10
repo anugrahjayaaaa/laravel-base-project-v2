@@ -19,6 +19,11 @@ class UserCancelEmailChangeAction
     public function run(User $user, ?User $causer = null): void
     {
         DB::transaction(function () use ($user, $causer) {
+            // Read BEFORE the update nulls it. Cancelling is only interesting
+            // because a takeover attempt was pending, and the address it was aimed
+            // at is the fact an incident review needs — it is gone one line later.
+            $pendingEmail = $user->pending_email;
+
             $user->update([
                 'pending_email' => null,
                 'email_change_token' => null,
@@ -26,7 +31,9 @@ class UserCancelEmailChangeAction
             ]);
 
             if ($causer !== null) {
-                $user->audit('user.email_change_cancelled', $causer);
+                $user->audit('user.email_change_cancelled', $causer, [
+                    'cancelled_pending_email' => $pendingEmail,
+                ]);
             }
         });
     }

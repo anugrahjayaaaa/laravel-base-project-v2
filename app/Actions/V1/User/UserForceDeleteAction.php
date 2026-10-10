@@ -24,9 +24,19 @@ class UserForceDeleteAction
         $this->validate($user, $causer);
 
         DB::transaction(function () use ($user, $causer) {
+            // Captured before the row stops existing. After a force delete there
+            // is NO record of the account anywhere — not in `users`, not with the
+            // soft-delete column. Whatever this row omits is gone for good, which
+            // makes the address and the username the whole point of writing it.
+            $identity = [
+                'target_id' => $user->id,
+                'target_email' => $user->email,
+                'target_username' => $user->username,
+            ];
+
             $user->forceDelete();
 
-            $user->audit('user.force_deleted', $causer);
+            $user->audit('user.force_deleted', $causer, $identity);
         });
 
         return ['user' => $user];

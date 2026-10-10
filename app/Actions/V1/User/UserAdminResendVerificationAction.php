@@ -53,7 +53,13 @@ class UserAdminResendVerificationAction
         // A refusal above returns before this line, so the row only ever records
         // an email that actually went out.
         if ($causer !== null) {
-            $user->audit('user.verification_resent', $causer);
+            // The destination, because "a verification mail was sent" without an
+            // address does not say where it went — and an admin sending one is
+            // usually working from a report that names the address.
+            $user->audit('user.verification_resent', $causer, [
+                'target_id' => $user->id,
+                'target_email' => $user->email,
+            ]);
         }
 
         return ['user' => $user];

@@ -97,12 +97,22 @@ class UserCreateAction
             // without the gate the action would write `user.created` on top of
             // the `user.registered` row and one signup would produce two
             // records for one account.
+            // What was created, not merely that something was. Both branches carry
+            // the address and the username: an admin who created an account needs
+            // to find it again by either, and a self-registered row is the only
+            // record of the address until the user verifies.
+            $created = [
+                'target_id' => $user->id,
+                'target_email' => $user->email,
+                'target_username' => $user->username,
+            ];
+
             if ($causer !== null) {
-                $user->audit('user.created', $causer);
+                $user->audit('user.created', $causer, $created);
             } else {
                 // The registering account is the actor. `null` here read as
                 // "nobody did this", which is the opposite of what happened.
-                $user->audit('user.registered', $user);
+                $user->audit('user.registered', $user, $created);
             }
 
             return $user;

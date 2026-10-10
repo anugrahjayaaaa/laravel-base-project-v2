@@ -27,7 +27,15 @@ class UserRestoreAction
             }
 
             if ($causer !== null) {
-                $user->audit('user.restored', $causer);
+                // `reactivated` is the part that is not obvious from the event
+                // name: restore() alone leaves the account trashed, and only this
+                // flag says the restore ALSO cleared `is_locked` and re-enabled
+                // it. Without it, a reviewer cannot tell the two restores apart.
+                $user->audit('user.restored', $causer, [
+                    'target_id' => $user->id,
+                    'target_email' => $user->email,
+                    'reactivated' => $setActive,
+                ]);
             }
         });
 
