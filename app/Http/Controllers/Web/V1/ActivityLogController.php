@@ -7,6 +7,7 @@ use App\Actions\V1\Audit\AuditIndexAction;
 use App\Actions\V1\Audit\AuditShowAction;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\V1\Audit\ActivityQueryRequest;
+use App\Models\SystemSetting;
 use Illuminate\Contracts\View\View;
 
 /**
@@ -75,6 +76,12 @@ class ActivityLogController extends Controller
             // the scope is what keeps one operator's extract off another
             // operator's screen.
             'myExports' => $exportAction->recentFor($request->user()),
+            // The ceiling the export button's tooltip QUOTES. It lives in
+            // `system_settings` (Phase 10, §11 P10-E9) and the limiter reads the
+            // same row, so the number the operator is shown and the number they
+            // are held to cannot be two different numbers. Passed in rather than
+            // read in the partial: views here query nothing.
+            'auditExportRateLimit' => SystemSetting::getInt('audit_export_rate_limit_per_hour', 5),
         ]);
     }
 

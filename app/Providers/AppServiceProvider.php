@@ -220,14 +220,25 @@ class AppServiceProvider extends ServiceProvider
         // and per HOUR rather than per minute: the cost per call here is orders of
         // magnitude above the send-test-mail route it borrows the shape from.
         //
+        // The ceiling is a `SystemSetting` (Phase 10, §11 P10-E9) rather than the
+        // literal it was, because the audit page QUOTES this number to the operator
+        // in a tooltip. A number shown in two places and stored in one is a number
+        // that cannot drift; a literal behind a hardcoded label can, and the first
+        // edit in the settings UI would have made the tooltip a lie.
+        //
+        // Read per request inside the closure, never at boot: boot runs before the
+        // table exists on a fresh install, and this project has already been bitten
+        // by that (`bindTokenExpirations()` and its comment).
+        //
         // The refusal rides on `format` because that is the one field this POST
         // carries — `responseFor()` flashes the field's value back so the filters
         // the user had chosen survive the redirect. On a field that is not in the
         // form the message would be attached to nothing the page renders.
         RateLimiter::for('audit-export', function ($request) use ($throttle) {
             $key = $throttle->key('audit-export', (string) $request->user()?->id, $request->ip());
+            $perHour = SystemSetting::getInt('audit_export_rate_limit_per_hour', 5);
 
-            return Limit::perHour(5)
+            return Limit::perHour($perHour)
                 ->by($key)
                 ->response($throttle->responseFor('format'));
         });

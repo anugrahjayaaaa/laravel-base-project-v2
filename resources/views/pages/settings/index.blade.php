@@ -456,6 +456,29 @@
                                     <div class="invalid-feedback d-block" id="email_verification_token_expire_minutes_error">{{ $message }}</div>
                                 @enderror
                             </div>
+
+                            {{-- Per HOUR, and it is the only field in this section that is:
+                                 an audit export streams the whole filtered table into a
+                                 file on a worker, so the cost per call is orders of
+                                 magnitude above every per-minute limiter above it. The
+                                 audit page quotes this same number in the Export
+                                 button's tooltip — both read this row, so the figure
+                                 shown and the figure enforced cannot drift apart. --}}
+                            <div class="col-md-6">
+                                <label for="audit_export_rate_limit_per_hour" class="form-label">
+                                    Audit Export Limit
+                                    <i class="bi bi-info-circle text-muted fs-7 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Maximum audit trail CSV exports allowed per hour per operator and IP pair. Each one is generated on a queue worker."></i>
+                                </label>
+                                <div class="input-group">
+                                    <input type="number" name="audit_export_rate_limit_per_hour" id="audit_export_rate_limit_per_hour"
+                                           class="form-control form-control-sm @error('audit_export_rate_limit_per_hour') is-invalid @enderror" @error('audit_export_rate_limit_per_hour') aria-invalid="true" aria-describedby="audit_export_rate_limit_per_hour_error" @enderror
+                                           value="{{ old('audit_export_rate_limit_per_hour', $settings['audit_export_rate_limit_per_hour'] ?? 5) }}" min="1" max="500">
+                                    <span class="input-group-text bg-body-tertiary">/ hour</span>
+                                </div>
+                                @error('audit_export_rate_limit_per_hour')
+                                    <div class="invalid-feedback d-block" id="audit_export_rate_limit_per_hour_error">{{ $message }}</div>
+                                @enderror
+                            </div>
                         </div>
                     </div>
                 </div>

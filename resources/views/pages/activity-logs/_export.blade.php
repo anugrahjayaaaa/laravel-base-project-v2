@@ -6,8 +6,9 @@
     `justify-content-between` row rather than bringing its own: a second flex row
     here is the orphan line this placement replaced.
 
-    Contract with ActivityLogController::index() — the only value read is the
-    `$filters` array the GET form below echoes back.
+    Contract with ActivityLogController::index() — the two values read are the
+    `$filters` array the GET form below echoes back and `$auditExportRateLimit`,
+    the resolved export ceiling the tooltip quotes.
 
     ## Its own POST form, not the filter form with a changed method
 
@@ -45,11 +46,15 @@
     ## The tooltip names the limiter
 
     `data-bs-title` rather than a bare `title=` — Bootstrap 5.3 takes `title` only
-    as a FALLBACK and strips it once the tooltip is constructed. The text is the
-    limit the `audit-export` limiter actually enforces (5 per hour, user + IP),
-    because a control with an invisible ceiling is one an operator discovers by
-    being refused. No `aria-label`: the button has visible text, so labelling it
-    again would override what a screen reader reads with a shorter phrase.
+    as a FALLBACK and strips it once the tooltip is constructed. The text quotes
+    the `audit-export` limiter's resolved ceiling (`$auditExportRateLimit`, read by
+    `ActivityLogController::index()` from the same `system_settings` row the
+    limiter reads), because a control with an invisible ceiling is one an operator
+    discovers by being refused. It was a literal here before the limit moved into
+    settings (§11 P10-E9), and a hardcoded label beside a configurable number is a
+    label that lies the first time somebody edits the setting. No `aria-label`:
+    the button has visible text, so labelling it again would override what a
+    screen reader reads with a shorter phrase.
 
     The tooltip is initialised by the page's existing `[data-bs-toggle="tooltip"]`
     sweep in `@push('scripts')` — this partial adds no JS.
@@ -70,7 +75,7 @@
         <button type="submit"
             class="btn btn-outline-secondary btn-sm d-inline-flex align-items-center gap-2"
             data-bs-toggle="tooltip" data-bs-placement="top"
-            data-bs-title="Exports the rows matched by the current filters as CSV. Maximum 5 per hour.">
+            data-bs-title="Exports the rows matched by the current filters as CSV. Maximum {{ $auditExportRateLimit }} per hour.">
             <i class="fas fa-file-arrow-down"></i> Export CSV
         </button>
     </form>

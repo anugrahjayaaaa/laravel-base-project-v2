@@ -92,6 +92,14 @@ class SystemSettingRequest extends BaseFormRequest
                 'string',
                 Rule::in(RoleLookup::visibleTo($this->user())->pluck('name')),
             ],
+
+            // Audit trail export ceiling — Phase 10, §11 P10-E9.
+            //
+            // An HOUR rather than a minute, which is why the bound tops out at 500
+            // where the per-minute limiters stop at 120: at five an hour this is a
+            // ceiling an operator never reaches by accident, and the only way to
+            // change the cost of one export from the UI is this field.
+            'audit_export_rate_limit_per_hour' => ['integer', 'min:1', 'max:500'],
         ];
     }
 

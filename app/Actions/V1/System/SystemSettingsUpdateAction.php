@@ -113,6 +113,11 @@ class SystemSettingsUpdateAction
             'registration_enabled' => ($data['registration_enabled'] ?? false) ? 'true' : 'false',
             'registration_default_role' => $data['registration_default_role'] ?? 'user',
             'registration_rate_limit_per_minute' => (string) ($data['registration_rate_limit_per_minute'] ?? 3),
+
+            // Audit trail export ceiling (Phase 10, §11 P10-E9). Per HOUR, not per
+            // minute — the limiter reads this same key, and the audit page's Export
+            // tooltip quotes it, so this row is the single source for both.
+            'audit_export_rate_limit_per_hour' => (string) ($data['audit_export_rate_limit_per_hour'] ?? 5),
         ];
 
         $graceEnabled = $updates['inactivity_lock_grace_enabled'] === 'true';

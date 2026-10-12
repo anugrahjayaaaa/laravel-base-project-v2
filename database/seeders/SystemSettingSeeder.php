@@ -72,6 +72,13 @@ class SystemSettingSeeder extends Seeder
         SystemSetting::set('registration_default_role', 'user');
         SystemSetting::set('registration_rate_limit_per_minute', '3');
 
+        // Audit trail export ceiling — Phase 10, §11 P10-E9.
+        //
+        // Five per HOUR, per user + IP. The number is the same one the route
+        // enforced before it moved here; what changed is that an operator can now
+        // read it and change it without a deploy, which the literal could not.
+        SystemSetting::set('audit_export_rate_limit_per_hour', '5');
+
         // Mail transport — Phase 9 Group B.
         //
         // Seeded from the .env values this app already boots with, so an install
