@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
@@ -148,7 +149,7 @@ class Activity extends SpatieActivity
 
         return self::TYPE_LABELS[Str::snake($alias)]
             ?? self::TYPE_LABELS[Str::snake($bare)]
-            ?? 'Unknown ('.$type.')';
+            ?? 'Unknown (' . $type . ')';
     }
 
     /**
@@ -193,7 +194,7 @@ class Activity extends SpatieActivity
         // person performed. The id outlives the row, so the honest answer names
         // it, and it is the answer an incident review needs.
         if ($this->causer_id !== null) {
-            return 'Deleted user (#'.$this->causer_id.')';
+            return 'Deleted user (#' . $this->causer_id . ')';
         }
 
         return 'Anonymous';
@@ -219,7 +220,7 @@ class Activity extends SpatieActivity
         if ($subject !== null) {
             return method_exists($subject, 'name')
                 ? (string) $subject->name
-                : '#'.$subject->getKey();
+                : '#' . $subject->getKey();
         }
 
         if ($this->subject_type === null) {
@@ -228,7 +229,7 @@ class Activity extends SpatieActivity
 
         return $this->subject_id === null
             ? '—'
-            : '#'.$this->subject_id;
+            : '#' . $this->subject_id;
     }
 
     /**
@@ -393,6 +394,81 @@ class Activity extends SpatieActivity
     public function source(): string
     {
         return (string) ($this->extra('source') ?? 'unknown');
+    }
+
+    /**
+     * The viewer's filter, as a query.
+     *
+     * ## Why this lives on the model
+     *
+     * Because a second reader now needs the identical filter: the export job
+     * (Phase 10 Group E) walks the rows the operator was looking at when they
+     * pressed Export. Copied into the job it is a second implementation that
+     * agrees with the first until somebody adds a filter to one of them — and
+     * then the file silently contains rows the page did not show, which for an
+     * audit extract is the kind of wrong that gets believed.
+     *
+     * Ordering and pagination are NOT here. The index page sorts and pages; the
+     * export streams everything in sort order and never pages. Those are the two
+     * caller's decisions, not the filter's.
+     *
+     * ## Search deliberately does not touch `properties`
+     *
+     * `properties` is a JSON column. A `LIKE '%term%'` across it cannot use an
+     * index on any engine this project runs, so every search becomes a table
+     * scan over the largest table in the system — and an export is exactly the
+     * query that would notice. `event` and `description` are plain strings: that
+     * is the whole of what an operator types ("who logged a user out", "find
+     * `user.locked`").
+     *
+     * @param  array<string, mixed>  $filters  as ActivityQueryRequest::filters()
+     * @return Builder<Activity>
+     */
+    public function scopeFiltered(Builder $query, array $filters): Builder
+    {
+        $search = $filters['search'] ?? null;
+        if (is_string($search) && $search !== '') {
+            $query->where(function (Builder $q) use ($search): void {
+                $q->where('event', 'like', '%' . $search . '%')
+                    ->orWhere('description', 'like', '%' . $search . '%');
+            });
+        }
+
+        $event = $filters['event'] ?? null;
+        if (is_string($event) && $event !== '') {
+            $query->where('event', $event);
+        }
+
+        $source = $filters['source'] ?? null;
+        if (is_string($source) && $source !== '') {
+            $query->where('properties->source', $source);
+        }
+
+        $causerId = $filters['causer_id'] ?? null;
+        if ($causerId !== null) {
+            $query->where('causer_id', (int) $causerId);
+        }
+
+        $subjectType = $filters['subject_type'] ?? null;
+        if (is_string($subjectType) && $subjectType !== '') {
+            $query->where('subject_type', $subjectType);
+        }
+
+        $dateFrom = $filters['date_from'] ?? null;
+        if (is_string($dateFrom) && $dateFrom !== '') {
+            $query->whereDate('created_at', '>=', $dateFrom);
+        }
+
+        $dateTo = $filters['date_to'] ?? null;
+        if (is_string($dateTo) && $dateTo !== '') {
+            // End of day, explicitly. `whereDate(created_at, '<=', $dateTo)`
+            // truncates the datetime column to midnight and silently drops every
+            // row written after 00:00 on the day the operator picked as their
+            // range end — the range reads correctly and is short by a day.
+            $query->where('created_at', '<=', $dateTo . ' 23:59:59');
+        }
+
+        return $query;
     }
 
     /**

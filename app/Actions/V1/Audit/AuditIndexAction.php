@@ -5,7 +5,6 @@ namespace App\Actions\V1\Audit;
 use App\Models\Activity;
 use App\Models\User;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
-use Illuminate\Database\Eloquent\Builder;
 
 /**
  * The audit viewer's list query: search, filter, sort, paginate.
@@ -21,11 +20,9 @@ use Illuminate\Database\Eloquent\Builder;
  *
  * ## Search deliberately does not touch `properties`
  *
- * `properties` is a JSON column. A `LIKE '%term%'` across it cannot use an index
- * on any engine this project runs, so every search becomes a table scan over the
- * largest table in the system. `event` and `description` are plain strings — that
- * is the whole of what an operator types ("who logged a user out", "find
- * `user.locked`").
+ * `Activity::scopeFiltered()` owns the filter and explains why search covers
+ * `event` and `description` only. It lives on the model rather than here because
+ * the export job walks the same rows (Phase 10 Group E) — see that scope.
  *
  * ## Eager loading is not optional here
  *
@@ -56,7 +53,7 @@ class AuditIndexAction
         $sort = $filters['sort'] ?? 'created_at';
         $direction = ($filters['direction'] ?? 'desc') === 'asc' ? 'asc' : 'desc';
 
-        return $this->query($filters)
+        return Activity::filtered($filters)
             ->orderBy($sort, $direction)
             // Stable pagination. Without it, rows sharing a created_at — which a
             // bulk write produces in one batch — can swap between two page
@@ -178,60 +175,5 @@ class AuditIndexAction
             ->orderBy('users.name')
             ->pluck('users.name', 'users.id')
             ->all();
-    }
-
-    /**
-     * The filtered query, without ordering or pagination.
-     *
-     * @param  array<string, mixed>  $filters
-     * @return Builder<Activity>
-     */
-    private function query(array $filters): Builder
-    {
-        $query = Activity::query();
-
-        $search = $filters['search'] ?? null;
-        if (is_string($search) && $search !== '') {
-            $query->where(function (Builder $q) use ($search): void {
-                $q->where('event', 'like', '%'.$search.'%')
-                    ->orWhere('description', 'like', '%'.$search.'%');
-            });
-        }
-
-        $event = $filters['event'] ?? null;
-        if (is_string($event) && $event !== '') {
-            $query->where('event', $event);
-        }
-
-        $source = $filters['source'] ?? null;
-        if (is_string($source) && $source !== '') {
-            $query->where('properties->source', $source);
-        }
-
-        $causerId = $filters['causer_id'] ?? null;
-        if ($causerId !== null) {
-            $query->where('causer_id', (int) $causerId);
-        }
-
-        $subjectType = $filters['subject_type'] ?? null;
-        if (is_string($subjectType) && $subjectType !== '') {
-            $query->where('subject_type', $subjectType);
-        }
-
-        $dateFrom = $filters['date_from'] ?? null;
-        if (is_string($dateFrom) && $dateFrom !== '') {
-            $query->whereDate('created_at', '>=', $dateFrom);
-        }
-
-        $dateTo = $filters['date_to'] ?? null;
-        if (is_string($dateTo) && $dateTo !== '') {
-            // End of day, explicitly. `whereDate(created_at, '<=', $dateTo)`
-            // truncates the datetime column to midnight and silently drops every
-            // row written after 00:00 on the day the operator picked as their
-            // range end — the range reads correctly and is short by a day.
-            $query->where('created_at', '<=', $dateTo.' 23:59:59');
-        }
-
-        return $query;
     }
 }

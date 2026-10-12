@@ -1,12 +1,15 @@
 <?php
 
+use App\Enums\AuditExportStatus;
 use App\Jobs\InactivityLockSweep;
 use App\Jobs\PasswordExpirySweep;
+use App\Models\AuditExport;
 use App\Models\SystemSetting;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schedule;
+use Illuminate\Support\Facades\Storage;
 
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
@@ -27,25 +30,25 @@ Schedule::call(function (): void {
 })->everyMinute()->name('password-security-sweeps')->withoutOverlapping();
 
 /**
- * Prune read notifications past the retention window.
- *
- * The `notifications` table grows one row per delivery, forever. Nothing in the
- * app deletes from it, so an install that receives administrative events accrues
- * rows with no ceiling — the inbox itself paginates, which hides the problem from
- * every page that renders it while the table keeps filling.
- *
- * READ rows only, for the same reason Laravel's own `DatabaseNotification`
- * prunes on `read_at`: an unread notification is state the user has not acted on
- * yet, and deleting it removes a badge nobody was shown. Anything unread stays
- * until it is read, which is the point of reading it.
- *
- * A direct DELETE rather than `model:prune`, which needs a `Prunable` model and
- * a `notifications()` relation override to make Laravel's command reach this
- * table at all. `Notifiable` hardcodes `DatabaseNotification` in that relation,
- * so the framework path costs a model swap on the one relation every delivery,
- * read and count goes through — in exchange for a scheduled query this module
- * can already write.
- */
+* Prune read notifications past the retention window.
+*
+* The `notifications` table grows one row per delivery, forever. Nothing in the
+* app deletes from it, so an install that receives administrative events accrues
+* rows with no ceiling — the inbox itself paginates, which hides the problem from
+* every page that renders it while the table keeps filling.
+*
+* READ rows only, for the same reason Laravel's own `DatabaseNotification`
+* prunes on `read_at`: an unread notification is state the user has not acted on
+* yet, and deleting it removes a badge nobody was shown. Anything unread stays
+* until it is read, which is the point of reading it.
+*
+* A direct DELETE rather than `model:prune`, which needs a `Prunable` model and
+* a `notifications()` relation override to make Laravel's command reach this
+* table at all. `Notifiable` hardcodes `DatabaseNotification` in that relation,
+* so the framework path costs a model swap on the one relation every delivery,
+* read and count goes through — in exchange for a scheduled query this module
+* can already write.
+*/
 Schedule::call(function (): void {
     // 90 days, the same order of magnitude as the 5 risky-test benchmark
     // assertions this module's own suite allows itself: long enough that a
@@ -59,3 +62,38 @@ Schedule::call(function (): void {
         ->where('read_at', '<', now()->subDays(90))
         ->delete();
 })->daily()->name('notification-retention')->withoutOverlapping();
+
+/**
+ * Prune audit exports past their download window, files included.
+ *
+ * `docs/base/operations/retention.md:12` — "Audit export files | 7 days after
+ * generation | Temporary download window". The number is
+ * `AuditExport::RETENTION_DAYS`, which is also what the row's `expires_at` is
+ * written from, so the sweep and the download route cannot answer differently
+ * about the same row.
+ *
+ * Both halves, one pass, and the order matters:
+ *
+ * - the FILE first. An `audit_exports` row whose file is still on disk is a
+ *   download link that 410s — a URL in somebody's mail that resolves to nothing,
+ *   with a row still claiming it exists;
+ * - the ROW second. Deleting the row without unlinking the file leaks disk
+ *   forever, because nothing else in the application knows the path existed.
+ *
+ * A row whose job is still `pending` is NOT swept by age: `expires_at` is set at
+ * request time, so a request that has been queued for eight days is swept here
+ * while its job is still legitimately working. Those are rare and they are not
+ * this sweep's business — the job's own timeout is.
+ */
+Schedule::call(function (): void {
+    AuditExport::query()
+        ->where('expires_at', '<', now())
+        ->where('status', '!=', AuditExportStatus::PENDING)
+        ->each(function (AuditExport $export): void {
+            if ($export->path !== null) {
+                Storage::disk('local')->delete($export->path);
+            }
+
+            $export->delete();
+        });
+})->daily()->name('audit-export-retention')->withoutOverlapping();

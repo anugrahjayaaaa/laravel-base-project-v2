@@ -202,6 +202,28 @@ class AppServiceProvider extends ServiceProvider
                 ->by($key)
                 ->response($throttle->responseFor('users'));
         });
+
+        // One audit export streams the whole filtered table into a file. Five an
+        // hour is roughly an operator's working pace; a permission answers "may
+        // this person" and not "how often", and without a ceiling a compromised
+        // operator account turns this route into a lever against the database and
+        // against disk — a worker burning its whole timeout on rows nobody reads.
+        //
+        // Keyed on user AND ip, so spraying across accounts does not widen it,
+        // and per HOUR rather than per minute: the cost per call here is orders of
+        // magnitude above the send-test-mail route it borrows the shape from.
+        //
+        // The refusal rides on `format` because that is the one field this POST
+        // carries — `responseFor()` flashes the field's value back so the filters
+        // the user had chosen survive the redirect. On a field that is not in the
+        // form the message would be attached to nothing the page renders.
+        RateLimiter::for('audit-export', function ($request) use ($throttle) {
+            $key = $throttle->key('audit-export', (string) $request->user()?->id, $request->ip());
+
+            return Limit::perHour(5)
+                ->by($key)
+                ->response($throttle->responseFor('format'));
+        });
     }
 
     /**

@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Web\V1\ActivityLogController;
+use App\Http\Controllers\Web\V1\AuditExportController;
 use App\Http\Controllers\Web\V1\Auth\AuthController;
 use App\Http\Controllers\Web\V1\DashboardController;
 use App\Http\Controllers\Web\V1\FeatureController;
@@ -278,16 +279,37 @@ Route::middleware(['auth:web,sanctum', 'verified', 'password.change.required', '
     // Phase 7 and Phase 11 — the two answer different questions, and collapsing
     // them into one check loses whichever question gets dropped.
     //
-    // READ-ONLY. There is no POST/PUT/DELETE here, and `App\Models\Activity`
-    // carries `$guarded = ['*']`. An audit row is evidence: a write path here
-    // would let the record of something be edited by the thing that records it.
+    // READ-ONLY. There is no POST/PUT/DELETE on the viewer itself, and
+    // `App\Models\Activity` carries `$guarded = ['*']`. An audit row is evidence:
+    // a write path here would let the record of something be edited by the thing
+    // that records it.
     //
-    // The export routes (Group E) are deliberately absent rather than stubbed —
-    // a button posting to a route that does not exist is a 405 waiting to be
-    // clicked, which is worse than the button not being there.
+    // The two export routes below are the one POST this surface has, and it
+    // writes NO audit row — it writes an `audit_exports` row, which is a
+    // hand-off to the queue and not a record of the audit trail. The table stays
+    // append-only.
+    //
+    // `audit.export`, not `audit.view`: seeing a row is not the same authority as
+    // taking the whole table out of the application. `PermissionCatalog` documents
+    // that split, and collapsing them would hand every read-only auditor a copy
+    // of everything everybody did.
     // -----------------------------------------------------------------------
     Route::middleware('feature:activity_logs')->group(function () {
         Route::get('/activity-logs', [ActivityLogController::class, 'index'])->name('activity-logs.index')->can('audit.view');
         Route::get('/activity-logs/{activity}', [ActivityLogController::class, 'show'])->name('activity-logs.show')->can('audit.view');
+
+        // Named under the viewer's namespace so the download link in the
+        // notification reads `activity-logs.exports.download`, and so both
+        // surfaces are switched off by the same flag.
+        Route::post('/activity-logs/exports', [AuditExportController::class, 'store'])
+            ->name('activity-logs.exports.store')
+            ->middleware(['can:audit.export', 'throttle:audit-export']);
+
+        // `audit.export` on this one too, and the ownership check lives in
+        // `AuditExportDownloadAction`: the permission says "may extract", not
+        // "may download extract #41", and the id is attacker-supplied.
+        Route::get('/activity-logs/exports/{export}/download', [AuditExportController::class, 'download'])
+            ->name('activity-logs.exports.download')
+            ->can('audit.export');
     });
 });
