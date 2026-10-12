@@ -79,8 +79,34 @@ A declared flag is not an active flag: the `database` store is fail-closed, so
 
 ## Current state
 Phases 0–9 done, Phase 10 (audit trail) in progress, 11–17 planned.
-Full suite: ~1135 tests / ~4308 assertions. 5 benchmark tests are intentionally
-assertion-free. Read `docs/planning/progress.md` for the live picture.
+Full suite: 1815 tests / 6033 assertions (measured 2026-10-12). 5 benchmark tests
+are intentionally assertion-free. Read `docs/planning/progress.md` for the live
+picture.
+
+## Package provider boot order (verify after every composer update)
+`Application::registerConfiguredProviders()` splits `config('app.providers')` on
+the `Illuminate\` prefix and **splices the package manifest in at index 1** —
+so the order is always `Illuminate` → **packages** → app providers. `boot()`
+follows registration order. Source:
+`vendor/laravel/framework/src/Illuminate/Foundation/Application.php`.
+
+Two consequences this codebase already depends on or must not rely on:
+
+- **A package's `boot()` has already run before any app provider's.** So an app
+  provider cannot retroactively un-register a package's routes, commands, event
+  listeners, or its `Gate::define()`/`Gate::before()` — it can only overwrite
+  what a later read consults. See `EnsureFeatureIsEnabled` and the `feature:pulse`
+  middleware in `config/pulse.php` for the two shapes that work.
+- **Anything a package reads once at boot is frozen.** Mutating that config key
+  later in an app provider is a silent no-op for the boot-time decision. Only
+  config a package re-reads at *call* time (e.g. inside an event listener's
+  `handle()`) can be flipped that way.
+
+**After any `composer require`/`composer update`, re-read this section and check
+every package whose gates, routes, flags or global switches this project layers
+on top of — before reporting the update done.** The failure mode is silent and
+invisible in tests: an overridden `Gate::define()` looks identical to a working
+one, and the dashboard still renders 200.
 
 ## Traps already paid for
 - Caching a non-primitive (Collection / Eloquent model / Carbon) through the

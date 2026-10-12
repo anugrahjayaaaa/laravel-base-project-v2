@@ -59,6 +59,18 @@ DB::transaction(function () use ($data) {
 - Configure `retry_until`, `tries`, `backoff`.
 - Monitor failed job queue via Horizon (if Redis) or database monitoring.
 
+**The ceiling belongs to the setting, not the code.** `audit-export` reads
+`audit_export_rate_limit_per_hour` from `system_settings` rather than hardcoding
+it, because the audit page quotes the same number in its Export tooltip — one
+stored value, one shown value. `user-state-actions`, `bulk-action` and
+`send-test-mail` are still literals; see `phase-11-monitoring-observability.md`
+for the dashboard decision and what still needs a `SystemSetting`.
+
+**Retries need a log line of their own.** `failed()` fires once, after the final
+attempt, and `failed_jobs` keeps one row per job — so with `$tries` above 1 the
+early attempts leave no trace anywhere. Log each attempt (with its number) before
+rethrowing. `GenerateAuditExport` does this and it is the pattern.
+
 ### After-Commit Dispatch
 
 Jobs that depend on committed database state MUST use
