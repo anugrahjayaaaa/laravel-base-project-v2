@@ -39,7 +39,15 @@
              rows with nothing marking which one they chose — and the row stayed
              unread, so "I clicked it" and "I read it" were two different clicks.
              The detail page marks it read. --}}
+        {{-- `data-notification-id`, because the poll cannot compare an id with a
+             href. `latestId()` used to read `href` — "/notifications/inbox/<uuid>" —
+             and compare it against `latest_id` — "<uuid>" — which never matched, so
+             the "only re-render when something NEW arrived" rule fired on every
+             poll instead of only on a change. It only ever matched while the inbox
+             was empty, when both sides were null. The attribute is the one value
+             both sides can name; `NotificationPollTest` pins them together. --}}
         <a href="{{ route('notifications.inbox.show', $notification->id) }}"
+            data-notification-id="{{ $notification->id }}"
             class="notifications-preview-item list-group-item list-group-item-action py-3 px-3 border-bottom d-flex align-items-start gap-3 bg-body-tertiary">
             <div class="rounded-3 {{ $circle }} p-2" style="width: 36px; height: 36px; flex-shrink: 0;">
                 @if ($notification->read_at === null)

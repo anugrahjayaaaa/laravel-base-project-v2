@@ -161,6 +161,71 @@ class NotificationPollTest extends TestCase
         );
     }
 
+    /**
+     * The rendered id and the polled id are the SAME value, so the script's
+     * change-detection can compare them at all.
+     *
+     * It read `href` — "/notifications/inbox/<uuid>" — and compared it against
+     * `latest_id` — "<uuid>". Those never matched, so "only re-render when
+     * something NEW arrived" fired on every poll and the dropdown was re-fetched
+     * from the server every 30 seconds for the life of every open tab. It only
+     * ever agreed while the inbox was empty, where both sides were null, which is
+     * why nothing looked wrong until the first notification arrived.
+     *
+     * Asserting both sides come from the same source is what stops them drifting
+     * again: there is no third place either value is written down.
+     */
+    public function test_the_rendered_row_carries_the_id_the_poll_compares_against(): void
+    {
+        $user = $this->login();
+        $this->notify($user, 'Audit export ready');
+
+        $id = $user->notifications()->first()->id;
+
+        $fragment = $this->get(route('notifications.preview'))->assertOk()->getContent();
+
+        $this->assertStringContainsString('data-notification-id="'.$id.'"', $fragment);
+
+        // The same value the endpoint hands the script.
+        $this->getJson(route('notifications.unread-count'))
+            ->assertOk()
+            ->assertJson(['latest_id' => (string) $id]);
+
+        // And the script reads THAT attribute, not the href.
+        $this->get(route('dashboard'))
+            ->assertOk()
+            ->assertSee("getAttribute('data-notification-id')", escape: false);
+    }
+
+    /**
+     * "Ask now, don't wait out the interval" — both halves of the contract ship.
+     *
+     * The bell polls every 30 s, which is right for an ambient badge and wrong for
+     * a feature that just CAUSED a notification: an export finishing emits one
+     * within seconds while the operator watches the page that produced it. Lowering
+     * the interval globally would make every admin page pay for one case six times
+     * as often, so the trigger is an event instead.
+     *
+     * Two scripts agreeing on a string is exactly the kind of coupling that breaks
+     * silently — one side renamed, the other still dispatches, and nothing fails,
+     * the badge is just 30 seconds late again. So the name is asserted from both
+     * sides: the dispatcher on the audit page, and the listener on every bell.
+     */
+    public function test_a_feature_that_causes_a_notification_can_ask_the_bell_to_check_now(): void
+    {
+        $this->login();
+
+        // The listener side, on any page carrying the bell.
+        $this->get(route('dashboard'))
+            ->assertOk()
+            ->assertSee("addEventListener('notifications:refresh'", escape: false);
+
+        // The dispatcher side, on the page that has work in flight.
+        $this->get(route('activity-logs.index'))
+            ->assertOk()
+            ->assertSee("new CustomEvent('notifications:refresh')", escape: false);
+    }
+
     public function test_the_poll_script_ships_with_the_bell(): void
     {
         $this->login();

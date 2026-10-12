@@ -56,16 +56,23 @@
         var interval = 30000;
         var backoffUntil = 0;
 
-        // The newest id on screen. Read from the rendered rows rather than a data
-        // attribute, so there is no third copy of "what is the latest one" to keep
-        // in step: the DOM already knows.
+        // The newest id on screen, read from the rendered rows rather than tracked
+        // in a variable, so there is no third copy of "what is the latest one" to
+        // keep in step: the DOM already knows.
+        //
+        // `data-notification-id`, NOT `href`. This read `href` — which is
+        // "/notifications/inbox/<uuid>" — and compared it against the endpoint's
+        // `latest_id`, which is the bare "<uuid>". Those never matched, so the
+        // check below fired on every poll and the list was re-fetched from the
+        // server every 30 seconds for the life of every open tab. It only ever
+        // agreed while the inbox was empty, when both sides were null.
         function latestId() {
             if (!list) {
                 return null;
             }
 
-            var href = list.querySelector('.notifications-preview-item');
-            return href ? href.getAttribute('href') : null;
+            var item = list.querySelector('[data-notification-id]');
+            return item ? item.getAttribute('data-notification-id') : null;
         }
 
         function render(count) {
@@ -144,6 +151,24 @@
             if (!document.hidden) {
                 poll();
             }
+        });
+
+        // "Ask now, don't wait out the interval."
+        //
+        // 30 seconds is the right cadence for an AMBIENT badge — a notification
+        // can arrive at any moment and nobody is waiting on it. It is the wrong
+        // cadence for a feature that just CAUSED one: an export finishing emits a
+        // notification within seconds, and the operator is sitting there watching
+        // the very page that produced it. Lowering the interval globally would
+        // make every admin page pay for that one case, six times as often.
+        //
+        // So the notification is the one that answers, not the interval: any
+        // feature that causes a notification dispatches this event when the cause
+        // resolves, and the badge is re-read once, immediately. Named after the
+        // capability rather than the caller — the first caller is the export
+        // table, but nothing about the event says "export".
+        document.addEventListener('notifications:refresh', function () {
+            poll();
         });
     })();
 </script>
