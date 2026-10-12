@@ -349,6 +349,60 @@ Expire/delete export file
 - Audit exports must use private storage.
 - Export files have lifecycle/expiration policy.
 
+### What shipped (Phase 10, Group E)
+
+```
+POST /activity-logs/exports          audit.export + throttle:audit-export
+    ↓ audit_exports row (pending, expires_at = now + 7 days)
+GenerateAuditExport                  chunkById 500, fputcsv, local disk
+    ↓ audit-exports/{user_id}/{uuid}.csv
+row → ready + AuditExportReadyNotification (database + mail)
+    ↓
+GET /activity-logs/exports/{id}/download    audit.export + ownership check
+```
+
+| Piece | Where |
+|---|---|
+| Request / dispatch | `AuditExportRequestAction` |
+| Job | `App\Jobs\GenerateAuditExport` |
+| Row + status enum | `App\Models\AuditExport`, `App\Enums\AuditExportStatus` |
+| Download + ownership | `AuditExportDownloadAction` |
+| Completion notice | `AuditExportReadyNotification` |
+| The download button in the inbox | `NotificationInboxAction::inbox()` → `$actions` |
+| Nightly sweep | `routes/console.php` (`audit-export-retention`) |
+
+Six decisions the implementation fixes, none of which the flow above states:
+
+- **The filter travels with the request.** The export form posts the same
+  filters the viewer had applied, and `Activity::scopeFiltered()` is the ONE
+  implementation of that filter — copied into the job it is a second query that
+  agrees with the first until somebody adds a filter to one of them, and then
+  the file holds rows the page did not show.
+- **The file is assembled before it is written.** A `php://temp` stream takes
+  every row, and only a complete CSV reaches the disk. Writing rows into the
+  destination as they arrive leaves a truncated file behind every failed
+  attempt — and a half-written CSV opens, parses, and is quietly short.
+- **The download route checks ownership, not just the permission.**
+  `audit.export` answers "may extract"; it does not answer "may download extract
+  #41". Past the window the answer is **410**, not 404: the file existed, and 404
+  would send the requester hunting for a typo in a link that was correct.
+- **A failed job marks its row `failed`.** A row stuck at `pending` is a spinner
+  that never resolves; nothing anywhere would say the export died.
+- **The sweep unlinks the file before deleting the row**, and never touches a row
+  whose job is still `pending`. A row whose file is gone is a link that 410s;
+  a file whose row is gone leaks disk forever, because nothing else knows the
+  path existed.
+- **The notice carries the link, so the file is reachable.** `toArray()` adds
+  `action_label` + `url` (a **path**, not an absolute URL) beside the usual
+  `subject` / `lines`, and the inbox renders it as a button. The first version
+  shipped the notice without them: the file existed, the notification arrived,
+  and no screen in the application led to it. `NotificationInboxAction` is what
+  decides whether that stored URL is safe to link to — `data` is a JSON column
+  its writer controls and the value reaches an `href`, so only a same-origin
+  absolute path (`/…`, not `//host`) produces a button. That is an optional half
+  of the notification payload, which is why it belongs to every notification and
+  not to an export-specific branch in the inbox.
+
 ## Security
 
 - Read-only through UI.

@@ -296,6 +296,29 @@ Revisit when a caller that logs sensitive state actually appears.
 
 ### Group E — Async Export
 
+> **Status: shipped.** Three of these landed differently from the table, and the
+> differences are recorded here rather than left in the code:
+>
+> - **E2** — `AuditExportRequest` extends `ActivityQueryRequest` instead of a
+>   shared rule array. That IS the shared place, and it also keeps
+>   `filters()` from being written twice. Consequence: the arch test
+>   `RequestVersioningTest` now resolves the inheritance chain
+>   (`is_subclass_of`) rather than matching the string `extends
+>   BaseFormRequest`, which would have failed a correct one-level-deep tree.
+> - **E3** — `$afterCommit` is set at the DISPATCH site
+>   (`->afterCommit()`), not declared on the job: `Illuminate\Bus\Queueable`
+>   already declares `public $afterCommit`, and PHP refuses a redeclaration whose
+>   default differs — a property on the class is a fatal at class-load.
+>   `AuditExportTest` pins the dispatched job's flag instead.
+> - **D-3** — implemented as **7 days** (`AuditExport::RETENTION_DAYS`), per
+>   `retention.md:12`, which names this artifact. `retention.md:22` still says 1
+>   day for `storage/tmp` and still needs a yes/no; it was not edited here
+>   because it is a deletion policy, not a code fact.
+>
+> The filter implementation moved from `AuditIndexAction` to
+> `Activity::scopeFiltered()` — the export and the viewer must share one
+> definition of "the list you are looking at".
+
 | ID | Task | Depends on | Est. | Notes |
 |----|------|-----------|------|-------|
 | P10-E1 | **`audit_exports` migration + model** — `id`, `user_id`, `filters` (json), `status` (`pending`/`ready`/`failed`), `path`, `row_count`, `expires_at`, timestamps, `completed_at` | B4 | medium | A job alone cannot serve a download link — the row is the hand-off between queue and HTTP. `user_id` is what makes the ownership check in B4/E4 possible. Status is an enum on the model, not a bare string |
