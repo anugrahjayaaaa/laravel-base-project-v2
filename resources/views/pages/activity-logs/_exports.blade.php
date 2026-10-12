@@ -35,7 +35,25 @@
     and `Failed` are readable without colour, and `Failed` is the state that has
     to be legible at a glance — a spinner that resolved into an error nobody saw
     is the failure this whole feature exists to avoid.
+
+    ## The wrapper exists so the poller has something to replace
+
+    `id="audit-exports"` is rendered ALWAYS, including when the viewer has no
+    exports at all — an empty, unstyled `<div>`, so the card heading stays absent
+    (`test_another_operators_export_is_never_listed` asserts that) while the
+    element the poller re-finds after a swap still exists. The card itself is
+    still conditional; only the box is not.
+
+    `data-status` on each row is the poller's "is there work in flight" test. The
+    enum VALUE is the attribute, not the label: `Preparing` is a word that could be
+    reworded, `pending` is the state.
+
+    The poller lives in `pages/activity-logs/index`, not in this file — a script
+    inside the swapped subtree is removed with it, so the second poll would never
+    run. Same reason `layouts/partials/notification-poll.blade.php` sits outside
+    the fragment it replaces.
 --}}
+<div id="audit-exports">
 @if ($myExports->isNotEmpty())
     <div class="card border-0 shadow-sm mb-4">
         <div class="card-header bg-transparent border-bottom py-3">
@@ -66,7 +84,7 @@
                     <tbody>
                         @foreach ($myExports as $export)
                             @php($status = $export->status)
-                            <tr>
+                            <tr data-status="{{ $status->value }}">
                                 <td class="align-middle text-nowrap">
                                     {{ $export->created_at->format('Y-m-d H:i') }}
                                     <span class="d-block fs-7">
@@ -117,3 +135,4 @@
         </div>
     </div>
 @endif
+</div>

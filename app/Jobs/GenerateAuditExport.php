@@ -72,25 +72,58 @@ class GenerateAuditExport implements ShouldQueue
      */
 
     /**
-     * One attempt.
+     * Three attempts, not one.
      *
-     * Retrying a file write that failed halfway bills the same answer twice
-     * against the rate limiter for the same request. The row records the failure
-     * and the requester presses the button again.
+     * The earlier value was 1, on the reasoning that retrying a file write that
+     * failed halfway bills the same answer twice against the rate limiter. That
+     * reasoning holds for a HALF-WRITTEN file — but the dominant causes of a
+     * failed export are not half-written files. A Redis blip, a database lock
+     * timeout, a momentary filesystem error: nothing reached disk at all, and
+     * `tries = 1` turned a hiccup into a row the operator sees as `Failed` and
+     * has to press the button for again.
+     *
+     * The partial-write concern is answered where it belongs instead: the stream
+     * is assembled in `php://temp` and handed to `writeStream()` only once
+     * complete, so there is no truncated file for a retry to find. A retry writes
+     * a fresh UUID path and a row that is still `pending`, not a duplicate
+     * download — and `$path` is overwritten, never appended to.
+     *
+     * `failed()` fires only after the FINAL attempt, so the `failed` status and
+     * the unlink stay correct as written below.
      *
      * @var int
      */
-    public $tries = 1;
+    public $tries = 3;
 
     /**
      * Long enough for a large extract, short enough that a worker is not held by
      * a job that will be killed anyway. `retry_after` on the queue connection is
-     * 90 seconds by default, so a timeout above that would let the job be
-     * released and run twice at once.
+     * 90 seconds by default (`REDIS_QUEUE_RETRY_AFTER` is 180 on this install), so
+     * a timeout above that would let the job be released and run twice at once.
+     *
+     * 80 + 15 + 30 = 125 s of wall clock across all three attempts, which stays
+     * inside a 180 s retry window with room to spare. See `backoff()`.
      *
      * @var int
      */
     public $timeout = 80;
+
+    /**
+     * Seconds to wait before attempts two and three.
+     *
+     * Without this, a Redis outage burns all three tries inside the backoff the
+     * driver itself applies between re-reservations and reports "failed" for what
+     * was one incident. With it, the second attempt lands after the first gap has
+     * passed. Ten seconds is the Laravel default; raised because the first two
+     * causes above — a lock timeout and a transient network error — are usually
+     * already clearing by then.
+     *
+     * @return array<int, int>
+     */
+    public function backoff(): array
+    {
+        return [10, 30];
+    }
 
     /**
      * The row to fill in.
@@ -115,8 +148,49 @@ class GenerateAuditExport implements ShouldQueue
 
     /**
      * Generate the file, record it on the row, and tell the requester.
+     *
+     * ## Why the body is wrapped
+     *
+     * `failed()` below fires ONCE, after the last of three attempts. On its own
+     * that leaves attempts one and two invisible: `failed_jobs` keeps a single row
+     * per job and overwrites its payload on each retry, so when the third attempt
+     * fails too, the first two failures — the ones that actually explain WHY — are
+     * gone. An operator looking at `failed` then has a stack trace from the last
+     * try and no way to see that tries one and two died on a lock timeout while
+     * this one died on something else.
+     *
+     * So every attempt logs itself before rethrowing, keyed by the attempt
+     * number. `attempts()` comes from `InteractsWithQueue` and is 1 on the first
+     * run. The log is the record; the row is the state.
+     *
+     * @throws Throwable rethrown unchanged — this is a log, not a recovery
      */
     public function handle(): void
+    {
+        try {
+            $this->generate();
+        } catch (Throwable $e) {
+            Log::warning('audit.export.attempt_failed', [
+                'export_id' => $this->exportId,
+                'attempt' => $this->attempts(),
+                'max_tries' => $this->tries,
+                'exception' => $e->getMessage(),
+            ]);
+
+            throw $e;
+        }
+    }
+
+    /**
+     * The work itself: build the CSV, write it once, flip the row, notify.
+     *
+     * Separate from `handle()` so the try/catch above wraps the whole of it
+     * rather than a fragment — a failure in the notify step is as much a failed
+     * attempt as one in the write, and both belong in the same log line.
+     *
+     * @throws Throwable
+     */
+    private function generate(): void
     {
         $export = AuditExport::query()->findOrFail($this->exportId);
 

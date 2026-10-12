@@ -151,6 +151,12 @@ class AuditLogUiRenderTest extends TestCase
             // card has its own cases below, which pass a real collection through
             // `renderIndex(['myExports' => …])`.
             'myExports' => collect(),
+            // The ceiling the Export button's tooltip quotes (§11 P10-E9). This
+            // builder mirrors `ActivityLogController::index()`'s contract, so a
+            // value the controller passes and the toolbar reads belongs here
+            // too — the partial deliberately has no `??` fallback, because a
+            // default inside the view would be a second copy of the number.
+            'auditExportRateLimit' => 5,
         ];
     }
 

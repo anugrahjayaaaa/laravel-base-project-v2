@@ -330,5 +330,14 @@ Route::middleware(['auth:web,sanctum', 'verified', 'password.change.required', '
         Route::get('/activity-logs/exports/{export}/download', [AuditExportController::class, 'download'])
             ->name('activity-logs.exports.download')
             ->can('audit.export');
+
+        // The card's own refresh. Same permission as the PAGE it is a fragment of,
+        // not the export permission — it returns part of a page `audit.view`
+        // already opens, and `AuditExportRequestAction::recentFor()` scopes the
+        // rows to the viewer. Throttled like the bell's poll: a few requests a
+        // minute per tab, with a ceiling so a retry loop cannot become load.
+        Route::get('/activity-logs/exports/recent', [AuditExportController::class, 'recent'])
+            ->name('activity-logs.exports.recent')
+            ->middleware(['can:audit.view', 'throttle:120,1']);
     });
 });

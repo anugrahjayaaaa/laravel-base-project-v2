@@ -7,6 +7,7 @@ use App\Jobs\GenerateAuditExport;
 use App\Models\Activity;
 use App\Models\AuditExport;
 use App\Models\RoleLookup;
+use App\Models\SystemSetting;
 use App\Models\User;
 use App\Notifications\AuditExportReadyNotification;
 use App\Support\SystemRole;
@@ -16,7 +17,9 @@ use Database\Seeders\RoleSeeder;
 use App\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
@@ -136,7 +139,7 @@ class AuditExportTest extends TestCase
 
         $this->post(route('activity-logs.exports.store'), ['format' => 'csv', 'event' => 'user.updated'])
             ->assertRedirect()
-            ->assertSessionHas('success');
+            ->assertSessionHas('status');
 
         $this->assertDatabaseCount('audit_exports', 1);
 
@@ -163,6 +166,30 @@ class AuditExportTest extends TestCase
             GenerateAuditExport::class,
             fn (GenerateAuditExport $job): bool => $job->afterCommit === true,
         );
+    }
+
+    /**
+     * The flash REACHES the operator, which is the half that was broken.
+     *
+     * `assertSessionHas('status')` alone passed for a long time while the page
+     * rendered nothing: the key was `success`, no admin view read it, and the
+     * browser reloaded the page in silence. Asserting on the followed redirect's
+     * body is the only assertion that can tell the two states apart — the flash
+     * in the session and the flash on the screen are two different facts.
+     */
+    public function test_the_confirmation_is_rendered_on_the_audit_page(): void
+    {
+        Notification::fake();
+        Queue::fake();
+
+        $this->login(SystemRole::ADMIN);
+
+        $response = $this->followingRedirects()
+            ->from(route('activity-logs.index'))
+            ->post(route('activity-logs.exports.store'), ['format' => 'csv']);
+
+        $response->assertOk()
+            ->assertSee('Your export is being prepared', false);
     }
 
     /**
@@ -390,6 +417,54 @@ class AuditExportTest extends TestCase
     }
 
     /**
+     * The job retries, and every attempt leaves its own trace.
+     *
+     * `tries = 1` made a Redis blip indistinguishable from a real failure and cost
+     * the operator a second click. Raising it to 3 fixes that and introduces the
+     * opposite problem: `failed()` fires once at the end and `failed_jobs` keeps
+     * ONE row per job, so attempts one and two vanish and the surviving stack
+     * trace is the one that did NOT explain the first two. These two assertions
+     * are the contract that stops that — the declared policy, and the per-attempt
+     * log line that outlives the row.
+     */
+    public function test_a_failed_export_retries_and_logs_every_attempt(): void
+    {
+        $admin = $this->login(SystemRole::ADMIN);
+
+        $export = AuditExport::query()->create([
+            'user_id' => $admin->getKey(),
+            'filters' => [],
+            'expires_at' => now()->addDays(AuditExport::RETENTION_DAYS),
+        ]);
+
+        $job = new GenerateAuditExport($export->getKey(), [], 'created_at', 'desc');
+
+        $this->assertSame(3, $job->tries, 'a transient failure must not be permanent');
+        $this->assertSame([10, 30], $job->backoff(), 'three tries inside one outage is not three attempts');
+
+        // A row that does not exist: `findOrFail()` throws, which is the cheapest
+        // way to make `handle()` fail for real rather than assert on the wrapper.
+        $missing = new GenerateAuditExport($export->getKey() + 9999, [], 'created_at', 'desc');
+
+        Log::spy();
+
+        $this->assertThrows(
+            fn () => $missing->handle(),
+            ModelNotFoundException::class,
+        );
+
+        Log::shouldHaveReceived('warning')
+            ->once()
+            ->withArgs(function (string $event, array $context) use ($export): bool {
+                return $event === 'audit.export.attempt_failed'
+                    && $context['export_id'] === $export->getKey() + 9999
+                    && $context['attempt'] === 1
+                    && $context['max_tries'] === 3
+                    && filled($context['exception']);
+            });
+    }
+
+    /**
      * The nightly sweep removes the row AND the file, and leaves live rows alone.
      */
     public function test_the_expiry_sweep_deletes_the_row_and_the_file(): void
@@ -494,6 +569,41 @@ class AuditExportTest extends TestCase
             ->assertSessionHasErrors('format');
 
         $this->assertDatabaseCount('audit_exports', 5);
+    }
+
+    /**
+     * The ceiling is the SETTING, not the five the test above happens to hit.
+     *
+     * Two facts in one, because they are the same fact seen from both sides: the
+     * limiter stops honouring the default the moment an operator changes it, and
+     * the number the Export button's tooltip prints is the same row. Before this
+     * moved into `system_settings` (§11 P10-E9) the tooltip said "Maximum 5 per
+     * hour" as a literal beside a limiter that could not be changed at all —
+     * which meant the label could not have been true after the first edit.
+     */
+    public function test_the_export_ceiling_is_read_from_system_settings(): void
+    {
+        Queue::fake();
+
+        $this->login(SystemRole::ADMIN);
+
+        SystemSetting::set('audit_export_rate_limit_per_hour', '2');
+
+        for ($attempt = 1; $attempt <= 2; $attempt++) {
+            $this->post(route('activity-logs.exports.store'), ['format' => 'csv'])
+                ->assertRedirect();
+        }
+
+        // The third is refused at 2, not at 5.
+        $this->post(route('activity-logs.exports.store'), ['format' => 'csv'])
+            ->assertRedirect()
+            ->assertSessionHasErrors('format');
+
+        $this->assertDatabaseCount('audit_exports', 2);
+
+        $this->get(route('activity-logs.index'))
+            ->assertOk()
+            ->assertSee('Maximum 2 per hour.', false);
     }
 
     /**

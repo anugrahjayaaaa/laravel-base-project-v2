@@ -164,6 +164,88 @@ class AuditExportListTest extends TestCase
         $this->assertSame(5, substr_count($card[0], 'Download'), 'expected five rows in the exports card');
     }
 
+    /**
+     * The fragment endpoint is the same partial, scoped the same way.
+     *
+     * This is what lets a `pending` row resolve without a manual reload, so it has
+     * to carry the SAME guarantees as the page it is a part of: the viewer's own
+     * rows only, and no audit row written by reading it. A refresh endpoint that
+     * leaked another operator's `role.deleted` would undo the scoping the list
+     * test above exists to pin.
+     */
+    public function test_the_fragment_endpoint_returns_the_same_scoped_card(): void
+    {
+        $user = $this->login();
+        $other = User::factory()->create();
+
+        $mine = $this->exportFor($user, ['filters' => ['event' => 'user.updated']]);
+        $this->exportFor($other, ['filters' => ['event' => 'role.deleted']]);
+
+        $before = Activity::query()->count();
+
+        $response = $this->get(route('activity-logs.exports.recent'));
+
+        $response->assertOk();
+        $response->assertSee('Your exports');
+        $response->assertSee(route('activity-logs.exports.download', $mine), escape: false);
+
+        // The other operator's row, and the whole page shell it was never part of.
+        $response->assertDontSee('role.deleted');
+        $response->assertDontSee('<html', escape: false);
+
+        $this->assertSame($before, Activity::query()->count());
+    }
+
+    /**
+     * The wrapper the poller swaps is present even with nothing to show.
+     *
+     * Without it the script has nothing to re-find after the first swap, and the
+     * second poll silently never runs — which looks exactly like the poller being
+     * broken rather than the markup being wrong. The card heading is still
+     * conditional: `test_another_operators_export_is_never_listed` pins that.
+     */
+    public function test_the_swap_target_exists_with_no_exports_at_all(): void
+    {
+        $this->login();
+
+        $response = $this->get(route('activity-logs.index'));
+
+        $response->assertOk();
+        $response->assertSee('id="audit-exports"', escape: false);
+        $response->assertDontSee('Your exports');
+    }
+
+    /**
+     * Only a `pending` row carries the attribute the poller watches for.
+     *
+     * The attribute is the enum VALUE, not the label — `Preparing` is wording that
+     * could be reworded, `pending` is the state, and the loop stops on the state.
+     */
+    public function test_only_a_pending_row_marks_the_table_as_having_work_in_flight(): void
+    {
+        $user = $this->login();
+        $export = $this->exportFor($user, ['status' => AuditExportStatus::PENDING, 'path' => null, 'row_count' => null]);
+
+        $this->get(route('activity-logs.exports.recent'))
+            ->assertOk()
+            ->assertSee('data-status="pending"', escape: false);
+
+        // The SAME row, resolved. Adding a second export would leave the pending
+        // one in the list — it is one of five, not one of one — and the assertion
+        // would then be testing the wrong thing.
+        $export->update([
+            'status' => AuditExportStatus::READY,
+            'path' => 'audit-exports/'.$user->getKey().'/resolved.csv',
+            'row_count' => 7,
+            'completed_at' => now(),
+        ]);
+
+        $this->get(route('activity-logs.exports.recent'))
+            ->assertOk()
+            ->assertSee('data-status="ready"', escape: false)
+            ->assertDontSee('data-status="pending"', escape: false);
+    }
+
     public function test_listing_them_writes_no_audit_row(): void
     {
         $user = $this->login();

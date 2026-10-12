@@ -78,6 +78,21 @@
 
     @include('layouts.partials.alerts')
 
+    {{-- The success flash after requesting an export. Its own block rather than
+         a shared partial: `layouts.partials.alerts` renders `$errors` alone, and
+         a form page already renders @error beside the field, so a layout-level
+         banner would print the same message twice. The same six lines
+         `pages/users/index` carries — the house position for "an action on this
+         index page succeeded". Without it, clicking Export reloaded the page and
+         said nothing, which reads as a broken button rather than as a queued job. --}}
+    @if (session('status'))
+        <div class="alert alert-success alert-dismissible fade show mb-3" role="alert">
+            <i class="fas fa-circle-check me-1"></i>
+            {{ session('status') }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    @endif
+
     <div class="card border-0 shadow-sm mb-4">
         {{-- The card-header toolbar, the same shape `pages/users/index` uses for
              its Create button: a `justify-content-between` row that gives the
@@ -240,6 +255,133 @@
             document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function (el) {
                 new bootstrap.Tooltip(el);
             });
+        </script>
+    @endpush
+
+    @push('scripts')
+        <script>
+            {{-- Keeps "Your exports" current while a row is still being generated.
+
+                 ## Why polling and not a push channel
+
+                 The audit page is rendered once per request, so a `pending` row
+                 reads `Preparing` until somebody reloads — while the notification
+                 that the job finished has already moved the bell. The operator
+                 gets the signal and then has to reload to act on it. Reverb would
+                 close the whole page live, and it was declined: a Composer package,
+                 two npm dependencies, a second long-running daemon, and a new
+                 silent failure mode (a dead socket reads as a working page) — all
+                 to make one table refresh before the next manual reload. The
+                 polling shape below is the one `layouts/partials/
+                 notification-poll.blade.php` already proves in this codebase.
+
+                 ## It stops. That is the difference from the bell.
+
+                 The bell polls for the life of the page because a notification can
+                 arrive at any moment. This one only has work to do while a row is
+                 `pending`, and the loop sets its own interval to null the moment
+                 the last one resolves. An export table that keeps polling 24 hours
+                 a day would be the load generator the bell's back-off comment warns
+                 about.
+
+                 ## One request per swap, not one per change
+
+                 The endpoint returns the re-rendered partial rather than a JSON
+                 summary, so there is ONE renderer of this table — the same Blade
+                 the page used. A status→DOM map written in JavaScript would be a
+                 second copy of what `_exports.blade.php` already decides, and the
+                 two would disagree the first time a badge colour moved.
+
+                 Failure is silent and backs off for five minutes, matching the
+                 bell: a poll that keeps retrying a throttled or unreachable
+                 endpoint turns a cosmetic table into load.
+
+                 ## It also nudges the bell, once
+
+                 Resolving a row means the job just notified the requester. The bell
+                 polls on its own 30-second cadence, which is right for an ambient
+                 badge and wrong for an operator watching the page that caused the
+                 notification — so the moment this loop sees a row leave `pending`,
+                 it dispatches `notifications:refresh` and the bell checks once,
+                 immediately. Firing on the TRANSITION, not on every swap, is what
+                 keeps it to one request per export.
+            --}}
+            (function () {
+                var container = document.getElementById('audit-exports');
+
+                if (!container) {
+                    return;
+                }
+
+                var url = '{{ route('activity-logs.exports.recent') }}';
+                var interval = 5000;
+                var timer = null;
+                var backoffUntil = 0;
+
+                // The loop condition, read off the DOM rather than tracked in a
+                // variable: after a swap the markup is the truth, and a boolean
+                // kept alongside it is one more thing that can disagree.
+                function workInFlight() {
+                    return container.querySelector('[data-status="pending"]') !== null;
+                }
+
+                function poll() {
+                    if (document.hidden || Date.now() < backoffUntil) {
+                        return;
+                    }
+
+                    fetch(url, {
+                        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                        credentials: 'same-origin'
+                    })
+                        .then(function (response) {
+                            return response.ok ? response.text() : Promise.reject(response);
+                        })
+                        .then(function (html) {
+                            // Read BEFORE the swap: "did this poll resolve work"
+                            // is a question about the two states either side of it,
+                            // and asking afterwards answers it too late.
+                            var wasInFlight = workInFlight();
+
+                            // Re-resolve: the swapped node is a different element,
+                            // and every later poll has to ask the new one.
+                            container.outerHTML = html;
+                            container = document.getElementById('audit-exports');
+
+                            if (!container || !workInFlight()) {
+                                window.clearInterval(timer);
+                                timer = null;
+                            }
+
+                            // A row just resolved, which means the job just notified
+                            // the requester. The bell polls on its own 30-second
+                            // cadence, and the operator is watching THIS page — so ask
+                            // it to check now instead of making them wait out the
+                            // interval for a notification this page already knows
+                            // about. One request, fired only on the transition, not
+                            // on every swap.
+                            if (wasInFlight) {
+                                window.dispatchEvent(new CustomEvent('notifications:refresh'));
+                            }
+                        })
+                        .catch(function () {
+                            backoffUntil = Date.now() + 300000;
+                        });
+                }
+
+                if (workInFlight()) {
+                    timer = window.setInterval(poll, interval);
+                }
+
+                // Coming back to the tab is also the case where a row resolved
+                // while it was hidden — the first visible paint would otherwise
+                // still say `Preparing`.
+                document.addEventListener('visibilitychange', function () {
+                    if (!document.hidden && timer !== null) {
+                        poll();
+                    }
+                });
+            })();
         </script>
     @endpush
 @endsection

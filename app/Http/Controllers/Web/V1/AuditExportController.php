@@ -6,6 +6,7 @@ use App\Actions\V1\Audit\AuditExportDownloadAction;
 use App\Actions\V1\Audit\AuditExportRequestAction;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\V1\Audit\AuditExportRequest;
+use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -34,6 +35,15 @@ class AuditExportController extends Controller
      * Redirects rather than returning JSON: the caller is a form on the audit
      * page, and a 202 with a body nobody renders is a form that looks broken.
      * The flash says what happens next, because the file is not there yet.
+     *
+     * ## `status`, not `success`
+     *
+     * `status` is the house flash key for an admin action — `UserController`
+     * uses it on every index redirect, and every index view carries its own
+     * `@if (session('status'))` block (`pages/users/index` and five others).
+     * `success` is the auth-flow key. A flash nobody's view renders is a flash
+     * the browser is told about and the operator never sees, which is the same
+     * invisible failure as a form that posts and does nothing.
      */
     public function store(
         AuditExportRequest $request,
@@ -49,7 +59,42 @@ class AuditExportController extends Controller
         );
 
         return back()
-            ->with('success', 'Your export is being prepared. We will notify you when it is ready to download.');
+            ->with('status', 'Your export is being prepared. We will notify you when it is ready to download.');
+    }
+
+    /**
+     * The viewer's own exports, as a bare HTML fragment.
+     *
+     * ## Why this is not the index page
+     *
+     * The audit page renders once per request, so a `pending` row stays `pending`
+     * on screen until somebody reloads — while the notification that the job
+     * finished has already updated the bell. The operator gets a signal and then
+     * has to reload to act on it. This endpoint is what lets the row resolve in
+     * place.
+     *
+     * The SAME partial, re-rendered with the SAME scoped action, is the answer
+     * rather than a JSON payload plus a second renderer in JavaScript: there is
+     * one place that decides what a `pending` row looks like, and a fragment that
+     * is rendered by that place cannot drift from the page. `layouts/partials/
+     * notification-preview` already established this shape.
+     *
+     * ## `audit.view`, not `audit.export`
+     *
+     * The permission that guards the PAGE is what guards this, because this
+     * returns part of that page. The data itself is already scoped to the
+     * viewer inside `recentFor()` — a viewer without `audit.export` simply has
+     * nothing of their own to see here, which is the same answer the page gives.
+     *
+     * Throttled like the bell's poll: one tab polling every few seconds is a
+     * handful of requests a minute, and the ceiling exists to stop a stuck retry
+     * loop or a hostile client turning a table refresh into load.
+     */
+    public function recent(Request $request, AuditExportRequestAction $exportAction): View
+    {
+        return view('pages.activity-logs._exports', [
+            'myExports' => $exportAction->recentFor($request->user()),
+        ]);
     }
 
     /**
