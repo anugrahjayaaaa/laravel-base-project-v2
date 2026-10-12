@@ -62,6 +62,26 @@ class UnreadNotificationCount
     }
 
     /**
+     * The newest notification's id, or null when the inbox is empty.
+     *
+     * Read from the SAME cache as the recent list, never with its own query: the
+     * poll endpoint calls this every 30 seconds per open tab, and a second
+     * uncached query here is one query per tab per interval that the list right
+     * above it already paid for.
+     *
+     * Its purpose is change detection, not display — the poll compares it against
+     * what the DOM already shows and only re-renders the list when they differ.
+     */
+    public static function latestIdFor(User $user): ?string
+    {
+        $recent = self::recent($user);
+
+        $first = $recent->first();
+
+        return $first === null ? null : (string) $first->id;
+    }
+
+    /**
      * Drop every cached view of this user's notifications.
      *
      * BOTH the count and the recent list, and both are read from the same page:

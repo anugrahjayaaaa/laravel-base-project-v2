@@ -269,10 +269,10 @@ class NotificationInboxTest extends TestCase
         $this->post(route('notifications.inbox.read', $id))->assertRedirect();
 
         $html = $this->get(route('dashboard'))->getContent();
-        $this->assertStringNotContainsString(
-            'badge-notification-unread',
+        $this->assertStringContainsString(
+            'data-empty="true"',
             $html,
-            'the bell still shows a count after everything was marked read'
+            'the badge still renders its count after everything is read'
         );
     }
 
@@ -339,10 +339,10 @@ class NotificationInboxTest extends TestCase
 
         $html = $this->get(route('dashboard'))->assertOk()->getContent();
 
-        $this->assertStringNotContainsString(
-            'badge-notification-unread',
+        $this->assertStringContainsString(
+            'data-empty="true"',
             $html,
-            'the badge still shows a count after everything was marked read'
+            'the badge still renders its count after everything is read'
         );
         $this->assertStringNotContainsString(
             'bi-check2-circle',
@@ -576,7 +576,19 @@ class NotificationInboxTest extends TestCase
         $html = $this->get(route('dashboard'))->assertOk()->getContent();
 
         $this->assertStringContainsString('bi-bell', $html);
-        $this->assertStringNotContainsString('badge-notification-unread', $html);
+
+        // `hidden` rather than absent, deliberately: the badge element must exist
+        // in the DOM for the poll script to UNHIDE it when a notification arrives
+        // while this page is open. What is being asserted is that nothing is
+        // SHOWN — which is the requirement — and `data-empty` is the server's own
+        // statement of that, so the script and the render cannot disagree.
+        $this->assertStringContainsString('badge-notification-unread', $html);
+        $this->assertMatchesRegularExpression(
+            '/<span[^>]*id="notification-badge"[^>]*hidden/',
+            $html,
+            'a zero count must render the badge hidden, not visible'
+        );
+        $this->assertStringContainsString('data-empty="true"', $html);
     }
 
     #

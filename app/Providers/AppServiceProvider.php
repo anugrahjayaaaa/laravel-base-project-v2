@@ -58,35 +58,42 @@ class AppServiceProvider extends ServiceProvider
         // first, so `activeMap()` has resolved the whole catalogue by the time
         // this runs. Measured, cold cache, flushing Pennant between requests —
         // sidebar first: 1 feature-store read per page; header first: 2.
-        view()->composer('layouts.partials.header', function (View $view): void {
-            $view->with('sessionsVisible', FeatureCatalog::isActive('sessions'));
+        // Registered against the LIST partial as well as the header, because the
+        // poll endpoint returns that partial on its own and it would otherwise
+        // render with no `$recentNotifications` — the same class of bug
+        // `AppMenuComposer` exists to prevent, one level down.
+        view()->composer(
+            ['layouts.partials.header', 'layouts.partials.notification-dropdown-list'],
+            function (View $view): void {
+                $view->with('sessionsVisible', FeatureCatalog::isActive('sessions'));
 
-            // The bell points at the inbox, so it follows the INBOX's gate — the
-            // flag only, no permission. It previously carried
-            // `notifications.view` because its target was the configuration page,
-            // which is permission-gated; the inbox is every user's own rows, and
-            // keeping the check would hide the bell from exactly the people an
-            // inbox is for.
-            $view->with('notificationsVisible', FeatureCatalog::isActive('notifications'));
+                // The bell points at the inbox, so it follows the INBOX's gate — the
+                // flag only, no permission. It previously carried
+                // `notifications.view` because its target was the configuration page,
+                // which is permission-gated; the inbox is every user's own rows, and
+                // keeping the check would hide the bell from exactly the people an
+                // inbox is for.
+                $view->with('notificationsVisible', FeatureCatalog::isActive('notifications'));
 
-            // The unread count, read HERE rather than in the partial: the partial
-            // renders on every authenticated page and a count read in its markup
-            // is a query per render.
-            //
-            // Cached, so it is a query on a cold cache rather than on every
-            // render — see `UnreadNotificationCount` for why it is invalidated on
-            // the notification event and not when the inbox is opened.
-            //
-            // a flag-off module leaves no icon pointing at a 403. The unread
-            // badge and the inbox target land with P9-C2; until then it points
-            // at the inbox, which every authenticated user can open.
-            $show = auth()->check();
+                // The unread count, read HERE rather than in the partial: the partial
+                // renders on every authenticated page and a count read in its markup
+                // is a query per render.
+                //
+                // Cached, so it is a query on a cold cache rather than on every
+                // render — see `UnreadNotificationCount` for why it is invalidated on
+                // the notification event and not when the inbox is opened.
+                //
+                // a flag-off module leaves no icon pointing at a 403. The unread
+                // badge and the inbox target land with P9-C2; until then it points
+                // at the inbox, which every authenticated user can open.
+                $show = auth()->check();
 
-            $view->with([
-                'unreadNotificationCount' => $show ? UnreadNotificationCount::for(auth()->user()) : 0,
-                'recentNotifications' => $show ? UnreadNotificationCount::recent(auth()->user()) : collect(),
-            ]);
-        });
+                $view->with([
+                    'unreadNotificationCount' => $show ? UnreadNotificationCount::for(auth()->user()) : 0,
+                    'recentNotifications' => $show ? UnreadNotificationCount::recent(auth()->user()) : collect(),
+                ]);
+            }
+        );
         view()->composer('layouts.partials.password-strength', PasswordStrengthComposer::class);
 
         // Roles and the identity-change policy: shared by every page that shows

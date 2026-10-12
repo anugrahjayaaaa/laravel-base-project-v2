@@ -263,6 +263,25 @@ Route::middleware(['auth:web,sanctum', 'verified', 'password.change.required', '
     Route::middleware('feature:notifications')->group(function () {
         Route::controller(NotificationInboxController::class)->group(function () {
             Route::get('/notifications/inbox', 'index')->name('notifications.inbox');
+            // The bell's live count and list, for the poll that stops the badge
+            // going stale until a reload. Both GET, both reading the viewer's own
+            // rows — nothing to forge, so no CSRF exemption is involved.
+            //
+            // `throttle:120,1` rather than a custom limiter: one tab polls every
+            // 30 seconds, so this is ~2/min, and the ceiling exists to stop a
+            // stuck retry loop (or a hostile client) from turning a badge into
+            // load. A dedicated limiter would answer "how often may an operator
+            // refresh a badge", which is not a question anyone asks.
+            Route::get('/notifications/unread-count', 'unreadCount')
+                ->name('notifications.unread-count')
+                ->middleware('throttle:120,1');
+            Route::get('/notifications/preview', 'preview')->name('notifications.preview');
+            // One notification, opened. Registered BEFORE the read route below so
+            // the two are visibly a pair: a GET that shows one row and a POST that
+            // clears one without showing it. Every bell and inbox row links here
+            // rather than at the list, so the row that was clicked is the row that
+            // opens — and it is marked read by opening it.
+            Route::get('/notifications/inbox/{notification}', 'show')->name('notifications.inbox.show');
             Route::post('/notifications/inbox/{id}/read', 'markAsRead')
                 ->name('notifications.inbox.read');
             Route::post('/notifications/inbox/read-all', 'markAllAsRead')
