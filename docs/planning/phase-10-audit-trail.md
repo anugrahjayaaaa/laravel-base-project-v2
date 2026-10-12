@@ -492,5 +492,179 @@ until F4, so the tracker keeps one ID per task rather than two.
 
 ---
 
+## 11. Follow-ups (raised 2026-10-12, after E shipped)
+
+Raised by Jaya reviewing the shipped export flow. IDs continue the Group E range;
+per §9 they stay local to this phase and are not added to `task-tracker.md`
+until F4.
+
+**E9, E11 and E12 are implemented** (2026-10-12). E10 is implemented. E13 and E14
+moved to Phase 11 — see the entry below for where they went and why.
+
+The Laravel guarantee they leaned on is recorded in `AGENTS.md` § Package
+provider boot order, together with the rule to re-check it after every
+`composer update`.
+
+### P10-E9 — `audit-export` rate limit was hardcoded, unlike the auth limiters — **IMPLEMENTED**
+
+`AppServiceProvider.php:227-233` declares `Limit::perHour(5)` as a literal.
+`SystemSettingSeeder` has no `audit_export_*` key, so there is no admin path to
+change it and no UI field showing what the limit is.
+
+This is NOT the only limiter in that state: `user-state-actions` (15/min),
+`bulk-action` (5/min) and `send-test-mail` (5/min) are hardcoded too. The
+**auth** limiters are the setting-driven ones — `LoginThrottle` reads
+`SystemSetting::getInt('login_max_attempts', 5)` and friends.
+
+**Decision (Jaya, 2026-10-12): move it to `system_settings`.** Key name
+`audit_export_rate_limit_per_hour`, default `5`, matching the
+`*_rate_limit_per_minute` shape already in the seeder. Needs: seeder row, a
+whitelist entry + numeric bound in `V1\System\SystemSettingRequest`, a field on
+`pages/settings/index`, and `SystemSetting::getInt()` in the limiter closure.
+
+Note the constraint that follows: the tooltip in `_export.blade.php:73` hardcoded
+"Maximum 5 per hour." A setting the tooltip cannot reflect is a setting that
+lies on the next change.
+
+**As built:** seeder row, a `min:1|max:500` bound in `V1\System\SystemSettingRequest`,
+a field on `pages/settings/index` (the only `/ hour` control on the page),
+`SystemSetting::getInt()` inside the limiter closure, and the whitelisted write in
+`SystemSettingsUpdateAction`. The tooltip now renders `$auditExportRateLimit`,
+passed in by `ActivityLogController::index()` — views here query nothing.
+`test_the_export_ceiling_is_read_from_system_settings` changes the setting to 2
+and asserts both that the third request is refused and that the tooltip says
+"Maximum 2 per hour", because the number shown and the number enforced are the
+same fact.
+
+### P10-E10 — "Your exports" never updated without a manual reload — **IMPLEMENTED**
+
+`_exports.blade.php` is server-rendered per request. The observable sequence is:
+click Export → row shows `Preparing` → up to 80 s pass → the **bell** updates
+(polled, `notification-poll.blade.php`) → **the table still reads `Preparing`** →
+the operator has to F5 to get the Download button.
+
+The user is not left without a signal — the notification is that signal. What is
+missing is the row resolving in place, at the place they were already looking.
+
+**Decision (Jaya, 2026-10-12): poll, do not add a push channel.**
+`laravel/reverb` is absent, `BROADCAST_CONNECTION=log`,
+`broadcastOn()` is declared on no notification in this project, and adopting a
+push channel would mean a new Composer package (ADR + changelog first), two npm
+dependencies, a second long-running PHP daemon with its own deploy/troubleshoot
+docs, and a new silent-failure mode (dead socket = stale badge). Value delivered
+is "badge under 30 s" for a flow whose slowest step is a queue job.
+
+Copy the in-repo pattern instead: `notification-poll.blade.php` already proves
+poll-JSON → `list.outerHTML = html` → re-resolve the node → stop on `document.hidden`
+→ 5-minute backoff after one failure. Difference: **stop polling once no row is
+`pending`**, so this is not a 24-hour poll per open tab the way the bell is.
+One route, one controller method returning the same partial, ~40 lines of JS.
+Zero new dependencies, zero daemons.
+
+**As built:** `GET activity-logs.exports.recent` → `AuditExportController::recent()`,
+gated `can:audit.view` + `throttle:120,1` — the PAGE's permission, not the export
+permission, because it returns part of a page `audit.view` already opens. It
+returns the re-rendered `_exports` partial rather than JSON, so there is still
+one renderer of that table. `_exports.blade.php` now always renders
+`<div id="audit-exports">` (the card heading stays conditional), each `<tr>`
+carries `data-status="{{ $status->value }}"`, and the script sits in the PAGE
+rather than the swapped subtree — a script inside the fragment is removed with it
+and the second poll would never run. The interval clears itself once no row is
+`pending`, and a `visibilitychange` poll covers the case where the row resolved
+while the tab was hidden.
+
+**Found while verifying this, in the notification poll rather than here.**
+`notification-poll.blade.php`'s change detection compared an `href`
+("/notifications/inbox/<uuid>") against the endpoint's `latest_id` ("<uuid>") —
+never equal, so it re-fetched the dropdown on every poll instead of only when
+something new arrived, and only ever agreed while the inbox was empty. Fixed by
+rendering `data-notification-id` on each preview row and reading that;
+`NotificationPollTest` now pins the rendered id to the polled id.
+
+**And the bell's 30-second cadence, which was the actual complaint.** The export
+table refreshes in 5 s; the bell polls every 30 s, so an operator watching the
+page that produced the notification waited up to half a minute for the badge.
+Lowering the bell's interval globally would make every admin page pay for one
+case six times as often, so the trigger is an event instead: the moment the
+export poll sees a row LEAVE `pending` it dispatches `notifications:refresh` on
+`window`, and the bell poll listens and reads once, immediately. Fired on the
+transition, not on every swap, so it is one request per export. The event is
+named after the capability, not the caller — the export table is the first user
+of it, not the only one.
+
+
+### P10-E11 — the success flash after requesting an export was never rendered — **IMPLEMENTED**
+
+`AuditExportController::store()` flashes `'success'`.
+`pages/activity-logs/index.blade.php` includes only `layouts.partials.alerts`,
+which renders `$errors` alone. No `session('success')` block exists on any admin
+page.
+
+Two defects stacked: the **key** is wrong for this codebase — the house
+convention is `'status'` (`UserController.php:153,175,189,202,216,234,248,270`)
+and every index view carries its own `@if (session('status'))` alert block
+(`users/index:71-77`, `roles/index:43`, `features/index:38`, `settings/index:20`,
+`dashboard:10`). `'success'` appears only in auth views.
+
+**Fix:** `->with('status', ...)` plus the same 6-line alert block copied from
+`pages/users/index`. Two edits. Until it lands, "clicked the button and nothing
+happened" is the whole of what an operator can observe — which is the exact
+failure E8's brief called out for the failure path, reached here on the success
+path instead.
+
+**As built:** both edits, and a regression test that follows the redirect and
+asserts the message is IN THE BODY — `assertSessionHas('status')` alone passed
+for the whole time the bug existed, because the flash in the session and the
+flash on the screen are two different facts. Verified by reverting the key to
+`success` and watching that test go red.
+
+### P10-E12 — `$tries = 1` meant one transient failure was permanent — **IMPLEMENTED**
+
+`GenerateAuditExport::$tries = 1` with the rationale "retrying a file write that
+failed halfway bills the same answer twice against the rate limiter". That is
+sound for a **partial write**, but wrong for the dominant transient causes —
+Redis blip, DB lock timeout, a momentary filesystem error — where nothing was
+written at all.
+
+**Decision (Jaya, 2026-10-12): 3 attempts.** `$tries = 3`. Two consequences to
+handle in the same task, not later:
+
+- `failed()` fires only after the final attempt, so the `failed` status and the
+  file unlink stay correct as written — but the job's own comment claiming a
+  retry is impossible has to change with the number.
+- `timeout = 80` must stay below `REDIS_QUEUE_RETRY_AFTER` (180 in the working
+  `.env`). With 3 attempts, `backoff` is worth setting so a failure does not
+  burn all three tries inside one Redis outage.
+
+**As built:** `$tries = 3`, `backoff(): [10, 30]` (80 + 10 + 30 = 125 s of wall
+clock, inside the 180 s retry window). The partial-write worry that justified
+`tries = 1` is answered where it belongs — the CSV is assembled in `php://temp`
+and handed to `writeStream()` only once complete, so there is no truncated file
+for a retry to find, and `$path` is overwritten rather than appended to.
+`handle()` now wraps the work in a try/catch that logs
+`audit.export.attempt_failed` with `attempt` and `max_tries` and rethrows, because
+`failed()` fires once at the end and `failed_jobs` keeps one row per job — without
+it, attempts one and two leave no trace and the surviving stack trace is the one
+that did NOT explain them.
+
+### P10-E13 / P10-E14 — moved to Phase 11
+
+Queue monitoring (the dashboard decision) and the queue conventions it depends on
+are owned by Phase 11, which already ships Pulse. Both are written up in
+`phase-11-monitoring-observability.md` § *Phase 11 owns BOTH dashboards*, with the
+Horizon / Vantage / Pennant analysis and the layered decision; the conventions are
+MON-P11-05 there. What Phase 10 asked for, and the short answer:
+
+- **E13** — which dashboard, if any. Answer recorded: **Pulse only.** Horizon is
+  Redis-only and does not survive the `database` / `redis` fork a base project has
+  to cross. Vantage is deferred, with its four costs named and its gate and
+  `store_payload` defaults called out as decisions rather than defaults.
+- **E14** — the three conventions every dashboard reads: named queues behind
+  constants, `$tries` / `$timeout` / `$backoff` declared on every job, and a
+  `failed()` that logs with `request_id`.
+
+
+---
+
 *Breakdown complete. Nothing implemented, nothing committed. Start at B1, or at
 D1+D2 if the missing `request_id` wants fixing before the viewer exists.*
