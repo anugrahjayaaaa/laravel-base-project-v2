@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Web\V1;
 
+use App\Actions\V1\Audit\AuditExportRequestAction;
 use App\Actions\V1\Audit\AuditIndexAction;
 use App\Actions\V1\Audit\AuditShowAction;
 use App\Http\Controllers\Controller;
@@ -45,8 +46,11 @@ class ActivityLogController extends Controller
      * authorization is the route's (`->can('audit.view')` inside the
      * `feature:activity_logs` group in `routes/web.php`).
      */
-    public function index(ActivityQueryRequest $request, AuditIndexAction $indexAction): View
-    {
+    public function index(
+        ActivityQueryRequest $request,
+        AuditIndexAction $indexAction,
+        AuditExportRequestAction $exportAction,
+    ): View {
         $filters = $request->filters();
 
         return view('pages.activity-logs.index', [
@@ -66,6 +70,11 @@ class ActivityLogController extends Controller
             'sourceOptions' => $indexAction->sourceOptions(),
             'subjectTypeOptions' => $indexAction->subjectTypeOptions(),
             'causerOptions' => $indexAction->causerOptions(),
+            // The viewer's OWN exports, so the file they asked for is one click
+            // from the page that produced it. Scoped in the action, never here:
+            // the scope is what keeps one operator's extract off another
+            // operator's screen.
+            'myExports' => $exportAction->recentFor($request->user()),
         ]);
     }
 

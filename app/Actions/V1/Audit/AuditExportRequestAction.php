@@ -5,9 +5,15 @@ namespace App\Actions\V1\Audit;
 use App\Jobs\GenerateAuditExport;
 use App\Models\AuditExport;
 use App\Models\User;
+use Illuminate\Support\Collection;
 
 /**
  * Records an export request and queues the job (Phase 10, P10-E4).
+ *
+ * It also answers the other half of the same question — "where are my exports?" —
+ * because the audit page is where an operator looks for the file they just asked
+ * for. Splitting that into a second action class would be one method in a file
+ * whose name has no verb for it.
  *
  * ## The row before the job, never the other way round
  *
@@ -25,6 +31,32 @@ use App\Models\User;
  */
 class AuditExportRequestAction
 {
+    /**
+     * The viewer's own most recent exports, newest first.
+     *
+     * ## Scoped to the viewer, always
+     *
+     * The same rule the download route enforces, applied to the LIST: an export
+     * is one person's extract of the audit trail, and a shared list would put
+     * every operator's file on every operator's screen. `audit.export` is not
+     * re-checked here — the route already gated the page, and a viewer without it
+     * has no exports to see.
+     *
+     * Five rows, not a paginator: this is a shortcut to the file you just
+     * requested, not a place to manage exports. The notification and the mail are
+     * the durable records; this answers "did I already do that?".
+     *
+     * @return Collection<int, AuditExport>
+     */
+    public function recentFor(User $user): Collection
+    {
+        return AuditExport::query()
+            ->where('user_id', $user->getKey())
+            ->latest('id')
+            ->limit(5)
+            ->get();
+    }
+
     /**
      * Record the request and queue the job.
      *

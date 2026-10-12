@@ -146,6 +146,11 @@ class AuditLogUiRenderTest extends TestCase
             'sourceOptions' => $action->sourceOptions(),
             'subjectTypeOptions' => $action->subjectTypeOptions(),
             'causerOptions' => $action->causerOptions(),
+            // The viewer's own exports. Empty by default so the fixtures that are
+            // about the LOG do not each have to invent a fifth row: the exports
+            // card has its own cases below, which pass a real collection through
+            // `renderIndex(['myExports' => …])`.
+            'myExports' => collect(),
         ];
     }
 
@@ -174,6 +179,23 @@ class AuditLogUiRenderTest extends TestCase
     private function renderIndex(array $data = []): string
     {
         return $this->render('pages.activity-logs.index', $data + $this->indexData());
+    }
+
+    /**
+     * The first form on the index — the one the label assertions ask about.
+     *
+     * Selected by METHOD rather than by position: the export form is rendered
+     * first, from the card-header toolbar, so "the first form" would have quietly
+     * become the export form and the label test below would have been measuring
+     * two hidden inputs and a submit button.
+     */
+    private function filterBarHtml(): string
+    {
+        preg_match('/<form\b[^>]*method="GET".*?<\/form>/s', $this->renderIndex(), $match);
+
+        $this->assertNotEmpty($match, 'precondition: the index page renders the GET filter bar');
+
+        return $match[0];
     }
 
     private function showData(int $id): array
@@ -324,6 +346,15 @@ class AuditLogUiRenderTest extends TestCase
      * An audit viewer that grew an edit or delete control would be a severe
      * regression that renders perfectly, passes every other test in this file,
      * and changes the meaning of the whole table. Asserted as an ABSENCE.
+     *
+     * ## The one POST that is allowed, and why it is not a write affordance
+     *
+     * Group E added the export form: `POST /activity-logs/exports`. It writes an
+     * `audit_exports` row — a hand-off to the queue — and NOT an `activity_log`
+     * row, so the table stays append-only. It is allowlisted here by URL rather
+     * than deleted from the assertion, because the requirement is "nothing here
+     * can change what happened", and the way to keep that true is to keep naming
+     * the routes that are allowed to exist.
      */
     public function test_neither_page_carries_a_write_affordance(): void
     {
@@ -333,20 +364,23 @@ class AuditLogUiRenderTest extends TestCase
             $this->assertStringNotContainsString('_method', $html, $page.' page carries a method override');
             $this->assertStringNotContainsString('{!!', $html, $page.' page prints raw output');
 
-            // The index legitimately HAS a form — the filter bar is a GET so a
-            // filtered URL is shareable. What must not exist is a form that
-            // MUTATES. Asserted per form rather than as a blanket "no <form>",
-            // which would be red on a correct page and green on a page that added
-            // a POST form alongside the filter.
+            // The index legitimately HAS forms — the filter bar is a GET so a
+            // filtered URL is shareable, and the export posts a job. What must not
+            // exist is a form that MUTATES AN AUDIT ROW. Asserted per form rather
+            // than as a blanket "no <form>", which would be red on a correct page
+            // and green on a page that added an edit control to a row.
             preg_match_all('/<form\b([^>]*)>/', $html, $forms);
 
             foreach ($forms[1] as $attrs) {
+                if (str_contains($attrs, 'method="GET"')) {
+                    continue;
+                }
+
                 $this->assertStringContainsString(
-                    'method="GET"',
+                    route('activity-logs.exports.store'),
                     $attrs,
-                    $page.' page has a non-GET form: <form'.$attrs.'>'
+                    $page.' page has a form that is neither the GET filter bar nor the export: <form'.$attrs.'>'
                 );
-                $this->assertStringNotContainsString('@csrf', $attrs, $page.' page posts a form');
             }
         }
     }
@@ -354,8 +388,9 @@ class AuditLogUiRenderTest extends TestCase
     /**
      * The detail page has no form at all.
      *
-     * Split out from the shared case because the index's GET filter bar is
-     * correct there and would mask a form added to the detail page.
+     * Split out from the shared case because the index's GET filter bar and its
+     * export form are both correct there and would mask a form added to the
+     * detail page.
      */
     public function test_the_detail_page_has_no_form_at_all(): void
     {
@@ -363,19 +398,41 @@ class AuditLogUiRenderTest extends TestCase
     }
 
     /**
-     * The index's only form is the GET filter bar.
+     * The index carries exactly two forms, each one is what it claims, and the
+     * export sits in the card-header toolbar above the filter bar.
      *
      * Asserted here rather than in the shared loop because the detail page
      * legitimately has NO form, so "a form exists" is a precondition of the index
-     * alone.
+     * alone. Two rather than one is Group E. The ORDER matters as much as the
+     * count: the export is the page action and belongs in the toolbar, so a page
+     * that moved it back down under the filter bar would satisfy a count-only
+     * assertion while reading as the orphan line it used to be.
      */
-    public function test_the_index_filter_bar_is_a_get_form_to_the_index_route(): void
+    public function test_the_index_carries_the_export_in_the_toolbar_and_the_filter_bar_below_it(): void
     {
         preg_match_all('/<form\b([^>]*)>/', $this->renderIndex(), $forms);
 
-        $this->assertCount(1, $forms[1], 'precondition: exactly one form, the filter bar');
-        $this->assertStringContainsString('method="GET"', $forms[1][0]);
-        $this->assertStringContainsString(route('activity-logs.index'), $forms[1][0]);
+        $this->assertCount(2, $forms[1], 'precondition: the export form and the filter bar');
+
+        $this->assertStringContainsString('method="POST"', $forms[1][0]);
+        $this->assertStringContainsString(route('activity-logs.exports.store'), $forms[1][0]);
+
+        $this->assertStringContainsString('method="GET"', $forms[1][1]);
+        $this->assertStringContainsString(route('activity-logs.index'), $forms[1][1]);
+
+        // The toolbar placement, in markup rather than in a screenshot: the
+        // export form is inside the card-header, and the card-body below it holds
+        // the filter bar. This is what `pages/users/index` does with Create User.
+        $headerAt = strpos($this->renderIndex(), 'card-header index-card-header');
+        $exportAt = strpos($this->renderIndex(), route('activity-logs.exports.store'));
+        $filterAt = strpos($this->renderIndex(), 'id="filter-search"');
+
+        $this->assertIsInt($headerAt);
+        $this->assertIsInt($exportAt);
+        $this->assertIsInt($filterAt);
+
+        $this->assertLessThan($filterAt, $exportAt, 'the export button is not above the filter bar');
+        $this->assertLessThan($exportAt, $headerAt, 'the export form is not inside the card-header toolbar');
     }
 
     /**
@@ -414,10 +471,16 @@ class AuditLogUiRenderTest extends TestCase
      * `design-system.md` §Accessibility: a control with only a placeholder is
      * invisible to a screen reader once the user types into it. Each control
      * needs an `id`, and every `<label for>` must point at an `id` that exists.
+     *
+     * Scoped to the filter BAR, not the page: Group E's export form is a second
+     * form whose controls are hidden companions of a submit button, and counting
+     * them here would demand labels for inputs nobody types into. The bar is the
+     * only part of this page a person operates, which is why the requirement is
+     * asked of it alone.
      */
     public function test_every_filter_control_has_an_associated_label(): void
     {
-        $html = $this->renderIndex();
+        $html = $this->filterBarHtml();
 
         // `name` and `id` are DIFFERENT axes — the filter posts by name, the
         // label points by id — so this cannot be a `name` -> `id` lookup.

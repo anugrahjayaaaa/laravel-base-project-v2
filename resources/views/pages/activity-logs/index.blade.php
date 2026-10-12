@@ -17,6 +17,10 @@
     and there is nothing to select: `App\Models\Activity` is `$guarded = ['*']`
     and no write route exists.
 
+    The one control that leaves this page is the Export form, and it writes no
+    audit row — it writes an `audit_exports` row, which is a hand-off to the queue.
+    The audit table itself stays append-only.
+
     ## One way into the detail page, not two
 
     The event badge was the row's link, and the Actions column a second link to
@@ -75,6 +79,28 @@
     @include('layouts.partials.alerts')
 
     <div class="card border-0 shadow-sm mb-4">
+        {{-- The card-header toolbar, the same shape `pages/users/index` uses for
+             its Create button: a `justify-content-between` row that gives the
+             page action somewhere to sit. Without it the export form floated on
+             its own line under the filter bar, right-aligned against nothing —
+             the button read as an orphan rather than as the page's action.
+
+             The left side carries the one fact an operator needs BEFORE clicking:
+             the file does not exist yet. The success flash after the click says
+             it too, but only for the page load that follows the click. --}}
+        <div class="card-header index-card-header bg-transparent border-bottom py-2">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <p class="text-muted fs-7 mb-0">
+                    Exports are generated in the background — you will be notified when the file is ready.
+                </p>
+
+                {{-- Renders only for holders of `audit.export`, and carries the
+                     filters below into its own POST. The one control on this page
+                     that leaves the application; everything else is a read. --}}
+                @include('pages.activity-logs._export')
+            </div>
+        </div>
+
         <div class="card-body p-4">
             @include('pages.activity-logs._filters')
 
@@ -194,6 +220,9 @@
             @endif
         </div>
     </div>
+
+    {{-- The viewer's own exports, below the log they came from. --}}
+    @include('pages.activity-logs._exports')
 
     @push('scripts')
         <script>
