@@ -13,6 +13,7 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Throwable;
 
 /**
  * PasswordExpirySweep — minute-configured sweep to flag expired passwords.
@@ -27,6 +28,50 @@ class PasswordExpirySweep implements ShouldQueue
     use InteractsWithQueue;
     use Queueable;
     use SerializesModels;
+
+    /**
+     * Queue conventions (Phase 11 MON-P11-05, raised as Phase 10 §11 P10-E14).
+     *
+     * Three attempts, and `$timeout` BELOW `REDIS_QUEUE_RETRY_AFTER` (180 on this
+     * install) — see `InactivityLockSweep` for both reasons and for why a timeout
+     * above the retry window lets a job run twice at once.
+     *
+     * The retry is safe because the flag is already set: a second pass re-reads
+     * `PasswordExpiry::isExpired()` and finds the work done, so a partial sweep
+     * resumes rather than restarting.
+     *
+     * @var int
+     */
+    public $tries = 3;
+
+    /** @var int */
+    public $timeout = 150;
+
+    /** @var int */
+    public $maxExceptions = 3;
+
+    /**
+     * @return array<int, int>
+     */
+    public function backoff(): array
+    {
+        return [60, 300];
+    }
+
+    /**
+     * The final attempt is logged.
+     *
+     * `failed()` fires only after the last try, so without this line the operator
+     * looking at a failed sweep has a trace from the third attempt and no way to
+     * see that the first two died on something else.
+     */
+    public function failed(?Throwable $exception): void
+    {
+        Log::error('Password expiry sweep failed', [
+            'attempts' => $this->tries,
+            'exception' => $exception?->getMessage(),
+        ]);
+    }
 
     /**
      * Execute the job.

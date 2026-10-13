@@ -11,6 +11,7 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
+use Throwable;
 
 /**
  * InactivityLockSweep — minute-configured sweep to lock inactive accounts.
@@ -24,6 +25,59 @@ class InactivityLockSweep implements ShouldQueue
     use InteractsWithQueue;
     use Queueable;
     use SerializesModels;
+
+    /**
+     * Queue conventions (Phase 11 MON-P11-05, raised as Phase 10 §11 P10-E14).
+     *
+     * Three attempts rather than one: a sweep that dies on a lock timeout skips
+     * a whole day's worth of locks until the next scheduled run, and the work it
+     * already did is idempotent — `InactivityLock::shouldLock()` re-reads state,
+     * so a retry re-evaluates rather than double-locking.
+     *
+     * `$timeout` sits BELOW `REDIS_QUEUE_RETRY_AFTER` (180 on this install) for
+     * the reason `GenerateAuditExport` documents: a timeout above the retry
+     * window lets the job be released and run twice at the same time, and this
+     * one writes locks.
+     *
+     * @var int
+     */
+    public $tries = 3;
+
+    /** @var int */
+    public $timeout = 150;
+
+    /** @var int */
+    public $maxExceptions = 3;
+
+    /**
+     * Long enough for the failing attempt to clear.
+     *
+     * A sweep runs on a schedule, so a retry that lands in the same minute as
+     * the next one is wasted work. 60 then 300 spreads the three attempts across
+     * five minutes, which covers the lock-timeout case this is here for.
+     *
+     * @return array<int, int>
+     */
+    public function backoff(): array
+    {
+        return [60, 300];
+    }
+
+    /**
+     * The final attempt is logged.
+     *
+     * `failed()` fires only after the last try, so `failed_jobs` holds one row
+     * per job and overwrites its payload on each retry — without this line the
+     * operator looking at a failed sweep has a trace from the third attempt and
+     * no way to see that the first two died on something else.
+     */
+    public function failed(?Throwable $exception): void
+    {
+        Log::error('Inactivity lock sweep failed', [
+            'attempts' => $this->tries,
+            'exception' => $exception?->getMessage(),
+        ]);
+    }
 
     /**
      * Execute the job.
