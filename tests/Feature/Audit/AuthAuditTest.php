@@ -49,6 +49,14 @@ class AuthAuditTest extends TestCase
      * `Auditable::audit()` supplies the context, so this fails the moment anyone
      * moves it back out to a call site and starts assembling `source` by hand,
      * which is what made two rows incomparable before.
+     *
+     * `system` is in the accepted set because these Actions are called directly,
+     * with no HTTP request in scope — and `system` is exactly what the
+     * derivation produces there. It is a DERIVED value, not a hand-written one,
+     * which is what this helper is checking. The complementary assertion — that
+     * a bare call with no properties at all still receives the whole context — is
+     * `test_context_is_captured_without_the_caller_naming_it()` below, and that
+     * one is what would catch a hand-assembled context.
      */
     private function assertStandardContext(Activity $activity): void
     {
@@ -58,7 +66,7 @@ class AuthAuditTest extends TestCase
         $this->assertArrayHasKey('user_agent', $properties, 'no user agent recorded');
         $this->assertContains(
             $properties['source'] ?? null,
-            ['web', 'api'],
+            ['web', 'api', 'system'],
             'no source recorded'
         );
         $this->assertArrayNotHasKey(
@@ -257,6 +265,12 @@ class AuthAuditTest extends TestCase
      * two rows describing the same kind of event could not be compared. Asserted
      * on a bare call with no properties at all: if any part of the context is
      * being supplied by the caller, this row will be missing it.
+     *
+     * `system` is the expected value, not `web`. This call happens with no HTTP
+     * request in scope, and the derivation answers `system` for that — a bare
+     * model call made by a test or a console command genuinely is not a browser.
+     * Asserting `web` here would be pinning the behaviour this change removed:
+     * the row used to claim a channel nobody used.
      */
     public function test_context_is_captured_without_the_caller_naming_it(): void
     {
@@ -270,8 +284,11 @@ class AuthAuditTest extends TestCase
 
         $properties = $activity->properties->toArray();
 
-        $this->assertSame('web', $properties['source'] ?? null, 'source not derived');
+        $this->assertSame('system', $properties['source'] ?? null, 'source not derived');
+        // Present, not omitted, and null rather than fabricated — `assertArrayHasKey`
+        // is the load-bearing half here.
         $this->assertArrayHasKey('ip', $properties, 'ip not derived');
+        $this->assertNull($properties['ip'], 'no request in scope, so there is no address to record');
         $this->assertArrayHasKey('user_agent', $properties, 'user agent not derived');
     }
 

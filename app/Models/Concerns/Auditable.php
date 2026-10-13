@@ -72,12 +72,39 @@ trait Auditable
      */
     public static function auditContext(): array
     {
+        // ## Is an HTTP request being handled RIGHT NOW?
+        //
+        // Everything below is derived from a request, and outside one that object
+        // is a synthetic stand-in whose values are DEFAULTS, not facts: a
+        // scheduled job's row recorded `source => web` because
+        // `$request->is('api/*')` is false for a console request, and an IP of
+        // `127.0.0.1` because that is what `Request::ip()` falls back to. Both
+        // are lies in the one record an incident review is supposed to trust.
+        //
+        // Two obvious discriminators do not work, which is worth recording:
+        //
+        // - `runningInConsole()` is true for the TEST RUNNER too, so it would
+        //   label every row written inside a feature test as `system`, and the
+        //   suite would stop testing anything real.
+        // - `server('REQUEST_METHOD')` is `'GET'` in console as well — Laravel
+        //   builds the console request with `Request::create()`, which sets one.
+        //
+        // The current route is the honest signal, and it is honest in the
+        // ambiguous case too, which is the part that matters: a job on the `sync`
+        // queue runs inside the web request that dispatched it, and `web` is the
+        // truthful answer there — a web request really did cause that row.
         $request = request();
+        $inRequest = $request->route() !== null;
 
         return [
-            'source' => $request->is('api/*') ? 'api' : 'web',
-            'ip' => $request->ip(),
-            'user_agent' => $request->userAgent(),
+            'source' => $inRequest
+                ? ($request->is('api/*') ? 'api' : 'web')
+                : 'system',
+            // Null rather than a fabricated address outside a request, and present
+            // rather than omitted — the viewer renders `—` for a null, and a
+            // missing key is a different shape for it to read.
+            'ip' => $inRequest ? $request->ip() : null,
+            'user_agent' => $inRequest ? $request->userAgent() : null,
             // The correlation ID, which `GenerateRequestCorrelationId` binds on
             // every request and echoes back on the `X-Request-ID` header. Without
             // it, an operator holding a 403 body with `meta.request_id` in it
