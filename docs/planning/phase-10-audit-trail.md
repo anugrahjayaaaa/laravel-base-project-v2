@@ -501,6 +501,17 @@ until F4.
 **E9, E11 and E12 are implemented** (2026-10-12). E10 is implemented. E13 and E14
 moved to Phase 11 — see the entry below for where they went and why.
 
+**The READ side reached the API on 2026-10-13.** A route audit comparing the two
+channel tables found this module browser-only: every WRITE had gone through the
+shared Actions from day one, but `GET /activity-logs`, the detail route and the
+whole export surface had no API counterpart, so a client that is not a browser
+could not see what happened or take an extract. Closed with
+`Api\V1\Audit\AuditController` and two Resources, same Actions, same Requests,
+same `audit.view`/`audit.export` split, and the **same `audit-export` limiter** so
+HTTP is not a way to get a larger allowance than a browser. See
+`phase-12-api-v1.md` §1 — which also records why `{activity}` is constrained to a
+number on both channels.
+
 The Laravel guarantee they leaned on is recorded in `AGENTS.md` § Package
 provider boot order, together with the rule to re-check it after every
 `composer update`.

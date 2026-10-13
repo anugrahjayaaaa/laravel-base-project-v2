@@ -221,6 +221,37 @@ previous five, so a delivered notification looks like it failed.
 It also means the inbox needs no queue worker to become visible: the badge
 updates when the delivery happens, not when somebody clicks.
 
+## The Inbox — API Surface
+
+The inbox exists on **both** channels, sharing `NotificationInboxAction`.
+
+| Operation | Web | API |
+|---|---|---|
+| List | `GET /notifications/inbox` | `GET /api/v1/notifications/inbox` |
+| Badge | `GET /notifications/unread-count` | `GET /api/v1/notifications/inbox/unread-count` |
+| Mark one read | `POST /notifications/inbox/{id}/read` | `POST /api/v1/notifications/inbox/{id}/read` |
+| Mark all read | `POST /notifications/inbox/read-all` | `POST /api/v1/notifications/inbox/read-all` |
+
+Two numbers worth knowing before writing a polling client:
+
+- **The badge endpoint's ceiling is 15/minute**, from the protected API group's
+  `throttle:user-state-actions` — not the web route's 120. A 30-second poll
+  spends 2 of those; a 5-second one would not fit.
+- **`latest_id` comes back with the count**, so a client can skip the expensive
+  half: the count moved but no row did means nothing new arrived.
+
+Both are ungated by permission, exactly as the web inbox is. A notification
+belongs to the person it was sent to, "whose inbox is this" is answered by the
+token, and there is no permission name to check — which makes user isolation the
+only thing between two users' data, so `NotificationPentestTest` probes it over
+both channels.
+
+**The `url` in a notification payload is filtered before it leaves the
+server.** `App\Support\SafeUrl::actionFor()` accepts a same-origin absolute path
+and nothing else, because `data` is a JSON column and `//evil.example` has the
+syntax of a path and the destination of a link somewhere else. It is one class
+serving both channels, not a check copied into each.
+
 ## Retention
 
 The `notifications` table has no ceiling on it, so a daily scheduled sweep

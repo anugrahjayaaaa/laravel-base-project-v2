@@ -79,9 +79,18 @@ A declared flag is not an active flag: the `database` store is fail-closed, so
 
 ## Current state
 Phases 0–9 done, Phase 10 (audit trail) in progress, 11–17 planned.
-Full suite: 1815 tests / 6033 assertions (measured 2026-10-12). 5 benchmark tests
+Full suite: 1851 tests / 6175 assertions (measured 2026-10-13). 5 benchmark tests
 are intentionally assertion-free. Read `docs/planning/progress.md` for the live
 picture.
+
+**A capability is not delivered by the UI that shows it.** Phase 10 shipped the
+audit trail and Phase 9 shipped notifications, and both were browser-only on the
+read side while the tracker recorded them as complete — the writes had gone
+through shared Actions the whole time, so the gap was invisible from the code.
+When a module lands, diff the web and API route tables **by capability, not by
+URI** (path shape is not a gap: `POST /login` and `POST /api/v1/auth/login` are
+one capability with two addresses). `docs/planning/phase-12-api-v1.md` has the
+method and the two gaps it found.
 
 ## Package provider boot order (verify after every composer update)
 `Application::registerConfiguredProviders()` splits `config('app.providers')` on

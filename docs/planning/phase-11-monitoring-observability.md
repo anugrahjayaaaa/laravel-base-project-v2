@@ -283,6 +283,37 @@ docs describe the target state, and the code now matches them.
 
 ---
 
+## Phase 11 also owns the notification inbox's API surface (added 2026-10-13)
+
+A route audit comparing the two channel tables found the inversion worth
+writing down: **the API could read a user's notification settings and could not
+read a single notification.** Which channels are switched on, without any way to
+see what they produced.
+
+Closed in `Api\V1\Notification\NotificationInboxController`, ungated on both
+channels and for the same reason the web inbox is ungated — a notification belongs
+to the person it was sent to, "whose inbox is this" is answered by the token, and
+there is no permission name to check. `NotificationInboxAction` is shared, so
+marking read invalidates the cached count AND the cached recent list exactly as
+the web path does; clearing only the count was the worst version of that bug and
+is still the thing to watch for here.
+
+`App\Support\SafeUrl` was extracted in the same change. The same-origin check on
+`notification.data['url']` had been a private method on `NotificationInboxAction`
+guarding the web view, and the API channel put the same question in a second
+place — and a second copy of a security check is the copy that gets forgotten when
+one of them is edited. Both call `SafeUrl::actionFor()` now, and
+`NotificationPentestTest` probes it over a token with `javascript:`,
+`//evil.example`, an absolute URL and a slashless relative path.
+
+One number to know before writing a polling client: the inbox API's ceiling is
+the protected group's `throttle:user-state-actions` at **15/minute**, not the web
+route's 120. A 30-second poll spends 2 of those.
+
+Written up in `phase-12-api-v1.md` §2.
+
+---
+
 ## Phase 11 owns BOTH dashboards — Pulse and Vantage (added 2026-10-12)
 
 Phase 11 shipped Pulse. The queue-monitoring decision that followed lands here,

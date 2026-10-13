@@ -403,14 +403,50 @@ Six decisions the implementation fixes, none of which the flow above states:
   of the notification payload, which is why it belongs to every notification and
   not to an export-specific branch in the inbox.
 
+## API Surface
+
+The reader and the export exist on **both** channels. They share the Actions, the
+Form Requests and the rate limiter; only the serialization differs.
+
+| Operation | Web | API |
+|---|---|---|
+| List | `GET /activity-logs` | `GET /api/v1/activity-logs` |
+| Detail | `GET /activity-logs/{activity}` | `GET /api/v1/activity-logs/{activity}` |
+| Request export | `POST /activity-logs/exports` | `POST /api/v1/activity-logs/exports` → **202 + row** |
+| List own exports | (inside the index page) | `GET /api/v1/activity-logs/exports` |
+| Download | `GET /activity-logs/exports/{export}/download` | `GET /api/v1/activity-logs/exports/{export}/download` |
+
+Three things worth knowing before writing a client:
+
+- **The API reuses the `audit-export` limiter.** HTTP is not a way to get a
+  larger allowance than a browser gets; both are capped by
+  `system_settings.audit_export_rate_limit_per_hour`.
+- **`download_url` appears only when the file exists.** It is the model's own
+  `isDownloadable()`, so the payload cannot disagree with the route about what is
+  available. The disk `path` is never emitted — that is a private-storage
+  location, and it keeps working in a client's head after the sweep unlinks the
+  file.
+- **Ownership is checked before expiry**, so another operator's expired export
+  answers 403 rather than 410. 410 means *your* file existed and is gone.
+
+`{activity}` is constrained to a number on both channels: `/activity-logs/exports`
+is one segment shorter than the download route, and an unconstrained parameter
+would swallow it depending on registration order.
+
+The audit table holds every actor's IP and user agent, so `audit.view` is
+access to behavioural data about staff — not a generic read permission. Neither
+channel may widen it.
+
 ## Security
 
-- Read-only through UI.
-- Export requires `audit.export` permission.
+- Read-only through UI and API alike.
+- Export requires `audit.export` permission on both channels.
 - View requires `audit.view` permission.
+- The download route checks ownership before expiry, on both channels.
 - Never store sensitive data in plaintext in audit logs.
 - Consider log rotation/archiving for long-term retention.
 
 ## ADR References
 
 - ADR-008: Audit Trail vs Technical Observability separation
+- ADR-001: API-first architecture — the reason the reader is not web-only
