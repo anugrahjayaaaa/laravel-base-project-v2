@@ -350,7 +350,16 @@
                         <h5 class="card-title mb-0 fw-semibold">Rate Limits &amp; Expirations</h5>
                     </div>
                     <div class="card-body p-4">
+                        {{-- Fields are grouped by the feature that governs them.
+                             Eleven limiters in one flat run is a list nobody can
+                             scan: an operator looking for the audit ceiling has to
+                             read past seven auth fields to find it. Each group is a
+                             full-width label followed by its own fields, on the
+                             same two-column grid as everything else on this page. --}}
                         <div class="row g-3">
+                            <div class="col-12">
+                                <h6 class="text-body-secondary text-uppercase small fw-semibold mb-0 mt-1">Authentication</h6>
+                            </div>
                             <div class="col-md-6">
                                 <label for="password_forgot_rate_limit" class="form-label">
                                     Forgot Password Limit
@@ -457,6 +466,10 @@
                                 @enderror
                             </div>
 
+                            <div class="col-12">
+                                <h6 class="text-body-secondary text-uppercase small fw-semibold mb-0 mt-1">Audit Trail</h6>
+                            </div>
+
                             {{-- Per HOUR, and it is the only field in this section that is:
                                  an audit export streams the whole filtered table into a
                                  file on a worker, so the cost per call is orders of
@@ -479,19 +492,19 @@
                                     <div class="invalid-feedback d-block" id="audit_export_rate_limit_per_hour_error">{{ $message }}</div>
                                 @enderror
                             </div>
-                        </div>
 
-                        {{-- The three limiters that were literals until Phase 12
-                             P12-2. Same shape as the field above because they are
-                             the same kind of control: a ceiling on how often one
-                             operator may do one thing. They were not wrong
-                             before — they were unreachable, and a mail-relay
-                             ceiling an admin cannot raise during an incident is
-                             one they have to work around in code. --}}
-                        <div class="row g-3 mt-1">
+                            {{-- Phase 12 P12-2: these three were literals in
+                                 AppServiceProvider until then. Not wrong —
+                                 unreachable, which for the mail one means an
+                                 admin cannot raise a relay ceiling during an
+                                 incident without a deploy. --}}
+                            <div class="col-12">
+                                <h6 class="text-body-secondary text-uppercase small fw-semibold mb-0 mt-1">User Management</h6>
+                            </div>
+
                             <div class="col-md-6">
                                 <label for="user_state_actions_rate_limit_per_minute" class="form-label">
-                                    User State Actions
+                                    State Actions
                                     <i class="bi bi-info-circle text-muted fs-7 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Lock, unlock, activate and deactivate actions per minute, per operator."></i>
                                 </label>
                                 <div class="input-group">
@@ -507,7 +520,7 @@
 
                             <div class="col-md-6">
                                 <label for="bulk_action_rate_limit_per_minute" class="form-label">
-                                    User Bulk Actions
+                                    Bulk Actions
                                     <i class="bi bi-info-circle text-muted fs-7 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Bulk activate, deactivate, lock and delete requests per minute, per operator."></i>
                                 </label>
                                 <div class="input-group">
@@ -521,9 +534,13 @@
                                 @enderror
                             </div>
 
+                            <div class="col-12">
+                                <h6 class="text-body-secondary text-uppercase small fw-semibold mb-0 mt-1">Notifications</h6>
+                            </div>
+
                             <div class="col-md-6">
                                 <label for="send_test_mail_rate_limit_per_minute" class="form-label">
-                                    Notification Test Mail
+                                    Test Mail
                                     <i class="bi bi-info-circle text-muted fs-7 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Test messages per minute, counted per operator, IP and recipient address — so one account cannot spray many addresses."></i>
                                 </label>
                                 <div class="input-group">
