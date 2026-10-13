@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\Api\V1;
+namespace App\Http\Controllers\Api\V1\Notification;
 
 use App\Actions\V1\Notification\NotificationMailSettingUpdateAction;
 use App\Actions\V1\Notification\NotificationChannelUpdateAction;
