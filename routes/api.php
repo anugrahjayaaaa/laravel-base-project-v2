@@ -9,7 +9,9 @@ use App\Http\Controllers\Api\V1\Auth\PasswordResetController;
 use App\Http\Controllers\Api\V1\Auth\RegisterController;
 use App\Http\Controllers\Api\V1\Auth\VerifyEmailController;
 use App\Http\Controllers\Api\V1\Auth\ResendVerificationController;
+use App\Http\Controllers\Api\V1\Audit\AuditController;
 use App\Http\Controllers\Api\V1\Feature\FeatureController;
+use App\Http\Controllers\Api\V1\Notification\NotificationInboxController;
 use App\Http\Controllers\Api\V1\Permission\PermissionController;
 use App\Http\Controllers\Api\V1\ProfileController;
 use App\Http\Controllers\Api\V1\Role\RoleController;
@@ -38,8 +40,17 @@ Route::prefix('v1')->group(function () {
         Route::post('/password/reset', PasswordResetController::class)->name('api.v1.auth.password.reset')->middleware('throttle:reset-password');
         Route::get('/email/verify/{id}/{hash}', VerifyEmailController::class)->name('verification.verify.api')->middleware('signed');
 
-        // Backwards-compat: old unlock endpoint -> UserStateController.
-        Route::post('/unlock', fn () => to_route('api.v1.users.unlock', ['user' => request()->route('user')]))->name('api.v1.auth.unlock');
+        // Backwards-compat: the unlock endpoint as it was addressed before it
+        // moved under `/users/{user}`. The redirect is kept; what changed is
+        // that it is DOCUMENTED as a redirect and not silently sitting in the
+        // route table looking like the current address.
+        //
+        // It stays a closure, and that is a known cost rather than an oversight:
+        // Scramble cannot introspect a closure, so this endpoint does not appear
+        // in the generated API documentation at all — which is correct, because
+        // a client reading the docs should use `POST /api/v1/users/{user}/unlock`.
+        Route::post('/unlock', fn () => to_route('api.v1.users.unlock', ['user' => request()->route('user')]))
+            ->name('api.v1.auth.unlock');
     });
 
     // ---------------------------------------------------------------------------
@@ -101,6 +112,82 @@ Route::prefix('v1')->group(function () {
                 // mails an address the caller typed.
                 Route::post('/notifications/test-mail', 'sendTestMail')->middleware('throttle:send-test-mail')
                             ->name('api.v1.notifications.test-mail')->can('notifications.send_test');
+            });
+
+            // The INBOX, which the settings above are not: `/notifications` reads
+            // the mail transport and the channel switches, so before this a
+            // client could inspect which channels it had switched on and had no
+            // way to see what they produced.
+            //
+            // Ungated, mirroring `/notifications/inbox` on the web. A
+            // notification belongs to the person it was sent to, and the scoping
+            // IS the user's own relation — "whose inbox is this" is answered by
+            // the token, not by a permission name, so there is nothing here to
+            // authorize.
+            Route::controller(NotificationInboxController::class)->group(function () {
+                Route::get('/notifications/inbox', 'index')->name('api.v1.notifications.inbox.index');
+                // No `throttle:120,1` here, unlike the web twin. The whole
+                // protected API group already carries `throttle:user-state-actions`
+                // at 15/minute, which is TIGHTER, so a second limiter can never
+                // be the one that refuses. Dead middleware on a route reads as a
+                // control that is not there — the same failure as a feature flag
+                // that renders "Inactive" over a route that still answers 200.
+                //
+                // The real ceiling is therefore 15/minute, not the web's 120. A
+                // 30-second poll uses 2 of those, so it fits; a 5-second poll
+                // would not, and that is a number to know before writing one.
+                Route::get('/notifications/inbox/unread-count', 'unreadCount')
+                    ->name('api.v1.notifications.inbox.unread-count');
+                Route::post('/notifications/inbox/read-all', 'markAllAsRead')
+                    ->name('api.v1.notifications.inbox.read-all');
+                Route::post('/notifications/inbox/{id}/read', 'markAsRead')
+                    ->name('api.v1.notifications.inbox.read');
+            });
+        });
+
+        // Audit trail — Phase 10 follow-up (web/API gap audit).
+        //
+        // This module was browser-only on the READ side. Every WRITE already went
+        // through the same Actions both channels share, so the gap was transport
+        // and serialization, not logic — but a base project whose premise is that
+        // the UI is replaceable cannot have its audit trail readable only in Blade.
+        //
+        // `audit.view` / `audit.export`, the same split the web routes carry:
+        // reading the trail is not the same authority as taking it out of the
+        // application. Both export routes are throttled by the SAME limiter the
+        // web route uses, so a client cannot get a larger allowance by arriving
+        // over HTTP instead of a browser.
+        Route::middleware('feature:activity_logs')->group(function () {
+            Route::controller(AuditController::class)->group(function () {
+                Route::get('/activity-logs', 'index')->name('api.v1.activity-logs.index')->can('audit.view');
+
+                // `whereNumber`, and it is load-bearing rather than tidy. This
+                // route sits NEXT TO `/activity-logs/exports`, which is one
+                // segment shorter than the download route and would otherwise be
+                // swallowed by `{activity}` — a literal path losing to a
+                // parameter because of registration order. Constraining the id to
+                // what the column actually holds removes the trap for whatever
+                // gets added under `/activity-logs/` next, instead of leaving a
+                // route-ordering rule for someone to discover.
+                Route::get('/activity-logs/{activity}', 'show')
+                    ->whereNumber('activity')
+                    ->name('api.v1.activity-logs.show')
+                    ->can('audit.view');
+
+                Route::post('/activity-logs/exports', 'storeExport')
+                    ->name('api.v1.activity-logs.exports.store')
+                    ->middleware(['can:audit.export', 'throttle:audit-export']);
+                Route::get('/activity-logs/exports', 'exports')
+                    ->name('api.v1.activity-logs.exports.index')
+                    ->can('audit.view');
+
+                // `audit.export` plus the ownership check inside the action, for
+                // the same reason as the web route: the permission says "may
+                // extract", not "may download extract #41", and the id here is
+                // attacker-supplied.
+                Route::get('/activity-logs/exports/{export}/download', 'downloadExport')
+                    ->name('api.v1.activity-logs.exports.download')
+                    ->can('audit.export');
             });
         });
 

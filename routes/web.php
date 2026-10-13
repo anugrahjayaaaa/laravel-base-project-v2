@@ -315,7 +315,15 @@ Route::middleware(['auth:web,sanctum', 'verified', 'password.change.required', '
     // -----------------------------------------------------------------------
     Route::middleware('feature:activity_logs')->group(function () {
         Route::get('/activity-logs', [ActivityLogController::class, 'index'])->name('activity-logs.index')->can('audit.view');
-        Route::get('/activity-logs/{activity}', [ActivityLogController::class, 'show'])->name('activity-logs.show')->can('audit.view');
+        // `whereNumber`, for the same reason as the API twin: `/activity-logs/exports/…`
+        // lives one segment below this route, and an unconstrained `{activity}`
+        // swallows any literal path of the same length depending on which was
+        // registered first. The column is `bigIncrements`, so nothing numeric is
+        // lost by saying so.
+        Route::get('/activity-logs/{activity}', [ActivityLogController::class, 'show'])
+            ->whereNumber('activity')
+            ->name('activity-logs.show')
+            ->can('audit.view');
 
         // Named under the viewer's namespace so the download link in the
         // notification reads `activity-logs.exports.download`, and so both

@@ -3,8 +3,8 @@
 namespace App\Actions\V1\Notification;
 
 use App\Models\User;
+use App\Support\SafeUrl;
 use App\Support\UnreadNotificationCount;
-use Illuminate\Support\Str;
 
 /** The viewer's own notifications, and the two ways they clear them. */
 class NotificationInboxAction
@@ -57,42 +57,16 @@ class NotificationInboxAction
     }
 
     /**
-     * The call to action for one notification, or null when it has none.
-     *
-     * Extracted from the map below so the detail page and the inbox cannot drift
-     * on what counts as a safe link: both call THIS.
-     *
-     * `data` is a JSON column whatever wrote the notification controls, and this
-     * URL reaches an `href`. A payload carrying `javascript:alert(1)` or
-     * `//evil.example` would otherwise be one click from executing, so only a
-     * same-origin absolute path survives — `//host` has the syntax of a path and
-     * the destination of a link somewhere else.
-     *
-     * @return array{url: string, label: string}|null
-     */
-    private function actionFor(mixed $notification): ?array
-    {
-        $url = $notification->data['url'] ?? null;
-
-        if (! is_string($url) || ! str_starts_with($url, '/') || str_starts_with($url, '//')) {
-            return null;
-        }
-
-        return [
-            'url' => $url,
-            // The label is the notification's own words — "Download CSV" rather
-            // than a generic "Open" — length-bounded because it comes out of a
-            // JSON column like everything else in `data`.
-            'label' => Str::limit(trim((string) ($notification->data['action_label'] ?? '')), 40) ?: 'Open',
-        ];
-    }
-
-    /**
      * The call-to-action for each notification on this page that has one.
      *
      * Scoped to the PAGE, not to the whole inbox: the map is read per row, and a
      * view that only ever renders 30 of them has no reason to make the other 4000
      * carry a decision this page cannot show.
+     *
+     * The same-origin rule itself lives in `App\Support\SafeUrl` rather than in a
+     * private method here. It was one, until adding the API channel put the same
+     * question in a Resource — and a second copy of a security check is the copy
+     * that gets forgotten when one of them is edited.
      *
      * @param  iterable<int, \Illuminate\Notifications\DatabaseNotification>  $notifications
      * @return array<string, array{url: string, label: string}>
@@ -102,7 +76,7 @@ class NotificationInboxAction
         $actions = [];
 
         foreach ($notifications as $notification) {
-            $action = $this->actionFor($notification);
+            $action = SafeUrl::actionFor($notification);
 
             if ($action !== null) {
                 $actions[(string) $notification->getKey()] = $action;
@@ -154,7 +128,7 @@ class NotificationInboxAction
         // this array and 500s every page that renders the modal.
         return [
             'notification' => $notification->fresh(),
-            'callToAction' => $this->actionFor($notification),
+            'callToAction' => SafeUrl::actionFor($notification),
         ];
     }
 
