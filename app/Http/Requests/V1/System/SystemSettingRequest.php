@@ -100,6 +100,14 @@ class SystemSettingRequest extends BaseFormRequest
             // ceiling an operator never reaches by accident, and the only way to
             // change the cost of one export from the UI is this field.
             'audit_export_rate_limit_per_hour' => ['integer', 'min:1', 'max:500'],
+
+            // Phase 12 P12-2: the three limiters that were still literals.
+            // Same bound as the per-minute registration limit — past 120 a value
+            // stops being a rate limit and becomes a denial of service against
+            // the operator's own workflow.
+            'user_state_actions_rate_limit_per_minute' => ['integer', 'min:1', 'max:120'],
+            'bulk_action_rate_limit_per_minute' => ['integer', 'min:1', 'max:120'],
+            'send_test_mail_rate_limit_per_minute' => ['integer', 'min:1', 'max:120'],
         ];
     }
 

@@ -79,6 +79,17 @@ class SystemSettingSeeder extends Seeder
         // read it and change it without a deploy, which the literal could not.
         SystemSetting::set('audit_export_rate_limit_per_hour', '5');
 
+        // The three remaining route limiters — Phase 12 P12-2.
+        //
+        // Same reason as the export ceiling above: an operator who wants a
+        // different number should not need a deploy. The literals they replace
+        // were not wrong, they were unreachable — a mail relay ceiling an
+        // admin cannot raise during an incident is a ceiling they must work
+        // around in code.
+        SystemSetting::set('user_state_actions_rate_limit_per_minute', '15');
+        SystemSetting::set('bulk_action_rate_limit_per_minute', '5');
+        SystemSetting::set('send_test_mail_rate_limit_per_minute', '5');
+
         // Mail transport — Phase 9 Group B.
         //
         // Seeded from the .env values this app already boots with, so an install

@@ -118,6 +118,13 @@ class SystemSettingsUpdateAction
             // minute — the limiter reads this same key, and the audit page's Export
             // tooltip quotes it, so this row is the single source for both.
             'audit_export_rate_limit_per_hour' => (string) ($data['audit_export_rate_limit_per_hour'] ?? 5),
+
+            // Phase 12 P12-2: the three limiters that were literals. The defaults
+            // here are the literals they replace, so an install that never opens
+            // the settings page enforces exactly what it enforced before.
+            'user_state_actions_rate_limit_per_minute' => (string) ($data['user_state_actions_rate_limit_per_minute'] ?? 15),
+            'bulk_action_rate_limit_per_minute' => (string) ($data['bulk_action_rate_limit_per_minute'] ?? 5),
+            'send_test_mail_rate_limit_per_minute' => (string) ($data['send_test_mail_rate_limit_per_minute'] ?? 5),
         ];
 
         $graceEnabled = $updates['inactivity_lock_grace_enabled'] === 'true';

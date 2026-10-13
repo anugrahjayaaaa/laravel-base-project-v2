@@ -178,7 +178,7 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('user-state-actions', function ($request) use ($throttle) {
             $key = $request->user()?->id ?: $request->ip();
 
-            return Limit::perMinute(15)
+            return Limit::perMinute(SystemSetting::getInt('user_state_actions_rate_limit_per_minute', 15))
                 ->by($key)
                 ->response($throttle->responseFor('user'));
         });
@@ -197,7 +197,7 @@ class AppServiceProvider extends ServiceProvider
             $key = $throttle->key('send-test-mail', (string) $request->user()?->id, $request->ip())
                 .':'.$to;
 
-            return Limit::perMinute(5)
+            return Limit::perMinute(SystemSetting::getInt('send_test_mail_rate_limit_per_minute', 5))
                 ->by($key)
                 ->response($throttle->responseFor('email'));
         });
@@ -205,7 +205,7 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('bulk-action', function ($request) use ($throttle) {
             $key = $request->user()?->id ?: $request->ip();
 
-            return Limit::perMinute(5)
+            return Limit::perMinute(SystemSetting::getInt('bulk_action_rate_limit_per_minute', 5))
                 ->by($key)
                 ->response($throttle->responseFor('users'));
         });

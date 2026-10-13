@@ -480,6 +480,63 @@
                                 @enderror
                             </div>
                         </div>
+
+                        {{-- The three limiters that were literals until Phase 12
+                             P12-2. Same shape as the field above because they are
+                             the same kind of control: a ceiling on how often one
+                             operator may do one thing. They were not wrong
+                             before — they were unreachable, and a mail-relay
+                             ceiling an admin cannot raise during an incident is
+                             one they have to work around in code. --}}
+                        <div class="row g-3 mt-1">
+                            <div class="col-md-6">
+                                <label for="user_state_actions_rate_limit_per_minute" class="form-label">
+                                    User State Actions
+                                    <i class="bi bi-info-circle text-muted fs-7 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Lock, unlock, activate and deactivate actions per minute, per operator."></i>
+                                </label>
+                                <div class="input-group">
+                                    <input type="number" name="user_state_actions_rate_limit_per_minute" id="user_state_actions_rate_limit_per_minute"
+                                           class="form-control form-control-sm @error('user_state_actions_rate_limit_per_minute') is-invalid @enderror" @error('user_state_actions_rate_limit_per_minute') aria-invalid="true" aria-describedby="user_state_actions_rate_limit_per_minute_error" @enderror
+                                           value="{{ old('user_state_actions_rate_limit_per_minute', $settings['user_state_actions_rate_limit_per_minute'] ?? 15) }}" min="1" max="120">
+                                    <span class="input-group-text bg-body-tertiary">/ min</span>
+                                </div>
+                                @error('user_state_actions_rate_limit_per_minute')
+                                    <div class="invalid-feedback d-block" id="user_state_actions_rate_limit_per_minute_error">{{ $message }}</div>
+                                @enderror
+                            </div>
+
+                            <div class="col-md-6">
+                                <label for="bulk_action_rate_limit_per_minute" class="form-label">
+                                    User Bulk Actions
+                                    <i class="bi bi-info-circle text-muted fs-7 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Bulk activate, deactivate, lock and delete requests per minute, per operator."></i>
+                                </label>
+                                <div class="input-group">
+                                    <input type="number" name="bulk_action_rate_limit_per_minute" id="bulk_action_rate_limit_per_minute"
+                                           class="form-control form-control-sm @error('bulk_action_rate_limit_per_minute') is-invalid @enderror" @error('bulk_action_rate_limit_per_minute') aria-invalid="true" aria-describedby="bulk_action_rate_limit_per_minute_error" @enderror
+                                           value="{{ old('bulk_action_rate_limit_per_minute', $settings['bulk_action_rate_limit_per_minute'] ?? 5) }}" min="1" max="120">
+                                    <span class="input-group-text bg-body-tertiary">/ min</span>
+                                </div>
+                                @error('bulk_action_rate_limit_per_minute')
+                                    <div class="invalid-feedback d-block" id="bulk_action_rate_limit_per_minute_error">{{ $message }}</div>
+                                @enderror
+                            </div>
+
+                            <div class="col-md-6">
+                                <label for="send_test_mail_rate_limit_per_minute" class="form-label">
+                                    Notification Test Mail
+                                    <i class="bi bi-info-circle text-muted fs-7 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Test messages per minute, counted per operator, IP and recipient address — so one account cannot spray many addresses."></i>
+                                </label>
+                                <div class="input-group">
+                                    <input type="number" name="send_test_mail_rate_limit_per_minute" id="send_test_mail_rate_limit_per_minute"
+                                           class="form-control form-control-sm @error('send_test_mail_rate_limit_per_minute') is-invalid @enderror" @error('send_test_mail_rate_limit_per_minute') aria-invalid="true" aria-describedby="send_test_mail_rate_limit_per_minute_error" @enderror
+                                           value="{{ old('send_test_mail_rate_limit_per_minute', $settings['send_test_mail_rate_limit_per_minute'] ?? 5) }}" min="1" max="120">
+                                    <span class="input-group-text bg-body-tertiary">/ min</span>
+                                </div>
+                                @error('send_test_mail_rate_limit_per_minute')
+                                    <div class="invalid-feedback d-block" id="send_test_mail_rate_limit_per_minute_error">{{ $message }}</div>
+                                @enderror
+                            </div>
+                        </div>
                     </div>
                 </div>
 
