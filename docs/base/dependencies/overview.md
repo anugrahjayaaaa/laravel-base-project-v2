@@ -462,21 +462,50 @@ Each audit record must capture:
   log emitted.
 - Sensitive-field scrubbing must be verified: password changes must not leak
   hashes into `properties`.
-- Audit metadata must be verified: request_id, IP, user agent present.
+- Audit metadata must be verified: inside an HTTP request, `request_id`, `ip`
+  and `user_agent` are present. **Outside one they are `null`, and that is the
+  contract** — a scheduler's row must not claim `source => web` or an IP of
+  `127.0.0.1`, which is what Laravel's synthetic console request would hand it.
+  `Auditable::auditContext()` decides from whether a route is actually being
+  handled; `tests/Feature/Audit/AuditContextTest.php` pins both sides.
 
 ### Application-Level Abstraction
 
-A dedicated `Audit` service/abstraction must wrap Activitylog calls. All
-audit writes route through this abstraction (e.g.
-`Audit::record('user.deactivated', $user, $target')`). Controllers and
-Actions call the abstraction, never Activitylog directly.
+All audit writes route through **one** abstraction, and it is a model **trait**:
+`App\Models\Concerns\Auditable`, called as
+`$subject->audit($event, $causer, $properties)`. Nothing in `app/Http/Controllers`
+writes an audit row; the callers are Actions, jobs and two services.
+
+> **Corrected 2026-10-13 (P10-D4).** This section previously specified a
+> dedicated `Audit` service class with an `Audit::record(...)` entry point. **A
+> trait is what shipped**, and no `Audit` class exists to find. The correction is
+> recorded here rather than left to be rediscovered because a DEP that names a
+> class nobody can grep for is worse than no DEP — and the DEP itself
+> (`architecture/decision-records/DEP-003-spatie-activitylog-audit-trail.md`)
+> had already been corrected while this file had not.
+
+Why the trait won: the derivation of `source` / `ip` / `user_agent` /
+`request_id` belongs on the model that carries the trait, which makes
+`Auditable::auditContext()` the single place it exists. Every caller takes the
+same derivation rather than assembling its own.
+
+`Auditable::auditBulk()` is the one writer that is not the trait — one insert for
+N rows, because a bulk action over 200 users would otherwise be 200 round trips
+inside a transaction already holding locks on those rows. `Auditable::audit()`
+returns `void`; a caller needing the row it just wrote reads the table.
 
 ### Replacement Strategy
 
-- The `Audit` abstraction layer isolates application code. To replace
-  Activitylog, reimplement the abstraction against a different audit backend.
-- The `activity_log` table schema would be replaced; the abstraction's API
-  contract stays stable.
+- The trait isolates application code. To replace Activitylog, reimplement
+  `Auditable` against a different audit backend; the call sites do not change.
+- The `activity_log` table schema would be replaced; the trait's API contract
+  stays stable.
+- `Relation::morphMap()` is **not** enforced (`enforceMorphMap()` is deliberately
+  not called): the table is a write path that records what just happened, and
+  enforcing it turns a missing alias in a new model into a 500 mid-write. The
+  backfill migration `2026_10_09_010000_backfill_morph_aliases.php` covers every
+  polymorphic column, not only `activity_log` — see
+  `tests/Feature/Audit/AuditMorphMapTest.php`.
 
 ---
 

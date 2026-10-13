@@ -48,6 +48,26 @@ Each audit record must capture:
 | Lock reason | Where relevant |
 | Source/context | Where relevant |
 
+## Metadata provenance — real inside a request, null outside
+
+Every row carries `source`, `ip`, `user_agent` and `request_id`, all derived
+once in `Auditable::auditContext()` rather than per call site.
+
+**Inside an HTTP request** they are real. **Outside one they are `null`** — and
+that is deliberate, not a gap. A queued job and an artisan command both run with a
+synthetic request whose values are *defaults, not facts*: `is('api/*')` is false,
+so a scheduler's row would say `source => web`, and `ip()` returns `127.0.0.1`.
+A record an incident review is supposed to trust cannot carry a default.
+
+`request_id` is bound per request by `GenerateRequestCorrelationId` and echoed on
+the `X-Request-ID` header, so an operator holding a 403 body with
+`meta.request_id` in it can tie that request to a row.
+
+`App\Jobs\Concerns\AuditsSystemActivity` still exists for the case the derivation
+cannot decide: a `sync`-queued job runs inside the web request that dispatched
+it, and only the caller knows it was the scheduler. Its value wins — the context
+is merged first, so a caller's `source` overrides the derived one.
+
 ## Source of Truth
 
 Audit source of truth: **mutation caller**.
