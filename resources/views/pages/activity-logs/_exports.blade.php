@@ -97,8 +97,19 @@
                                          2026-10-01 → 2026-10-10" is what the operator
                                          needs to recognise which file this is. A row
                                          with no filters says so rather than rendering
-                                         an empty cell. --}}
-                                    @php($applied = array_filter($export->filters, fn ($value): bool => $value !== null && $value !== ''))
+                                         an empty cell.
+
+                                         `$filterKeys` is the SAME list
+                                         `hasActiveFilters()` uses, handed in by the
+                                         controller — this view reads what it was
+                                         given and never reaches for the list itself.
+                                         Two copies of the key set drifted, and the
+                                         card answered "filtered" differently from the
+                                         Reset button above it. --}}
+                                    @php($applied = array_filter(
+                                        array_intersect_key($export->filters, array_flip($filterKeys)),
+                                        fn ($value): bool => $value !== null && $value !== '',
+                                    ))
                                     @if ($applied === [])
                                         <span class="text-muted">Everything</span>
                                     @else

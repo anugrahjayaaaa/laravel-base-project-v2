@@ -4,7 +4,10 @@ namespace Tests\Feature\Audit;
 
 use App\Actions\V1\Audit\AuditIndexAction;
 use App\Actions\V1\Audit\AuditShowAction;
+use App\Http\Requests\V1\Audit\ActivityQueryRequest;
+use App\Enums\AuditExportStatus;
 use App\Models\Activity;
+use App\Models\AuditExport;
 use App\Models\RoleLookup;
 use App\Models\User;
 use App\Support\SystemRole;
@@ -13,6 +16,7 @@ use Database\Seeders\PermissionSeeder;
 use Database\Seeders\RoleSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\ViewErrorBag;
 use Spatie\Permission\PermissionRegistrar;
 use Symfony\Component\Finder\Finder;
@@ -63,6 +67,10 @@ class AuditLogUiRenderTest extends TestCase
         ]);
         $this->viewer->assignRole(RoleLookup::find(SystemRole::ADMIN));
         $this->actingAs($this->viewer, 'web');
+
+        // Real disk, faked: `isDownloadable()` and the download link both ask the
+        // filesystem whether the file is there.
+        Storage::fake('local');
 
         $this->subject = User::factory()->create(['name' => 'Budi Santoso']);
 
@@ -142,6 +150,7 @@ class AuditLogUiRenderTest extends TestCase
                 'per_page' => 10,
             ],
             'hasFilters' => false,
+            'filterKeys' => ActivityQueryRequest::FILTER_KEYS,
             'eventOptions' => $action->eventOptions(),
             'sourceOptions' => $action->sourceOptions(),
             'subjectTypeOptions' => $action->subjectTypeOptions(),
@@ -206,7 +215,15 @@ class AuditLogUiRenderTest extends TestCase
 
     private function showData(int $id): array
     {
-        return ['activity' => app(AuditShowAction::class)->run($id)];
+        return [
+            'activity' => app(AuditShowAction::class)->run($id),
+            // The download panel (P10-A5) reuses the index page's `_exports`
+            // partial, so the detail page now reads the same three values the
+            // index does. Empty here: these cases are about the RECORD, and the
+            // panel has its own cases on the index page.
+            'myExports' => collect(),
+            'filterKeys' => ActivityQueryRequest::FILTER_KEYS,
+        ];
     }
 
     private function renderShow(int $id): string
@@ -858,6 +875,56 @@ class AuditLogUiRenderTest extends TestCase
             $html,
             'the target-type option must carry the raw stored type as its value and a readable word as its label'
         );
+    }
+
+    /**
+     * The detail page carries the download panel (plan P10-A5).
+     *
+     * The plan asked for a download panel on the detail page and only the index
+     * card shipped. It reuses the SAME `_exports` partial rather than a second
+     * one, so the status rules and `isDownloadable()` cannot drift between the
+     * two pages — which is what the shared wrapper id asserts here.
+     *
+     * Driven over HTTP rather than through `renderShow()`, because the panel's
+     * data comes from the controller's `recentFor()` and a hand-built fixture
+     * would prove nothing about whether the controller passes it.
+     */
+    public function test_the_detail_page_carries_the_download_panel(): void
+    {
+        $export = AuditExport::query()->create([
+            'user_id' => $this->viewer->getKey(),
+            'filters' => ['event' => 'user.updated'],
+            'expires_at' => now()->addDays(AuditExport::RETENTION_DAYS),
+        ]);
+        $export->update([
+            'status' => AuditExportStatus::READY,
+            'path' => $export->diskPath(),
+            'row_count' => 1,
+        ]);
+        Storage::disk('local')->put($export->path, "id,event\n1,user.updated\n");
+
+        $html = $this->page(
+            $this->get(route('activity-logs.show', Activity::query()->firstOrFail()))
+                ->assertOk()
+                ->getContent()
+        );
+
+        $this->assertStringContainsString(
+            'id="audit-exports"',
+            $html,
+            'the detail page has no download panel — the shared partial was not included'
+        );
+        $this->assertStringContainsString(
+            route('activity-logs.exports.download', $export),
+            $html,
+            "the panel lists the viewer's own export with no download link"
+        );
+
+        // The panel must not become a write path: the detail page still carries
+        // no form, which is what keeps it read-only.
+        preg_match_all('/<form\b/', $html, $forms);
+
+        $this->assertCount(0, $forms[0], 'the download panel introduced a form onto a read-only page');
     }
 
     /**

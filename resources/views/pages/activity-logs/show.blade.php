@@ -193,6 +193,14 @@
                     </div>
                 </div>
             </div>
+
+            {{-- The download panel (plan P10-A5): the SAME partial the index
+                 uses, so the status rules and the "is it downloadable" answer
+                 cannot differ between the two pages. Scoped to the viewer's own
+                 exports by `recentFor()` in the controller; this view queries
+                 nothing. It renders links, not a form — the detail page carries
+                 no write affordance at all. --}}
+            @include('pages.activity-logs._exports')
         </div>
     </div>
 @endsection

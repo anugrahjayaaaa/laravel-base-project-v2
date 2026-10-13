@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Web\V1;
 use App\Actions\V1\Audit\AuditExportDownloadAction;
 use App\Actions\V1\Audit\AuditExportRequestAction;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\V1\Audit\ActivityQueryRequest;
 use App\Http\Requests\V1\Audit\AuditExportRequest;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
@@ -93,6 +94,12 @@ class AuditExportController extends Controller
     {
         return view('pages.activity-logs._exports', [
             'myExports' => $exportAction->recentFor($request->user()),
+            // The partial reads this to label a file with the narrowing filters
+            // only. It is passed here as well as on the index because this
+            // endpoint renders the partial on its own, and a fragment that
+            // depended on a variable only its parent supplied is a 500 waiting
+            // for the first poll.
+            'filterKeys' => ActivityQueryRequest::FILTER_KEYS,
         ]);
     }
 

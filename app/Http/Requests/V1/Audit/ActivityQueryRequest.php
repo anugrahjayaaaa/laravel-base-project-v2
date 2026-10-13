@@ -50,6 +50,29 @@ class ActivityQueryRequest extends BaseFormRequest
     public const SORTABLE = ['created_at', 'id'];
 
     /**
+     * The filter keys that NARROW the result set.
+     *
+     * `sort`, `direction` and `per_page` are deliberately absent: they reorder or
+     * re-slice a list rather than narrow it, so a page reached with only
+     * `sort=created_at` is not "filtered" and must not offer a Reset that changes
+     * nothing.
+     *
+     * ## Why this list is public and lives here
+     *
+     * Two readers need it and neither owns it: `ActivityLogController` decides
+     * whether to render the Reset control, and the exports card renders which
+     * filters produced each file. When both carried their own copy they drifted —
+     * the card listed `sort`, the controller did not — and the same question got
+     * two answers on the same page.
+     *
+     * This class is the owner because it is what defines which filters exist at
+     * all; `filters()` builds every one of them.
+     *
+     * @var array<int, string>
+     */
+    public const FILTER_KEYS = ['search', 'event', 'causer_id', 'subject_type', 'source', 'date_from', 'date_to'];
+
+    /**
      * The route already answered "may this person read the audit trail".
      */
     public function authorize(): bool

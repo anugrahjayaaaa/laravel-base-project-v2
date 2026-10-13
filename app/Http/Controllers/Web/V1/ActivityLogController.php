@@ -9,6 +9,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\V1\Audit\ActivityQueryRequest;
 use App\Models\SystemSetting;
 use Illuminate\Contracts\View\View;
+use Illuminate\Http\Request;
 
 /**
  * The read-only audit trail viewer (Phase 10 Group A + C).
@@ -76,6 +77,10 @@ class ActivityLogController extends Controller
             // the scope is what keeps one operator's extract off another
             // operator's screen.
             'myExports' => $exportAction->recentFor($request->user()),
+            // Which filter keys NARROW a result set, handed to the exports card so
+            // it labels a file with the same keys the Reset button above it uses.
+            // One list, two readers — the view cannot query its way to it.
+            'filterKeys' => ActivityQueryRequest::FILTER_KEYS,
             // The ceiling the export button's tooltip QUOTES. It lives in
             // `system_settings` (Phase 10, §11 P10-E9) and the limiter reads the
             // same row, so the number the operator is shown and the number they
@@ -90,13 +95,15 @@ class ActivityLogController extends Controller
      *
      * `sort` and `direction` are excluded on purpose: they reorder the list
      * rather than narrow it, so a page reached with only `sort=created_at` is not
-     * "filtered" and should not offer a Reset that changes nothing.
+     * "filtered" and should not offer a Reset that changes nothing. The key list
+     * is `ActivityQueryRequest::FILTER_KEYS`, shared with the exports card so the
+     * two cannot disagree about what "a filter" means.
      *
      * @param  array<string, mixed>  $filters
      */
     private static function hasActiveFilters(array $filters): bool
     {
-        foreach (['search', 'event', 'causer_id', 'subject_type', 'source', 'date_from', 'date_to'] as $key) {
+        foreach (ActivityQueryRequest::FILTER_KEYS as $key) {
             if (($filters[$key] ?? null) !== null && $filters[$key] !== '') {
                 return true;
             }
@@ -111,11 +118,23 @@ class ActivityLogController extends Controller
      * `AuditShowAction::run()` throws `ModelNotFoundException`, which Laravel
      * renders as 404 — the right answer for an id that is not there, and the same
      * answer whether it never existed or has since been pruned.
+     *
+     * The download panel (plan P10-A5) reuses the index page's `_exports`
+     * partial rather than a second one: an operator reading one record is the
+     * most likely to be the one who wants the file, and two panels would be two
+     * places for the status rules to drift. Scoped by `recentFor()` to the
+     * VIEWER's own rows, same as the index.
      */
-    public function show(AuditShowAction $showAction, string $activity): View
-    {
+    public function show(
+        AuditShowAction $showAction,
+        AuditExportRequestAction $exportAction,
+        Request $request,
+        string $activity,
+    ): View {
         return view('pages.activity-logs.show', [
             'activity' => $showAction->run($activity),
+            'myExports' => $exportAction->recentFor($request->user()),
+            'filterKeys' => ActivityQueryRequest::FILTER_KEYS,
         ]);
     }
 }
