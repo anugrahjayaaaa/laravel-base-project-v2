@@ -850,6 +850,47 @@ class AuditLogUiRenderTest extends TestCase
     }
 
     /**
+     * A cached option list still shows an event name the first time it is written.
+     *
+     * ## Why this is not testing the cache
+     *
+     * It is testing the INVALIDATION, which is the half of a cache that is easy
+     * to get wrong. The four dropdown option lists are cached because
+     * `sourceOptions()` cannot be indexed on any engine (it is
+     * `DISTINCT json_extract(properties, …)`), and the whole point of deriving
+     * them from the table rather than a hand-typed array is that a new event name
+     * appears on its own.
+     *
+     * A cache that is never busted breaks exactly that: the page renders, the
+     * filter offers an event that matches nothing, and the row is invisible to
+     * anyone who tries to find it. `DB::afterCommit` is the load-bearing part —
+     * `UserIndexAction::bustCache()` documents why the forget cannot fire inside
+     * the transaction.
+     *
+     * Written through `Auditable::audit()` rather than the builder helper above,
+     * because the bust is wired into THAT method and nowhere else. This test is
+     * the only thing pinning it there.
+     */
+    public function test_a_new_event_name_reaches_the_cached_filter_dropdown(): void
+    {
+        $this->renderIndex();
+
+        $this->assertStringNotContainsString(
+            '<option value="billing.invoice_paid"',
+            $this->renderIndex(),
+            'precondition: the event does not exist yet'
+        );
+
+        $this->viewer->audit('billing.invoice_paid', $this->viewer);
+
+        $this->assertStringContainsString(
+            '<option value="billing.invoice_paid"',
+            $this->renderIndex(),
+            'the dropdown is cached and nothing busted it — a new event is unreachable through the filter'
+        );
+    }
+
+    /**
      * The read model is a read model.
      *
      * Asserted as a property rather than through a route, because the 405

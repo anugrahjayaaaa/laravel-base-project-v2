@@ -2,6 +2,7 @@
 
 namespace App\Models\Concerns;
 
+use App\Actions\V1\Audit\AuditIndexAction;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\Relation;
@@ -54,6 +55,13 @@ trait Auditable
         $activity
             ->withProperties(array_merge(static::auditContext(), $properties))
             ->log($event);
+
+        // The viewer's filter dropdowns are derived from the whole table and are
+        // cached, so a first-time event name or source has to invalidate them.
+        // Every write in the application arrives through this trait or through
+        // `auditBulk()` below, which is what makes this one call the whole
+        // invalidation story.
+        AuditIndexAction::bustCache();
     }
 
     /**
@@ -204,5 +212,9 @@ trait Auditable
         }, $records);
 
         DB::table(config('activitylog.table_name', 'activity_log'))->insert($rows);
+
+        // Same invalidation as `audit()`, and for the same reason: this trait is
+        // the only place a row enters the table from application code.
+        AuditIndexAction::bustCache();
     }
 }

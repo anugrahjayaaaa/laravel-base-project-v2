@@ -5,6 +5,8 @@ namespace App\Actions\V1\Audit;
 use App\Models\Activity;
 use App\Models\User;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 
 /**
  * The audit viewer's list query: search, filter, sort, paginate.
@@ -31,7 +33,7 @@ use Illuminate\Contracts\Pagination\LengthAwarePaginator;
  * really one joined read. `AuditBenchmarkTest` is what proves the count stays
  * constant rather than trusting the code to look right.
  *
- * ## No cache
+ * ## No cache — for the ROWS
  *
  * `UserIndexAction` caches its counts because the totals are one conditional
  * aggregate nobody wants to recompute. This page has no totals block, and the
@@ -40,9 +42,66 @@ use Illuminate\Contracts\Pagination\LengthAwarePaginator;
  * everyone else. Audit rows are also the least cacheable data in the application,
  * because an investigation wants the row that was just written, not the one that
  * was there a minute ago.
+ *
+ * That argument is about the ROW LIST and it is correct. It does not reach the
+ * four OPTION LISTS, which are a different thing: they are derived from the whole
+ * table rather than from a filter, so they are identical for every viewer, and
+ * they change only when an event name, a source or a subject type appears for
+ * the first time. Caching them is what `UserIndexAction` already does for its
+ * counts, with the same TTL-and-bust shape.
  */
 class AuditIndexAction
 {
+    /**
+     * How long a resolved option list stays readable before it is recomputed.
+     *
+     * A safety net, not the freshness policy — `Auditable::audit()` and
+     * `auditBulk()` bust the keys on every write, so a newly-written event name
+     * appears in the dropdown on the next page load. This only bounds how long a
+     * MISSED invalidation persists: without it the lists are
+     * `rememberForever`, so one forgotten write would leave a stale option for
+     * ever with the deploy green.
+     *
+     * ponytail: one hour is long enough that a busy day never pays to recompute,
+     * and short enough that a missed bust cannot have shipped unnoticed.
+     */
+    private const TTL = 3600;
+
+    /**
+     * The option-list cache keys.
+     *
+     * Public for the same reason `UserIndexAction::cacheKeys()` is: four private
+     * strings in four files are four unrelated literals, and renaming one of them
+     * left the invalidators flushing keys nothing read.
+     *
+     * @return array<int, string>
+     */
+    public static function cacheKeys(): array
+    {
+        return [
+            'audit_index_options.events',
+            'audit_index_options.sources',
+            'audit_index_options.subject_types',
+            'audit_index_options.causers',
+        ];
+    }
+
+    /**
+     * Forget the option lists once the write that changed them is durable.
+     *
+     * Deferred to `DB::afterCommit` for the reason `UserIndexAction::bustCache()`
+     * documents: a forget fired inside the transaction lets the next reader
+     * repopulate from rows the database has not promised yet, and a rollback
+     * cannot take that value back.
+     */
+    public static function bustCache(): void
+    {
+        DB::afterCommit(function (): void {
+            foreach (static::cacheKeys() as $key) {
+                Cache::forget($key);
+            }
+        });
+    }
     /**
      * A paginated, filtered page of audit rows.
      *
@@ -76,13 +135,15 @@ class AuditIndexAction
      */
     public function eventOptions(): array
     {
-        return Activity::query()
-            ->whereNotNull('event')
-            ->where('event', '!=', '')
-            ->distinct()
-            ->orderBy('event')
-            ->pluck('event')
-            ->all();
+        return Cache::remember('audit_index_options.events', static::TTL, function (): array {
+            return Activity::query()
+                ->whereNotNull('event')
+                ->where('event', '!=', '')
+                ->distinct()
+                ->orderBy('event')
+                ->pluck('event')
+                ->all();
+        });
     }
 
     /**
@@ -107,17 +168,19 @@ class AuditIndexAction
      */
     public function sourceOptions(): array
     {
-        return Activity::query()
-            ->whereNotNull('properties')
-            ->select('properties->source as source')
-            ->distinct()
-            ->get()
-            ->pluck('source')
-            ->filter()
-            ->unique()
-            ->sort()
-            ->values()
-            ->all();
+        return Cache::remember('audit_index_options.sources', static::TTL, function (): array {
+            return Activity::query()
+                ->whereNotNull('properties')
+                ->select('properties->source as source')
+                ->distinct()
+                ->get()
+                ->pluck('source')
+                ->filter()
+                ->unique()
+                ->sort()
+                ->values()
+                ->all();
+        });
     }
 
     /**
@@ -136,21 +199,23 @@ class AuditIndexAction
      */
     public function subjectTypeOptions(): array
     {
-        $types = Activity::query()
-            ->whereNotNull('subject_type')
-            ->where('subject_type', '!=', '')
-            ->distinct()
-            ->orderBy('subject_type')
-            ->pluck('subject_type')
-            ->all();
+        return Cache::remember('audit_index_options.subject_types', static::TTL, function (): array {
+            $types = Activity::query()
+                ->whereNotNull('subject_type')
+                ->where('subject_type', '!=', '')
+                ->distinct()
+                ->orderBy('subject_type')
+                ->pluck('subject_type')
+                ->all();
 
-        $options = [];
+            $options = [];
 
-        foreach ($types as $type) {
-            $options[$type] = Activity::labelForType($type);
-        }
+            foreach ($types as $type) {
+                $options[$type] = Activity::labelForType($type);
+            }
 
-        return $options;
+            return $options;
+        });
     }
 
     /**
@@ -167,13 +232,15 @@ class AuditIndexAction
      */
     public function causerOptions(): array
     {
-        return Activity::query()
-            ->whereNotNull('causer_id')
-            ->where('causer_type', User::class)
-            ->join('users', 'users.id', '=', 'activity_log.causer_id')
-            ->distinct()
-            ->orderBy('users.name')
-            ->pluck('users.name', 'users.id')
-            ->all();
+        return Cache::remember('audit_index_options.causers', static::TTL, function (): array {
+            return Activity::query()
+                ->whereNotNull('causer_id')
+                ->where('causer_type', User::class)
+                ->join('users', 'users.id', '=', 'activity_log.causer_id')
+                ->distinct()
+                ->orderBy('users.name')
+                ->pluck('users.name', 'users.id')
+                ->all();
+        });
     }
 }
