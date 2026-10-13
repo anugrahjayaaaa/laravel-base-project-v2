@@ -142,10 +142,13 @@ email-verification-notice, password-change pages using AdminLTE auth layout.
 - Status: DONE
 
 ### Phase 10: Audit Trail
-- Audit package integration
-- Audit abstraction layer
-- Async export
-- Status: PLANNED
+- Audit package integration — **DONE** (`spatie/laravel-activitylog ^4.8`, 3 migrations)
+- Audit abstraction layer — **DONE** (`App\Models\Concerns\Auditable` trait, one entry point)
+- Async export — **DONE** (job on a private disk, retention sweep, rate limit in `system_settings`)
+- Reader, on **both** channels — **DONE** (`phase-12-api-v1.md` closed the API gap)
+- Pentest — **DONE** (`AuditPentestTest`: 63 probes, verified to fail with the gate removed)
+- Status: DONE — Groups A–F closed. Follow-ups and the two open questions in
+  `phase-10-audit-trail.md` §11 remain; see `progress.md`.
 
 ### Phase 11: Monitoring & Observability
 - Laravel Pulse integration (`^1.8`, in `require`) — **DONE** (`85384b4`)
