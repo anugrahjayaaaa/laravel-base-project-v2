@@ -5,6 +5,7 @@ namespace App\Actions\V1\Audit;
 use App\Models\Activity;
 use App\Models\User;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
@@ -224,9 +225,23 @@ class AuditIndexAction
      * Built from the distinct causers IN THE AUDIT TABLE rather than from
      * `User::orderBy('name')`: on an installation with thousands of users who
      * never touched anything that is a dropdown nobody can read and an unbounded
-     * result set. `causer_type` is compared against the class rather than
-     * assumed, because a job row carries a null causer and a hand-edited row
-     * could carry something else entirely.
+     * result set. `causer_id IS NOT NULL` is what excludes a system row, and
+     * `causer_type` is compared against the morph ALIAS.
+     *
+     * ## Why the alias, not the class
+     *
+     * `Relation::morphMap(MorphMap::ALIASES)` is registered in `AppServiceProvider`,
+     * so `getMorphClass()` returns `user` and every row written since Group D
+     * stores `'user'` in `causer_type` — the backfill migration rewrote the ones
+     * written before it. Comparing against `User::class` therefore matched
+     * NOTHING: the dropdown rendered empty on every install, and the `causer_id`
+     * filter was unreachable from the UI. The old docblock here claimed the
+     * comparison was "against the class rather than assumed" — that assumption
+     * was the bug.
+     *
+     * `Relation::getMorphAlias()` returns the alias when one is mapped and the
+     * class unchanged when one is not, so this is correct with or without the
+     * map — the same helper `Auditable::auditBulk()` writes with.
      *
      * @return array<int|string, string>
      */
@@ -235,7 +250,7 @@ class AuditIndexAction
         return Cache::remember('audit_index_options.causers', static::TTL, function (): array {
             return Activity::query()
                 ->whereNotNull('causer_id')
-                ->where('causer_type', User::class)
+                ->where('causer_type', Relation::getMorphAlias(User::class))
                 ->join('users', 'users.id', '=', 'activity_log.causer_id')
                 ->distinct()
                 ->orderBy('users.name')

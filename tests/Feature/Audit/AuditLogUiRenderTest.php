@@ -831,7 +831,18 @@ class AuditLogUiRenderTest extends TestCase
 
         $this->assertStringContainsString('<option value="user.locked"', $html);
         $this->assertStringContainsString('<option value="auth.login"', $html);
-        $this->assertStringContainsString($this->viewer->name, $html, 'the actor dropdown lists actors who wrote rows');
+
+        // The actor as an OPTION in the actor `<select>`, not merely the name
+        // somewhere in the document. Asserting the bare name passed while
+        // `causerOptions()` returned `[]`, because the name also appears in the
+        // table rows and the header — the dropdown was empty on every install
+        // and this test was green. `causerOptions()` compared `causer_type`
+        // against `User::class` while the morph map stores `'user'`.
+        $this->assertStringContainsString(
+            '<option value="'.$this->viewer->getKey().'"',
+            $html,
+            'the actor dropdown lists no option for an actor who wrote rows'
+        );
 
         // The target-type option's VALUE is the stored morph type and must stay
         // that way — the filter posts it back and the action compares it to
