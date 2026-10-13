@@ -96,6 +96,80 @@ Each entry contains:
 
 ---
 
+## 2026-10-13 — Phase 10: export row build and viewer option lists
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-10-13 |
+| **Change** | Two performance fixes from a measured pass. **(1)** `GenerateAuditExport::row()` read the `properties` attribute four times per row; `properties` is cast `'collection'` and Eloquent does not memoise a primitive cast — `HasAttributes::transformModelValue()` calls `castAttribute()` on every read and the `collection` case is a fresh `json_decode` each time (warm read 16.3µs vs cold 15.1µs, ratio 1.02×; `classCastCache` empty). Now read once into a local. **(2)** The four filter dropdown option lists in `AuditIndexAction` are cached (TTL 3600, busted on write by `Auditable::audit()` and `auditBulk()`), because `sourceOptions()` is `DISTINCT json_extract(properties, …)` — the one filter no index can serve on any engine. New test `test_a_new_event_name_reaches_the_cached_filter_dropdown` pins the invalidation. |
+| **Reason** | The export was 99.5% PHP time (12.4ms of SQL across 2466ms at 5000 rows), so the database was never the constraint — the cast was. The option lists ran four unindexed `DISTINCT` scans on every page load and grew with the table (4.1ms at 2k rows → 12.2ms at 20k). Caching them does **not** contradict `AuditIndexAction`'s "no cache" note: that argues about the per-viewer ROW LIST, and option lists are global and identical for everyone. |
+| **Impact** | Interleaved same-process A/B: option lists −90% (2k rows) / −96% (20k rows); index page −19%, queries 10 → 6; `row()` build −31% (0.3075 → 0.2128 ms/row), ~470ms saved on a 5000-row export. Output verified byte-identical. New staleness window: a writer that bypasses `Auditable` would leave a stale dropdown for up to an hour — no such writer exists today. Full suite 1924 passed / 6482 assertions. |
+| **Related** | P10-C4, P10-C7, P10-E3, `phase-10-audit-trail.md`, `audit-trail.md` § Reader |
+
+---
+
+## 2026-10-13 — Phase 10: the audit export silently dropped rows
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-10-13 |
+| **Change** | `GenerateAuditExport` ordered `created_at DESC, id DESC` and then chunked with `chunkById(500)`. `chunkById` cursors on the primary key — it filters `WHERE id > <last id of the page>` and rewrites the ordering to `id ASC` — so the sort key and the cursor disagreed. Measured on 1200 rows: the file held **999 lines, 500 of them distinct**. 200 rows never reached the CSV and 499 appeared twice. Now orders by `id` alone via `chunkByIdDesc`/`chunkById` on `$direction`. `$sort` removed from the job and from `AuditExportRequestAction::run()` (and its two controller call sites) rather than left as a parameter that no longer reaches the query. New regression test `test_the_export_holds_every_row_once_past_the_chunk_boundary`. |
+| **Reason** | Found by a performance pass, not by a test. `AuditExportTest::test_the_export_query_count_does_not_grow_with_the_row_count` measures 3 and 40 rows — both inside a single 500-row chunk, so it is structurally blind to the cursor and passed green over a job that was losing rows. A compliance extract that drops rows without saying so is the worst failure this feature has, and the only defense is a test that crosses the boundary. |
+| **Impact** | Export file contents for any table over 500 rows. Row **order** in the file is unchanged on an append-only audit table: `id` is already the tiebreaker `ActivityQueryRequest::SORTABLE` sorts on, so `id` order and `created_at` order are the same sequence. Docs updated in `audit-trail.md` § Asynchronous Export. Full suite 1923 passed / 6480 assertions. |
+| **Related** | P10-C8, P10-E3, `phase-10-audit-trail.md`, `audit-trail.md` § Asynchronous Export |
+
+---
+
+## 2026-10-13 — Phase 10 Group F closed
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-10-13 |
+| **Change** | `tests/Feature/Audit/AuditPentestTest.php` (63 probes) — the file P10-F2 named and which did not exist until now. Its probes were previously scattered across five files, and two of the seven named were thin: authorization ran at three privilege levels rather than four (the missing one being NO ROLE AT ALL, which takes a different path through `Gate::before()`), and "unbounded export row count" had no assertion whatsoever. Injection is now split by how each field actually reaches the query — `sort`/`direction` reach `orderBy()` as an IDENTIFIER and must be refused; `event`/`source`/`subject_type` reach `where()` as a bound VALUE and are correctly NOT refused, so demanding an error there would have been testing a rule the application does not claim. Also: `implementation-roadmap.md` Phase 10 → DONE, `qa-tracker.md` audit rows reconciled with the test that proves each. |
+| **Reason** | A pentest pass that asserts the right thing in the wrong way is worse than none, because it reads as coverage. Splitting the two families is what makes the file say something true about this module rather than something true about itself. |
+| **Impact** | P10-F2, P10-F3, P10-F6. `AuditViewerAccessTest`, `AuditExportTest` and `AuditViewerFilterTest` keep their cases — the pentest adds the adversarial angle, not a replacement. |
+| **Related** | P10-F2, P10-F3, P10-F6, AUDIT-004, AUDIT-005 |
+
+---
+
+## 2026-10-13 — Phase 10: the audit trail reached the API
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-10-13 |
+| **Change** | `Api\V1\Audit\AuditController` + `ActivityResource` + `AuditExportResource`. The reader and the export existed on ONE channel: every WRITE had gone through the shared Actions since day one, but `GET /activity-logs`, the detail route and the whole export surface had no API counterpart. Also `{activity}` constrained to `whereNumber` on BOTH channels — `/activity-logs/exports` is one segment shorter than the download route, so an unconstrained parameter swallowed it depending on registration order. |
+| **Reason** | ADR-001 ("all core capabilities have a clean API boundary") failing silently. It is not a rule a review can hold an implementation to; it is only visible when the two route tables are diffed. |
+| **Impact** | P10-F2 gained a second surface to probe. `retention.md` and the base feature doc gained an API surface table. |
+| **Related** | ADR-001, ADR-002, P10-F2, P10-F3, `phase-12-api-v1.md` |
+
+---
+
+## 2026-10-13 — Audit metadata derived from whether a request is real
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-10-13 |
+| **Change** | `Auditable::auditContext()` now derives `source`/`ip`/`user_agent` from whether a route is actually being handled. Outside one they are `system`/`null`/`null`; before, a scheduler's row said `source => web` and an IP of `127.0.0.1`, because both are DEFAULTS of Laravel's synthetic console request rather than observations. `App\Support\SafeUrl` extracted from a private method on `NotificationInboxAction` when the API inbox put the same same-origin question in a second place. |
+| **Reason** | `source` was a CONVENTION — two writers used `AuditsSystemActivity` and nothing stopped the next job from forgetting. The audit page filters on `source`, so a mislabelled row puts scheduler work under "web" and vice versa. |
+| **Impact** | Two obvious discriminators do not work and are documented so nobody retries them: `runningInConsole()` is true for the test runner, and `server('REQUEST_METHOD')` is `'GET'` in console too. |
+| **Related** | P10-D1, P10-D2 |
+
+---
+
+## 2026-10-13 — Phase 10 follow-ups E9–E12 implemented
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-10-13 |
+| **Change** | E9 `audit-export` ceiling moved from a literal into `system_settings` (and the Export tooltip now reads it, so the number shown and the number enforced are one fact). E10 the export table resolves in place — a fragment endpoint returning the same partial, polling only while a row is `pending`. E11 the success flash was flashed under `success` and rendered by no admin view; `status` is the house key. E12 `$tries` 1 → 3 with a backoff and a per-attempt log line. Alongside: `failed()` now unlinks the COMPUTED export path as well as the recorded one, because the recorded one is written after the write lands. |
+| **Reason** | All four were visible as "I clicked the button and nothing happened". E9 also carried a live defect: a hardcoded label beside a configurable number would have become a lie the first time the setting was edited. E12 introduced the orphan-file case that the `failed()` fix then closed — found in review, before it shipped. |
+| **Impact** | Export files are keyed `audit-exports/{user_id}/{id}.csv`, so a retry rewrites rather than orphans. Legacy UUID-path rows keep working untouched; nothing was backfilled. |
+| **Related** | P10-E9, P10-E10, P10-E11, P10-E12 |
+
+---
+
+---
+
 ## 2025-09-14 — Dependency Documentation
 
 || Field | Value |

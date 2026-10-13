@@ -68,6 +68,80 @@ cannot decide: a `sync`-queued job runs inside the web request that dispatched
 it, and only the caller knows it was the scheduler. Its value wins — the context
 is merged first, so a caller's `source` overrides the derived one.
 
+## Reader
+
+The read side, for whoever the audit trail is shown to. The write side below
+documents how rows get there; this is how they come out, and the two share one
+filter implementation so a file is never a second approximation of a list.
+
+### Reading is not extracting
+
+`audit.view` opens the trail; `audit.export` takes it out of the application.
+Two permissions because they are two acts — one permission would let a read-only
+auditor pull a copy of everything they can already see. And `audit.view` is not
+a generic read permission at all: the table holds every actor's IP address and
+user agent for every change, so it is access to behavioural data about staff.
+
+### Filters
+
+`search` (LIKE over `event` and `description`), `event`, `source`, `causer_id`,
+`subject_type`, `date_from`, `date_to`, plus `sort`, `direction` and `per_page`.
+
+`sort` and `direction` are the one pair that reaches the query as an
+**identifier** rather than a value — `orderBy()` takes a column name, and no
+bound parameter can stand in for one — so they are `Rule::in()` allowlists, not
+string rules. Everything else is a bound value: a quote in `event` is data, and
+the row simply matches nothing.
+
+`search` is the one LIKE in the module. A caller can supply `%` and widen the
+match; it cannot execute anything, but an export filtered by `search=%` is the
+whole table, which is worth knowing before an operator assumes the box narrows
+anything.
+
+### The filter option lists are cached — the rows are not
+
+The filter bar's four dropdowns (event names, sources, subject types, actors) are
+derived from the whole table rather than hand-typed in Blade, because a
+hand-typed list goes stale the moment an action adds an event. They are also
+four `DISTINCT` queries on every page load, and one of them —
+`DISTINCT json_extract(properties, '$."source"')` — is the single query in this
+module that **no index can serve on any engine**.
+
+So the option lists are cached (`AuditIndexAction::cacheKeys()`, TTL 1 hour) and
+the **row list is not**. That split is deliberate and it is the same shape
+`UserIndexAction` uses for its counts: a cached option list is derived from
+every row rather than from a filter, so it is identical for every viewer, while a
+cached row list would hand one viewer's rows to everyone else and would hide the
+row that was written a minute ago — the one an investigation is looking for.
+
+`Auditable::audit()` and `auditBulk()` bust the keys on every write, deferred to
+`DB::afterCommit` for the reason `UserIndexAction::bustCache()` documents. Those
+two methods are the only places a row enters the table from application code,
+which is what makes one call the whole invalidation story.
+
+**Consequence:** a new event name appears in the dropdown as soon as it is
+written, because the write busts the cache. If a future writer bypasses
+`Auditable` and inserts a row directly, the dropdown can lag by up to the TTL —
+the rows themselves are still listed and still filterable by `event` in the URL.
+
+Measured: option lists −90% at 2 000 rows and −96% at 20 000; index page
+−19%, 10 queries → 6.
+
+### Reading writes nothing
+
+A row recording "an administrator read the audit trail" would be a row in the
+trail being read. Both channels hold to that, and both are pinned:
+`AuditPentestTest` probes all four verbs on both surfaces and asserts the row
+count is unchanged.
+
+### The table is append-only
+
+No checkbox column, no bulk bar, no edit control, and
+`App\Models\Activity` is `$guarded = ['*']` — a mass-assignment attempt throws
+rather than silently dropping the attribute. That is structural, not a
+convention: `AuditReadOnlyTest` walks the application for any path that writes
+through the model, and the pentest tries every verb on every route.
+
 ## Source of Truth
 
 Audit source of truth: **mutation caller**.
@@ -369,12 +443,62 @@ Expire/delete export file
 - Audit exports must use private storage.
 - Export files have lifecycle/expiration policy.
 
+### The file is ordered by `id`, not by the requested sort column
+
+The export streams the filtered set with `chunkById`/`chunkByIdDesc`, and that
+helper cursors on the primary key: it filters `WHERE id > <last id of the
+previous page>` and forces the ordering to `id ASC` (or `id DESC`). Any other
+leading sort column survives the rewrite as the query's primary key while the
+cursor still walks `id`, and the two disagree — the second page re-reads part of
+the first and the tail is never reached.
+
+Shipped behaviour before 2026-10-13 was `ORDER BY created_at DESC, id DESC`
+chunked by `id`: on 1200 rows it produced a file of 999 lines containing 500
+distinct rows. A compliance extract with silently dropped rows is the worst
+failure this feature has, so the export now orders by `id` alone.
+
+On an append-only audit table the two orders are the same sequence — `id` is
+already the tiebreaker `ActivityQueryRequest::SORTABLE` sorts on, precisely
+because a bulk write gives many rows one `created_at`. So the file is still the
+sequence the operator was looking at; what changed is that the cursor agrees
+with it. `$sort` was removed from `GenerateAuditExport` and from
+`AuditExportRequestAction::run()` rather than left as a parameter that no longer
+reaches the query.
+
+`test_the_export_holds_every_row_once_past_the_chunk_boundary` pins this: 1200
+rows, one line each, no duplicates, descending `id`. The pre-existing
+query-count test could not catch it — it measures 3 and 40 rows, both inside one
+500-row chunk.
+
+### The export is PHP-bound, and the cast was the cost
+
+Measured at 5 000 rows: **2 466 ms wall, of which 12.4 ms is SQL.** The database
+is never the constraint on this job — the row builder is.
+
+The cost was `row()` reading `properties` four times per row (`source()`
+internally reads `extra('source')`, plus `ip`, `request_id` and the JSON dump).
+`properties` is cast `'collection'`, and **Eloquent does not memoise a primitive
+cast**: `HasAttributes::transformModelValue()` calls `castAttribute()` on every
+attribute read, and the `collection` case is `new Collection(json_decode($value,
+true))`. A warm read costs the same as a cold one (16.3 µs vs 15.1 µs, ratio
+1.02×) and `classCastCache` stays empty.
+
+So the row is read once into a local and the four columns are lookups on the
+result. Byte-identical output — a row whose `properties` is NULL still yields the
+same empty cells, because `$props` is null on exactly the rows where `extra()`
+returned its default. Build cost 0.3075 → 0.2128 ms/row (−31%).
+
+`DB::table()` instead of Eloquent would be the larger lever (hydration is
+0.176 ms/row) and is deliberately **not** taken: `causerLabel()` and
+`subjectLabel()` would have to be reimplemented outside the model, which
+duplicates the one place that decides what a deleted actor is called.
+
 ### What shipped (Phase 10, Group E)
 
 ```
 POST /activity-logs/exports          audit.export + throttle:audit-export
     ↓ audit_exports row (pending, expires_at = now + 7 days)
-GenerateAuditExport                  chunkById 500, fputcsv, local disk
+GenerateAuditExport                  chunkById(Desc) 500 ordered by id, fputcsv, local disk
     ↓ audit-exports/{user_id}/{uuid}.csv
 row → ready + AuditExportReadyNotification (database + mail)
     ↓

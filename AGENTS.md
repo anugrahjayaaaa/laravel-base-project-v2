@@ -78,8 +78,8 @@ A declared flag is not an active flag: the `database` store is fail-closed, so
 `FeatureFlagSeeder` must write the row or the module 403s.
 
 ## Current state
-Phases 0–9 done, Phase 10 (audit trail) in progress, 11–17 planned.
-Full suite: 1851 tests / 6175 assertions (measured 2026-10-13). 5 benchmark tests
+Phases 0–10 done, Phase 11 (monitoring) done, 12–17 planned.
+Full suite: 1922 tests / 6476 assertions (measured 2026-10-13). 5 benchmark tests
 are intentionally assertion-free. Read `docs/planning/progress.md` for the live
 picture.
 
