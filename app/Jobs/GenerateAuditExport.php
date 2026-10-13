@@ -13,7 +13,6 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 use RuntimeException;
 use Throwable;
 
@@ -85,8 +84,8 @@ class GenerateAuditExport implements ShouldQueue
      * The partial-write concern is answered where it belongs instead: the stream
      * is assembled in `php://temp` and handed to `writeStream()` only once
      * complete, so there is no truncated file for a retry to find. A retry writes
-     * a fresh UUID path and a row that is still `pending`, not a duplicate
-     * download — and `$path` is overwritten, never appended to.
+     * a path keyed on the export's own id and a row that is still `pending`, not
+     * a duplicate download — and `$path` is overwritten, never appended to.
      *
      * `failed()` fires only after the FINAL attempt, so the `failed` status and
      * the unlink stay correct as written below.
@@ -222,7 +221,7 @@ class GenerateAuditExport implements ShouldQueue
 
             rewind($handle);
 
-            $path = 'audit-exports/'.$export->user_id.'/'.Str::uuid().'.csv';
+            $path = $export->diskPath();
 
             // The private disk, never `public`. An audit extract carries every
             // actor's IP and user agent; a file under `storage/app/public` is one
@@ -253,6 +252,20 @@ class GenerateAuditExport implements ShouldQueue
      *
      * Called by the queue only after the final attempt, so a retried job never
      * reports a failure it was about to recover from.
+     *
+     * ## Two paths, not one
+     *
+     * The recorded `path` AND the path this export would have used. The column is
+     * written after the file lands, so on the most damaging sequence — write
+     * succeeds, `update()` throws — it is still `null` while a complete extract
+     * is sitting on disk. Unlinking only the column reclaimed nothing in exactly
+     * that case, and the sweep that ran seven days later deleted the row and
+     * still could not name the file, so it outlived its own retention window.
+     *
+     * `diskPath()` is deterministic, so the second unlink is computable from the
+     * row alone. The first is kept for rows written before the path became
+     * deterministic: those carry a UUID file name, and nothing else in the
+     * application knows it.
      */
     public function failed(?Throwable $exception): void
     {
@@ -262,8 +275,8 @@ class GenerateAuditExport implements ShouldQueue
             return;
         }
 
-        if ($export->path !== null) {
-            Storage::disk('local')->delete($export->path);
+        foreach (array_unique(array_filter([$export->path, $export->diskPath()])) as $path) {
+            Storage::disk('local')->delete($path);
         }
 
         $export->update(['status' => AuditExportStatus::FAILED]);

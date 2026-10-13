@@ -111,6 +111,37 @@ class AuditExport extends Model
     }
 
     /**
+     * Where this export's file lives on the private disk.
+     *
+     * ## Deterministic, and that is the load-bearing part
+     *
+     * This was `audit-exports/{user_id}/{uuid}.csv` with a fresh `Str::uuid()`
+     * per attempt. A retry therefore wrote a SECOND file while the first one
+     * stayed on disk, and `failed()` could only unlink the path recorded in the
+     * column — which is written *after* the write succeeds. So the exact sequence
+     * `writeStream()` OK → `update()` throws left a complete CSV of the whole
+     * audit trail, every actor's IP and user agent included, on disk with
+     * `path = NULL`. `failed()` saw null and deleted nothing; the nightly sweep
+     * later removed the ROW and still could not find the file. It survived
+     * `retention.md`'s seven days indefinitely.
+     *
+     * Keyed on the row's own id instead, a retry rewrites the same path, and
+     * `failed()` can COMPUTE the path from the row rather than trusting a column
+     * that may never have been written. The id is an integer from the database,
+     * so there is still no user-supplied path segment.
+     *
+     * ## It is a method, not a literal, because there are two readers
+     *
+     * The job that writes it and the cleanup that has to reclaim it. A second
+     * copy of the shape is a second thing to forget — which is exactly what
+     * happened when it lived inline in the job alone.
+     */
+    public function diskPath(): string
+    {
+        return 'audit-exports/'.$this->user_id.'/'.$this->getKey().'.csv';
+    }
+
+    /**
      * The filename handed to the browser.
      *
      * Derived from the row rather than stored, so it cannot disagree with the

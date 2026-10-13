@@ -112,8 +112,12 @@ class AuditExportTest extends TestCase
         // A file only exists once the job has run, so the default row is the one
         // the job leaves behind — complete. `PENDING` is the case worth spelling
         // out, because that is the row with no file.
+        //
+        // The path comes from the model's own `diskPath()` rather than being
+        // invented here, so the fixture cannot drift from what the job writes —
+        // and `failed()`'s second unlink only works because the two agree.
         if ($export->status === AuditExportStatus::READY) {
-            $path = 'audit-exports/'.$owner->getKey().'/'.fake()->uuid().'.csv';
+            $path = $export->diskPath();
 
             $export->update([
                 'path' => $path,
@@ -414,6 +418,86 @@ class AuditExportTest extends TestCase
         $this->assertSame(AuditExportStatus::FAILED, $export->status);
         $this->assertFalse($export->isDownloadable());
         Storage::disk('local')->assertMissing($orphan);
+    }
+
+    /**
+     * No file survives a failure, even the one the row never learned about.
+     *
+     * `$tries = 3` made this reachable and nothing covered it. The damaging
+     * sequence is `writeStream()` succeeding and `$export->update()` then
+     * throwing: a COMPLETE CSV of the whole audit trail — every actor's IP and
+     * user agent — on disk, while the row's `path` is still null because the
+     * update never committed. `failed()` unlinks only what the column says, so it
+     * saw null and deleted nothing. Seven days later the nightly sweep removed
+     * the ROW, still could not name the file, and the extract outlived its own
+     * retention window indefinitely.
+     *
+     * Two properties are pinned, because the fix needs both. The path is
+     * deterministic, so a retry rewrites rather than orphans — that is
+     * `diskPath()`. And `failed()` unlinks the computed path as well as the
+     * recorded one, so it does not depend on the write that may not have
+     * landed.
+     *
+     * `writeStream()` writes no `path` because the update below is skipped on
+     * purpose: this is the state that bug produced, reproduced exactly.
+     */
+    public function test_a_failed_export_leaves_no_file_behind_even_when_the_row_never_recorded_one(): void
+    {
+        $admin = $this->login(SystemRole::ADMIN);
+
+        $export = AuditExport::query()->create([
+            'user_id' => $admin->getKey(),
+            'filters' => [],
+            'expires_at' => now()->addDays(AuditExport::RETENTION_DAYS),
+        ]);
+
+        // The file the job would have written, and the row still knows nothing
+        // about it.
+        $path = $export->diskPath();
+        Storage::disk('local')->put($path, "id,event\n1,user.updated\n");
+
+        $this->assertNull($export->path, 'precondition: the update never committed');
+        $this->assertTrue(Storage::disk('local')->exists($path), 'precondition: the file did land');
+
+        (new GenerateAuditExport($export->getKey(), [], 'created_at', 'desc'))
+            ->failed(new RuntimeException('db blip between write and update'));
+
+        $this->assertFalse(
+            Storage::disk('local')->exists($path),
+            'a complete audit extract survived a failed job, past its own retention window'
+        );
+
+        $export->refresh();
+
+        $this->assertSame(AuditExportStatus::FAILED, $export->status);
+        $this->assertFalse($export->isDownloadable());
+    }
+
+    /**
+     * A retry rewrites the same path rather than leaving a second file.
+     *
+     * The other half of the same fix. With a fresh `Str::uuid()` per attempt,
+     * three attempts wrote three files and only the last one was ever recorded
+     * or reclaimed.
+     */
+    public function test_a_retry_rewrites_the_same_path(): void
+    {
+        $admin = $this->login(SystemRole::ADMIN);
+
+        $export = AuditExport::query()->create([
+            'user_id' => $admin->getKey(),
+            'filters' => [],
+            'expires_at' => now()->addDays(AuditExport::RETENTION_DAYS),
+        ]);
+
+        $expected = 'audit-exports/'.$admin->getKey().'/'.$export->getKey().'.csv';
+
+        $this->assertSame($expected, $export->diskPath());
+        $this->assertSame($expected, $export->fresh()->diskPath(), 'the path must not depend on whether the row was reloaded');
+
+        // No user-supplied segment, which is what F2's traversal probe relies on.
+        $this->assertStringNotContainsString('..', $expected);
+        $this->assertMatchesRegularExpression('#^audit-exports/\d+/\d+\.csv$#', $expected);
     }
 
     /**
