@@ -67,9 +67,10 @@ trait Auditable
     /**
      * The context every audit row carries, derived once.
      *
-     * Public and static so the one writer that has no model to call it through
-     * — `Controller::audit()`, pending AUD-006 — takes the same derivation rather
-     * than its own. It goes when that method does; the normal path is
+     * Public and static so the writer that has no model to call it through —
+     * `Auditable::auditBulk()` below, which writes raw rows — takes the same
+     * derivation rather than its own. `Controller::audit()` and
+     * `bulkAudit()` were deleted from the base controller; the normal path is
      * `audit()` above, and no caller should assemble this inline.
      *
      * Merged first so a caller-supplied value overrides it, not the other way

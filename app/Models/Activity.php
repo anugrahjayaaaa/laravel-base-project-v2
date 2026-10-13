@@ -17,8 +17,8 @@ use Spatie\Activitylog\Models\Activity as SpatieActivity;
  * a `subject_type` of `App\Models\User` should be shown as. Every consumer that
  * wanted a readable label would write its own mapping, and the fourth consumer
  * would disagree with the third. This class is the one place that turns a stored
- * morph type into a word, so the index table, the detail page and the (planned)
- * export all read the same answer.
+ * morph type into a word, so the index table, the detail page and the export
+ * all read the same answer.
  *
  * ## Read-only is structural, not a convention
  *
@@ -31,13 +31,22 @@ use Spatie\Activitylog\Models\Activity as SpatieActivity;
  * attribute directly before calling `save()`, so no mass assignment is involved
  * on the write path either way.
  *
- * ## `typeLabel()` reads both the FQCN and a future morph alias
+ * ## `typeLabel()` reads both the FQCN and a morph alias
  *
- * There is no `Relation::morphMap()` in the application today, so
- * `subject_type` holds `App\Models\User`. Phase 10 Group D introduces one and
- * rewrites history to `user`. A label map keyed only on the FQCN would render
- * every existing row as an unknown type the day that lands, so both spellings
- * are accepted here and D5 becomes a backfill rather than a rewrite of the view.
+ * `Relation::morphMap(MorphMap::ALIASES)` is registered in `AppServiceProvider`,
+ * and the backfill migration rewrote `subject_type`/`causer_type` to the alias —
+ * so rows written today store `user` and rows written before Group D store
+ * `App\Models\User`. Both spellings are accepted here, which is why D5 was a
+ * backfill rather than a rewrite of this view.
+ *
+ * ## A query against these columns must use the alias too
+ *
+ * The same assumption, made in a WHERE clause, is a bug that renders a working
+ * page silently empty: `AuditIndexAction::causerOptions()` compared
+ * `causer_type` against `User::class` while every row stored `'user'`, so the
+ * actor dropdown was empty on every install and the `causer_id` filter was
+ * unreachable. Compare with `Relation::getMorphAlias(User::class)`, which
+ * returns the class unchanged when nothing is mapped.
  *
  * @property int $id
  * @property string|null $log_name
@@ -263,7 +272,7 @@ class Activity extends SpatieActivity
      * An event-name-to-colour map is presentation logic, and the house rule is
      * that it belongs beside `label()` on the model rather than in a
      * `$badgeClass` closure in a controller or a `match()` in Blade. The index
-     * table, the detail page and the planned export all ask the same question,
+     * table, the detail page and the export all ask the same question,
      * and a map copied into each of them is three maps that disagree the first
      * time a rule is added.
      *

@@ -24,10 +24,16 @@ use Illuminate\Support\Collection;
  *
  * ## The dispatch is after commit
  *
- * `afterCommit = true` on the job, because every queue connection here runs
- * `after_commit => false`. Dispatching inside a transaction would let a worker run
- * `findOrFail()` before this insert is visible and fail the job on the row it was
- * created for.
+ * `->afterCommit()` at the dispatch site, because every queue connection here
+ * runs `after_commit => false`. Dispatching inside a transaction would let a
+ * worker run `findOrFail()` before this insert is visible and fail the job on
+ * the row it was created for.
+ *
+ * It is set HERE rather than as a property on the job:
+ * `Illuminate\Bus\Queueable` already declares `public $afterCommit`, and PHP
+ * refuses a redeclaration whose default differs — a property on the job is a
+ * fatal at class-load, not a lint error. `GenerateAuditExport` says so at the
+ * property it deliberately does not declare.
  */
 class AuditExportRequestAction
 {
