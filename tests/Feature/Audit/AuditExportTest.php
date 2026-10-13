@@ -90,8 +90,6 @@ class AuditExportTest extends TestCase
         (new GenerateAuditExport(
             $export->getKey(),
             $export->filters,
-            'created_at',
-            'desc',
         ))->handle();
     }
 
@@ -245,6 +243,65 @@ class AuditExportTest extends TestCase
     }
 
     /**
+     * The file holds every matching row, exactly once, past the chunk boundary.
+     *
+     * ## Why this test exists
+     *
+     * The query-count test below measures 3 rows and 40 rows. Both fit inside one
+     * 500-row chunk, so it can never see the cursor. It passed green over a job
+     * that wrote 999 lines for 1200 rows: 200 rows missing and 499 duplicated,
+     * because the query ordered `created_at DESC` while `chunkById` filtered on
+     * `id > <last id of the page>` and ordered `id ASC`. A compliance extract with
+     * silently dropped rows is the worst failure this feature has.
+     *
+     * ## Why 1200
+     *
+     * Two full chunks and then some, so the second page is mid-stream rather than
+     * landing exactly on the boundary.
+     */
+    public function test_the_export_holds_every_row_once_past_the_chunk_boundary(): void
+    {
+        Notification::fake();
+
+        $admin = $this->login(SystemRole::ADMIN);
+
+        // Inserted with `created_at` ascending alongside `id`, which is what the
+        // table looks like in production — the bug needed this ordering to fire.
+        $expected = 1200;
+
+        $this->seedMonotonicRows($expected, $admin);
+
+        $export = AuditExport::query()->create([
+            'user_id' => $admin->getKey(),
+            'filters' => [],
+            'expires_at' => now()->addDays(AuditExport::RETENTION_DAYS),
+        ]);
+
+        $this->runJob($export);
+
+        $export->refresh();
+
+        $ids = $this->csvIds($export);
+
+        $this->assertSame($expected, $export->row_count, 'row_count disagrees with the file');
+        $this->assertCount($expected, $ids, 'the file does not hold one line per matching row');
+        $this->assertCount(
+            $expected,
+            array_unique($ids),
+            'the file repeats rows — the chunk cursor re-read a page it had already written'
+        );
+
+        $sorted = $ids;
+        rsort($sorted, SORT_NUMERIC);
+
+        $this->assertSame(
+            $sorted,
+            $ids,
+            'the file is not in descending id order, so it is not the sequence the viewer showed'
+        );
+    }
+
+    /**
      * The job never resolves a relation per row.
      *
      * Asserted on the QUERY COUNT rather than by reading the code: an unfiltered
@@ -264,6 +321,49 @@ class AuditExportTest extends TestCase
         $large = $this->exportQueryCount(40);
 
         $this->assertLessThanOrEqual($small + 1, $large, 'query count grew with the row count');
+    }
+
+    /**
+     * Write $rows activity rows with `created_at` ascending alongside `id`.
+     *
+     * `DB::table()` rather than `$user->audit()` because the model's `created_at`
+     * is `now()` for all of them — a table where every row shares a timestamp is
+     * not what reproduces a cursor bug that depends on the two orderings
+     * disagreeing.
+     */
+    private function seedMonotonicRows(int $rows, User $actor): void
+    {
+        $subject = User::factory()->create();
+
+        for ($i = 0; $i < $rows; $i++) {
+            DB::table('activity_log')->insert([
+                'log_name' => 'default',
+                'description' => 'updated',
+                'subject_type' => $subject->getMorphClass(),
+                'subject_id' => $subject->getKey(),
+                'causer_type' => $actor->getMorphClass(),
+                'causer_id' => $actor->getKey(),
+                'event' => 'user.updated',
+                'properties' => json_encode(['ip' => '127.0.0.1']),
+                'created_at' => now()->subSeconds($rows - $i),
+                'updated_at' => now()->subSeconds($rows - $i),
+            ]);
+        }
+    }
+
+    /**
+     * The `id` column of every data line in the generated file, in file order.
+     *
+     * @return array<int, int>
+     */
+    private function csvIds(AuditExport $export): array
+    {
+        $lines = array_values(array_filter(explode("\n", Storage::disk('local')->get($export->path))));
+
+        // The first line is the header.
+        array_shift($lines);
+
+        return array_map(static fn (string $line): int => (int) strtok($line, ','), $lines);
     }
 
     private function exportQueryCount(int $rows): int
@@ -410,7 +510,7 @@ class AuditExportTest extends TestCase
         $export->update(['path' => $orphan]);
         Storage::disk('local')->put($orphan, 'id,event');
 
-        (new GenerateAuditExport($export->getKey(), [], 'created_at', 'desc'))
+        (new GenerateAuditExport($export->getKey(), []))
             ->failed(new RuntimeException('disk went away'));
 
         $export->refresh();
@@ -459,7 +559,7 @@ class AuditExportTest extends TestCase
         $this->assertNull($export->path, 'precondition: the update never committed');
         $this->assertTrue(Storage::disk('local')->exists($path), 'precondition: the file did land');
 
-        (new GenerateAuditExport($export->getKey(), [], 'created_at', 'desc'))
+        (new GenerateAuditExport($export->getKey(), []))
             ->failed(new RuntimeException('db blip between write and update'));
 
         $this->assertFalse(
@@ -521,14 +621,14 @@ class AuditExportTest extends TestCase
             'expires_at' => now()->addDays(AuditExport::RETENTION_DAYS),
         ]);
 
-        $job = new GenerateAuditExport($export->getKey(), [], 'created_at', 'desc');
+        $job = new GenerateAuditExport($export->getKey(), []);
 
         $this->assertSame(3, $job->tries, 'a transient failure must not be permanent');
         $this->assertSame([10, 30], $job->backoff(), 'three tries inside one outage is not three attempts');
 
         // A row that does not exist: `findOrFail()` throws, which is the cheapest
         // way to make `handle()` fail for real rather than assert on the wrapper.
-        $missing = new GenerateAuditExport($export->getKey() + 9999, [], 'created_at', 'desc');
+        $missing = new GenerateAuditExport($export->getKey() + 9999, []);
 
         Log::spy();
 

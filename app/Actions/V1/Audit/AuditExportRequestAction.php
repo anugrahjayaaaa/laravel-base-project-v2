@@ -62,7 +62,7 @@ class AuditExportRequestAction
      *
      * @param  array<string, mixed>  $filters  as AuditExportRequest::exportFilters()
      */
-    public function run(User $user, array $filters, string $sort = 'created_at', string $direction = 'desc'): AuditExport
+    public function run(User $user, array $filters, string $direction = 'desc'): AuditExport
     {
         $export = AuditExport::query()->create([
             'user_id' => $user->getKey(),
@@ -77,7 +77,6 @@ class AuditExportRequestAction
         GenerateAuditExport::dispatch(
             $export->getKey(),
             $filters,
-            $sort,
             $direction,
         )->afterCommit();
 

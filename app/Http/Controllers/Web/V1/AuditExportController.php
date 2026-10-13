@@ -54,7 +54,6 @@ class AuditExportController extends Controller
         $requestAction->run(
             $request->user(),
             $filters,
-            $filters['sort'] ?? 'created_at',
             $filters['direction'] ?? 'desc',
         );
 

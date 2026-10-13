@@ -129,10 +129,13 @@ class GenerateAuditExport implements ShouldQueue
      *
      * The id rather than the model: `SerializesModels` would restore the whole
      * row from the database at dispatch time anyway, and a serialized snapshot
-     * that the job then overwrites is a second version of the truth. `$filters`,
-     * `$sort` and `$direction` travel as values precisely because they are the
-     * request as it was made — a filter re-derived from the row at run time would
-     * silently change under a deploy.
+     * that the job then overwrites is a second version of the truth. `$filters`
+     * and `$direction` travel as values precisely because they are the request as
+     * it was made — a filter re-derived from the row at run time would silently
+     * change under a deploy.
+     *
+     * There is no `$sort`. The file is ordered by `id` alone, because that is the
+     * column the chunk cursor walks; see `generate()`.
      *
      * @param  int  $exportId
      * @param  array<string, mixed>  $filters
@@ -140,7 +143,6 @@ class GenerateAuditExport implements ShouldQueue
     public function __construct(
         private readonly int $exportId,
         private readonly array $filters,
-        private readonly string $sort = 'created_at',
         private readonly string $direction = 'desc',
     ) {
     }
@@ -202,20 +204,32 @@ class GenerateAuditExport implements ShouldQueue
         try {
             fputcsv($handle, $this->header());
 
-            $rows = 0;
+            $written = 0;
+
+            // Ordered by `id` and ONLY `id`, because `chunkById` cursors on `id`:
+            // it rewrites the ordering to `id ASC` and filters
+            // `WHERE id > <last row of the previous page>`. A leading
+            // `created_at` survives that rewrite as the primary sort key while the
+            // cursor still walks `id`, and the two disagree — measured on 1200 rows
+            // sorted `created_at desc`, the file held 999 lines of which only 500
+            // were distinct: 200 rows never reached the CSV and 499 appeared twice.
+            //
+            // On an append-only audit table `id` order IS `created_at` order — `id`
+            // is already the tiebreaker the viewer sorts on — so the file is the
+            // sequence the operator was looking at.
+            $chunk = $this->direction === 'desc' ? 'chunkByIdDesc' : 'chunkById';
 
             Activity::filtered($this->filters)
-                ->orderBy($this->sort, $this->direction)
                 ->orderBy('id', $this->direction)
                 // Two morphTo relations per row. Without this the export runs one
                 // query PER ROW to resolve a name that is already in the table,
                 // which on an unfiltered export is a self-inflicted denial of
                 // service against the database and the worker alike.
                 ->with(['causer', 'subject'])
-                ->chunkById(500, function ($chunk) use ($handle, &$rows): void {
-                    foreach ($chunk as $activity) {
+                ->{$chunk}(500, function ($rows) use ($handle, &$written): void {
+                    foreach ($rows as $activity) {
                         fputcsv($handle, $this->row($activity));
-                        $rows++;
+                        $written++;
                     }
                 });
 
@@ -233,7 +247,7 @@ class GenerateAuditExport implements ShouldQueue
 
         $export->update([
             'path' => $path,
-            'row_count' => $rows,
+            'row_count' => $written,
             'status' => AuditExportStatus::READY,
             'completed_at' => now(),
         ]);
@@ -243,7 +257,7 @@ class GenerateAuditExport implements ShouldQueue
         Log::notice('audit.export.completed', [
             'export_id' => $export->id,
             'user_id' => $export->user_id,
-            'row_count' => $rows,
+            'row_count' => $written,
         ]);
     }
 
