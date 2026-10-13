@@ -335,9 +335,14 @@ Route::middleware(['auth:web,sanctum', 'verified', 'password.change.required', '
         // `audit.export` on this one too, and the ownership check lives in
         // `AuditExportDownloadAction`: the permission says "may extract", not
         // "may download extract #41", and the id is attacker-supplied.
+        //
+        // Throttled on the SAME limiter as the POST, per plan P10-B4. The export
+        // is one act in two requests, and a limit that only covers half of it is
+        // a limit an operator can walk around by pressing Download instead of
+        // Export — which is exactly the request that costs a disk read.
         Route::get('/activity-logs/exports/{export}/download', [AuditExportController::class, 'download'])
             ->name('activity-logs.exports.download')
-            ->can('audit.export');
+            ->middleware(['can:audit.export', 'throttle:audit-export']);
 
         // The card's own refresh. Same permission as the PAGE it is a fragment of,
         // not the export permission — it returns part of a page `audit.view`

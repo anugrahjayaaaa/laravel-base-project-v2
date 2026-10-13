@@ -184,10 +184,11 @@ Route::prefix('v1')->group(function () {
                 // `audit.export` plus the ownership check inside the action, for
                 // the same reason as the web route: the permission says "may
                 // extract", not "may download extract #41", and the id here is
-                // attacker-supplied.
+                // attacker-supplied. Same `audit-export` limiter as the POST, so
+                // the API is not a way to a larger allowance.
                 Route::get('/activity-logs/exports/{export}/download', 'downloadExport')
                     ->name('api.v1.activity-logs.exports.download')
-                    ->can('audit.export');
+                    ->middleware(['can:audit.export', 'throttle:audit-export']);
             });
         });
 

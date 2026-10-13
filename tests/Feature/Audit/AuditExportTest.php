@@ -756,6 +756,42 @@ class AuditExportTest extends TestCase
     }
 
     /**
+     * The DOWNLOAD is on the same limiter, not just the request that creates one.
+     *
+     * Plan P10-B4 put `throttle:audit-export` on both the export route and the
+     * download route; the download shipped without it, so the limit covered half
+     * the feature. A limiter that only counts the POST is walked around by
+     * pressing Download instead of Export — and the download is the request that
+     * actually reads a file off disk.
+     *
+     * Asserted by exhausting the allowance with POSTs and then asking for a file
+     * that already exists: the file is the viewer's own and would otherwise answer
+     * 200, so a 429 here can only be the limiter.
+     */
+    public function test_the_download_route_shares_the_export_limiter(): void
+    {
+        Queue::fake();
+
+        $admin = $this->login(SystemRole::ADMIN);
+        $export = $this->readyExport($admin);
+
+        $this->get(route('activity-logs.exports.download', $export))->assertOk();
+
+        for ($attempt = 1; $attempt <= 5; $attempt++) {
+            $this->post(route('activity-logs.exports.store'), ['format' => 'csv'])
+                ->assertRedirect();
+        }
+
+        // The web channel answers a throttle with a redirect and an error, not a
+        // 429 — the same shape `LoginThrottle::responseFor()` gives the POST
+        // route, and pinning 429 here would pin the API envelope onto a
+        // browser flow. The point of the assertion is that the limiter FIRED.
+        $this->get(route('activity-logs.exports.download', $export))
+            ->assertRedirect()
+            ->assertSessionHasErrors();
+    }
+
+    /**
      * The ceiling is the SETTING, not the five the test above happens to hit.
      *
      * Two facts in one, because they are the same fact seen from both sides: the
