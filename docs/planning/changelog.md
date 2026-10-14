@@ -96,6 +96,18 @@ Each entry contains:
 
 ---
 
+## 2026-10-14 — Phase 10: the audit export handed a spreadsheet a formula
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-10-14 |
+| **Change** | `GenerateAuditExport::row()` now runs every cell through a `cell()` helper that prefixes a `'` when the first non-whitespace character is `=`, `+`, `-` or `@` (CWE-1236). New `tests/Feature/Audit/CsvInjectionPentestTest.php` — 4 probes. |
+| **Reason** | The `actor` and `target` columns carry `users.name`, and `name` is free text on `PUT /profile` — `UserUpdateAction` runs `strip_tags()`, which drops markup and not a leading `=`. Any authenticated account could set its display name to `=cmd\|'/c calc'!A0`, act, and have that string sitting in the extract the incident responder opens on their own workstation. `fputcsv()` does not help: it quotes fields containing a comma or a quote, and neither is what makes a cell a formula. It survived review because the web viewer escapes the same payload correctly, so nothing in the UI looks wrong — the defect is in the file, not the page. |
+| **Impact** | The `=` `+` `-` `@` prefix is only ADDED where it is needed, so an ordinary name reads as it always did — pinned by `test_an_ordinary_name_is_not_rewritten`, because a fix that stripped the payload instead of quoting it would pass the security probe and silently destroy the evidence the extract exists to provide. Measured cost: **+0.0115 ms/row** against the 0.245 ms/row baseline, so ~4.7%; the 80-second timeout still covers roughly 290 000 rows. Applied to every cell rather than an allowlist of the two or three that carry user text, so the next user-controlled column cannot be forgotten. The EMAIL fallback in `causerLabelFor()` was investigated and is **not** a second vector — the `email` rule requires `local@domain` on every write path. |
+| **Related** | CWE-1236, P10-E3, `phase-10-audit-trail.md`, `docs/security-audit-report.md` |
+
+---
+
 ## 2026-10-13 — Phase 10: export row build and viewer option lists
 
 | Field | Value |

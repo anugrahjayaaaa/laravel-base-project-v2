@@ -146,7 +146,7 @@ email-verification-notice, password-change pages using AdminLTE auth layout.
 - Audit abstraction layer — **DONE** (`App\Models\Concerns\Auditable` trait, one entry point)
 - Async export — **DONE** (job on a private disk, retention sweep, rate limit in `system_settings`)
 - Reader, on **both** channels — **DONE** (`phase-12-api-v1.md` closed the API gap)
-- Pentest — **DONE** (`AuditPentestTest`: 62 probes, verified to fail with the gate removed)
+- Pentest — **DONE** (`AuditPentestTest`: 63 probes, verified to fail with the gate removed; `CsvInjectionPentestTest`: 4 probes, 2026-10-14)
 - Status: DONE — Groups A–F closed. Follow-ups and the two open questions in
   `phase-10-audit-trail.md` §11 remain; see `progress.md`.
 

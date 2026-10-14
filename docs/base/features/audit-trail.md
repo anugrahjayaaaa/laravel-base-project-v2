@@ -470,6 +470,36 @@ rows, one line each, no duplicates, descending `id`. The pre-existing
 query-count test could not catch it — it measures 3 and 40 rows, both inside one
 500-row chunk.
 
+### Cells are inert in a spreadsheet
+
+The `actor` and `target` columns carry `users.name`, and `name` is free text on
+`PUT /profile`. `UserUpdateAction` runs `strip_tags()`, which removes markup and
+does nothing to a leading `=`. So any authenticated account could set its display
+name to `=cmd|'/c calc'!A0`, perform one action, and have that string sitting in
+the file the incident responder opens on their own workstation. `fputcsv()` is
+no defence — it quotes a field containing a comma or a quote, and neither is what
+makes a cell a formula (CWE-1236).
+
+Every cell therefore passes through `GenerateAuditExport::cell()`, which prefixes
+a `'` when the first non-whitespace character is `=`, `+`, `-` or `@`. The `'` is
+how Excel, LibreOffice and Sheets are told "this is text", and it is only ADDED
+where it is needed — `test_an_ordinary_name_is_not_rewritten` exists because a fix
+that stripped the payload instead of quoting it would satisfy the security probe
+and destroy the evidence the extract exists to provide.
+
+Leading whitespace is skipped before the check on purpose: a tab or a space in
+front of the `=` is the standard way past a check that only looks at position 0.
+`strspn()` does that in one pass, with no trimmed copy per cell.
+
+Applied to **every** cell rather than to the two or three that carry user text —
+measured at +0.0115 ms/row against 0.245, so ~4.7% — because an allowlist is
+a place for the next user-controlled column to be forgotten.
+
+`causerLabelFor()` falls back to the email when the name is empty, which reads
+like a second way in. It is not one: the `email` rule on every write path
+requires `local@domain`, so no reachable address begins with `=`. `name` is the
+only attacker-chosen cell.
+
 ### The export is PHP-bound, and the cast was the cost
 
 Measured at 5 000 rows: **2 466 ms wall, of which 12.4 ms is SQL.** The database
