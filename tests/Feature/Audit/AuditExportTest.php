@@ -1092,6 +1092,42 @@ class AuditExportTest extends TestCase
     }
 
     /**
+     * The export button disables itself, and still submits.
+     *
+     * Lives here rather than beside the other markup assertions in
+     * `AuditLogUiRenderTest` because the claim is about how many ROWS AND JOBS one
+     * click produces, which is this file's subject — not about how the page looks.
+     *
+     * ## The second half of the attribute is the load-bearing half
+     *
+     * HTML evaluates the submitter's state when the submission is triggered, so a
+     * `type="submit"` button that is disabled by the time its own click's default
+     * action runs aborts that submission. `onclick="this.disabled = true;"` alone
+     * greys the button out and posts nothing — a guard that breaks the control it
+     * guards, and the exact bug this shipped with once. `form.submit()` submits the
+     * form directly rather than through the button, which is why the disabled state
+     * is irrelevant and why the four auth forms carry the same pair.
+     *
+     * A string assertion cannot prove what a click does. What it does is pin the
+     * trap for the next editor, which is worth having here: this assertion was
+     * green while the export was completely broken.
+     */
+    public function test_the_export_button_guards_itself_without_swallowing_the_submit(): void
+    {
+        // The button only renders for holders of `audit.export`, so the login is a
+        // precondition and not a detail.
+        $this->login(SystemRole::ADMIN);
+
+        $html = $this->get(route('activity-logs.index'))->assertOk()->getContent();
+
+        $this->assertStringContainsString(
+            'onclick="this.disabled = true; this.form.submit();"',
+            $html,
+            'the double-click guard disables the submit button without submitting, which breaks the export'
+        );
+    }
+
+    /**
      * The ceiling is the SETTING, not the five the test above happens to hit.
      *
      * Two facts in one, because they are the same fact seen from both sides: the
