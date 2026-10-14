@@ -79,6 +79,17 @@ class SystemSettingSeeder extends Seeder
         // read it and change it without a deploy, which the literal could not.
         SystemSetting::set('audit_export_rate_limit_per_hour', '5');
 
+        // Manual retries on a failed export, PER ROW. Three clicks by default,
+        // counted as clicks while the job already retries three times inside
+        // each one.
+        //
+        // Same reason as the ceiling above: an operator whose exports keep dying
+        // on something environmental should be able to turn the button off (0)
+        // or widen it for an incident without waiting for a deploy. Read through
+        // `AuditExport::maxRetries()`, which is also what the Action and the
+        // resource call, so this row is the single source for all three.
+        SystemSetting::set('audit_export_max_manual_retries', '3');
+
         // The three remaining route limiters — Phase 12 P12-2.
         //
         // Same reason as the export ceiling above: an operator who wants a

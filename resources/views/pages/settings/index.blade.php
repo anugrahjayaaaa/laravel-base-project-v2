@@ -493,6 +493,32 @@
                                 @enderror
                             </div>
 
+                            {{-- Per ROW, not per hour: the counter lives on the export
+                                 itself, so this is how many times one failed export may
+                                 be re-run by hand before it says "Contact admin". Read
+                                 by `AuditExport::maxRetries()`, which the retry Action
+                                 and the API resource also call.
+
+                                 Zero is allowed on purpose — it removes the button
+                                 entirely, which is the honest setting for an install
+                                 whose failures are environmental and better handled by
+                                 an operator than by an operator's patience. --}}
+                            <div class="col-md-6">
+                                <label for="audit_export_max_manual_retries" class="form-label">
+                                    Export Retries
+                                    <i class="bi bi-info-circle text-muted fs-7 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="How many times a single failed export may be re-run by hand before the row asks the operator to contact an administrator. Each retry is three further attempts at building the file. Set to 0 to remove the retry button."></i>
+                                </label>
+                                <div class="input-group">
+                                    <input type="number" name="audit_export_max_manual_retries" id="audit_export_max_manual_retries"
+                                           class="form-control form-control-sm @error('audit_export_max_manual_retries') is-invalid @enderror" @error('audit_export_max_manual_retries') aria-invalid="true" aria-describedby="audit_export_max_manual_retries_error" @enderror
+                                           value="{{ old('audit_export_max_manual_retries', $settings['audit_export_max_manual_retries'] ?? 3) }}" min="0" max="10">
+                                    <span class="input-group-text bg-body-tertiary">/ export</span>
+                                </div>
+                                @error('audit_export_max_manual_retries')
+                                    <div class="invalid-feedback d-block" id="audit_export_max_manual_retries_error">{{ $message }}</div>
+                                @enderror
+                            </div>
+
                             {{-- Phase 12 P12-2: these three were literals in
                                  AppServiceProvider until then. Not wrong —
                                  unreachable, which for the mail one means an

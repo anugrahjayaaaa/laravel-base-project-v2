@@ -119,6 +119,11 @@ class SystemSettingsUpdateAction
             // tooltip quotes it, so this row is the single source for both.
             'audit_export_rate_limit_per_hour' => (string) ($data['audit_export_rate_limit_per_hour'] ?? 5),
 
+            // Manual retries per failed export row. The `?? 3` covers a payload
+            // that omits the field — an API client that never heard of it — and is
+            // the same fallback shape as the ceiling above.
+            'audit_export_max_manual_retries' => (string) ($data['audit_export_max_manual_retries'] ?? 3),
+
             // Phase 12 P12-2: the three limiters that were literals. The defaults
             // here are the literals they replace, so an install that never opens
             // the settings page enforces exactly what it enforced before.
