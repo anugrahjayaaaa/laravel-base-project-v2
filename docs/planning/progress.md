@@ -187,7 +187,10 @@ API foundation, AdminLTE UI foundation, and feature flags:
   queue=database default / Redis compatible
 - Sanctum ^4.0 installed, API guard configured, User has HasApiTokens
 - Spatie Permission ^6.0 installed, migrations + config published, User has HasRoles
-- Spatie ActivityLog ^4.8 installed (Phase 10 integration pending)
+- Spatie ActivityLog ^4.8 installed AND integrated (Phase 10 done: one entry point,
+  `App\Models\Concerns\Auditable`, and `Auditable::auditContext()` as the single
+  place its context is derived — the package is behind the abstraction, not beside
+  it)
 - Laravel Pulse ^1.8 installed (config + migrations published), replacing
   Telescope ^5.0 and Periscope v0.3 in commit `85384b4`. The `pulse` feature
   flag gates /pulse through `pulse.middleware` (`b08b8b4`).
@@ -319,8 +322,8 @@ None — no implementation has started yet.
 
 ## Test Status
 
-**1590 passed / 5396 assertions** (2026-10-08, Phase 9 re-audit + the two open items closed). PHPUnit 12, `test_` prefix, SQLite
-`:memory:`, 5 intentionally assertion-free benchmark cases.
+**1959 passed / 6675 assertions** (2026-10-14, `feature/phase-10-audit-trail` — Phase 10 plus the export-retry and audit a11y passes). PHPUnit 12, `test_` prefix, SQLite
+`:memory:`, 5 intentionally assertion-free benchmark cases. This is the LIVE figure; the counts inside the phase rows above are dated gate measurements, deliberately left at what each gate actually saw.
 
 The suite is grouped by domain (13 folders under `tests/Feature/`, nothing at the root) and governed by
 one architectural gate that was added after the grouping exposed how far the convention had drifted:

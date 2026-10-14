@@ -79,7 +79,7 @@ A declared flag is not an active flag: the `database` store is fail-closed, so
 
 ## Current state
 Phases 0–10 done, Phase 11 (monitoring) done, 12–17 planned.
-Full suite: 1922 tests / 6476 assertions (measured 2026-10-13). 5 benchmark tests
+Full suite: 1959 tests / 6675 assertions (measured 2026-10-14, `feature/phase-10-audit-trail`). 5 benchmark tests
 are intentionally assertion-free. Read `docs/planning/progress.md` for the live
 picture.
 
