@@ -432,7 +432,9 @@ Each audit record must capture:
 
 - Audit export is asynchronous (AUDIT-005) via a queued job
 - Export files are stored in private storage, not public
-- Export files expire per the retention policy (`retention.tmp_exports.hours`)
+- Export files expire 7 days after generation
+  (`App\Models\AuditExport::RETENTION_DAYS`) — **not** `retention.tmp_exports.hours`,
+  which `operations/retention.md` marks as a slot nothing writes to
 
 ### Retention
 

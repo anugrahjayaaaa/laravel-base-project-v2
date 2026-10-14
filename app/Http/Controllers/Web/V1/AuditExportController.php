@@ -76,8 +76,9 @@ class AuditExportController extends Controller
      * The SAME partial, re-rendered with the SAME scoped action, is the answer
      * rather than a JSON payload plus a second renderer in JavaScript: there is
      * one place that decides what a `pending` row looks like, and a fragment that
-     * is rendered by that place cannot drift from the page. `layouts/partials/
-     * notification-preview` already established this shape.
+     * is rendered by that place cannot drift from the page. The same shape that
+     * `layouts/partials/notification-dropdown-list.blade.php` is swapped into by
+     * established.
      *
      * ## `audit.view`, not `audit.export`
      *
