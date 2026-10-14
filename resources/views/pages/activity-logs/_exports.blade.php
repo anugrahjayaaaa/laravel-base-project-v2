@@ -99,8 +99,19 @@
                                 <td class="align-middle text-nowrap">
                                     {{ $export->created_at->format('Y-m-d H:i') }}
                                     <span class="d-block fs-7">
-                                        <span
-                                            class="badge {{ $status->badgeClass() }}">{{ $status->label() }}</span>
+                                        {{-- The spinner rides INSIDE the badge, beside the
+                                             word, and not instead of it: design-system.md
+                                             §Accessibility is that state is never carried by
+                                             one channel alone. `Preparing` alone also says
+                                             nothing about whether anything is running.
+                                             The classes come from the enum so a Blade here
+                                             never names a case. --}}
+                                        <span class="badge {{ $status->badgeClass() }}">{{ $status->label() }}
+                                            @php($spinner = $status->spinnerClass())
+                                            @if ($spinner !== null)
+                                                <i class="{{ $spinner }} ms-1" aria-hidden="true"></i>
+                                            @endif
+                                        </span>
                                     </span>
                                 </td>
                                 <td class="align-middle fs-7">

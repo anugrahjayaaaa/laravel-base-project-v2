@@ -459,6 +459,76 @@ class AuditLogUiRenderTest extends TestCase
     }
 
     /**
+     * The polled `Preparing → Ready` swap was silent.
+     *
+     * ## The live region cannot live in the partial it announces
+     *
+     * `#audit-exports` is replaced wholesale every poll, so a region inside it is
+     * a different element five seconds later, and `aria-live` only announces
+     * changes to a node that was ALREADY in the accessibility tree. The assertion
+     * that matters is therefore the negative one: the container is CLOSED before
+     * the region opens, so the region is a sibling of the thing being replaced
+     * rather than a descendant that dies with it. `visually-hidden` rather than
+     * `d-none`, because an element with `display:none` is not in the tree at all
+     * and cannot be a live region however it is labelled.
+     */
+    public function test_the_polled_swap_is_announced(): void
+    {
+        $index = $this->renderIndex();
+
+        $liveAt = strpos($index, 'id="audit-exports-live"');
+        $swappedAt = strpos($index, 'id="audit-exports"');
+
+        $this->assertIsInt($liveAt, 'the live region the poller writes into is missing');
+        $this->assertIsInt($swappedAt);
+
+        // Nesting, not order: what makes a live region work is that it was already
+        // in the accessibility tree before the swap replaced its siblings. So the
+        // container must be CLOSED before the region opens — a `</div>` has to
+        // appear between the two offsets. Asserting document order alone would
+        // pass for a region nested INSIDE the container placed after it.
+        $between = substr($index, $swappedAt, $liveAt - $swappedAt);
+
+        $this->assertStringContainsString(
+            '</div>',
+            $between,
+            'the live region sits inside the subtree the poller replaces, so it announces nothing'
+        );
+
+        $this->assertStringContainsString('aria-live="polite"', $index);
+        $this->assertStringContainsString('visually-hidden', $index);
+    }
+
+    /**
+     * `x-ui.sortable-th` is a SHARED component — activity logs, roles and
+     * permissions all render their header row through it — so the header a11y it
+     * missed is three tables' worth, not one row's.
+     *
+     * `scope="col"` on every header cell, and `aria-sort` on exactly ONE of them.
+     * The second half is the assertion that carries the meaning: the attribute
+     * describes the table's current sort order, so `aria-sort="none"` on all seven
+     * cells announces "not sorted" seven times and drowns the single cell that
+     * holds the answer.
+     */
+    public function test_the_sortable_header_declares_its_scope_and_which_column_is_sorted(): void
+    {
+        $html = $this->renderIndex();
+
+        $this->assertStringContainsString('scope="col"', $html, 'a header cell does not declare what it labels');
+
+        // The activity page defaults to sorting by created_at desc.
+        preg_match_all('/aria-sort="(ascending|descending)"/', $html, $sorted);
+
+        $this->assertCount(
+            1,
+            $sorted[1],
+            'exactly one column may claim the sort order; found: '.implode(', ', $sorted[1])
+        );
+
+        $this->assertStringNotContainsString('aria-sort="none"', $html, 'aria-sort="none" is an absence, not a claim');
+    }
+
+    /**
      * A read-only list gets no selection column.
      *
      * `design-system.md` §Table Conventions: "A list of read-only rows ... gets no

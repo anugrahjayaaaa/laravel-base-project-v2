@@ -161,6 +161,47 @@ class AuditExportListTest extends TestCase
     }
 
     /**
+     * A `pending` row says something is happening. It rendered the bare word
+     * `Preparing`, which describes a state without showing that any work is
+     * running — the failure `design-system.md` §States names when it asks for a
+     * spinner.
+     *
+     * Asserted per state rather than on the page, because the failure is
+     * asymmetric: a spinner next to `Ready` is a lie about work in progress, and
+     * only the negative case catches that one.
+     *
+     * @return array<string, array{0: AuditExportStatus, 1: bool}>
+     */
+    public static function spinnerProvider(): array
+    {
+        return [
+            'still generating' => [AuditExportStatus::PENDING, true],
+            'finished' => [AuditExportStatus::READY, false],
+            'died' => [AuditExportStatus::FAILED, false],
+        ];
+    }
+
+    #[DataProvider('spinnerProvider')]
+    public function test_only_a_pending_row_carries_a_spinner(AuditExportStatus $status, bool $expected): void
+    {
+        $user = $this->login();
+        $this->exportFor($user, ['status' => $status, 'path' => null, 'row_count' => null]);
+
+        $response = $this->get(route('activity-logs.index'));
+
+        $response->assertOk();
+
+        if ($expected) {
+            $response->assertSee('fa-spinner', false);
+            // And the word stays: state is never carried by motion alone, which
+            // is also what makes stopping the motion under reduced-motion safe.
+            $response->assertSee('Preparing');
+        } else {
+            $response->assertDontSee('fa-spinner', escape: false);
+        }
+    }
+
+    /**
      * @return array<string, array{0: array<string, mixed>, 1: string}>
      */
     public static function undownloadableProvider(): array

@@ -239,6 +239,30 @@
     {{-- The viewer's own exports, below the log they came from. --}}
     @include('pages.activity-logs._exports')
 
+    {{-- The live region the poller below writes into, and WHY it cannot live
+         inside the partial it announces.
+
+         `#audit-exports` is replaced wholesale on every swap, so anything inside it
+         is a different element five seconds later — and `aria-live` only announces
+         CHANGES to a node that was already in the accessibility tree. A live
+         region added to `_exports.blade.php` would be destroyed and recreated on
+         the first poll, which announces nothing: the node the screen reader was
+         watching is gone, and a fresh node whose content arrived with it is read
+         only if focus happens to land on it.
+
+         So the region lives HERE, outside the swapped subtree, and the poller
+         writes a sentence into it on the transition. `visually-hidden` rather than
+         `d-none`: an element with `display:none` is removed from the accessibility
+         tree entirely and cannot be a live region at all.
+
+         `polite`, not `assertive`: a resolved export is information, not an
+         emergency, and `assertive` would interrupt whatever the operator was
+         actually reading.
+
+         The detail page includes the same partial and needs none of this — nothing
+         on that page changes without a navigation. --}}
+    <span id="audit-exports-live" class="visually-hidden" role="status" aria-live="polite"></span>
+
     @push('scripts')
         <script>
             {{-- The Detail control is icon-only, so its tooltip IS its label and
@@ -361,12 +385,39 @@
                             // about. One request, fired only on the transition, not
                             // on every swap.
                             if (wasInFlight) {
+                                announce();
                                 window.dispatchEvent(new CustomEvent('notifications:refresh'));
                             }
                         })
                         .catch(function () {
                             backoffUntil = Date.now() + 300000;
                         });
+                }
+
+                // The sentence the screen reader hears.
+                //
+                // Counts the STATUS the Blade just rendered rather than mapping
+                // states to sentences in JavaScript — that map would be a second
+                // copy of what `_exports.blade.php` already decides, and the two
+                // would disagree the first time a state was added. Reading
+                // `data-status` is the same trick `workInFlight()` uses, and it
+                // cannot drift for the same reason.
+                //
+                // Only ever called on a transition, never per poll: a live region
+                // that re-announces the same table every five seconds is noise,
+                // and noise in a live region is worse than silence.
+                function announce() {
+                    var live = document.getElementById('audit-exports-live');
+
+                    if (!live) {
+                        return;
+                    }
+
+                    var failed = container.querySelectorAll('[data-status="failed"]').length;
+
+                    live.textContent = failed > 0
+                        ? failed + ' of your exports failed. Contact an administrator.'
+                        : 'An export is ready to download.';
                 }
 
                 if (workInFlight()) {

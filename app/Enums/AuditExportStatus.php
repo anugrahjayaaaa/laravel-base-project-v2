@@ -54,4 +54,30 @@ enum AuditExportStatus: string
             self::FAILED => 'bg-danger-subtle text-danger border border-danger-subtle',
         };
     }
+
+    /**
+     * The spinner classes for this status, per design-system.md § States
+     * ("Loading | Spinner or skeleton").
+     *
+     * `pending` is the only state that has something happening to it, and it was
+     * rendering the bare word `Preparing` — a word that describes a state without
+     * showing that anything is running. That is the failure the design system
+     * names: a spinner that resolves into an error nobody saw.
+     *
+     * Null for the states that are not loading, because a spinner next to `Ready`
+     * is a lie about work in progress. The word stays either way, so the state is
+     * never carried by motion alone.
+     *
+     * A method rather than a `@if ($status === …)` in the Blade: `layouts/`
+     * partials may not reference an enum case, so a view-side branch would have
+     * to compare the raw value string — which is exactly the copy that breaks when
+     * a state is added. Same argument as `badgeClass()` above.
+     */
+    public function spinnerClass(): ?string
+    {
+        return match ($this) {
+            self::PENDING => 'fas fa-spinner fa-spin',
+            self::READY, self::FAILED => null,
+        };
+    }
 }

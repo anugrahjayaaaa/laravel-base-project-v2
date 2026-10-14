@@ -182,6 +182,19 @@
             </div>
 
             <div class="card border-0 shadow-sm mb-4">
+                {{-- The header, like its three siblings above. It is a header
+                     rather than a titled note because the four cards on this page
+                     are read as one set — What happened / Recorded properties /
+                     Request context / Read-only — and one card with a bare
+                     `card-body` breaks the set for exactly the operator scanning
+                     the column for the section they need.
+
+                     "Read-only" is the requirement the page documents rather than
+                     a label for the prose below it, and it is the one section
+                     whose answer is a rule rather than data. --}}
+                <div class="card-header bg-transparent border-bottom py-3">
+                    <h5 class="card-title mb-0 fw-semibold">Read-only</h5>
+                </div>
                 <div class="card-body p-4">
                     <div class="d-flex align-items-start gap-2">
                         <i class="fas fa-shield-halved fs-7 text-muted mt-1"></i>
