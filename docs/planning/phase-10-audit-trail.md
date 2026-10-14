@@ -1,15 +1,21 @@
 # Phase 10 — Audit Trail
 
-> Date: 2026-10-09 | Branch: feature/phase-10-audit-trail` | Status: PLANNED (docs only, no code touched)
-> Purpose: execution breakdown for the audit **read** side + async export. The
-> audit **write** side already shipped and is verified — see §1.
-> Groups: **A = every view, the sidebar entry and the nav.** B onward is logic,
-> validation, access control, write-path integrity and export.
-> No task in this document has been started. Nothing is committed.
+> Date: 2026-10-09 (breakdown) · 2026-10-10 → 2026-10-13 (Groups A–F, then the API read side and the performance pass) | Branch: feature/phase-10-audit-trail
+> Status: **DONE — Groups A–F closed 2026-10-13.** Every task below shipped and is verified; the read side then went to the API too (`phase-12-api-v1.md`).
+> Purpose: execution breakdown for the audit **read** side + async export, kept as the plan of record. When it was written the audit **write** side had shipped and the read side did not — so every "does not exist" table in §1 is that snapshot, not a description of the module now. Read §1 for why the work was shaped the way it was; read `docs/base/features/audit-trail.md` for what the module actually is.
+> Groups: **A = every view, the sidebar entry and the nav.** B onward is logic, validation, access control, write-path integrity and export.
 
 ---
 
 ## Headline finding — the write side is done, the read side does not exist
+
+> **Written 2026-10-09, before any of this shipped.** The table below is the state
+> that justified building Groups A–F, and it is kept because the reasoning is what
+> the breakdown rests on. Every "no hit", "empty" and "does not exist" in it was
+> true that day and is false now — `App\Models\Activity`, the actions, the
+> controller, the routes, the views, the resource, the two permissions and the
+> whole export path all exist and are pinned by `tests/Feature/Audit/`. For the
+> module as it is, read `docs/base/features/audit-trail.md`.
 
 The roadmap describes Phase 10 as "Audit package integration, audit abstraction
 layer, async export". The first two are **already shipped and reconciled**:
@@ -30,6 +36,10 @@ export.** AUDIT-001/002/003 in the tracker are done in substance and should be
 reconciled rather than re-implemented.
 
 ### Two stale claims found while auditing this
+
+> **Both closed by P10-F4 (2026-10-13).** Kept because the reasoning is what
+> justifies the removals, not because the claims are live. Re-closing them is not
+> outstanding work.
 
 Both are in planning docs, not code. Fixing them is part of Group F.
 
@@ -677,5 +687,6 @@ MON-P11-05 there. What Phase 10 asked for, and the short answer:
 
 ---
 
-*Breakdown complete. Nothing implemented, nothing committed. Start at B1, or at
-D1+D2 if the missing `request_id` wants fixing before the viewer exists.*
+*Breakdown complete 2026-10-09. Groups A–F shipped through 2026-10-13 — see the
+status line at the top and `progress.md` for what closed where. What is still
+open is in §11.*

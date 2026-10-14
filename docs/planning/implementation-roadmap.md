@@ -15,7 +15,7 @@
 | 8 | Settings | P1 | PLANNED |
 | 9 | Notification/mail/queue | P1 | DONE |
 
-| 10 | Audit Trail | P0 | PLANNED |
+| 10 | Audit Trail | P0 | DONE |
 | 11 | Monitoring/observability | P1 | PLANNED |
 | 12 | API V1 | P0 | PLANNED |
 | 13 | Security hardening | P0 | PLANNED |
