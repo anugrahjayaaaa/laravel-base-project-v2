@@ -85,8 +85,8 @@ override `source` (a job passes `system`). No model observers. See
 `docs/base/architecture/application-boundaries.md` §
 Action-First Audit Logging Standard and `docs/base/features/audit-trail.md`.
 
-Migrated: User, System, Role, Feature (already compliant), Auth web + API.
-Remaining: AUD-006 (Profile) — the last caller of `Controller::audit()`.
+Migrated: User, System, Role, Feature (already compliant), Auth web + API, Profile.
+`Controller::audit()` is deleted; there is no caller left to migrate.
 
 ---
 

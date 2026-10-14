@@ -28,7 +28,7 @@
 ## Current Task
 
 **None in flight.** Phases 0–9 are complete; the next work is Phase 10 (Audit Trail), which is
-architecture-done with `AUD-006` (Profile) still to migrate.
+architecture-done.
 
 **Phase 9 — Notifications & Mail: DONE** (re-audited 2026-10-08)
 The phase did not simply close on a green suite. Four passes ran after Groups A–E shipped, and each
