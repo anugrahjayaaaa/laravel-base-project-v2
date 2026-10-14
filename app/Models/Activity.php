@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
@@ -184,15 +185,41 @@ class Activity extends SpatieActivity
      */
     public function causerLabel(): string
     {
-        if ($this->causer instanceof User) {
-            return $this->causer->name !== '' && $this->causer->name !== null
-                ? $this->causer->name
-                : $this->causer->email;
+        return self::causerLabelFor($this->causer, $this->causer_id, $this->extra('causer'));
+    }
+
+    /**
+     * The rule behind `causerLabel()`, as a pure function of its inputs.
+     *
+     * ## Why this exists separately from the accessor
+     *
+     * The export (`GenerateAuditExport`) has to answer the same question for the
+     * same rows, and it answers it for 20 000 rows a time. Hydrating an
+     * `Activity` per row to reuse this accessor was measured at 1.58 ms/row,
+     * which put the job's 80-second timeout at about 50 000 rows — an export of
+     * a table this application never prunes stopped completing at all.
+     *
+     * So the job resolves the names itself, once per chunk, and calls THIS to
+     * decide what to call them. The alternative was a second copy of these rules
+     * in the job, and a second copy is how a file and a screen start disagreeing
+     * about what a deleted actor is called. The rules stay here; only the lookup
+     * moved.
+     *
+     * @param  Model|null  $resolved  the loaded actor, or null when there is none to load
+     * @param  int|string|null  $causerId
+     * @param  mixed  $marker  the `properties.causer` marker, `SYSTEM` being the one that means something
+     */
+    public static function causerLabelFor(?Model $resolved, int|string|null $causerId, mixed $marker = null): string
+    {
+        if ($resolved instanceof User) {
+            return $resolved->name !== '' && $resolved->name !== null
+                ? $resolved->name
+                : $resolved->email;
         }
 
         // The SYSTEM marker is what `AuditsSystemActivity` writes, and it is the only
         // thing separating a scheduled job from a genuinely unattributed row.
-        if ($this->causer_id === null && $this->extra('causer') === 'SYSTEM') {
+        if ($causerId === null && $marker === 'SYSTEM') {
             return 'System';
         }
 
@@ -202,8 +229,8 @@ class Activity extends SpatieActivity
         // rendered this as "Anonymous", claiming nobody performed an action a named
         // person performed. The id outlives the row, so the honest answer names
         // it, and it is the answer an incident review needs.
-        if ($this->causer_id !== null) {
-            return 'Deleted user (#' . $this->causer_id . ')';
+        if ($causerId !== null) {
+            return 'Deleted user (#' . $causerId . ')';
         }
 
         return 'Anonymous';
@@ -218,27 +245,40 @@ class Activity extends SpatieActivity
      */
     public function subjectLabel(): string
     {
-        $subject = $this->subject;
+        return self::subjectLabelFor($this->subject, $this->subject_type, $this->subject_id);
+    }
 
-        if ($subject instanceof User) {
-            return $subject->name !== '' && $subject->name !== null
-                ? $subject->name
-                : $subject->email;
+    /**
+     * The rule behind `subjectLabel()`, as a pure function of its inputs.
+     *
+     * Same reason as `causerLabelFor()`: the export asks this for every row it
+     * writes, and one copy of the rules has to answer.
+     *
+     * @param  Model|null  $resolved
+     * @param  string|null  $subjectType
+     * @param  int|string|null  $subjectId
+     */
+    public static function subjectLabelFor(?Model $resolved, ?string $subjectType, int|string|null $subjectId): string
+    {
+        if ($resolved instanceof User) {
+            return $resolved->name !== '' && $resolved->name !== null
+                ? $resolved->name
+                : $resolved->email;
         }
 
-        if ($subject !== null) {
-            return method_exists($subject, 'name')
-                ? (string) $subject->name
-                : '#' . $subject->getKey();
+        if ($resolved !== null) {
+            return method_exists($resolved, 'name')
+                ? (string) $resolved->name
+                : '#' . $resolved->getKey();
         }
 
-        if ($this->subject_type === null) {
+        if ($subjectType === null) {
             return '—';
         }
 
-        return $this->subject_id === null
+        return $subjectId === null
             ? '—'
-            : '#' . $this->subject_id;
+            : '#' . $subjectId;
     }
 
     /**

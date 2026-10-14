@@ -493,12 +493,57 @@ returned its default. Build cost 0.3075 → 0.2128 ms/row (−31%).
 `subjectLabel()` would have to be reimplemented outside the model, which
 duplicates the one place that decides what a deleted actor is called.
 
+### …and that is the lever that was taken, once the rules moved
+
+That reasoning was right about the cost and wrong about the ceiling being far
+away. Hydrating 20 000 rows was measured at **1.58 ms/row**, so the job's 80-second
+timeout stopped completing at roughly **50 000 rows** — and `activity_log` is never
+pruned, so an export of a year-old installation could not finish at all. Three
+retries did not help: each attempt ran the same full export and was killed at the
+same 80 seconds.
+
+The fix was to take the lever WITHOUT the duplication, by splitting the two
+resolvers in `Activity` into pure functions of their inputs:
+
+| | |
+| --- | --- |
+| `Activity::causerLabel()` | delegates to `Activity::causerLabelFor(?Model $resolved, $causerId, $marker)` |
+| `Activity::subjectLabel()` | delegates to `Activity::subjectLabelFor(?Model $resolved, $subjectType, $subjectId)` |
+
+The job now streams raw rows (`->toBase()`), resolves the chunk's distinct actor
+and subject ids once (`labelMap()`, at most one query per morph type present), and
+calls the SAME static functions the viewer calls. One copy of the rules answers
+both surfaces, so the file cannot drift from the screen — including on the branch
+that reads like a bug, a resolved non-`User` causer rendering `Deleted user (#id)`.
+
+Measured on 20 000 rows, three runs each, same 124 queries before and after:
+
+| | ms/row | wall |
+| --- | --- | --- |
+| hydrated models | 1.58 | 31.6 s |
+| raw rows + shared resolvers | 0.245 | 4.4–5.2 s |
+
+**6.4x.** Byte-identical output, verified by exporting the same fixture through
+both implementations and diffing the files — the fixture includes a soft-deleted
+actor, a NULL `properties` column, a NULL `event`, a NULL subject and a
+system-style row, because those are the rows a rewrite breaks.
+
+An earlier iteration that pre-resolved names to STRINGS measured 0.104 ms/row, but
+it carried its own copy of the label rules. Paying ~2x to delete the second copy
+is the right trade: the copy is what the 2026-10-13 note above was refusing, and
+Eloquent does not memoise a cast, so every row was re-reading `name` off a model
+anyway.
+
+The 80-second timeout no longer binds. At 0.245 ms/row it covers roughly 300 000
+rows; raising `$timeout` and `retry_after` is therefore **not** required, and is
+still the wrong move to take alone — it moves the cliff rather than removing it.
+
 ### What shipped (Phase 10, Group E)
 
 ```
 POST /activity-logs/exports          audit.export + throttle:audit-export
     ↓ audit_exports row (pending, expires_at = now + 7 days)
-GenerateAuditExport                  chunkById(Desc) 500 ordered by id, fputcsv, local disk
+GenerateAuditExport                  chunkById(Desc) 500 ordered by id, raw rows + labelMap, fputcsv, local disk
     ↓ audit-exports/{user_id}/{id}.csv
 row → ready + AuditExportReadyNotification (database + mail)
     ↓
