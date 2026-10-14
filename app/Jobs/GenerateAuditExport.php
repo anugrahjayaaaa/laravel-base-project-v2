@@ -453,7 +453,7 @@ class GenerateAuditExport implements ShouldQueue
         $props = $row['properties'] === null ? null : json_decode($row['properties'], true);
         $extra = static fn (string $key, mixed $default = null): mixed => is_array($props) ? ($props[$key] ?? $default) : $default;
 
-        return [
+        return array_map(self::cell(...), [
             (string) $row['id'],
             (string) $row['created_at'],
             // `Activity::eventName()`: a row written before the `event` column
@@ -478,6 +478,52 @@ class GenerateAuditExport implements ShouldQueue
             (string) ($extra('ip') ?? ''),
             (string) ($extra('request_id') ?? ''),
             (string) json_encode($props),
-        ];
+        ]);
+    }
+
+    /**
+     * One cell, made inert in a spreadsheet (CWE-1236).
+     *
+     * The actor and target columns carry `users.name`, and `name` is free text on
+     * the profile endpoint — `strip_tags()` drops markup, not a leading `=`. So an
+     * ordinary account could set its display name to `=cmd|'/c calc'!A0`, act, and
+     * have the payload sit in the extract that the person handling the incident
+     * opens on their own workstation. `fputcsv()` does not help: it quotes fields
+     * containing a comma or a quote, and neither is what makes a cell a formula.
+     *
+     * A leading `'` is how Excel, LibreOffice and Sheets are told "this is text".
+     * The character is only ADDED to cells that need it, so an ordinary name reads
+     * as it always did.
+     *
+     * `strspn()` rather than `ltrim()` because this runs over every cell of every
+     * chunk — a trimmed copy per cell on a table that runs to hundreds of
+     * thousands of rows is an allocation this job cannot afford. It answers "skip
+     * the leading whitespace and tell me where I landed" in one pass, which is
+     * also the whole defence: a tab or a space in front of the `=` is the
+     * standard way past a check that only looks at position 0.
+     *
+     * It is applied to EVERY cell rather than to the two or three that carry user
+     * text, and that is a deliberate cost. Measured: +0.0115 ms/row against the
+     * 0.245 ms/row above, so ~4.7% — 80 seconds still buys roughly 290 000 rows.
+     * A column allowlist would be cheaper and would also be a place for the next
+     * user-controlled column to be forgotten.
+     *
+     * @see CsvInjectionPentestTest
+     */
+    private static function cell(mixed $value): string
+    {
+        $value = (string) $value;
+
+        $offset = strspn($value, " \t\r\n");
+
+        // All whitespace, or nothing at all — nothing to neutralise.
+        if ($offset === strlen($value)) {
+            return $value;
+        }
+
+        return match ($value[$offset]) {
+            '=', '+', '-', '@' => "'".$value,
+            default => $value,
+        };
     }
 }
