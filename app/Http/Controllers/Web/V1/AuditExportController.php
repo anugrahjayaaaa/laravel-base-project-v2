@@ -104,6 +104,27 @@ class AuditExportController extends Controller
     }
 
     /**
+     * Run one failed export again.
+     *
+     * `AuditExportRequestAction::retry()` owns the state transition, the cap and
+     * the dispatch; this method only names the outcome. There is no audit call,
+     * for the same reason `store()` has none — the record of a retry is the row's
+     * own `retry_count`, which is the same place the cap reads it from.
+     *
+     * A refusal (another operator's row, a row that is not `failed`, a row out of
+     * retries) aborts with 403/409 rather than flashing, because the button that
+     * reaches here is hidden in exactly those three states — the abort is what
+     * answers a POST sent straight to the URL.
+     */
+    public function retry(Request $request, AuditExportRequestAction $exportAction, string $export): RedirectResponse
+    {
+        $exportAction->retry($request->user(), $export);
+
+        return back()
+            ->with('status', 'Retrying your export. We will notify you when it is ready to download.');
+    }
+
+    /**
      * Stream one export file.
      *
      * `AuditExportDownloadAction` owns the ownership check, the expiry answer and

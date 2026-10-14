@@ -148,4 +148,28 @@ class AuditController extends Controller
     {
         return $downloadAction->run($request->user(), $export);
     }
+
+    /**
+     * Run one failed export again.
+     *
+     * The same Action the web controller calls, which is the whole point of the
+     * two channels sharing one: the cap in `AuditExportRequestAction::retry()` is
+     * enforced on both, so an API client cannot buy extra retries by arriving over
+     * HTTP — the same reason both use one `audit-export` limiter.
+     *
+     * 202 for the same reason `storeExport()` returns it: the file does not exist
+     * yet, and asking for it again is not the same request as having it. The row
+     * comes back with `retry_count` incremented so a client that polls can watch
+     * the budget go down.
+     *
+     * @param  Request  $request
+     */
+    public function retryExport(Request $request, string $export): JsonResponse
+    {
+        $row = $this->exportRequestAction->retry($request->user(), $export);
+
+        return $this->respond('Retrying your export. We will notify you when it is ready to download.', 202, [
+            'export' => new AuditExportResource($row->refresh()),
+        ]);
+    }
 }

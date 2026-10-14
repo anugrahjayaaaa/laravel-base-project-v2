@@ -20,6 +20,17 @@
     `expired` row render their status and no button, which is the honest state —
     a disabled download button advertises an action that answers 404 or 410.
 
+    ## A failed row offers a RETRY, up to three times
+
+    `failed` used to be a dead end: the row said so and the only way forward was
+    the Export form, which makes a SECOND row for what the operator meant as the
+    same request. `canRetry()` and `isRetryExhausted()` are the model's rules, so
+    this partial cannot offer a retry the action will 409, and it cannot hide one
+    that would succeed. Both states are reachable from this file alone — no
+    controller variable, no FQCN: a Blade view that reaches for
+    `AuditExportStatus::FAILED` would be the one place in the view layer holding
+    an enum case, and this project has none.
+
     ## The download button is `btn-outline-primary`
 
     Not `btn-outline-secondary`: `theme.css` paints that variant `color:
@@ -131,6 +142,41 @@
                                            class="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-2">
                                             <i class="fas fa-file-arrow-down"></i> Download
                                         </a>
+                                    @elseif ($export->canRetry())
+                                        {{-- A FORM, not a link: the transition is
+                                             `failed → pending`, and there is no verb for
+                                             that in a GET. `--outline-primary` for the
+                                             same reason the Download button above uses
+                                             it — the action must not read as disabled
+                                             in dark mode, where `outline-secondary`
+                                             paints muted-on-muted.
+
+                                             The row goes back to `pending`, which is
+                                             the `data-status` the poller above already
+                                             watches, so this button restarts the
+                                             existing refresh with no new script. --}}
+                                        <form method="POST" action="{{ route('activity-logs.exports.retry', $export) }}"
+                                              class="d-inline">
+                                            @csrf
+                                            <button type="submit"
+                                                    class="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-2">
+                                                <i class="fas fa-rotate-right"></i> Retry
+                                            </button>
+                                        </form>
+                                    @elseif ($export->isRetryExhausted())
+                                        {{-- The budget is spent. Naming WHO to talk
+                                             to is the whole point of this cell: an
+                                             unexplained dead button is a bug report
+                                             waiting to happen, and "Failed" alone
+                                             tells the operator nothing about what to
+                                             do next.
+
+                                             Not a notification. This module already
+                                             notifies on SUCCESS; a second notice
+                                             that has to arrive to be useful is a
+                                             worse answer than the one sitting on
+                                             the row they are already looking at. --}}
+                                        <span class="text-muted fs-7 text-nowrap">Contact admin</span>
                                     @else
                                         {{-- A disabled button would advertise an action
                                              that answers 404 or 410. The status column

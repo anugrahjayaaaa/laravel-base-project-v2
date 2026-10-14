@@ -14,6 +14,7 @@ use App\Support\SystemRole;
 use Database\Seeders\FeatureFlagSeeder;
 use Database\Seeders\PermissionSeeder;
 use Database\Seeders\RoleSeeder;
+use Database\Seeders\SystemSettingSeeder;
 use App\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -23,6 +24,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
+use PHPUnit\Framework\Attributes\DataProvider;
 use RuntimeException;
 use Spatie\Permission\PermissionRegistrar;
 use Tests\TestCase;
@@ -646,6 +648,304 @@ class AuditExportTest extends TestCase
                     && $context['max_tries'] === 3
                     && filled($context['exception']);
             });
+    }
+
+    /**
+     * A row whose job died, as `failed()` leaves it: no path, no count, no
+     * completion stamp.
+     *
+     * @param  array<string, mixed>  $overrides
+     */
+    private function failedExport(User $owner, array $overrides = []): AuditExport
+    {
+        return AuditExport::query()->create(array_merge([
+            'user_id' => $owner->getKey(),
+            'filters' => ['event' => 'user.updated', 'direction' => 'asc'],
+            'status' => AuditExportStatus::FAILED,
+            'path' => null,
+            'row_count' => null,
+            'expires_at' => now()->addDays(AuditExport::RETENTION_DAYS),
+        ], $overrides));
+    }
+
+    /**
+     * `failed` had no way forward: the row said so, and the only remaining move
+     * was the Export form — which makes a SECOND row for what the operator meant
+     * as the same request, and leaves the failed one in the list forever beside a
+     * file that does exist.
+     *
+     * The retry flips the SAME row back to `pending`. Asserted on every field that
+     * has to move, because a `pending` row still carrying yesterday's `path` reads
+     * as downloadable — `isDownloadable()` looks at status and path together, and
+     * a stale path is a link to a file that is about to be overwritten.
+     */
+    public function test_a_failed_export_can_be_retried_by_its_requester(): void
+    {
+        Queue::fake();
+
+        $admin = $this->login(SystemRole::ADMIN);
+        $export = $this->failedExport($admin);
+
+        $this->assertTrue($export->canRetry());
+
+        $this->post(route('activity-logs.exports.retry', $export))
+            ->assertRedirect()
+            ->assertSessionHas('status');
+
+        $fresh = $export->fresh();
+
+        $this->assertSame(AuditExportStatus::PENDING, $fresh->status);
+        $this->assertSame(1, $fresh->retry_count);
+        $this->assertNull($fresh->path);
+        $this->assertNull($fresh->row_count);
+        $this->assertNull($fresh->completed_at);
+
+        // The window is the REQUEST's seven days, not this click's — moving it
+        // would be a retention decision made as a side effect of a button.
+        $this->assertTrue($fresh->expires_at->isFuture());
+
+        // One row, not two.
+        $this->assertDatabaseCount('audit_exports', 1);
+
+        Queue::assertPushed(
+            GenerateAuditExport::class,
+            function (GenerateAuditExport $job): bool {
+                $this->assertTrue($job->afterCommit, 'a retry must land after the row is readable');
+
+                // The direction comes back off the ROW rather than off the request
+                // that is not being repeated. `Closure::call()` rebinds `$this` to
+                // the job, which is how a private constructor property is read
+                // without reflection in a test that exists to pin this branch.
+                $this->assertSame(
+                    'asc',
+                    (fn (): string => $this->direction)->call($job),
+                    'the retry must preserve the order the original request asked for',
+                );
+
+                return true;
+            },
+        );
+    }
+
+    /**
+     * Three clicks, then the button is gone and the POST is refused.
+     *
+     * Asserted on the server because the Blade only hides the button: a cap
+     * enforced in a template is a cap with a hole shaped like an HTTP request, and
+     * the client that will find the hole is the one calling the API.
+     */
+    public function test_the_retry_is_refused_once_the_budget_is_spent(): void
+    {
+        Queue::fake();
+        Notification::fake();
+
+        $admin = $this->login(SystemRole::ADMIN);
+        $export = $this->failedExport($admin, ['retry_count' => AuditExport::maxRetries()]);
+
+        $this->assertFalse($export->canRetry());
+        $this->assertTrue($export->isRetryExhausted());
+
+        $this->post(route('activity-logs.exports.retry', $export))->assertStatus(409);
+
+        $this->assertSame(AuditExportStatus::FAILED, $export->fresh()->status);
+        $this->assertSame(AuditExport::maxRetries(), $export->fresh()->retry_count);
+
+        Queue::assertNothingPushed();
+    }
+
+    /**
+     * The IDOR this route would have if it trusted the permission alone: both
+     * users hold `audit.export`, and the id is attacker-supplied.
+     */
+    public function test_another_operator_cannot_retry_someone_elses_export(): void
+    {
+        Queue::fake();
+
+        $owner = $this->login(SystemRole::ADMIN);
+        $export = $this->failedExport($owner);
+
+        $this->login(SystemRole::ADMIN);
+
+        $this->post(route('activity-logs.exports.retry', $export))->assertForbidden();
+
+        $this->assertSame(AuditExportStatus::FAILED, $export->fresh()->status);
+        Queue::assertNothingPushed();
+    }
+
+    /**
+     * Only `failed` has anything to retry.
+     *
+     * The `pending` case is the dangerous one rather than the pointless one: a
+     * second dispatch means two workers writing the same path concurrently, and
+     * the `row_count` reported is whichever of the two finished last.
+     *
+     * @return array<string, array{0: AuditExportStatus}>
+     */
+    public static function unretriableProvider(): array
+    {
+        return [
+            'still generating' => [AuditExportStatus::PENDING],
+            'already finished' => [AuditExportStatus::READY],
+        ];
+    }
+
+    #[DataProvider('unretriableProvider')]
+    public function test_an_export_that_is_not_failed_cannot_be_retried(AuditExportStatus $status): void
+    {
+        Queue::fake();
+
+        $admin = $this->login(SystemRole::ADMIN);
+        $export = $this->readyExport($admin, ['status' => $status]);
+
+        $this->post(route('activity-logs.exports.retry', $export))->assertStatus(409);
+
+        $this->assertSame($status, $export->fresh()->status);
+        $this->assertSame(0, $export->fresh()->retry_count);
+        Queue::assertNothingPushed();
+    }
+
+    /**
+     * `audit.export` is not `audit.view`, and a retry is an extract like any other.
+     */
+    public function test_a_user_without_the_export_permission_cannot_retry(): void
+    {
+        Queue::fake();
+
+        $owner = User::factory()->create();
+        $export = $this->failedExport($owner);
+
+        $reader = $this->login(SystemRole::USER);
+        $this->assertFalse($reader->can('audit.export'));
+
+        $this->post(route('activity-logs.exports.retry', $export))->assertForbidden();
+
+        $this->assertSame(AuditExportStatus::FAILED, $export->fresh()->status);
+        Queue::assertNothingPushed();
+    }
+
+    /**
+     * A retry writes NO audit row, for the reason `store()` writes none: the row
+     * that records "an administrator exported the audit trail" would be a row in
+     * the file the administrator just extracted. `retry_count` on the export row is
+     * the record, and it is the same number the cap reads.
+     */
+    public function test_a_retry_writes_no_audit_row(): void
+    {
+        Queue::fake();
+
+        $admin = $this->login(SystemRole::ADMIN);
+        $export = $this->failedExport($admin);
+
+        $before = Activity::query()->count();
+
+        $this->post(route('activity-logs.exports.retry', $export))->assertRedirect();
+
+        $this->assertSame($before, Activity::query()->count());
+        $this->assertSame(1, $export->fresh()->retry_count);
+    }
+
+    /**
+     * A retry is an extract, so it shares the limiter with the request and the
+     * download.
+     *
+     * Without `throttle:audit-export` on this route, the retry is the cheapest way
+     * to produce a whole-table CSV — the route the limit exists to cover, taken
+     * through the one door that was left open.
+     *
+     * SIX rows rather than six clicks on one, and that is the point: the per-row
+     * cap is three and the hourly budget is five, so repeatedly retrying ONE row
+     * would run into the cap long before the limiter and this test would pass
+     * against a route with no limiter on it at all. Each click here is on a
+     * different row, so nothing but the limiter can be what stops the last one.
+     */
+    public function test_the_retry_route_shares_the_export_limiter(): void
+    {
+        Queue::fake();
+
+        $admin = $this->login(SystemRole::ADMIN);
+
+        for ($attempt = 1; $attempt <= 5; $attempt++) {
+            $this->post(route('activity-logs.exports.retry', $this->failedExport($admin)))
+                ->assertRedirect();
+        }
+
+        // The web channel answers a throttle with a redirect and an error, not a
+        // 429 — the same shape the download route's shared limiter gives.
+        $sixth = $this->failedExport($admin);
+
+        $this->post(route('activity-logs.exports.retry', $sixth))
+            ->assertRedirect()
+            ->assertSessionHasErrors();
+
+        // The row exists — the limiter runs BEFORE the action — but nothing spent
+        // its budget, which is what tells the two apart.
+        $this->assertSame(0, $sixth->fresh()->retry_count);
+    }
+
+    /**
+     * The cap is an OPERATOR SETTING, not a constant — this is the case that
+     * separates the two.
+     *
+     * An install whose exports keep dying on something environmental wants the
+     * button gone (`0`), and one mid-incident wants it wider. Neither is reachable
+     * without a deploy if the number lives in code, which is the same reason
+     * `audit_export_rate_limit_per_hour` moved out of `AppServiceProvider`.
+     *
+     * Asserted through the ROUTE rather than the model, because the claim is not
+     * "the getter reads the row" — it is "an operator's change takes effect
+     * without a deploy". Zero is the case worth pinning: `getInt()` must not treat
+     * `'0'` as absent, or the setting silently becomes 3 everywhere.
+     */
+    public function test_the_retry_cap_is_an_operator_setting(): void
+    {
+        Queue::fake();
+
+        $this->seed(SystemSettingSeeder::class);
+
+        $admin = $this->login(SystemRole::ADMIN);
+
+        // The seeded default, and the fallback an install that never ran the
+        // seeder gets — the same three, from two different places.
+        $this->assertSame(3, AuditExport::maxRetries());
+
+        SystemSetting::set('audit_export_max_manual_retries', '1');
+        $this->assertSame(1, AuditExport::maxRetries());
+
+        // A row the job failed on AFTER its one click at this setting: `failed`
+        // and `retry_count === 1`, so the only thing left to refuse it is the cap.
+        // At the default of 3 this row would still have two clicks in it.
+        $spent = $this->failedExport($admin, ['retry_count' => 1]);
+
+        $this->assertTrue($spent->isRetryExhausted());
+        $this->post(route('activity-logs.exports.retry', $spent))->assertStatus(409);
+
+        // Zero is a real answer, not an absent one: the button never appears and
+        // the row goes straight to "Contact admin". This is the case where a
+        // falsy check in `getInt()` would silently hand back the fallback of 3.
+        SystemSetting::set('audit_export_max_manual_retries', '0');
+
+        $this->assertSame(0, AuditExport::maxRetries());
+
+        $untouched = $this->failedExport($admin);
+
+        $this->assertFalse($untouched->canRetry());
+        $this->assertTrue($untouched->isRetryExhausted());
+
+        $this->post(route('activity-logs.exports.retry', $untouched))->assertStatus(409);
+
+        // And the setting is reversible without a deploy, which is the whole
+        // reason it is not a constant.
+        SystemSetting::set('audit_export_max_manual_retries', '2');
+
+        $reopened = $this->failedExport($admin, ['retry_count' => 1]);
+
+        $this->assertTrue($reopened->canRetry());
+        $this->post(route('activity-logs.exports.retry', $reopened))->assertRedirect();
+
+        // Exactly one dispatch across the whole test, from the single click that
+        // was allowed. Every refusal above would have dispatched too if the cap
+        // were advisory.
+        Queue::assertPushed(GenerateAuditExport::class, 1);
     }
 
     /**

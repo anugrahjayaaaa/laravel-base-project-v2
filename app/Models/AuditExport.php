@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\AuditExportStatus;
+use App\Support\SystemRole;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -25,6 +26,7 @@ use Illuminate\Support\Carbon;
  * @property int $user_id
  * @property array<string, mixed> $filters
  * @property AuditExportStatus $status
+ * @property int $retry_count
  * @property string|null $path
  * @property int|null $row_count
  * @property \Illuminate\Support\Carbon $expires_at
@@ -35,6 +37,7 @@ use Illuminate\Support\Carbon;
     'user_id',
     'filters',
     'status',
+    'retry_count',
     'path',
     'row_count',
     'expires_at',
@@ -58,6 +61,40 @@ class AuditExport extends Model
     public const RETENTION_DAYS = 7;
 
     /**
+     * How many times the requester may re-run this one export by hand.
+     *
+     * A `SystemSetting`, not a constant, for the reason
+     * `audit_export_rate_limit_per_hour` is one: the number an operator is held to
+     * and the number they can see are then the same number, and changing the cost
+     * of one export does not need a deploy. It is read through ONE method so the
+     * key appears once in the codebase — the Action, the resource, the Blade and
+     * the tests all call `maxRetries()` and none of them repeats the literal.
+     *
+     * Three is a ceiling, not the encouragement — and it is counted in CLICKS while
+     * `GenerateAuditExport::$tries = 3` already retries inside each one, so one row
+     * at the default can cost nine whole-table CSV builds. What the number buys is
+     * the opposite of another retry: past it the row says `Contact admin`, because
+     * by then the failure is not a hiccup in the requester's patience. The dominant
+     * causes are environmental — a worker that cannot reach a dependency — and
+     * re-running the same query against the same broken thing is a way to look
+     * busy. An operator who reads it that way sets it to `0` and the button never
+     * appears, which is why the settings field allows zero.
+     */
+    public static function maxRetries(): int
+    {
+        return SystemSetting::getInt('audit_export_max_manual_retries', self::DEFAULT_MAX_RETRIES);
+    }
+
+    /**
+     * The fallback for an install where the seeder never ran — and only that.
+     *
+     * Private so nobody reaches for it as the answer: a caller that wants the cap
+     * wants the LIVE value, and a caller that wants the shipped default wants
+     * `SystemSettingSeeder`, which is where the default is seeded.
+     */
+    private const DEFAULT_MAX_RETRIES = 3;
+
+    /**
      * @return array<string, string>
      */
     protected function casts(): array
@@ -65,6 +102,7 @@ class AuditExport extends Model
         return [
             'filters' => 'array',
             'status' => AuditExportStatus::class,
+            'retry_count' => 'integer',
             'row_count' => 'integer',
             'expires_at' => 'datetime',
             'completed_at' => 'datetime',
@@ -77,6 +115,61 @@ class AuditExport extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    /**
+     * Is this the requester's export, or is the requester the break-glass role?
+     *
+     * ## Why it is here and not in the download action
+     *
+     * Two routes now take an id in the URL and must both answer it: the download
+     * and the retry. A check that lives in one action is a check the other action
+     * has to remember to grow, and the failure mode is not a 500 — it is a 200 on
+     * somebody else's extract. So the fact about the row lives on the row.
+     *
+     * `isOwnedBy()`, not `belongsTo()`: `Model::belongsTo()` is Eloquent's own
+     * relation builder and its first argument is a class name, so a method with
+     * that name here is a fatal at class-load — not a lint error, and not
+     * something a route test would show until a worker autoloaded the model.
+     *
+     * `hasRole(SUPERADMIN)` and not a Gate call, because this is an ownership
+     * question about a row and not a permission question — `AppServiceProvider`'s
+     * `Gate::before()` answers "can they", never "is it theirs", and borrowing it
+     * would let a superadmin's bypass become the reason someone else's extract is
+     * served.
+     */
+    public function isOwnedBy(User $user): bool
+    {
+        return (int) $this->user_id === (int) $user->getKey()
+            || $user->hasRole(SystemRole::SUPERADMIN);
+    }
+
+    /**
+     * May this row be run again, right now?
+     *
+     * Both halves are load-bearing. `failed` alone would re-dispatch a job that is
+     * already running, so two workers write the same path and the second one's
+     * `row_count` overwrites the first's. The cap alone would offer a retry on a
+     * `ready` row, where the honest answer is the Download button one column away.
+     */
+    public function canRetry(): bool
+    {
+        return $this->status === AuditExportStatus::FAILED
+            && $this->retry_count < static::maxRetries();
+    }
+
+    /**
+     * Has this row spent its whole manual-retry budget?
+     *
+     * A separate question from `canRetry()` rather than its negation, because the
+     * two are not complements: a `ready` row satisfies neither. The view has to
+     * tell those three cases apart — retry, "contact admin", and no action at all —
+     * and one boolean cannot carry three answers.
+     */
+    public function isRetryExhausted(): bool
+    {
+        return $this->status === AuditExportStatus::FAILED
+            && $this->retry_count >= static::maxRetries();
     }
 
     /**

@@ -55,8 +55,8 @@ class ChannelParityTest extends TestCase
             'api' => ['activity-logs.index', 'activity-logs.show'],
         ],
         'audit export' => [
-            'web' => ['activity-logs.exports.store', 'activity-logs.exports.download'],
-            'api' => ['activity-logs.exports.store', 'activity-logs.exports.download', 'activity-logs.exports.index'],
+            'web' => ['activity-logs.exports.store', 'activity-logs.exports.download', 'activity-logs.exports.retry'],
+            'api' => ['activity-logs.exports.store', 'activity-logs.exports.download', 'activity-logs.exports.retry', 'activity-logs.exports.index'],
         ],
         'audit export list refresh' => [
             'only' => 'web',

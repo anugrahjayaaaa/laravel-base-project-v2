@@ -344,6 +344,20 @@ Route::middleware(['auth:web,sanctum', 'verified', 'password.change.required', '
             ->name('activity-logs.exports.download')
             ->middleware(['can:audit.export', 'throttle:audit-export']);
 
+        // Re-run one FAILED export. Same permission and the SAME limiter as the
+        // request and the download: a retry builds the same file, so giving it a
+        // budget of its own would make it the cheapest way to produce one — the
+        // limit would stop covering the act it exists to cover.
+        //
+        // The state transition, the cap and the ownership check are the Action's,
+        // not the route's: `AuditExportRequestAction::retry()` answers 409 for a
+        // row that is not `failed` and for one out of retries, which is what a
+        // POST sent straight to the URL gets. The button that reaches this is
+        // hidden in both cases — the button is presentation, this is the control.
+        Route::post('/activity-logs/exports/{export}/retry', [AuditExportController::class, 'retry'])
+            ->name('activity-logs.exports.retry')
+            ->middleware(['can:audit.export', 'throttle:audit-export']);
+
         // The card's own refresh. Same permission as the PAGE it is a fragment of,
         // not the export permission — it returns part of a page `audit.view`
         // already opens, and `AuditExportRequestAction::recentFor()` scopes the

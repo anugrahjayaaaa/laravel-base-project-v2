@@ -2,10 +2,12 @@
 
 namespace App\Actions\V1\Audit;
 
+use App\Enums\AuditExportStatus;
 use App\Jobs\GenerateAuditExport;
 use App\Models\AuditExport;
 use App\Models\User;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Records an export request and queues the job (Phase 10, P10-E4).
@@ -87,5 +89,95 @@ class AuditExportRequestAction
         )->afterCommit();
 
         return $export;
+    }
+
+    /**
+     * Run one failed export again, on its own row.
+     *
+     * ## The SAME row, never a new one
+     *
+     * The row is the request — it carries the filters, the owner and the window.
+     * A retry that cloned the row would be a second export with a second id and a
+     * second file, and the failed row it was meant to replace would stay in the
+     * list forever saying `Failed` next to a file that does exist. Reusing the row
+     * is also what keeps `diskPath()` honest: the path is keyed on the id, so the
+     * new CSV OVERWRITES the old one rather than sitting beside it.
+     *
+     * ## `failed` is a precondition, not a nicety
+     *
+     * Re-dispatching a `pending` row is the one genuinely dangerous version of this
+     * action: two workers then build the same file concurrently and the second
+     * `row_count` overwrites the first, so the number reported is whichever
+     * finished last. Re-dispatching a `ready` row is merely pointless. Both are
+     * refused with 409 rather than absorbed.
+     *
+     * ## The cap is enforced HERE, not in the view
+     *
+     * The Blade hides the button past `AuditExport::maxRetries()` so the operator is not offered
+     * something that will be refused. That is presentation. A POST sent straight to
+     * the URL is the actual control point, and it is the API client that will send
+     * it — a cap enforced only in a template is a cap with a hole shaped like an
+     * HTTP request.
+     *
+     * ## `expires_at` is deliberately NOT extended
+     *
+     * The migration says the window is seven days FROM THE REQUEST, and that is
+     * the retention rule this project settled (`docs/base/operations/retention.md`).
+     * A retry on day six therefore produces a file that is nearly expired on
+     * arrival. That is the honest reading of the rule, not an oversight; moving the
+     * window is a retention decision, and it should not happen as a side effect of
+     * clicking a button.
+     *
+     * @throws \Symfony\Component\HttpKernel\Exception\HttpException 404 unknown id,
+     *                                                                 403 not yours,
+     *                                                                 409 nothing to retry
+     */
+    public function retry(User $user, string $export): AuditExport
+    {
+        $row = AuditExport::query()->find($export);
+
+        abort_if($row === null, 404, 'Export not found.');
+        abort_unless($row->isOwnedBy($user), 403, 'This export belongs to another operator.');
+        abort_if($row->status !== AuditExportStatus::FAILED, 409, 'This export is not in a failed state.');
+        abort_if($row->isRetryExhausted(), 409, 'This export has already been retried '.$row->retry_count.' times. Please contact an administrator.');
+
+        $row->update([
+            'status' => AuditExportStatus::PENDING,
+            // Cleared, not merely overwritten later: `isDownloadable()` reads all
+            // three, and a `pending` row carrying yesterday's `path` would answer
+            // true until the job finished.
+            'path' => null,
+            'row_count' => null,
+            'completed_at' => null,
+            'retry_count' => $row->retry_count + 1,
+        ]);
+
+        GenerateAuditExport::dispatch(
+            $row->getKey(),
+            $row->filters,
+            $row->filters['direction'] ?? 'desc',
+        )->afterCommit();
+
+        // The one place an operator learns WHICH export stopped working. The job's
+        // own `attempt_failed` line carries the exception, but it is keyed on an id
+        // nobody sees from the UI.
+        Log::info('audit.export.retried', [
+            'export_id' => $row->getKey(),
+            'user_id' => $row->user_id,
+            'retry' => $row->retry_count,
+            'max_retries' => AuditExport::maxRetries(),
+        ]);
+
+        if ($row->isRetryExhausted()) {
+            // The last click, not the first refusal: an admin looking for the rows
+            // that need a human gets this one from the log rather than by asking
+            // every user to recount their own clicks.
+            Log::warning('audit.export.retries_exhausted', [
+                'export_id' => $row->getKey(),
+                'user_id' => $row->user_id,
+            ]);
+        }
+
+        return $row;
     }
 }

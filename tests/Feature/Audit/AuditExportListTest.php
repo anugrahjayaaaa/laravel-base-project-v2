@@ -104,6 +104,63 @@ class AuditExportListTest extends TestCase
     }
 
     /**
+     * A failed row is not a dead end: it offers the retry, and the button is a
+     * FORM rather than a link because the transition is `failed → pending` and
+     * there is no verb for that in a GET.
+     *
+     * Asserted on the rendered route as well as the label, so the button cannot
+     * become decoration pointed at nothing.
+     */
+    public function test_a_failed_export_offers_a_retry(): void
+    {
+        $user = $this->login();
+        $export = $this->exportFor($user, [
+            'status' => AuditExportStatus::FAILED,
+            'path' => null,
+            'row_count' => null,
+        ]);
+
+        $response = $this->get(route('activity-logs.index'));
+
+        $response->assertOk();
+        $response->assertSee('Failed');
+        $response->assertSee(route('activity-logs.exports.retry', $export), escape: false);
+        $response->assertSee('Retry');
+
+        // And it must not be a GET link: a link would render the row's state
+        // transition as a page load and change nothing.
+        $response->assertSee('method="POST"', escape: false);
+
+        // No file, so no download to offer instead.
+        $response->assertDontSee(route('activity-logs.exports.download', $export), escape: false);
+    }
+
+    /**
+     * Past the budget the button is replaced by a sentence that says who to talk
+     * to.
+     *
+     * "Failed" on its own is a status and not an instruction: the operator cannot
+     * tell whether to wait, press something, or ask a person — and a dead button
+     * with no explanation is a bug report waiting to happen.
+     */
+    public function test_an_exhausted_export_asks_the_operator_to_contact_an_admin(): void
+    {
+        $user = $this->login();
+        $this->exportFor($user, [
+            'status' => AuditExportStatus::FAILED,
+            'path' => null,
+            'row_count' => null,
+            'retry_count' => AuditExport::maxRetries(),
+        ]);
+
+        $response = $this->get(route('activity-logs.index'));
+
+        $response->assertOk();
+        $response->assertSee('Contact admin');
+        $response->assertDontSee(route('activity-logs.exports.retry', AuditExport::query()->first()), escape: false);
+    }
+
+    /**
      * @return array<string, array{0: array<string, mixed>, 1: string}>
      */
     public static function undownloadableProvider(): array

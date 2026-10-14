@@ -167,6 +167,74 @@ class AuditApiTest extends TestCase
         $this->getJson(route('api.v1.activity-logs.exports.index'))->assertForbidden();
         $this->postJson(route('api.v1.activity-logs.exports.store'), ['format' => 'csv'])->assertForbidden();
         $this->get(route('api.v1.activity-logs.exports.download', 1))->assertForbidden();
+        $this->postJson(route('api.v1.activity-logs.exports.retry', 1))->assertForbidden();
+    }
+
+    /**
+     * The retry is the web surface's twin, guards included.
+     *
+     * Three things have to survive the crossing: the cap, the ownership check, and
+     * the rate limiter. The first two because the same Action enforces both on
+     * both channels — a cap implemented in Blade would be a cap the API client
+     * walks straight past, and this is the client most likely to try.
+     */
+    public function test_the_api_retry_is_guarded_like_the_web_one(): void
+    {
+        Queue::fake();
+
+        $owner = $this->login();
+        $export = AuditExport::query()->create([
+            'user_id' => $owner->getKey(),
+            'filters' => ['event' => 'user.updated'],
+            'status' => AuditExportStatus::FAILED,
+            'expires_at' => now()->addDays(7),
+        ]);
+
+        // Someone else's row, three clicks spent, and a row that is not failed:
+        // the three refusals, in the order a client would hit them.
+        $spent = AuditExport::query()->create([
+            'user_id' => $owner->getKey(),
+            'filters' => [],
+            'status' => AuditExportStatus::FAILED,
+            'retry_count' => AuditExport::maxRetries(),
+            'expires_at' => now()->addDays(7),
+        ]);
+
+        $live = AuditExport::query()->create([
+            'user_id' => $owner->getKey(),
+            'filters' => [],
+            'status' => AuditExportStatus::PENDING,
+            'expires_at' => now()->addDays(7),
+        ]);
+
+        $someoneElses = AuditExport::query()->create([
+            'user_id' => User::factory()->create()->getKey(),
+            'filters' => [],
+            'status' => AuditExportStatus::FAILED,
+            'expires_at' => now()->addDays(7),
+        ]);
+
+        $this->postJson(route('api.v1.activity-logs.exports.retry', $spent->getKey()))->assertStatus(409);
+        $this->postJson(route('api.v1.activity-logs.exports.retry', $live->getKey()))->assertStatus(409);
+        $this->postJson(route('api.v1.activity-logs.exports.retry', $someoneElses->getKey()))->assertForbidden();
+
+        Queue::assertNothingPushed();
+
+        // And the one that is allowed, on the same connection.
+        $response = $this->postJson(route('api.v1.activity-logs.exports.retry', $export->getKey()));
+
+        $response->assertStatus(202)
+            ->assertJsonPath('data.export.status.value', AuditExportStatus::PENDING->value)
+            // The budget travels with the row, so a polling client can watch it run
+            // down instead of discovering the cap as a 409.
+            ->assertJsonPath('data.export.retry_count', 1)
+            ->assertJsonPath('data.export.max_retries', AuditExport::maxRetries())
+            // False, and not by accident: the row is `pending` again, so re-running
+            // it would put two workers on one file. One click spent and nothing left
+            // to click is the honest reading of a job that is already running.
+            ->assertJsonPath('data.export.can_retry', false);
+
+        $this->assertDatabaseCount('audit_exports', 4);
     }
 
     public function test_asking_for_an_export_returns_the_row_not_a_bare_acknowledgement(): void

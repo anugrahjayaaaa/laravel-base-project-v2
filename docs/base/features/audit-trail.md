@@ -499,18 +499,22 @@ duplicates the one place that decides what a deleted actor is called.
 POST /activity-logs/exports          audit.export + throttle:audit-export
     ↓ audit_exports row (pending, expires_at = now + 7 days)
 GenerateAuditExport                  chunkById(Desc) 500 ordered by id, fputcsv, local disk
-    ↓ audit-exports/{user_id}/{uuid}.csv
+    ↓ audit-exports/{user_id}/{id}.csv
 row → ready + AuditExportReadyNotification (database + mail)
     ↓
 GET /activity-logs/exports/{id}/download    audit.export + ownership check
+    ↓ (failed rows only, up to 3)
+POST /activity-logs/exports/{id}/retry      same row → pending, re-dispatched
 ```
 
 | Piece | Where |
 |---|---|
-| Request / dispatch | `AuditExportRequestAction` |
+| Request / dispatch | `AuditExportRequestAction::run()` |
+| Retry + cap | `AuditExportRequestAction::retry()`, `AuditExport::maxRetries()` |
 | Job | `App\Jobs\GenerateAuditExport` |
 | Row + status enum | `App\Models\AuditExport`, `App\Enums\AuditExportStatus` |
-| Download + ownership | `AuditExportDownloadAction` |
+| Download | `AuditExportDownloadAction` |
+| Ownership | `AuditExport::isOwnedBy()` — both id-in-URL routes share it |
 | Completion notice | `AuditExportReadyNotification` |
 | The download button in the inbox | `NotificationInboxAction::inbox()` → `$actions` |
 | Nightly sweep | `routes/console.php` (`audit-export-retention`) |
@@ -532,6 +536,30 @@ Six decisions the implementation fixes, none of which the flow above states:
   would send the requester hunting for a typo in a link that was correct.
 - **A failed job marks its row `failed`.** A row stuck at `pending` is a spinner
   that never resolves; nothing anywhere would say the export died.
+- **A `failed` row is re-runnable, three times, on its own row.** `failed` used to
+  be a dead end: the only way forward was the Export form, which creates a SECOND
+  row for what the operator meant as the same request and leaves the failed one in
+  the list forever beside a file that does exist. The retry flips the SAME row back
+  to `pending` — which also keeps `diskPath()` honest, since the path is keyed on
+  the id and the new CSV overwrites the old one. The number of clicks is
+  `system_settings.audit_export_max_manual_retries`, default **3**, read through
+  `AuditExport::maxRetries()` — one method, so the key appears once in the
+  codebase and the Action, the resource, the Blade and the tests all read the same
+  row. It is a setting rather than a constant for the same reason the hourly
+  ceiling is: an install whose exports keep dying on something environmental
+  should be able to turn the button off (**0** is a valid value and a real answer,
+  not an absent one) or widen it for an incident, without a deploy.
+  Three is a **ceiling, not an encouragement**: it counts clicks while
+  `$tries = 3` already retries inside each one, so one row at the default can cost
+  nine whole-table builds, and the dominant causes are environmental — a worker
+  that cannot reach a dependency is not fixed by asking twice more. Past the
+  budget the row says `Contact admin`, and `audit.export.retries_exhausted` is
+  logged so an admin can find the rows that need a human. **The cap is enforced in
+  the Action, not the Blade**: the button is hidden in both channels' views, and a
+  cap enforced only in a template is a cap with a hole shaped like an HTTP request.
+  `expires_at` is deliberately **not** extended by a retry — the window is seven
+  days from the request, per `operations/retention.md`, and moving it should not
+  happen as a side effect of a button.
 - **The sweep unlinks the file before deleting the row**, and never touches a row
   whose job is still `pending`. A row whose file is gone is a link that 410s;
   a file whose row is gone leaks disk forever, because nothing else knows the
@@ -559,6 +587,7 @@ Form Requests and the rate limiter; only the serialization differs.
 | Request export | `POST /activity-logs/exports` | `POST /api/v1/activity-logs/exports` → **202 + row** |
 | List own exports | (inside the index page) | `GET /api/v1/activity-logs/exports` |
 | Download | `GET /activity-logs/exports/{export}/download` | `GET /api/v1/activity-logs/exports/{export}/download` |
+| Retry a failed row | `POST /activity-logs/exports/{export}/retry` | `POST /api/v1/activity-logs/exports/{export}/retry` → **202 + row** |
 
 Three things worth knowing before writing a client:
 
@@ -572,6 +601,11 @@ Three things worth knowing before writing a client:
   file.
 - **Ownership is checked before expiry**, so another operator's expired export
   answers 403 rather than 410. 410 means *your* file existed and is gone.
+- **`retry_count`, `max_retries` and `can_retry` travel with every row.**
+  `status: failed` alone tells a client nothing about whether retrying is still
+  allowed — that is per row — so a client that polls would otherwise discover the
+  cap as a 409. `can_retry` is the model's own `canRetry()`, the same rule the
+  route enforces, so the payload cannot offer a retry that will be refused.
 
 `{activity}` is constrained to a number on both channels: `/activity-logs/exports`
 is one segment shorter than the download route, and an unconstrained parameter
@@ -587,6 +621,8 @@ channel may widen it.
 - Export requires `audit.export` permission on both channels.
 - View requires `audit.view` permission.
 - The download route checks ownership before expiry, on both channels.
+- The retry route checks ownership before it changes anything, and requires the
+  row to be `failed` — a `pending` row retried is two workers on one file.
 - Never store sensitive data in plaintext in audit logs.
 - Consider log rotation/archiving for long-term retention.
 

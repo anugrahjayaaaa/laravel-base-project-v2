@@ -91,6 +91,11 @@ Log::warning('auth.login.failed', [
 > Add `.completed` events sparingly — only where success visibility is useful
 > (e.g. `audit.export.completed`).
 
+Two `audit.export` events exist because a row can need a human and the row itself
+only says so to the person who owns it: `audit.export.retried` (info — which row,
+whose, and which click it was) and `audit.export.retries_exhausted` (warning —
+the row is past its manual-retry budget, so the next move is an operator's).
+
 ### Context Envelope
 
 Every log call that emits a failure, warning, or security event MUST include:

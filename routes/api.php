@@ -189,6 +189,13 @@ Route::prefix('v1')->group(function () {
                 Route::get('/activity-logs/exports/{export}/download', 'downloadExport')
                     ->name('api.v1.activity-logs.exports.download')
                     ->middleware(['can:audit.export', 'throttle:audit-export']);
+
+                // Re-run one failed export. Same permission and the SAME limiter,
+                // for the reason the download shares it: HTTP is not a way to a
+                // larger allowance, and a retry builds the same file.
+                Route::post('/activity-logs/exports/{export}/retry', 'retryExport')
+                    ->name('api.v1.activity-logs.exports.retry')
+                    ->middleware(['can:audit.export', 'throttle:audit-export']);
             });
         });
 

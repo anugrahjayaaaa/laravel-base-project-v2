@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources\Api\V1\Audit;
 
+use App\Models\AuditExport;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -47,6 +48,15 @@ class AuditExportResource extends JsonResource
             // five files this is.
             'filters' => $this->filters,
             'row_count' => $this->row_count,
+
+            // The retry budget, because `status: failed` on its own tells a client
+            // nothing about whether retrying this row is still allowed — the
+            // answer is per row, and without it the client guesses from a counter
+            // it cannot see. `can_retry` is the model's own rule, the same one the
+            // route enforces, so the payload cannot offer a retry that 409s.
+            'retry_count' => $this->retry_count,
+            'max_retries' => AuditExport::maxRetries(),
+            'can_retry' => $this->canRetry(),
 
             'requested_at' => $this->created_at?->toIso8601String(),
             'completed_at' => $this->completed_at?->toIso8601String(),

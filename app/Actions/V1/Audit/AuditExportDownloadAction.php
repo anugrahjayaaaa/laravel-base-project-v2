@@ -4,7 +4,6 @@ namespace App\Actions\V1\Audit;
 
 use App\Models\AuditExport;
 use App\Models\User;
-use App\Support\SystemRole;
 use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -19,6 +18,10 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
  * permission can enumerate ids and pull another operator's file — which is the
  * entire table, including the rows about the person asking. That is the one IDOR
  * surface in this phase, and `docs/planning/phase-10-audit-trail.md` §10 names it.
+ *
+ * The check itself is `AuditExport::isOwnedBy()`. It was a private method here
+ * until the retry route needed the same answer, and two copies of an ownership
+ * check is one copy too many — the copy nobody updates is the route nobody tests.
  *
  * A superadmin bypasses it, matching `Gate::before()`: the role exists to be the
  * break-glass account, and a break-glass account that cannot open an export is
@@ -46,7 +49,7 @@ class AuditExportDownloadAction
             abort(404, 'Export not found.');
         }
 
-        if (! $this->belongsTo($row, $user)) {
+        if (! $row->isOwnedBy($user)) {
             abort(403, 'This export belongs to another operator.');
         }
 
@@ -63,20 +66,5 @@ class AuditExportDownloadAction
         }
 
         return Storage::disk('local')->download($row->path, $row->downloadName());
-    }
-
-    /**
-     * Is this the requester's export, or is the requester the break-glass role?
-     *
-     * `hasRole(SUPERADMIN)` and not a Gate call, because this is an ownership
-     * question about a row and not a permission question — `AuthServiceProvider`'s
-     * `Gate::before()` answers "can they", never "is it theirs", and borrowing it
-     * would let a superadmin's `Gate::before` bypass become the reason a download
-     * succeeds.
-     */
-    private function belongsTo(AuditExport $export, User $user): bool
-    {
-        return (int) $export->user_id === (int) $user->getKey()
-            || $user->hasRole(SystemRole::SUPERADMIN);
     }
 }
