@@ -96,6 +96,18 @@ Each entry contains:
 
 ---
 
+## 2026-10-15 — Phase 11 breakdown restructured into Groups A–F
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-10-15 |
+| **Change** | `phase-11-monitoring-observability.md` restructured to the Phase 10 group pattern: **Group A** = views/UI/sidebar (Pulse entry, system health page), **Groups B–F** = permissions, gates, routing, logic, audit (N/A, stated), queue conventions, verification/docs. New tasks: `health.view` + `health` flag + `/health` web route + its seeder row (P11-B3), `HealthController@index` (P11-C1), queue conventions renumbered from the colliding "MON-P11-05" to P11-E1..E3. The access-gating decision table, slow-query diagnosis ladder and the VM runbook moved OUT of `implementation-roadmap.md` INTO §3/§7 of the breakdown — the roadmap keeps a status summary + link only. Cross-refs in `phase-10-audit-trail.md` (§6 → Group B, MON-P11-05 → P11-E1..E3) updated. |
+| **Reason** | Two docs held the same Phase 11 detail, so neither was the single source of truth; MON-P11-05 named two different tasks (docs sweep AND queue conventions) in one file; and the roadmap carried runbook-level operational detail no other phase's roadmap section carries. The user also asked that any view/UI work land in Group A with the sidebar, and that permissions/feature flags be explicit per task. |
+| **Impact** | `implementation-roadmap.md` (Phase 11 section slimmed), `phase-10-audit-trail.md` (two cross-refs), task IDs P11-*. No code, no behaviour change. |
+| **Related** | P11-A1..A4, P11-B1..B4, P11-C1..C2, P11-E1..E3, P11-F1..F6; MON-P11-01..08 (renumbered); P10-E13, P10-E14 |
+
+---
+
 ## 2026-10-14 — Phase 10: the audit export handed a spreadsheet a formula
 
 | Field | Value |
