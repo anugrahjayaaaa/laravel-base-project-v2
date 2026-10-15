@@ -151,7 +151,7 @@ All use `color-mix(in srgb, var(--lbp-*) 16%, transparent)` for soft tint.
 - **Default**: system preference (`prefers-color-scheme: dark`).
 - **Override**: user clicks theme toggle → saves to `localStorage.theme`.
 - **Persistence**: `localStorage` survives page refreshes.
-- **Initial render**: inline `<script>` in `<head>` reads `localStorage` or `matchMedia` and sets `data-bs-theme` before CSS loads — no flash of wrong theme.
+- **Initial render**: inline `<script @nonce>` in `<head>` reads `localStorage` or `matchMedia` and sets `data-bs-theme` before CSS loads — no flash of wrong theme. Nonced because `script-src` allows no inline script otherwise (see Design System → Content Security Policy).
 - **Toggle**: icon swaps (`fa-moon` in light mode, `fa-sun` in dark mode). Updates `data-bs-theme`, persists to `localStorage`. Icon-only — no text labels.
 - AdminLTE 4 + Bootstrap 5.3 native `[data-bs-theme="dark"]` support handles the rest.
 
