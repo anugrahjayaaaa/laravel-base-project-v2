@@ -27,8 +27,13 @@
 
 ## Current Task
 
-**None in flight.** Phases 0–9 are complete; the next work is Phase 10 (Audit Trail), which is
-architecture-done.
+**Nothing in development; Phase 10's branch awaits merge.** The phase table above is the authority
+for what is open: rows 0–2, 4–5 and 7–11 DONE (Phase 10 Audit Trail closed 2026-10-13), row 12 with
+only its capability gap audit done, rows 3 and 6 still IN PROGRESS, rows 13–17 PLANNED.
+`feature/phase-10-audit-trail` carries Phase 10 plus its pentest remediation — nonce CSP, the four
+response headers, the re-verified audit report, pint/import housekeeping — unmerged, and its finding
+tracker closed 2026-10-15: 10/10 findings FIXED, with `.env.example APP_DEBUG=true` skipped as an
+owner decision.
 
 **Phase 9 — Notifications & Mail: DONE** (re-audited 2026-10-08)
 The phase did not simply close on a green suite. Four passes ran after Groups A–E shipped, and each
@@ -322,13 +327,14 @@ None — no implementation has started yet.
 
 ## Test Status
 
-**1959 passed / 6675 assertions** (2026-10-14, `feature/phase-10-audit-trail` — Phase 10 plus the export-retry and audit a11y passes). PHPUnit 12, `test_` prefix, SQLite
+**1978 passed / 6758 assertions** (2026-10-15, `feature/phase-10-audit-trail` — Phase 10 plus the export-retry and audit a11y passes, then the pentest round: nonce CSP, the four response
+headers, `SecurityHeadersTest`). `vendor/bin/pint --test` passes across the whole tree. PHPUnit 12, `test_` prefix, SQLite
 `:memory:`, 5 intentionally assertion-free benchmark cases. This is the LIVE figure; the counts inside the phase rows above are dated gate measurements, deliberately left at what each gate actually saw.
 
 The suite is grouped by domain (13 folders under `tests/Feature/`, nothing at the root) and governed by
 one architectural gate that was added after the grouping exposed how far the convention had drifted:
-**no inline FQCN anywhere** — enforced by `tests/Arch/NoInlineFqnTest.php`, which token-scans all 278
-PHP files in `app/` and `tests/`. See `docs/base/architecture/naming-conventions.md`.
+**no inline FQCN anywhere** — enforced by `tests/Arch/NoInlineFqnTest.php`, which token-scans all 326
+PHP files in `app/` and `tests/` (one data set per file, so a violation names its own file). See `docs/base/architecture/naming-conventions.md`.
 
 | Area | File | Tests |
 |---|---|---|
