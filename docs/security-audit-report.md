@@ -278,9 +278,10 @@ production. Pinned by
 `SecurityAuditTest::test_web_state_changing_forms_require_csrf` and
 `FeatureFlagPentestTest`.
 
-**Housekeeping:** that middleware still carries a per-request debug `error_log`
-line. It writes a line on every request in every environment and belongs
-outside the shipped code.
+**Housekeeping (cleared 2026-10-15):** the per-request debug `error_log` line this
+middleware carried is gone. The class now holds only its two properties and the
+`runningUnitTests()` override, with a docblock stating why that override must
+stay — so the next reader removes it knowing what it was for.
 
 ---
 
@@ -327,10 +328,8 @@ this report proposed (#2, #3, #6); each block above says what actually runs.
 2. **#7 depends on one override staying put.**
    `VerifyCsrfToken::runningUnitTests()` returning `false` is what makes the CSRF
    check hold under test. Delete it and the suite stays green while the check
-   silently stops being exercised.
-3. A per-request debug `error_log` line remains in
-   `app/Http/Middleware/VerifyCsrfToken.php` — noise on every request, in every
-   environment, and the only leftover from this remediation work.
+   silently stops being exercised — which is why the class now says so in a
+   docblock, and the test pins it.
 
 **Later reviews, outside this report:** the 2026-10-14 pentest of the
 audit-trail module found CSV formula injection and an export retry race (both
