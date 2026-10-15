@@ -10,7 +10,7 @@
 <div id="app"></div>
 <script src="{{ $config->renderer()->get('cdn', 'https://cdn.jsdelivr.net/npm/@scalar/api-reference') }}"></script>
 
-<script>
+<script @nonce>
     const CSRF_TOKEN_COOKIE_KEY = "XSRF-TOKEN";
     const CSRF_TOKEN_HEADER_KEY = "X-XSRF-TOKEN";
     const getCookieValue = (key) => {
