@@ -3,7 +3,6 @@
 namespace Tests\Feature\Notification;
 
 use App\Actions\V1\Feature\FeatureToggleAction;
-use App\Actions\V1\Notification\NotificationAdminEventAction;
 use App\Actions\V1\Role\RoleAssignAction;
 use App\Actions\V1\Role\RoleDeleteAction;
 use App\Actions\V1\System\SystemSettingsUpdateAction;
@@ -21,7 +20,6 @@ use Database\Seeders\RoleSeeder;
 use Database\Seeders\SystemSettingSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
-
 use Spatie\Permission\PermissionRegistrar;
 use Tests\TestCase;
 use App\Notifications\UserCreatedNotification;
@@ -102,7 +100,7 @@ class AdministrativeEventDispatchTest extends TestCase
      * colleague gained a permission turns an administrative feed into noise.
      */
     #
-    public function test_a_role_change_notifies_the_user_whose_access_changed (): void
+    public function test_a_role_change_notifies_the_user_whose_access_changed(): void
     {
         $subject = $this->ordinaryUser();
         // `users.assign_roles` is the permission RoleAssignAction checks, not
@@ -125,7 +123,7 @@ class AdministrativeEventDispatchTest extends TestCase
 
     /** A role change notifies the holder of roles.update, not just the user. */
     #
-    public function test_a_role_change_notifies_administrators_who_can_edit_roles (): void
+    public function test_a_role_change_notifies_administrators_who_can_edit_roles(): void
     {
         $subject = $this->ordinaryUser();
         // `users.assign_roles` is the permission RoleAssignAction checks, not
@@ -151,7 +149,7 @@ class AdministrativeEventDispatchTest extends TestCase
      * the affected role.
      */
     #
-    public function test_a_role_save_that_changed_nothing_notifies_nobody (): void
+    public function test_a_role_save_that_changed_nothing_notifies_nobody(): void
     {
         $subject = $this->ordinaryUser();
         $operator = $this->holderOf('users.assign_roles');
@@ -236,7 +234,7 @@ class AdministrativeEventDispatchTest extends TestCase
      * without this the other operators cannot agree on whether it is on.
      */
     #
-    public function test_a_feature_toggle_reaches_every_manager (): void
+    public function test_a_feature_toggle_reaches_every_manager(): void
     {
         $operator = $this->holderOf('features.manage');
         $bystander = $this->ordinaryUser();
@@ -257,7 +255,7 @@ class AdministrativeEventDispatchTest extends TestCase
      * renders back in an inbox.
      */
     #
-    public function test_a_settings_notification_never_carries_the_value (): void
+    public function test_a_settings_notification_never_carries_the_value(): void
     {
         $operator = $this->holderOf('settings.manage');
 
@@ -279,7 +277,7 @@ class AdministrativeEventDispatchTest extends TestCase
     }
 
     #
-    public function test_a_role_deletion_reaches_role_deleters (): void
+    public function test_a_role_deletion_reaches_role_deleters(): void
     {
         $operator = $this->holderOf('roles.delete');
 
@@ -347,7 +345,7 @@ class AdministrativeEventDispatchTest extends TestCase
      * the store row and the notification disagreeing about what happened.
      */
     #
-    public function test_a_delivery_failure_does_not_fail_the_configuration_change (): void
+    public function test_a_delivery_failure_does_not_fail_the_configuration_change(): void
     {
         Notification::shouldReceive('send')->andThrow(new \RuntimeException('transport down'));
 

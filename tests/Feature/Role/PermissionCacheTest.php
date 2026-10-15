@@ -43,7 +43,7 @@ class PermissionCacheTest extends TestCase
         $this->app->make(PermissionRegistrar::class)->forgetCachedPermissions();
     }
 
-        public function test_a_permission_granted_after_the_cache_warms_is_visible_immediately (): void
+    public function test_a_permission_granted_after_the_cache_warms_is_visible_immediately(): void
     {
         $this->seed(RoleSeeder::class);
 
@@ -70,7 +70,7 @@ class PermissionCacheTest extends TestCase
         );
     }
 
-        public function test_a_permission_revoked_after_the_cache_warms_stops_granting_immediately (): void
+    public function test_a_permission_revoked_after_the_cache_warms_stops_granting_immediately(): void
     {
         $this->seed(RoleSeeder::class);
 
@@ -96,7 +96,7 @@ class PermissionCacheTest extends TestCase
         );
     }
 
-        public function test_can_reflects_a_role_assigned_after_the_cache_warmed(): void
+    public function test_can_reflects_a_role_assigned_after_the_cache_warmed(): void
     {
         $this->seed(RoleSeeder::class);
 
@@ -120,7 +120,7 @@ class PermissionCacheTest extends TestCase
         );
     }
 
-        public function test_a_stale_cache_would_hide_a_write_made_behind_it (): void
+    public function test_a_stale_cache_would_hide_a_write_made_behind_it(): void
     {
         // The negative control for the tests above: warm the cache, then write
         // straight to the table WITHOUT flushing, and confirm the registrar
@@ -156,7 +156,7 @@ class PermissionCacheTest extends TestCase
         $this->assertTrue($user->fresh()->can('users.view'));
     }
 
-        public function test_superadmin_passes_without_the_catalogue_being_cached(): void
+    public function test_superadmin_passes_without_the_catalogue_being_cached(): void
     {
         $this->seed(RoleSeeder::class);
 

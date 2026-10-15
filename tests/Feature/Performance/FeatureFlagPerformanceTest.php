@@ -91,7 +91,7 @@ class FeatureFlagPerformanceTest extends TestCase
         return $queries;
     }
 
-        public function test_the_index_cost_does_not_grow_with_the_catalogue (): void
+    public function test_the_index_cost_does_not_grow_with_the_catalogue(): void
     {
         $small = $this->queriesForIndex(2);
         $large = $this->queriesForIndex(count(FeatureCatalog::slugs()));
@@ -141,7 +141,7 @@ class FeatureFlagPerformanceTest extends TestCase
      * the number that actually ships, not the one that would look best: a
      * ceiling below reality is a test that fails for a reason nobody can act on.
      */
-        public function test_the_menu_resolves_the_catalogue_once_not_once_per_flag (): void
+    public function test_the_menu_resolves_the_catalogue_once_not_once_per_flag(): void
     {
         $this->login();
 
@@ -171,7 +171,7 @@ class FeatureFlagPerformanceTest extends TestCase
         );
     }
 
-        public function test_the_second_page_view_reads_nothing (): void
+    public function test_the_second_page_view_reads_nothing(): void
     {
         $this->login();
 
@@ -199,7 +199,7 @@ class FeatureFlagPerformanceTest extends TestCase
      * Counted as a flat total across two catalogue sizes rather than a ceiling,
      * because a ceiling like "under 30" passes for an N+1 that happens to fit.
      */
-        public function test_a_bulk_toggle_does_not_cost_more_queries_for_a_bigger_selection (): void
+    public function test_a_bulk_toggle_does_not_cost_more_queries_for_a_bigger_selection(): void
     {
         $user = $this->login();
 
@@ -227,7 +227,7 @@ class FeatureFlagPerformanceTest extends TestCase
         );
     }
 
-        public function test_a_bulk_toggle_still_writes_every_selected_flag (): void
+    public function test_a_bulk_toggle_still_writes_every_selected_flag(): void
     {
         $user = $this->login();
         $slugs = FeatureCatalog::slugs();
@@ -252,7 +252,7 @@ class FeatureFlagPerformanceTest extends TestCase
      * reflects the new state. Without it, a writer that forgot to flush would
      * still pass every other assertion in the file.
      */
-        public function test_a_toggled_flag_is_reflected_by_the_next_page_view (): void
+    public function test_a_toggled_flag_is_reflected_by_the_next_page_view(): void
     {
         $this->login();
 

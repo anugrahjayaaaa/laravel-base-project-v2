@@ -105,7 +105,7 @@ class BulkActionCopyTest extends TestCase
      * design-system.md: `enable => success`, `disable => warning`. A swap here
      * is invisible until someone reads the modal.
      */
-    public function test_the_feature_actions_use_the_mapped_variants (): void
+    public function test_the_feature_actions_use_the_mapped_variants(): void
     {
         // design-system.md, Action Color Convention: enable => success,
         // disable => warning. Reversible consequences never wear the

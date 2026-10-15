@@ -51,7 +51,7 @@ class FeatureFlagRouteTest extends TestCase
         return $user;
     }
 
-        public function test_the_index_needs_features_view (): void
+    public function test_the_index_needs_features_view(): void
     {
         $this->assertTrue(
             collect(Route::getRoutes())->contains(
@@ -65,7 +65,7 @@ class FeatureFlagRouteTest extends TestCase
         $this->get(route('features.index'))->assertForbidden();
     }
 
-        public function test_a_manager_sees_the_page (): void
+    public function test_a_manager_sees_the_page(): void
     {
         $this->login();
         $this->get(route('features.index'))->assertOk();
@@ -79,7 +79,7 @@ class FeatureFlagRouteTest extends TestCase
      * reaching a hidden page is a 403, and answering 404 would tell an
      * unauthorized user the feature does not exist.
      */
-        public function test_the_toggle_needs_features_manage (): void
+    public function test_the_toggle_needs_features_manage(): void
     {
         $this->login(SystemRole::USER);
 
@@ -87,7 +87,7 @@ class FeatureFlagRouteTest extends TestCase
             ->assertForbidden();
     }
 
-        public function test_toggling_flips_the_flag_and_audits_it(): void
+    public function test_toggling_flips_the_flag_and_audits_it(): void
     {
         $admin = $this->login();
 
@@ -115,7 +115,7 @@ class FeatureFlagRouteTest extends TestCase
      * row still says `true`. An audit log reading `from: true` there would say
      * the flag was live when it was not.
      */
-        public function test_the_audit_row_records_the_effective_state (): void
+    public function test_the_audit_row_records_the_effective_state(): void
     {
         $this->login();
 
@@ -133,7 +133,7 @@ class FeatureFlagRouteTest extends TestCase
         );
     }
 
-        public function test_an_unknown_slug_is_a_404 (): void
+    public function test_an_unknown_slug_is_a_404(): void
     {
         $this->login();
 
@@ -147,7 +147,7 @@ class FeatureFlagRouteTest extends TestCase
      * Without this, `?enabled=maybe` reaches `(bool) 'maybe'` and silently means
      * "on" — a write the operator did not ask for.
      */
-        public function test_a_non_boolean_enabled_is_rejected (): void
+    public function test_a_non_boolean_enabled_is_rejected(): void
     {
         $this->login();
 
@@ -157,7 +157,7 @@ class FeatureFlagRouteTest extends TestCase
         $this->assertTrue(Feature::active('users'), 'a rejected request still wrote the flag');
     }
 
-        public function test_the_toggle_forgets_the_resolved_snapshot (): void
+    public function test_the_toggle_forgets_the_resolved_snapshot(): void
     {
         $this->login();
 
@@ -180,7 +180,7 @@ class FeatureFlagRouteTest extends TestCase
      * item whose route or permission fails, so asserting on the array would
      * test the composer while saying nothing about what a user actually sees.
      */
-        public function test_the_sidebar_entry_follows_features_view (): void
+    public function test_the_sidebar_entry_follows_features_view(): void
     {
         $this->login();
         $this->get(route('dashboard'))->assertOk()->assertSee('Feature Flags');
@@ -197,7 +197,7 @@ class FeatureFlagRouteTest extends TestCase
      * A flag in `config/pennant.php` with no toggle route is a switch an
      * operator can see but not flip.
      */
-        public function test_every_declared_flag_is_reachable_from_the_page(): void
+    public function test_every_declared_flag_is_reachable_from_the_page(): void
     {
         $admin = $this->login();
 
@@ -223,7 +223,7 @@ class FeatureFlagRouteTest extends TestCase
      * Asserted on the route's own middleware rather than by making the call, so
      * the intent is visible without needing a second logged-out device.
      */
-        public function test_the_api_logout_all_route_carries_the_sessions_gate (): void
+    public function test_the_api_logout_all_route_carries_the_sessions_gate(): void
     {
         $gated = collect(app('router')->getRoutes())
             ->filter(fn ($r) => in_array($r->getName(), [
@@ -248,7 +248,7 @@ class FeatureFlagRouteTest extends TestCase
      * `logout` itself must stay reachable with the module off, or a bad flag
      * strands the user in a session they cannot end.
      */
-        public function test_logout_stays_reachable_with_the_sessions_module_off(): void
+    public function test_logout_stays_reachable_with_the_sessions_module_off(): void
     {
         foreach (['logout', 'api.v1.auth.logout'] as $name) {
             $route = collect(app('router')->getRoutes())->first(fn ($r) => $r->getName() === $name);

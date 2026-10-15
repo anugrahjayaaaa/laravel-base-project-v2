@@ -59,8 +59,8 @@ class AssetBundleFreshnessTest extends TestCase
      * Read from the VIEWS, not hard-coded, so a page changing its markup fails
      * here instead of in a browser.
      */
-    
-    public function test_the_driver_matches_every_page_s_select_all_markup (): void
+
+    public function test_the_driver_matches_every_page_s_select_all_markup(): void
     {
         $bundle = $this->appBundle();
 
