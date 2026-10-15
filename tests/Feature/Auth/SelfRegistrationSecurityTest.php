@@ -322,7 +322,7 @@ class SelfRegistrationSecurityTest extends TestCase
 
         $writes = array_values(array_filter(
             $queries,
-            fn(string $sql) => preg_match('/^\s*(insert|update|delete)/i', $sql) === 1
+            fn (string $sql) => preg_match('/^\s*(insert|update|delete)/i', $sql) === 1
         ));
 
         $this->assertSame([], $writes, 'a rejected signup must not write anything');

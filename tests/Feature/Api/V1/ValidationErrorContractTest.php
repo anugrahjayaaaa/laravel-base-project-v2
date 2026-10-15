@@ -7,7 +7,6 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 use PHPUnit\Framework\Attributes\DataProvider;
-use PHPUnit\Framework\Attributes\Test;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 use Database\Seeders\PermissionSeeder;
@@ -66,8 +65,8 @@ class ValidationErrorContractTest extends TestCase
     /**
      * @param  array<string, mixed>  $payload
      */
-        #[DataProvider('failingRequests')]
-    public function test_it_returns_the_shared_error_contract (string $method, string $uri, array $payload): void
+    #[DataProvider('failingRequests')]
+    public function test_it_returns_the_shared_error_contract(string $method, string $uri, array $payload): void
     {
         $response = $this->{$method}($uri, $payload);
 
