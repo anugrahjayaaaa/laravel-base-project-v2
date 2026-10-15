@@ -159,6 +159,21 @@ class AuditExport extends Model
     }
 
     /**
+     * Has this row spent its whole manual-retry budget, WHATEVER its status?
+     *
+     * The status-free half of `isRetryExhausted()`, split out because of where
+     * `retry()` has to ask: after the claim, at which point the status is
+     * `PENDING` by construction. Demanding `FAILED` there answers false
+     * unconditionally — which is exactly how the exhaustion warning in that
+     * method shipped unreachable, one more click refused by the 409 above it
+     * and every remaining case eaten by the status.
+     */
+    public function retryBudgetSpent(): bool
+    {
+        return $this->retry_count >= static::maxRetries();
+    }
+
+    /**
      * Has this row spent its whole manual-retry budget?
      *
      * A separate question from `canRetry()` rather than its negation, because the
@@ -169,7 +184,7 @@ class AuditExport extends Model
     public function isRetryExhausted(): bool
     {
         return $this->status === AuditExportStatus::FAILED
-            && $this->retry_count >= static::maxRetries();
+            && $this->retryBudgetSpent();
     }
 
     /**

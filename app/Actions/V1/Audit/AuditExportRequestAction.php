@@ -189,7 +189,12 @@ class AuditExportRequestAction
             'max_retries' => AuditExport::maxRetries(),
         ]);
 
-        if ($row->isRetryExhausted()) {
+        // Count-only on purpose: the row was just claimed, so its status is
+        // `PENDING`, and `isRetryExhausted()` — which also demands `FAILED`,
+        // because that is the VIEW's question — answered false here forever.
+        // This warning shipped unreachable; counting the clicks is what makes
+        // the last one land.
+        if ($row->retryBudgetSpent()) {
             // The last click, not the first refusal: an admin looking for the rows
             // that need a human gets this one from the log rather than by asking
             // every user to recount their own clicks.

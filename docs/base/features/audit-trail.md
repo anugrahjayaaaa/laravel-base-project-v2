@@ -629,7 +629,11 @@ Six decisions the implementation fixes, none of which the flow above states:
   nine whole-table builds, and the dominant causes are environmental — a worker
   that cannot reach a dependency is not fixed by asking twice more. Past the
   budget the row says `Contact admin`, and `audit.export.retries_exhausted` is
-  logged so an admin can find the rows that need a human. **The cap is enforced in
+  logged **on the click that spends the last unit**, so an admin can find the rows
+  that need a human. (The check counts `retry_count` against the setting and
+  deliberately ignores the status: at that point `retry()` has just claimed the
+  row, so it is `pending`, and demanding `failed` there is what made this warning
+  unreachable until 2026-10-15.) **The cap is enforced in
   the Action, not the Blade**: the button is hidden in both channels' views, and a
   cap enforced only in a template is a cap with a hole shaped like an HTTP request.
   `expires_at` is deliberately **not** extended by a retry — the window is seven

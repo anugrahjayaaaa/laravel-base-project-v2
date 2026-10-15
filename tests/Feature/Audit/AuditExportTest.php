@@ -755,6 +755,68 @@ class AuditExportTest extends TestCase
     }
 
     /**
+     * The exhaustion warning, at the click that spends the last unit of budget.
+     *
+     * It shipped UNREACHABLE: `retry()` asked `isRetryExhausted()`, which also
+     * demands status `FAILED`, after its own claim had moved the row to
+     * `PENDING`. The budget-spent case was already gone to the 409 above, and
+     * every other case answered false — so `audit.export.retries_exhausted`
+     * (documented in `audit-trail.md` and `logging.md`) had never been logged.
+     */
+    public function test_the_last_allowed_retry_logs_retries_exhausted(): void
+    {
+        Queue::fake();
+        Log::spy();
+
+        $admin = $this->login(SystemRole::ADMIN);
+        $export = $this->failedExport($admin, ['retry_count' => AuditExport::maxRetries() - 1]);
+
+        $this->post(route('activity-logs.exports.retry', $export))
+            ->assertRedirect()
+            ->assertSessionHas('status');
+
+        $this->assertSame(
+            AuditExport::maxRetries(),
+            $export->fresh()->retry_count,
+            'this click is the one that spends the budget',
+        );
+
+        Log::shouldHaveReceived('warning')
+            ->once()
+            ->withArgs(fn (string $event, array $context): bool => $event === 'audit.export.retries_exhausted'
+                && $context['export_id'] === $export->getKey()
+                && $context['user_id'] === $admin->getKey());
+    }
+
+    /**
+     * The other half of the branch: an ordinary retry inside the budget is
+     * silent, so the warning means "budget spent" rather than "was retried".
+     */
+    public function test_an_earlier_retry_does_not_log_retries_exhausted(): void
+    {
+        Queue::fake();
+        Log::spy();
+
+        $admin = $this->login(SystemRole::ADMIN);
+        $export = $this->failedExport($admin, ['retry_count' => 0]);
+
+        $this->post(route('activity-logs.exports.retry', $export))
+            ->assertRedirect()
+            ->assertSessionHas('status');
+
+        $this->assertLessThan(AuditExport::maxRetries(), $export->fresh()->retry_count);
+
+        // The spy did record this request (otherwise "silent" below would prove
+        // nothing), and `warning` — the level this event uses — was not called
+        // at all inside the budget.
+        Log::shouldHaveReceived('info')
+            ->once()
+            ->withArgs(fn (string $event): bool => $event === 'audit.export.retried');
+
+        Log::shouldNotHaveReceived('warning');
+    }
+
+    /**
      * The window between the checks and the write, closed (pentest F2).
      *
      * `retry()` read the row, checked `failed`, then wrote. Two POSTs could both
