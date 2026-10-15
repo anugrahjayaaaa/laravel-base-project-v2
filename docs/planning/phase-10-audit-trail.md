@@ -265,7 +265,7 @@ gate that keeps the views honest.
 | P10-B2 | **Web routes** — `GET /activity-logs` → `activity-logs.index`, `GET /activity-logs/{activity}` → `activity-logs.show`, under `feature:activity_logs` + `can('audit.view')` in `routes/web.php` inside the authenticated group | B1 | small | Same wiring as `settings.index` (`routes/web.php:80`). `{activity}` is route-model bound through the new model in C1 |
 | P10-B3 | **Feature flag de-pending** — remove the `'pending'` key from `activity_logs` in `config/pennant.php:73-80` | B2 | tiny | Until the routes exist the page at `/features` says the switch "records intent only", which is true today and false after B2. Leaving it is the "a toggle reports success and changes nothing" problem Phase 7 fixed |
 | P10-B4 | **Export + download routes** — `POST /activity-logs/export` (`can:audit.export)` + `GET /activity-logs/exports/{export}/download` (`can:audit.export)` + `throttle:audit-export` | B1, E1 | small | See §6 D-2 for the throttle. Registered with the export routes so the permission and the rate limit are declared once, in one place |
-| P10-B5 | **Gating tests** — flag off → 403; no permission → 403; permission + flag on → 200; **superadmin with no permission rows → 200** | B1–B4 | medium | Mirror the flag half of `tests/Feature/FeatureFlag/PulseFeatureGateTest.php` (3 cases) and the permission half from `phase-11-monitoring-observability.md` §6 — `PulsePermissionGateTest` is itself still **PLANNED**, so there is no file to copy from yet. The superadmin case is the one that catches a mistake the other three cannot: lose `Gate::before` and 1, 2 and 4 all still pass |
+| P10-B5 | **Gating tests** — flag off → 403; no permission → 403; permission + flag on → 200; **superadmin with no permission rows → 200** | B1–B4 | medium | Mirror the flag half of `tests/Feature/FeatureFlag/PulseFeatureGateTest.php` (3 cases) and the permission half from `phase-11-monitoring-observability.md` Group B (P11-B4) — `PulsePermissionGateTest` is itself still **PLANNED**, so there is no file to copy from yet. The superadmin case is the one that catches a mistake the other three cannot: lose `Gate::before` and 1, 2 and 4 all still pass |
 
 **Superadmin and the flag.** Phase 7 established no flag bypass and tested it.
 That stays: a flag-off module 403s for everyone including superadmin. Phase 11
@@ -674,7 +674,7 @@ Queue monitoring (the dashboard decision) and the queue conventions it depends o
 are owned by Phase 11, which already ships Pulse. Both are written up in
 `phase-11-monitoring-observability.md` § *Phase 11 owns BOTH dashboards*, with the
 Horizon / Vantage / Pennant analysis and the layered decision; the conventions are
-MON-P11-05 there. What Phase 10 asked for, and the short answer:
+P11-E1..E3 there (renumbered from the colliding "MON-P11-05"). What Phase 10 asked for, and the short answer:
 
 - **E13** — which dashboard, if any. Answer recorded: **Pulse only.** Horizon is
   Redis-only and does not survive the `database` / `redis` fork a base project has
