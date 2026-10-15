@@ -19,7 +19,7 @@
          is free to keep the copy it has, and every theme fix would need a
          manual hard refresh to see. --}}
     <link rel="stylesheet" href="{{ asset('vendor/theme.css') }}?v={{ filemtime(public_path('vendor/theme.css')) }}">
-    <script>
+    <script @nonce>
         (function() {
             var saved = localStorage.getItem('theme');
             var systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;

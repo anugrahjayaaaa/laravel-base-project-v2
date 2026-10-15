@@ -264,7 +264,7 @@
     <span id="audit-exports-live" class="visually-hidden" role="status" aria-live="polite"></span>
 
     @push('scripts')
-        <script>
+        <script @nonce>
             {{-- The Detail control is icon-only, so its tooltip IS its label and
                  nothing appears on hover without this. Bootstrap 5.3 does not
                  auto-initialise: `data-bs-toggle` is only the marker this matches.
@@ -283,7 +283,7 @@
     @endpush
 
     @push('scripts')
-        <script>
+        <script @nonce>
             {{-- Keeps "Your exports" current while a row is still being generated.
 
                  ## Why polling and not a push channel

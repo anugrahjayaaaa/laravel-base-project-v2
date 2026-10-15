@@ -1141,15 +1141,22 @@ class AuditExportTest extends TestCase
      * `AuditLogUiRenderTest` because the claim is about how many ROWS AND JOBS one
      * click produces, which is this file's subject — not about how the page looks.
      *
-     * ## The second half of the attribute is the load-bearing half
+     * ## Where the guard went
      *
-     * HTML evaluates the submitter's state when the submission is triggered, so a
-     * `type="submit"` button that is disabled by the time its own click's default
-     * action runs aborts that submission. `onclick="this.disabled = true;"` alone
-     * greys the button out and posts nothing — a guard that breaks the control it
-     * guards, and the exact bug this shipped with once. `form.submit()` submits the
-     * form directly rather than through the button, which is why the disabled state
-     * is irrelevant and why the four auth forms carry the same pair.
+     * It used to be an inline `onclick` that disabled the button and then called
+     * `form.submit()` — the call was the only way it worked, because HTML evaluates
+     * the submitter's state when the submission is triggered: a `type="submit"`
+     * button disabled by the time its own click's default action runs aborts that
+     * submission, so the disable alone greyed the button out and posted nothing —
+     * the exact bug this shipped with once.
+     *
+     * `AddContentSecurityPolicy` now forbids inline handlers outright, so the
+     * button carries `data-disable-on-submit` and the behaviour lives in the
+     * listener delegated on `document` in `resources/js/helpers/form-guards.js`.
+     * It fires on `submit`, which is after the submission is committed — the moment
+     * the old `form.submit()` was reaching around for — and after constraint
+     * validation, which the old version skipped. The auth forms carry the same
+     * attribute for the same reason.
      *
      * A string assertion cannot prove what a click does. What it does is pin the
      * trap for the next editor, which is worth having here: this assertion was
@@ -1163,10 +1170,10 @@ class AuditExportTest extends TestCase
 
         $html = $this->get(route('activity-logs.index'))->assertOk()->getContent();
 
-        $this->assertStringContainsString(
-            'onclick="this.disabled = true; this.form.submit();"',
+        $this->assertMatchesRegularExpression(
+            '/<button[^>]*\bdata-disable-on-submit\b[^>]*>/',
             $html,
-            'the double-click guard disables the submit button without submitting, which breaks the export'
+            'the double-click guard is gone, so one click can queue two exports'
         );
     }
 

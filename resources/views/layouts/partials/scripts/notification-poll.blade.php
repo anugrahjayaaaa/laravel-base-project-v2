@@ -43,7 +43,7 @@
     is no state to forge — which is also why the CSRF exemption a POST would need
     is not here at all.
 --}}
-<script>
+<script @nonce>
     (function () {
         var bell = document.getElementById('notification-bell');
 

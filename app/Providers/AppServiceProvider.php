@@ -21,6 +21,7 @@ use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Pagination\Paginator;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\View\View;
@@ -41,6 +42,42 @@ class AppServiceProvider extends ServiceProvider
     {
         Paginator::useBootstrap();
         LengthAwarePaginator::useBootstrap();
+
+        // The nonce itself is per-response: `AddContentSecurityPolicy` overwrites
+        // this on every HTML request, and only that request's views are rendered
+        // while it holds the real value.
+        //
+        // The default exists because a view is also rendered by things that are
+        // not an HTTP response at all — a mail body, a queue job, `view()->render()`
+        // inside a test — and none of those pass through the middleware. Without a
+        // value here `@nonce` there is an "Undefined variable" error, so one shared
+        // variable turns "no policy applies" into a crash. An empty nonce is never
+        // served under a real policy, because the header and the value come from
+        // the same middleware.
+        view()->share('cspNonce', '');
+
+        // `<script @nonce>` rather than `nonce="{{ $cspNonce }}"` at every call
+        // site: the attribute name and the variable name then cannot drift apart.
+        //
+        // The value is resolved at COMPILE time, not at run time: a bare `@nonce`
+        // reaches here with an empty expression, and building `( ?: $cspNonce)`
+        // into the compiled output is a PHP parse error in every view that uses
+        // the directive — a fatal a unit test would never see until a page renders.
+        //
+        // `\\e` rather than `\e`: this is a DOUBLE-QUOTED PHP string, where `\e`
+        // is PHP's own escape for the ESC control character — the compiled view
+        // then reads `.0x1B($cspNonce)` and every page using it dies with a
+        // ParseError, which is how this shipped once already.
+        //
+        // Registered HERE and not in `bootstrap/app.php`, because `withMiddleware()`
+        // runs while the application is still being built and the Blade facade has
+        // no root to resolve against yet — calling it there fatals the console and
+        // every request with "A facade root has not been set".
+        Blade::directive('nonce', function (string $expression): string {
+            $value = $expression === '' ? '$cspNonce' : $expression;
+
+            return "<?php echo 'nonce=\"'.\\e({$value}).'\"'; ?>";
+        });
 
         view()->composer('layouts.partials.sidebar', AppMenuComposer::class);
         // The header dropdown carries its own Sessions link, outside $menuGroups,

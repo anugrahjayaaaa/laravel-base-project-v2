@@ -165,18 +165,20 @@
                                 <input type="checkbox" id="bulkSelectAll" aria-label="Select all users">
                             </th>
                             <th style="width: 50px" class="align-middle">#</th>
-                            <th style="cursor:pointer" class="align-middle"
-                                onclick="window.location.href='{{ $sortUrl('name') }}'">
-                                Name{!! $sortIcon('name') !!}
+                            {{-- A real link, not an `onclick` on the header: the
+                                 sort is navigation, and a `<th>` nobody can focus
+                                 is a sort a keyboard user cannot reach. The anchor
+                                 keeps the header looking like text (`text-body`)
+                                 and takes the pointer from the element itself. --}}
+                            <th class="align-middle">
+                                <a href="{{ $sortUrl('name') }}" class="text-body text-decoration-none">Name{!! $sortIcon('name') !!}</a>
                             </th>
-                            <th style="cursor:pointer" class="align-middle"
-                                onclick="window.location.href='{{ $sortUrl('email') }}'">
-                                Email{!! $sortIcon('email') !!}
+                            <th class="align-middle">
+                                <a href="{{ $sortUrl('email') }}" class="text-body text-decoration-none">Email{!! $sortIcon('email') !!}</a>
                             </th>
                             <th class="align-middle">Status</th>
-                            <th style="cursor:pointer" class="align-middle"
-                                onclick="window.location.href='{{ $sortUrl('created_at') }}'">
-                                Created At{!! $sortIcon('created_at') !!}
+                            <th class="align-middle">
+                                <a href="{{ $sortUrl('created_at') }}" class="text-body text-decoration-none">Created At{!! $sortIcon('created_at') !!}</a>
                             </th>
                             <th class="align-middle text-end">Actions</th>
                         </tr>

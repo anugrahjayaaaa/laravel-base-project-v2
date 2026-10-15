@@ -214,7 +214,7 @@
     </div>
 
     @push('scripts')
-    <script>
+    <script @nonce>
         var tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
         tooltipTriggerList.forEach(function(el) { new bootstrap.Tooltip(el); });
     </script>

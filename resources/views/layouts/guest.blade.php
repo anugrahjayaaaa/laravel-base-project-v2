@@ -12,7 +12,7 @@
          font files behind it. --}}
     <link rel="stylesheet" href="{{ asset('vendor/fontawesome/fontawesome.min.css') }}">
     <link rel="stylesheet" href="{{ asset('vendor/theme.css') }}?v={{ filemtime(public_path('vendor/theme.css')) }}">
-    <script>
+    <script @nonce>
         (function() {
             var saved = localStorage.getItem('theme');
             var systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;

@@ -11,7 +11,7 @@
 
     @include('scramble::dev-tools', ['renderer' => 'elements'])
 
-    <script>
+    <script @nonce>
         const originalFetch = window.fetch;
 
         // intercept TryIt requests and add the XSRF-TOKEN header,
@@ -85,7 +85,7 @@
         {{ $key }}="{{ $value === true ? 'true' : ($value === false ? 'false' : $value) }}"
     @endforeach
 />
-<script>
+<script @nonce>
     (async () => {
         const docs = document.getElementById('docs');
         docs.apiDescriptionDocument = @json($spec);
@@ -93,7 +93,7 @@
 </script>
 
 @if($config->renderer()->get('theme', 'light') === 'system')
-    <script>
+    <script @nonce>
         var mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
 
         function updateTheme(e) {

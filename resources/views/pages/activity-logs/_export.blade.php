@@ -43,7 +43,7 @@
     secondary. It matches the Reset button's weight, which is the honest signal:
     both are refinements of the list, not new work.
 
-    ## The button disables itself on click, and THEN submits
+    ## The button disables itself on submit
 
     Each POST creates an `audit_exports` row and queues a job, so a double click is
     two rows, two jobs and two whole-table CSV builds — and `AuditExport::diskPath()`
@@ -51,20 +51,22 @@
     does not cancel the first. The operator asked for one file and got two, and the
     list shows both.
 
-    `this.form.submit()` after the disable is NOT belt-and-braces, it is the only
-    way the thing works at all. HTML evaluates the submitter's state when the
-    submission is triggered: a `type="submit"` button that is disabled by the time
-    its own click's default action runs is a submission that is ABORTED. So
-    `onclick="this.disabled = true;"` alone disables the button and posts nothing —
-    a guard that breaks the control it guards. Calling `form.submit()` submits the
-    form directly rather than through the button, which is why the disabled state
-    is irrelevant.
+    This used to be an inline `onclick` that disabled the button and then called
+    `form.submit()` — the call was the point, not belt-and-braces: HTML evaluates
+    the submitter's state when the submission is triggered, so a `type="submit"`
+    button disabled by the time its own click's default action runs is a
+    submission that is ABORTED, and the disable alone posted nothing.
 
-    That is the whole content of the same attribute on the four auth forms, and it
-    is why they read the way they do. It costs nothing here that it costs them
-    there: the submit button carries no `name`/`value`, so bypassing the submitter
-    drops no field, and nothing listens for this form's `submit` event —
-    `form.submit()` does not raise one.
+    `AddContentSecurityPolicy` now forbids inline handlers outright, so the
+    behaviour lives in `resources/js/helpers/form-guards.js`: a listener delegated
+    on `document` that disables every `[data-disable-on-submit]` button it finds
+    when a form submits. The `submit` event fires once the submission is already
+    committed — the moment the old `form.submit()` call was reaching around for —
+    and it runs constraint validation first, which the old version skipped.
+
+    The four auth forms and the resend button carry the same attribute for the same
+    reason. The submit buttons carry no `name`/`value`, so nothing is lost by the
+    disable happening outside the submitter itself.
 
     ## What this is not
 
@@ -107,7 +109,7 @@
             class="btn btn-outline-secondary btn-sm d-inline-flex align-items-center gap-2"
             data-bs-toggle="tooltip" data-bs-placement="top"
             data-bs-title="Exports the rows matched by the current filters as CSV. Maximum {{ $auditExportRateLimit }} per hour."
-            onclick="this.disabled = true; this.form.submit();">
+            data-disable-on-submit>
             <i class="fas fa-file-arrow-down"></i> Export CSV
         </button>
     </form>

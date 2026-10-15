@@ -2,7 +2,7 @@
     <i class="theme-icon fs-6"></i>
 </button>
 @push('scripts')
-<script>
+<script @nonce>
     (function() {
         var saved = localStorage.getItem('theme');
         var systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;

@@ -1,6 +1,7 @@
 <?php
 
 use App\Exceptions\LastSuperadminException;
+use App\Http\Middleware\AddContentSecurityPolicy;
 use App\Http\Middleware\CheckAccountState;
 use App\Http\Middleware\EnsureFeatureIsEnabled;
 use App\Http\Middleware\EnsurePasswordChangeRequired;
@@ -39,6 +40,10 @@ return Application::configure(basePath: dirname(__DIR__))
 
         // Append custom CSRF middleware to web group (enforces CSRF in tests).
         $middleware->appendToGroup('web', VerifyCsrfToken::class);
+
+        // Web group, not global: the API answers JSON and the export streams a
+        // file, and a Content-Security-Policy on either is noise at best.
+        $middleware->appendToGroup('web', AddContentSecurityPolicy::class);
 
         // Aliases for middleware used in route definitions.
         $middleware->alias([
