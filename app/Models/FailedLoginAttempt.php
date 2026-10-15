@@ -4,7 +4,6 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
-use App\Models\SystemSetting;
 
 /**
  * Tracks failed login attempts and progressive lockout state per
