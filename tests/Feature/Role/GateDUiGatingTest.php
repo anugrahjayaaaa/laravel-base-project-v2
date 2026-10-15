@@ -290,10 +290,15 @@ class GateDUiGatingTest extends TestCase
      * A menu entry pointing at a route that was never shipped renders as a dead
      * '#' link, so the composer drops it.
      *
-     * Two entries genuinely have no route today — activity-logs.index and
-     * translations.index — so the requirement is not "every entry resolves" but
-     * "no UNRESOLVED entry is rendered". Asserting the composer is honest about
-     * what it drops is what keeps a fourth dead link from being added quietly.
+     * `translations.index` is the one entry that genuinely has no route today, so
+     * the requirement is not "every entry resolves" but "no UNRESOLVED entry is
+     * rendered". Asserting the composer is honest about what it drops is what
+     * keeps a second dead link from being added quietly.
+     *
+     * `activity-logs.index` was the other exemplar until Phase 10 shipped the
+     * audit viewer, at which point `Route::has()` started returning true for it
+     * and this assertion failed for a reason that had nothing to do with the rule
+     * it exists to prove. The negative label assertion moved with it.
      */
     public function test_an_unshipped_menu_route_is_dropped_rather_than_rendered(): void
     {
@@ -312,16 +317,19 @@ class GateDUiGatingTest extends TestCase
             fn (string $name) => $name !== '#' && ! Route::has($name)
         ));
 
-        // Activity Logs is one of them today, so prove the drop is real rather
+        // Translations is one of them today, so prove the drop is real rather
         // than an empty loop over nothing.
-        $this->assertContains('activity-logs.index', $unshipped);
         $this->assertContains('translations.index', $unshipped);
 
         // Assert the dropped entry's LABEL is absent. Asserting on href="#" would
         // be wrong: the decorative Labels group is '#' on purpose, and a dead
         // link is what this rule exists to prevent, not the character itself.
-        $this->assertStringNotContainsString('Activity Logs', $html);
         $this->assertStringNotContainsString('Translations', $html);
+
+        // The counterpart, now that the audit route ships: a SHIPPED entry is
+        // rendered. Without this the previous assertion would pass simply because
+        // the label vanished for an unrelated reason.
+        $this->assertStringContainsString('Activity Logs', $html);
 
         // The labels group IS '#' by design and must survive.
         $this->assertStringContainsString('Important', $html);

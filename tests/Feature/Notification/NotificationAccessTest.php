@@ -13,7 +13,6 @@ use Database\Seeders\RoleSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Route;
 use Laravel\Pennant\Feature;
-
 use Spatie\Permission\PermissionRegistrar;
 use Tests\TestCase;
 
@@ -73,7 +72,7 @@ class NotificationAccessTest extends TestCase
     }
 
     #
-    public function test_the_permission_is_seeded_and_grouped (): void
+    public function test_the_permission_is_seeded_and_grouped(): void
     {
         foreach (['notifications.view', 'notifications.manage', 'notifications.send_test'] as $name) {
             $this->assertContains($name, PermissionCatalog::all());
@@ -88,7 +87,7 @@ class NotificationAccessTest extends TestCase
     }
 
     #
-    public function test_the_flag_is_declared_and_not_pending (): void
+    public function test_the_flag_is_declared_and_not_pending(): void
     {
         $flag = FeatureCatalog::find('notifications');
 
@@ -113,7 +112,7 @@ class NotificationAccessTest extends TestCase
     }
 
     #
-    public function test_a_user_without_the_permission_is_refused (): void
+    public function test_a_user_without_the_permission_is_refused(): void
     {
         $this->login(SystemRole::USER);
 
@@ -122,7 +121,7 @@ class NotificationAccessTest extends TestCase
     }
 
     #
-    public function test_a_holder_of_the_permission_reaches_both_pages (): void
+    public function test_a_holder_of_the_permission_reaches_both_pages(): void
     {
         $this->login(SystemRole::ADMIN);
 
@@ -138,7 +137,7 @@ class NotificationAccessTest extends TestCase
      * superadmin bypass.
      */
     #
-    public function test_a_disabled_flag_refuses_an_admin (): void
+    public function test_a_disabled_flag_refuses_an_admin(): void
     {
         $this->login(SystemRole::SUPERADMIN);
         Feature::deactivate('notifications');
@@ -177,7 +176,7 @@ class NotificationAccessTest extends TestCase
      * back out to it, so an admin can reach it from either direction.
      */
     #
-    public function test_the_two_pages_link_to_each_other (): void
+    public function test_the_two_pages_link_to_each_other(): void
     {
         $this->login(SystemRole::ADMIN);
         Feature::activate('notifications');
@@ -199,7 +198,7 @@ class NotificationAccessTest extends TestCase
      * bell, which is supposed to be there.
      */
     #
-    public function test_the_sidebar_item_follows_the_permission (): void
+    public function test_the_sidebar_item_follows_the_permission(): void
     {
         $this->login(SystemRole::ADMIN);
         Feature::activate('notifications');
@@ -239,7 +238,7 @@ class NotificationAccessTest extends TestCase
     }
 
     #
-    public function test_the_sidebar_item_follows_the_flag (): void
+    public function test_the_sidebar_item_follows_the_flag(): void
     {
         $this->login(SystemRole::SUPERADMIN);
         $url = 'href="'.$this->sidebarUrl().'"';
@@ -262,7 +261,7 @@ class NotificationAccessTest extends TestCase
      * correctly while the header kept the entry.
      */
     #
-    public function test_the_header_bell_follows_the_flag (): void
+    public function test_the_header_bell_follows_the_flag(): void
     {
         $this->login(SystemRole::ADMIN);
 
@@ -278,7 +277,7 @@ class NotificationAccessTest extends TestCase
     }
 
     #
-    public function test_the_header_bell_is_no_longer_permission_gated (): void
+    public function test_the_header_bell_is_no_longer_permission_gated(): void
     {
         $user = $this->login(SystemRole::USER);
         Feature::activate('notifications');
@@ -299,7 +298,7 @@ class NotificationAccessTest extends TestCase
      * is still a link, and a `<button>` with a title is still a dead control.
      */
     #
-    public function test_the_bell_is_a_link_not_a_button (): void
+    public function test_the_bell_is_a_link_not_a_button(): void
     {
         $this->login(SystemRole::ADMIN);
         Feature::activate('notifications');
@@ -324,7 +323,7 @@ class NotificationAccessTest extends TestCase
      * routes to avoid.
      */
     #
-    public function test_the_sidebar_link_points_at_the_route_not_a_placeholder (): void
+    public function test_the_sidebar_link_points_at_the_route_not_a_placeholder(): void
     {
         $this->login(SystemRole::ADMIN);
         Feature::activate('notifications');

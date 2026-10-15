@@ -79,7 +79,7 @@
                 </div>
                 <div class="d-grid mb-3">
                     <button type="submit" class="btn btn-primary" id="resetBtn"
-                                 onclick="this.disabled=true;this.form.submit()">Reset Password</button>
+                                 data-disable-on-submit>Reset Password</button>
                 </div>
             </form>
         </div>
@@ -88,7 +88,7 @@
 @endsection
 
 @push('scripts')
-<script>
+<script @nonce>
 (function() {
     document.querySelectorAll('.rate-limit-seconds').forEach(function(el) {
         var seconds = parseInt(el.dataset.seconds);

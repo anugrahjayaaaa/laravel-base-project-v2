@@ -37,9 +37,20 @@ class UserDeleteAction
 
         DB::transaction(function () use ($user, $causer) {
             $this->invalidateSessions($user);
+
+            // Captured BEFORE the delete. A soft-deleted row is only readable from
+            // the trashed scope, so an operator scanning the audit list would find
+            // a subject that renders as a bare `#12` — and the address is the one
+            // thing they would search by.
+            $identity = ['target_id' => $user->id, 'target_email' => $user->email];
+
             $user->delete();
 
-            $user->audit('user.deleted', $causer);
+            // `target_id`/`target_email` are redundant with the subject, and
+            // deliberately so — same reasoning as `UserLockAction`: the list
+            // filters on properties, so a state row that carried only an id could
+            // not be found by the address it affected.
+            $user->audit('user.deleted', $causer, $identity);
         });
 
         // The account no longer exists, so it cannot be the recipient — only the

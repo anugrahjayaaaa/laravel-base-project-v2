@@ -1,6 +1,7 @@
 <?php
 
 use App\Exceptions\LastSuperadminException;
+use App\Http\Middleware\AddSecurityHeaders;
 use App\Http\Middleware\CheckAccountState;
 use App\Http\Middleware\EnsureFeatureIsEnabled;
 use App\Http\Middleware\EnsurePasswordChangeRequired;
@@ -39,6 +40,19 @@ return Application::configure(basePath: dirname(__DIR__))
 
         // Append custom CSRF middleware to web group (enforces CSRF in tests).
         $middleware->appendToGroup('web', VerifyCsrfToken::class);
+
+        // Appended to GLOBAL middleware, not to a group: these are decisions
+        // about this origin — HSTS, nosniff, referrer and permissions apply to
+        // the JSON API and to the streamed CSV exactly as they apply to a page.
+        // The CSP itself stays HTML-only inside the class, which is why moving
+        // the registration here does not put a policy on JSON.
+        //
+        // Registered once and only here. A second registration (this plus the
+        // web group) would run the class twice per request: the outer run
+        // overwrites the nonce in the header after the view was rendered with
+        // the inner one, and every page would be served a policy its scripts do
+        // not match.
+        $middleware->append(AddSecurityHeaders::class);
 
         // Aliases for middleware used in route definitions.
         $middleware->alias([

@@ -90,7 +90,7 @@
 
                 <div class="d-grid mb-3">
                     <button type="submit" class="btn btn-primary" id="registerBtn"
-                            onclick="this.disabled=true;this.form.submit()">Register</button>
+                            data-disable-on-submit>Register</button>
                 </div>
                 <div class="text-center">
                     <a href="{{ route('login') }}" class="text-decoration-none small">Already have an account? Sign in</a>

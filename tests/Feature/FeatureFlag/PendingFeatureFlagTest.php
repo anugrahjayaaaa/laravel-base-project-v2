@@ -6,7 +6,6 @@ use App\Support\FeatureCatalog;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ViewErrorBag;
-use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 use App\Actions\V1\Feature\FeatureIndexAction;
 
@@ -47,7 +46,7 @@ class PendingFeatureFlagTest extends TestCase
         ])->render();
     }
 
-        public function test_a_flag_with_no_module_says_so (): void
+    public function test_a_flag_with_no_module_says_so(): void
     {
         $pending = collect(FeatureCatalog::all())
             ->filter(fn (array $f): bool => $f['pending'] !== null)
@@ -68,7 +67,7 @@ class PendingFeatureFlagTest extends TestCase
         }
     }
 
-        public function test_a_wired_flag_carries_no_caveat (): void
+    public function test_a_wired_flag_carries_no_caveat(): void
     {
         // `users` is gated on 36 routes. A caveat on it would be noise.
         $this->assertNull(
@@ -90,7 +89,7 @@ class PendingFeatureFlagTest extends TestCase
      * declares, so it is the flag most likely to be wrongly marked pending. It
      * must not be.
      */
-        public function test_pulse_is_wired_and_not_marked_pending(): void
+    public function test_pulse_is_wired_and_not_marked_pending(): void
     {
         $this->assertNull(FeatureCatalog::find('pulse')['pending']);
 

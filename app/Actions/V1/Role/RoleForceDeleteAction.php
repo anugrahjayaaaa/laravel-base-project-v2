@@ -35,9 +35,19 @@ class RoleForceDeleteAction
         $this->validate($role);
 
         DB::transaction(function () use ($role, $causer): void {
+            // Counted BEFORE the delete: after a force delete the pivot rows are
+            // gone and the number is unrecoverable. Mirrors `role.deleted`, which
+            // already carries these — "a role was permanently removed" is not
+            // actionable, "it took 12 accounts and 6 permissions with it" is.
+            $impact = [
+                'revoked_users' => $role->users()->count(),
+                'revoked_permissions' => $role->permissions()->count(),
+                'role_name' => $role->name,
+            ];
+
             $role->forceDelete();
 
-            $role->audit('role.force_deleted', $causer);
+            $role->audit('role.force_deleted', $causer, $impact);
         });
 
         return $role;

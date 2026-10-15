@@ -53,7 +53,7 @@ class SharedIdentityFieldsTest extends TestCase
         return $admin;
     }
 
-        public function test_both_identity_pages_render_the_same_initials(): void
+    public function test_both_identity_pages_render_the_same_initials(): void
     {
         $admin = $this->admin();
 
@@ -66,7 +66,7 @@ class SharedIdentityFieldsTest extends TestCase
      * AccountOptionsComposer. Every page that shows those fields must still
      * render, with the data, and with no controller passing it.
      */
-        public function test_the_composer_supplies_roles_and_the_identity_policy(): void
+    public function test_the_composer_supplies_roles_and_the_identity_policy(): void
     {
         Role::create(['name' => 'editor', 'guard_name' => RoleLookup::guard()]);
         $admin = $this->admin();

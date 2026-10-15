@@ -308,14 +308,14 @@ class NotificationUiRenderTest extends TestCase
         $this->assertSame([], $other, "the {$label} page queried from inside the view");
     }
 
-        public function test_the_mail_configuration_page_renders_and_queries_nothing (): void
+    public function test_the_mail_configuration_page_renders_and_queries_nothing(): void
     {
         $this->login();
         $this->grantAll();
         $this->assertRendersWithoutQuerying('notifications.index', fn (): string => $this->renderIndex(), allowedLayout: 0);
     }
 
-        public function test_the_channels_page_renders_and_queries_nothing (): void
+    public function test_the_channels_page_renders_and_queries_nothing(): void
     {
         $this->login();
         $this->grantAll();
@@ -328,7 +328,7 @@ class NotificationUiRenderTest extends TestCase
      * Asserted as a pairing, so a page that kept one column and dropped the other
      * fails rather than passing on a stray `col-lg-8` somewhere.
      */
-        public function test_the_mail_page_keeps_the_two_column_grid (): void
+    public function test_the_mail_page_keeps_the_two_column_grid(): void
     {
         $this->login();
         $this->grantAll();
@@ -346,7 +346,7 @@ class NotificationUiRenderTest extends TestCase
      * `bg-white` / `bg-light` are the two forbidden classes, and on the mail page
      * a `bg-white` footer is a white bar in dark mode — visible, not cosmetic.
      */
-        public function test_the_forbidden_classes_never_appear (): void
+    public function test_the_forbidden_classes_never_appear(): void
     {
         $this->login();
         $this->grantAll();
@@ -382,7 +382,7 @@ class NotificationUiRenderTest extends TestCase
      * file count asserted: PHP's `glob()` does not treat `**` as recursive, so a
      * naive scan reads almost nothing and the ban passes vacuously.
      */
-        public function test_no_view_casts_booleans_with_filter_var(): void
+    public function test_no_view_casts_booleans_with_filter_var(): void
     {
         $files = Finder::create()
             ->files()
@@ -405,11 +405,13 @@ class NotificationUiRenderTest extends TestCase
             );
         }
 
-        // Three: index, channels, and inbox. Asserted rather than hardcoded to
-        // two so a fourth view is a deliberate edit here — a scanner that reads
-        // an unknown number of files passes vacuously, which is the failure this
+        // Four: index, channels, inbox, and the single-notification page Group E
+        // added (`show`) when clicking a notification started opening THAT
+        // notification rather than the list. Asserted rather than hardcoded to two
+        // so a fifth view is a deliberate edit here — a scanner that reads an
+        // unknown number of files passes vacuously, which is the failure this
         // assertion exists to prevent.
-        $this->assertSame(3, $seen, 'the view scanner read the wrong number of files — the ban above is vacuous');
+        $this->assertSame(4, $seen, 'the view scanner read the wrong number of files — the ban above is vacuous');
     }
 
     /**
@@ -418,7 +420,7 @@ class NotificationUiRenderTest extends TestCase
      * the cheap guard that names the offender, because a query behind a cache
      * hit is invisible to the count.
      */
-        public function test_no_view_reaches_for_a_model_or_a_setting(): void
+    public function test_no_view_reaches_for_a_model_or_a_setting(): void
     {
         foreach (['index', 'channels'] as $page) {
             $path = resource_path("views/pages/notifications/{$page}.blade.php");
@@ -449,7 +451,7 @@ class NotificationUiRenderTest extends TestCase
      * parsing the rendered markup for every checkbox name and requiring a
      * companion for each.
      */
-        public function test_every_channel_switch_has_a_hidden_companion(): void
+    public function test_every_channel_switch_has_a_hidden_companion(): void
     {
         $this->login();
         $this->grantAll();
@@ -491,7 +493,7 @@ class NotificationUiRenderTest extends TestCase
      * hard left. Asserting both halves, or the guard passes on a page that is
      * still off-centre.
      */
-        public function test_the_channel_switches_are_centred (): void
+    public function test_the_channel_switches_are_centred(): void
     {
         $this->login();
         $this->grantAll();
@@ -523,7 +525,7 @@ class NotificationUiRenderTest extends TestCase
      * description is exactly what the pin prevents. Asserted per table, because a
      * first-table-only assertion stays green through a second card missing it.
      */
-        public function test_every_channels_table_pins_its_columns(): void
+    public function test_every_channels_table_pins_its_columns(): void
     {
         $this->login();
         $this->grantAll();
@@ -570,7 +572,7 @@ class NotificationUiRenderTest extends TestCase
      * the read-only one. Asserting only the editable branch would pass on a page
      * that dropped it precisely for the viewer with least navigation.
      */
-        public function test_the_mail_page_links_to_the_channels_page_in_both_branches (): void
+    public function test_the_mail_page_links_to_the_channels_page_in_both_branches(): void
     {
         $this->login();
         $this->grantAll();
@@ -602,7 +604,7 @@ class NotificationUiRenderTest extends TestCase
      * the same route, so a positional read returns `class="nav-link"` and reports
      * a styling regression that never happened.
      */
-        public function test_the_channels_link_is_a_right_aligned_primary_action (): void
+    public function test_the_channels_link_is_a_right_aligned_primary_action(): void
     {
         $this->login();
 
@@ -673,7 +675,7 @@ class NotificationUiRenderTest extends TestCase
 
         return [];
     }
-        public function test_a_viewer_without_manage_gets_a_read_only_mail_page (): void
+    public function test_a_viewer_without_manage_gets_a_read_only_mail_page(): void
     {
         $this->login();
         $this->grantViewOnly();
@@ -687,7 +689,7 @@ class NotificationUiRenderTest extends TestCase
         $this->assertStringContainsString('mail_host', $html);
     }
 
-        public function test_a_viewer_without_manage_gets_no_channel_switches (): void
+    public function test_a_viewer_without_manage_gets_no_channel_switches(): void
     {
         $this->login();
         $this->grantViewOnly();
@@ -702,7 +704,7 @@ class NotificationUiRenderTest extends TestCase
         $this->assertStringContainsString('Disabled', $html);
     }
 
-        public function test_a_manager_is_not_shown_the_read_only_banner (): void
+    public function test_a_manager_is_not_shown_the_read_only_banner(): void
     {
         $this->login();
         $this->grantAll();
@@ -721,7 +723,7 @@ class NotificationUiRenderTest extends TestCase
      * "the fixture carries no password", so a future fixture cannot quietly add
      * one and let an echo slip through.
      */
-        public function test_the_stored_smtp_password_is_never_rendered (): void
+    public function test_the_stored_smtp_password_is_never_rendered(): void
     {
         $this->login();
         $this->grantAll();
@@ -753,7 +755,7 @@ class NotificationUiRenderTest extends TestCase
      * the form: without manage there is no configured transport to test, and
      * without view there is no page to be on.
      */
-        public function test_the_send_test_card_is_gated_separately_from_manage (): void
+    public function test_the_send_test_card_is_gated_separately_from_manage(): void
     {
         $this->login();
 
@@ -800,7 +802,7 @@ class NotificationUiRenderTest extends TestCase
      * the message is invisible while the field is red. Asserted by rendering with
      * errors and checking the pairing, the way `SettingsUiRenderTest` does.
      */
-        public function test_every_error_message_is_visible_and_associated_with_its_field(): void
+    public function test_every_error_message_is_visible_and_associated_with_its_field(): void
     {
         $this->login();
         $this->grantAll();
@@ -839,7 +841,7 @@ class NotificationUiRenderTest extends TestCase
      * The pages are reachable through the routes the brief specifies, behind
      * `auth` — a guest gets the login redirect, not the mail configuration.
      */
-        public function test_both_pages_are_reachable_and_require_authentication(): void
+    public function test_both_pages_are_reachable_and_require_authentication(): void
     {
         $this->get(route('notifications.index'))->assertRedirect(route('login'));
         $this->get(route('notifications.channels'))->assertRedirect(route('login'));
@@ -857,7 +859,7 @@ class NotificationUiRenderTest extends TestCase
      * the HTTP path so a variable renamed in one file and not the other fails
      * here rather than as an undefined-variable fatal on the page.
      */
-        public function test_the_controller_hands_over_every_variable_its_view_reads (): void
+    public function test_the_controller_hands_over_every_variable_its_view_reads(): void
     {
         $this->login();
         $this->grantAll();

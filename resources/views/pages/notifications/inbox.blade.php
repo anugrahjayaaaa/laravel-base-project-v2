@@ -6,6 +6,11 @@
       $notifications   paginator of DatabaseNotification — paginated, newest first
       $unreadCount     int  a COUNT over ALL unread, not the page's length
       $canConfigure    bool whether to link to /notifications at all
+      $actions         notification id => ['url' => path, 'label' => string]
+                       the call to action, for the notifications that have one.
+                       Resolved in `NotificationInboxAction`, not read from
+                       `data['url']` here: the view must not be the layer that
+                       decides whether a stored URL is safe to link to.
 
     Rows are read through `$notification->data`, never a project-specific
     accessor: the inbox is generic over notification classes, and a view that
@@ -104,10 +109,61 @@
                                     @endif
                                 </td>
                                 <td class="align-middle">
-                                    <span class="fw-medium">{{ $notification->data['subject'] ?? 'Notification' }}</span>
+                                    {{-- The subject is the link to THIS notification,
+                                         and opening it marks it read. The Action
+                                         column's button stays for clearing a row
+                                         without reading it, which is a different
+                                         question and still the faster one when
+                                         triaging a backlog. --}}
+                                    <a href="{{ route('notifications.inbox.show', $notification->id) }}"
+                                       class="fw-medium text-body text-decoration-none">
+                                        {{ $notification->data['subject'] ?? 'Notification' }}
+                                    </a>
                                     @foreach ((array) ($notification->data['lines'] ?? []) as $line)
                                         <div class="text-muted fs-7">{{ $line }}</div>
                                     @endforeach
+
+                                    {{-- The notification's own call to action, when it
+                                         has one: a generated file to download, a
+                                         change to confirm. `$actions[$id]` is built
+                                         in `NotificationInboxAction`, which also
+                                         decides the link is same-origin — `data` is a
+                                         JSON column its writer controls and this URL
+                                         reaches an `href`, so an unsanitised
+                                         `javascript:` or `//host` value would be one
+                                         click from executing.
+
+                                         It sits HERE rather than in the Action
+                                         column because that column answers a
+                                         different question — "have I dealt with
+                                         this?" — and cramming both controls into a
+                                         10%-wide cell would read as clutter. Nothing
+                                         renders for a notification with no action,
+                                         which is every notification that predates
+                                         this contract.
+
+                                         The variable is `$rowAction` and NOT
+                                         `$action`: the confirmation modal in
+                                         `layouts/partials/modal` reads
+                                         `$confirmLabel ?? $action`, and a view
+                                         variable set here reaches the layout
+                                         through `@extends` — naming it `$action`
+                                         500s the whole page. --}}
+                                    @php($rowAction = $actions[$notification->id] ?? null)
+                                    @if ($rowAction !== null)
+                                        {{-- `btn-outline-primary`, not `-secondary`:
+                                             `theme.css` paints `-secondary` with
+                                             `--lbp-muted` on `--lbp-border`, which in
+                                             dark mode reads as a disabled control.
+                                             `-primary` keeps brand contrast in both
+                                             themes and still lets the DATA stay the
+                                             loudest thing in the table, which a solid
+                                             primary per row would not. --}}
+                                        <a href="{{ $rowAction['url'] }}"
+                                           class="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-2 mt-2">
+                                            <i class="fas fa-file-arrow-down"></i> {{ $rowAction['label'] }}
+                                        </a>
+                                    @endif
                                 </td>
                                 <td class="align-middle text-muted fs-7">
                                     {{ $notification->created_at->diffForHumans() }}
@@ -158,7 +214,7 @@
     </div>
 
     @push('scripts')
-    <script>
+    <script @nonce>
         var tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
         tooltipTriggerList.forEach(function(el) { new bootstrap.Tooltip(el); });
     </script>

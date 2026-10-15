@@ -19,7 +19,8 @@ trail must be:
 ## Decision
 
 Use `spatie/laravel-activitylog` for the audit trail, behind an
-application-level `Audit` abstraction layer.
+application-level abstraction layer — a model trait, not a service class. See
+"Abstraction shape: trait, not service" below.
 
 ## Alternatives Considered
 
@@ -47,21 +48,59 @@ Activitylog provides:
 The Base Project documents (audit-trail.md) explicitly state: "Use an
 established audit package rather than building from scratch."
 
+## Abstraction shape: trait, not service
+
+This DEP originally named a dedicated `Audit` service class with an
+`Audit::record(...)` entry point. **What shipped is a trait**,
+`App\Models\Concerns\Auditable`, called as `$subject->audit($event, $causer,
+$properties)`. The DEP is corrected here rather than the code, because the trait
+won for a recorded reason — not by accident.
+
+The service shape lost because it makes each caller assemble its own context.
+Every call site needs the same four derived values (`source`, `ip`, `user_agent`,
+`request_id`) and none of them are specific to the event. Handed a service, that
+derivation got copied — and it did: `request()->is('api/*') ? 'api' : 'web'`
+existed in six files under two different key names (`source` and `channel`), with
+only some of them carrying a user agent. A row written by one path could not be
+compared with a row written by another.
+
+Putting the derivation on the model that carries the trait makes
+`Auditable::auditContext()` the one place it exists, and every caller takes it
+without asking. A service would have needed the same discipline and had no
+mechanism enforcing it.
+
+Three call sites do not go through a model, and each has a named reason:
+
+| Writer | Why it is not the trait |
+|---|---|
+| `App\Jobs\Concerns\AuditsSystemActivity` | A queued job has no subject model to call it through. Nullable causer, `source => system`. |
+| `App\Services\InactivityLock` | Two callers, no single subject model; the service owns the row. |
+| `Auditable::auditBulk()` | One insert for N rows; a bulk action over 200 users would be 200 round trips inside a transaction already holding locks on those rows. |
+
+`Auditable::audit()` returns `void` — a caller that needs the row it just wrote
+uses Spatie's builder directly, which is what `AuditViewerFilterTest` does to
+back-date fixtures.
+
 ## Consequences
 
 - Application code does NOT call Activitylog directly. All audit writes go
-  through a dedicated `Audit` service class (abstraction layer).
+  through the `Auditable` trait (or one of the three writers above).
 - Audit records are written **within the same database transaction** as the
   mutation, **before the COMMIT**, and only persist if the transaction commits
-  successfully. The `Audit` abstraction enforces this by being called from
-  within the Action/Service layer inside the transaction scope.
+  successfully.
 - **Who writes them**: the Action that performs the mutation. Controllers
   orchestrate and MUST NOT add an audit call for a mutation an Action already
   performs — that is a duplicate record for one mutation. See
   [Action-First Audit Logging Standard](../application-boundaries.md#action-first-audit-logging-standard)
   for the full rule, including bulk mutations.
-- Sensitive data (passwords, tokens) must be scrubbed before storing in
-  `properties` — the abstraction handles this.
+- Sensitive data (passwords, tokens) must not be passed into `$properties`.
+  **This is a convention each call site follows by hand, not something the
+  abstraction enforces** — there is no scrubber. `AuditPropertyScrubTest` is what
+  holds it: it scans every row after exercising the mutation paths and fails if
+  a password, token, secret or `remember_token` value is present. A scrubber was
+  deliberately not built; it would be machinery for a problem no current call
+  site has, and it would hide the caller's mistake instead of failing on it.
+  Revisit when a caller that logs sensitive state actually appears.
 - Version constraint: `^4.8` (NOT v5, which requires PHP 8.4+).
 
 ## Security Implications
@@ -77,13 +116,21 @@ established audit package rather than building from scratch."
 - Activitylog v4.x is the active line for PHP 8.3. Do not upgrade to v5
   until the project targets PHP 8.4+.
 - Schema is minimal and stable — `activity_log` table.
-- The abstraction layer means version upgrades only affect the `Audit`
-  service class.
+- The abstraction layer means a version upgrade touches the `Auditable` trait
+  and the three non-trait writers, not every call site.
+- `config/activitylog.php` is **published** (Phase 10, `P10-D3`) because two
+  package defaults contradict documented project decisions: the 365-day
+  `delete_records_older_than_days` would silently break the "audit logs are
+  indefinite" retention promise the moment anyone scheduled `activitylog:clean`,
+  and `subject_returns_soft_deleted_models => false` degrades the viewer's
+  Target column to a bare `#id` for exactly the soft-deleted subjects an
+  incident review is looking for.
 
 ## Reversal / Replacement
 
-- Replace the `Audit` abstraction's implementation with a custom audit
-  backend.
-- The `activity_log` table schema would be replaced; the abstraction's API
-  contract (causer, subject, action, metadata) remains stable.
-- All application code calling `Audit::record(...)` is unaffected.
+- Replace the `Auditable` trait's implementation with a custom audit backend.
+  The `activity_log` table schema would be replaced; the contract the call sites
+  rely on (causer, subject, event, and the `source` / `ip` / `user_agent` /
+  `request_id` context `auditContext()` derives) remains stable.
+- All 41 call sites of `$model->audit(...)` are unaffected by a swap behind the
+  trait.

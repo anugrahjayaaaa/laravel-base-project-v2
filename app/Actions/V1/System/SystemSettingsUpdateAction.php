@@ -113,6 +113,23 @@ class SystemSettingsUpdateAction
             'registration_enabled' => ($data['registration_enabled'] ?? false) ? 'true' : 'false',
             'registration_default_role' => $data['registration_default_role'] ?? 'user',
             'registration_rate_limit_per_minute' => (string) ($data['registration_rate_limit_per_minute'] ?? 3),
+
+            // Audit trail export ceiling (Phase 10, §11 P10-E9). Per HOUR, not per
+            // minute — the limiter reads this same key, and the audit page's Export
+            // tooltip quotes it, so this row is the single source for both.
+            'audit_export_rate_limit_per_hour' => (string) ($data['audit_export_rate_limit_per_hour'] ?? 5),
+
+            // Manual retries per failed export row. The `?? 3` covers a payload
+            // that omits the field — an API client that never heard of it — and is
+            // the same fallback shape as the ceiling above.
+            'audit_export_max_manual_retries' => (string) ($data['audit_export_max_manual_retries'] ?? 3),
+
+            // Phase 12 P12-2: the three limiters that were literals. The defaults
+            // here are the literals they replace, so an install that never opens
+            // the settings page enforces exactly what it enforced before.
+            'user_state_actions_rate_limit_per_minute' => (string) ($data['user_state_actions_rate_limit_per_minute'] ?? 15),
+            'bulk_action_rate_limit_per_minute' => (string) ($data['bulk_action_rate_limit_per_minute'] ?? 5),
+            'send_test_mail_rate_limit_per_minute' => (string) ($data['send_test_mail_rate_limit_per_minute'] ?? 5),
         ];
 
         $graceEnabled = $updates['inactivity_lock_grace_enabled'] === 'true';

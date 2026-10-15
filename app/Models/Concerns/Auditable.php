@@ -2,8 +2,10 @@
 
 namespace App\Models\Concerns;
 
+use App\Actions\V1\Audit\AuditIndexAction;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -53,14 +55,22 @@ trait Auditable
         $activity
             ->withProperties(array_merge(static::auditContext(), $properties))
             ->log($event);
+
+        // The viewer's filter dropdowns are derived from the whole table and are
+        // cached, so a first-time event name or source has to invalidate them.
+        // Every write in the application arrives through this trait or through
+        // `auditBulk()` below, which is what makes this one call the whole
+        // invalidation story.
+        AuditIndexAction::bustCache();
     }
 
     /**
      * The context every audit row carries, derived once.
      *
-     * Public and static so the one writer that has no model to call it through
-     * — `Controller::audit()`, pending AUD-006 — takes the same derivation rather
-     * than its own. It goes when that method does; the normal path is
+     * Public and static so the writer that has no model to call it through —
+     * `Auditable::auditBulk()` below, which writes raw rows — takes the same
+     * derivation rather than its own. `Controller::audit()` and
+     * `bulkAudit()` were deleted from the base controller; the normal path is
      * `audit()` above, and no caller should assemble this inline.
      *
      * Merged first so a caller-supplied value overrides it, not the other way
@@ -71,12 +81,53 @@ trait Auditable
      */
     public static function auditContext(): array
     {
+        // ## Is an HTTP request being handled RIGHT NOW?
+        //
+        // Everything below is derived from a request, and outside one that object
+        // is a synthetic stand-in whose values are DEFAULTS, not facts: a
+        // scheduled job's row recorded `source => web` because
+        // `$request->is('api/*')` is false for a console request, and an IP of
+        // `127.0.0.1` because that is what `Request::ip()` falls back to. Both
+        // are lies in the one record an incident review is supposed to trust.
+        //
+        // Two obvious discriminators do not work, which is worth recording:
+        //
+        // - `runningInConsole()` is true for the TEST RUNNER too, so it would
+        //   label every row written inside a feature test as `system`, and the
+        //   suite would stop testing anything real.
+        // - `server('REQUEST_METHOD')` is `'GET'` in console as well — Laravel
+        //   builds the console request with `Request::create()`, which sets one.
+        //
+        // The current route is the honest signal, and it is honest in the
+        // ambiguous case too, which is the part that matters: a job on the `sync`
+        // queue runs inside the web request that dispatched it, and `web` is the
+        // truthful answer there — a web request really did cause that row.
         $request = request();
+        $inRequest = $request->route() !== null;
 
         return [
-            'source' => $request->is('api/*') ? 'api' : 'web',
-            'ip' => $request->ip(),
-            'user_agent' => $request->userAgent(),
+            'source' => $inRequest
+                ? ($request->is('api/*') ? 'api' : 'web')
+                : 'system',
+            // Null rather than a fabricated address outside a request, and present
+            // rather than omitted — the viewer renders `—` for a null, and a
+            // missing key is a different shape for it to read.
+            'ip' => $inRequest ? $request->ip() : null,
+            'user_agent' => $inRequest ? $request->userAgent() : null,
+            // The correlation ID, which `GenerateRequestCorrelationId` binds on
+            // every request and echoes back on the `X-Request-ID` header. Without
+            // it, an operator holding a 403 body with `meta.request_id` in it
+            // cannot tie that request to any audit row — the one piece of
+            // metadata that would make the log and the error trace agree was the
+            // one piece never captured.
+            //
+            // `bound()` is load-bearing, not defensive: a queued job has no
+            // request, and `app('request_id')` read blindly throws
+            // `BindingResolutionException` from inside the audit write — turning
+            // a scheduled job into a failure at the moment it tried to record
+            // why something happened. A null here is the honest answer, and the
+            // viewer already renders `—` for it.
+            'request_id' => app()->bound('request_id') ? app('request_id') : null,
         ];
     }
 
@@ -110,6 +161,19 @@ trait Auditable
      * as the single user action they were. Spatie does the same for its own batch
      * logging.
      *
+     * ## `getMorphAlias()`, not the bare class name
+     *
+     * The raw insert bypasses Eloquent, so it also bypasses
+     * `Model::getMorphClass()` — the one place that converts a class into its
+     * morph alias. Writing `$causer::class` here stored `App\Models\User` while
+     * every single-row audit (which goes through Spatie's builder) stored `user`,
+     * so one bulk action left two spellings of the same type in the table. The
+     * viewer accepts either so the divergence is invisible there, and loud in the
+     * filter dropdown and in the export, which compare the stored value verbatim.
+     *
+     * `getMorphAlias()` returns the class unchanged when it is not in the map,
+     * which is the correct answer for a model nobody has aliased.
+     *
      * @param  string  $event
      * @param  array<int, array{subject_id: int|string, properties?: array<string, mixed>}>  $records
      * @param  Model|null  $causer
@@ -129,14 +193,17 @@ trait Auditable
         $batchUuid = (string) Str::uuid();
         $context = static::auditContext();
 
-        $rows = array_map(function (array $record) use ($event, $causer, $subjectType, $now, $batchUuid, $context) {
+        $subjectAlias = Relation::getMorphAlias($subjectType);
+        $causerAlias = $causer === null ? null : Relation::getMorphAlias($causer::class);
+
+        $rows = array_map(function (array $record) use ($event, $subjectAlias, $causerAlias, $causer, $now, $batchUuid, $context) {
             return [
                 'log_name' => 'default',
                 'description' => $event,
                 'event' => $event,
-                'subject_type' => $subjectType,
+                'subject_type' => $subjectAlias,
                 'subject_id' => $record['subject_id'],
-                'causer_type' => $causer === null ? null : $causer::class,
+                'causer_type' => $causerAlias,
                 'causer_id' => $causer?->getKey(),
                 'properties' => json_encode(array_merge($context, $record['properties'] ?? [])),
                 'batch_uuid' => $batchUuid,
@@ -146,5 +213,9 @@ trait Auditable
         }, $records);
 
         DB::table(config('activitylog.table_name', 'activity_log'))->insert($rows);
+
+        // Same invalidation as `audit()`, and for the same reason: this trait is
+        // the only place a row enters the table from application code.
+        AuditIndexAction::bustCache();
     }
 }

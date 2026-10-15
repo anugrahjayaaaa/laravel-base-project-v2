@@ -562,7 +562,77 @@ already included in both `layouts/auth.blade.php` and `layouts/app.blade.php`).
 | Standalone Back button | Back link inside content-header description |
 | `card-body` without `p-4` | Always `card-body.p-4` |
 
+## Content Security Policy — What a View May Contain
+
+Every HTML response is served with a nonce-based CSP
+(`docs/base/security/web-security.md`): `script-src` carries a per-request nonce
+and NOTHING else — no `'unsafe-inline'`, no `'unsafe-eval'`. (The policy is
+attached by `AddSecurityHeaders` on the `text/html` check, so it covers the API
+docs page as much as the `web` group's pages.) An inline script
+without `@nonce`, and an inline `on*` handler of any kind, therefore does not
+RUN. Not "warns in the console": silently absent, on a page that still answers
+200 and still passes `assertOk()`. That is the failure mode these rules exist to
+prevent, and it is why they bind every view and not only the security module.
+
+### Scripts
+
+1. Prefer no inline script at all. Behaviour belongs in
+   `resources/js/helpers/*.js` and is imported from `resources/js/app.js`: the
+   file is bundled and served from `'self'`, so it needs no nonce and survives a
+   future tightening of the policy.
+2. A view that genuinely needs one — a `@json` payload a helper cannot know, the
+   no-flash theme bootstrap in the layouts — writes `<script @nonce>`. Never a
+   bare `<script>`, and never `nonce="{{ $cspNonce }}"`: the attribute name and
+   the variable name live in one place (`AppServiceProvider`) precisely so they
+   cannot drift apart.
+3. The nonce is per response. Copying one from another page, or hardcoding one,
+   is not a shortcut that works — the browser compares the attribute against the
+   header of the SAME response.
+
+### Event handlers
+
+4. No `onclick=`, `onsubmit=`, or any other inline handler. The `script-src`
+   above blocks them and no nonce rescues them.
+5. The house pattern is a listener delegated on `document`, opt-in through a data
+   attribute. `resources/js/helpers/form-guards.js` covers the two shapes the app
+   already needed (`data-disable-on-submit`, `data-prevent-submit`) and
+   `layouts.partials.scripts.password-toggle` covers the eye icon
+   (`data-password-toggle`). Delegation is not a style choice: it is what keeps
+   the handler alive when the notification poller swaps a fragment in after load.
+6. A new shape gets its own helper and data attribute on that same import list. A
+   per-page `<script>` repeating what a helper already does is the number one
+   source of drift in this codebase.
+7. Navigation is a link, not a handler: `<a href="…">`, never
+   `onclick="window.location.href=…"`. A `<th>` with an onclick is a control a
+   keyboard user cannot reach at all — the sortable headers on `pages/users/index`
+   are the worked example.
+
+### External assets and inline styles
+
+8. An external `<script src>` or `<link>` may point at this origin or at the
+   allowlist in `AddSecurityHeaders` (`fonts.bunny.net`, `unpkg.com` for
+   Stoplight Elements). Adding an origin is a security-docs change reviewed
+   there, not a change a view makes on its own.
+9. Inline `style=` attributes are allowed — `style-src 'unsafe-inline'` is the one
+   documented compromise in the policy, and 113 attributes already exist. Spend
+   them on what a class cannot express (a computed offset in the password
+   toggle); a new utility class beats a new attribute.
+
+### Self-check before calling a view done
+
+```bash
+grep -rn '<script>' resources/views/                                # must be empty
+grep -rnE '\son(click|submit|load|error|change|keyup|keydown)=' resources/views/  # must be empty
+```
+
+`tests/Feature/Security/ContentSecurityPolicyTest.php` asserts the header and the
+rendered HTML together — every inline script carries the nonce from the header,
+and no inline handler survives — but it covers the layouts and five pages, not
+every view. The greps are the check for the rest, and the policy is what makes a
+missed one a dead control rather than a latent hole.
+
 ## Related
 
 - [UI Architecture](./ui-architecture.md)
+- [Web Security — Content-Security-Policy](../security/web-security.md)
 - [UI Authorization Rule](./ui-authorization.md)

@@ -19,7 +19,8 @@ class PasswordStrengthRule implements ValidationRule
      */
     public function __construct(
         private readonly ?string $username = null,
-    ) {}
+    ) {
+    }
 
     /**
      * Validate the attribute value against the password policy.

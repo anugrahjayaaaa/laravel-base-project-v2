@@ -1,4 +1,4 @@
-<script>
+<script @nonce>
     document.addEventListener('click', function(e) {
         var btn = e.target.closest('[data-password-toggle]');
         if (!btn) return;

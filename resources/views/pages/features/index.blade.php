@@ -122,7 +122,7 @@
          action-config.js; the words "They can be restored later" are about a
          user, not a module. --}}
     @if ($manageable && ! empty($featureGroups))
-        <form method="POST" class="d-flex align-items-center" onsubmit="return false;">
+        <form method="POST" class="d-flex align-items-center" data-prevent-submit>
             @csrf
             {{-- The bar sits ABOVE the module cards here rather than inside a
                  card-header, so it needs its own bottom margin or it butts

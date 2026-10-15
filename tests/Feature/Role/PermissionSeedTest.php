@@ -39,7 +39,7 @@ class PermissionSeedTest extends TestCase
         $this->seed(PermissionSeeder::class);
     }
 
-        public function test_every_catalog_permission_exists_on_the_resolved_guard(): void
+    public function test_every_catalog_permission_exists_on_the_resolved_guard(): void
     {
         $names = Permission::where('guard_name', RoleLookup::guard())
             ->pluck('name')
@@ -50,21 +50,28 @@ class PermissionSeedTest extends TestCase
         }
     }
 
-        public function test_every_permission_maps_to_a_resource_the_app_actually_has(): void
+    public function test_every_permission_maps_to_a_resource_the_app_actually_has(): void
     {
         // A permission with no route, controller or view grants nothing and
         // still shows up in the permissions UI as though it means something.
-        // This is the guard that keeps `audit.*` (Phase 10) out of the
-        // catalogue while it does not exist, and it is what `features.*` had
-        // to be added to once the routes landed.
+        // This is the guard that kept `audit.*` (Phase 10) out of the catalogue
+        // while it did not exist, and what `features.*` had to be added to once
+        // its routes landed.
+        //
+        // `audit` joins the list in Phase 10 Group B, in the same change that
+        // registers `activity-logs.index` / `activity-logs.show` behind
+        // `feature:activity_logs` + `->can('audit.view')`. The expected list is
+        // updated HERE rather than the assertion loosened: a stale list is a stale
+        // fixture, and dropping the assertion would leave the guard guarding
+        // nothing at all.
         $this->assertEqualsCanonicalizing(
-            ['users', 'roles', 'permissions', 'settings', 'notifications', 'features'],
+            ['users', 'roles', 'permissions', 'settings', 'notifications', 'features', 'audit'],
             array_keys(PermissionCatalog::grouped()),
             'The catalogue has a group with no feature behind it.'
         );
     }
 
-        public function test_admin_holds_the_entire_catalogue(): void
+    public function test_admin_holds_the_entire_catalogue(): void
     {
         $user = User::factory()->create();
         $user->assignRole(SystemRole::ADMIN);
@@ -83,7 +90,7 @@ class PermissionSeedTest extends TestCase
         );
     }
 
-        public function test_a_permission_dropped_from_the_catalogue_is_pruned_on_reseed (): void
+    public function test_a_permission_dropped_from_the_catalogue_is_pruned_on_reseed(): void
     {
         // A permission removed from PermissionCatalog has no route and no
         // can() call behind it any more. left in the database it would keep
@@ -114,15 +121,23 @@ class PermissionSeedTest extends TestCase
         );
     }
 
-        public function test_a_role_removed_from_the_matrix_keeps_no_grants (): void
+    public function test_a_role_removed_from_the_matrix_keeps_no_grants(): void
     {
         // syncPermissions only runs for roles the matrix still names, so a role
         // dropped from the matrix is exactly the one that never gets its grants
         // cleared. That is how superadmin came to hold all 19 permissions in a
         // database whose seeder and docs both said it holds none: the role left
         // the matrix and its rows stayed.
+        //
+        // `retired.view`, NOT a real permission name. This case used
+        // `audit.view` as its stand-in "permission nothing in the catalogue can
+        // produce", and the day Phase 10 added `audit.view` to the catalogue,
+        // `Permission::create` threw PermissionAlreadyExists and the test failed
+        // for a reason that had nothing to do with the pruning it exists to prove.
+        // A stale-permission fixture must use a name the catalogue can NEVER
+        // contain, so becoming real is impossible.
         $stale = Permission::create([
-            'name' => 'audit.view',
+            'name' => 'retired.view',
             'guard_name' => RoleLookup::guard(),
         ]);
 
@@ -139,7 +154,7 @@ class PermissionSeedTest extends TestCase
         );
     }
 
-        public function test_pruning_does_not_touch_another_guard(): void
+    public function test_pruning_does_not_touch_another_guard(): void
     {
         // The prune is scoped to RoleLookup::guard(). A second guard (an API
         // guard, say) owns its own permissions and this seeder must not touch
@@ -157,7 +172,7 @@ class PermissionSeedTest extends TestCase
         );
     }
 
-        public function test_the_catalogue_has_no_duplicates (): void
+    public function test_the_catalogue_has_no_duplicates(): void
     {
         $all = PermissionCatalog::all();
 
@@ -170,7 +185,7 @@ class PermissionSeedTest extends TestCase
         );
     }
 
-        public function test_grouped_catalogue_loses_nothing(): void
+    public function test_grouped_catalogue_loses_nothing(): void
     {
         $flattened = [];
 
@@ -188,7 +203,7 @@ class PermissionSeedTest extends TestCase
         $this->assertEqualsCanonicalizing(PermissionCatalog::all(), $flattened);
     }
 
-        public function test_superadmin_has_no_permission_rows_but_passes_every_check(): void
+    public function test_superadmin_has_no_permission_rows_but_passes_every_check(): void
     {
         $role = Role::where('name', SystemRole::SUPERADMIN)
             ->where('guard_name', RoleLookup::guard())
@@ -206,7 +221,7 @@ class PermissionSeedTest extends TestCase
         $this->assertTrue($user->can('a.permission.that.does.not.exist'));
     }
 
-        public function test_superadmin_permission_rows_stay_empty_after_a_check(): void
+    public function test_superadmin_permission_rows_stay_empty_after_a_check(): void
     {
         $user = User::factory()->create();
         $user->assignRole(SystemRole::SUPERADMIN);
@@ -216,7 +231,7 @@ class PermissionSeedTest extends TestCase
         $this->assertSame(0, $role->permissions()->count());
     }
 
-        public function test_admin_holds_every_users_permission(): void
+    public function test_admin_holds_every_users_permission(): void
     {
         $user = User::factory()->create();
         $user->assignRole(SystemRole::ADMIN);
@@ -229,7 +244,7 @@ class PermissionSeedTest extends TestCase
         }
     }
 
-        public function test_user_role_holds_no_permissions(): void
+    public function test_user_role_holds_no_permissions(): void
     {
         $role = Role::where('name', SystemRole::USER)
             ->where('guard_name', RoleLookup::guard())
@@ -244,7 +259,7 @@ class PermissionSeedTest extends TestCase
         $this->assertFalse($user->can('settings.manage'));
     }
 
-        public function test_no_permission_is_granted_directly_to_a_user(): void
+    public function test_no_permission_is_granted_directly_to_a_user(): void
     {
         $user = User::factory()->create();
         $user->assignRole(SystemRole::ADMIN);
@@ -255,7 +270,7 @@ class PermissionSeedTest extends TestCase
         $this->assertSame(0, DB::table('model_has_permissions')->where('model_id', $user->id)->count());
     }
 
-        public function test_reseeding_permission_seeder_changes_no_record_counts(): void
+    public function test_reseeding_permission_seeder_changes_no_record_counts(): void
     {
         $before = [
             'permissions' => Permission::count(),
@@ -275,7 +290,7 @@ class PermissionSeedTest extends TestCase
         $this->assertSame($before, $after, 'PermissionSeeder is not idempotent.');
     }
 
-        public function test_reseeding_does_not_leave_a_duplicate_role_or_permission(): void
+    public function test_reseeding_does_not_leave_a_duplicate_role_or_permission(): void
     {
         $this->seed(PermissionSeeder::class);
         $this->seed(PermissionSeeder::class);
@@ -297,7 +312,7 @@ class PermissionSeedTest extends TestCase
         }
     }
 
-        public function test_reseeding_revokes_a_permission_dropped_from_the_matrix(): void
+    public function test_reseeding_revokes_a_permission_dropped_from_the_matrix(): void
     {
         // syncPermissions, not givePermissionTo: a role retired from the matrix
         // must stop granting it, or a permission deleted from the catalogue
@@ -323,14 +338,14 @@ class PermissionSeedTest extends TestCase
         );
     }
 
-        public function test_system_role_names_are_the_only_seeded_roles(): void
+    public function test_system_role_names_are_the_only_seeded_roles(): void
     {
         $names = Role::where('guard_name', RoleLookup::guard())->pluck('name')->all();
 
         $this->assertEqualsCanonicalizing(SystemRole::names(), $names);
     }
 
-        public function test_system_role_predicate_covers_every_seeded_role(): void
+    public function test_system_role_predicate_covers_every_seeded_role(): void
     {
         foreach (SystemRole::names() as $name) {
             $this->assertTrue(SystemRole::isSystem($name));

@@ -103,7 +103,7 @@ class RoleDeleteAction
 
             return $role;
         });
-        
+
         return $role;
     }
 

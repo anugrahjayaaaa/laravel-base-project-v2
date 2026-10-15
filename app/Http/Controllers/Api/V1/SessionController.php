@@ -17,7 +17,8 @@ class SessionController extends Controller
      */
     public function __construct(
         private readonly AuthListSessionsAction $listSessionsAction,
-    ) {}
+    ) {
+    }
 
     /**
      * List the authenticated user's active sessions.

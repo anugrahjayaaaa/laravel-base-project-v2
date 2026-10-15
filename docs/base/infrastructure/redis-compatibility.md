@@ -106,3 +106,25 @@ For production Redis queue monitoring:
 - Optional package: `laravel/horizon`
 - Provides UI for queue metrics, job throughput, failure rate
 - Redis-only; not compatible with database queue
+
+Not installed. See `docs/planning/phase-10-audit-trail.md` §11 P10-E13 for the
+evaluation, which concluded against it for a base project template: it breaks
+the moment `QUEUE_CONNECTION` is anything other than `redis`.
+
+## Queue monitoring, driver-agnostic
+
+Because the queue driver is swappable, monitoring must be too. Installed
+answer, and it works on either driver because it records from Laravel's queue
+events rather than from a backend:
+
+- `laravel/pulse` — queue throughput + failures (`pulse.queues`), slow jobs
+  (`pulse.slow-jobs`), behind `feature:pulse` and `pulse.view`.
+- `failed_jobs` table — `php artisan queue:failed` / `queue:retry` / `queue:flush`.
+- `storviaio/vantage` — evaluated, not installed. Adds live queue depth, retry
+  from the UI, and a per-attempt retry chain (what `failed_jobs` cannot keep:
+  it retains only the final attempt). Costs a vendor route with no middleware
+  hook, a permissive default gate, and a dependency in the base schema.
+
+Whichever is chosen, it reads the job declarations — `$tries`, `$timeout`,
+`$backoff` — and the queue names. Those are the part worth getting right first;
+see `phase-10-audit-trail.md` §11 P10-E14.

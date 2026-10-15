@@ -281,7 +281,134 @@ docs describe the target state, and the code now matches them.
 2. MON-P11-04 (tests — fails loudly if 01/02 are wrong)
 3. MON-P11-03 (nav)
 
+---
 
+## Phase 11 also owns the notification inbox's API surface (added 2026-10-13)
+
+A route audit comparing the two channel tables found the inversion worth
+writing down: **the API could read a user's notification settings and could not
+read a single notification.** Which channels are switched on, without any way to
+see what they produced.
+
+Closed in `Api\V1\Notification\NotificationInboxController`, ungated on both
+channels and for the same reason the web inbox is ungated — a notification belongs
+to the person it was sent to, "whose inbox is this" is answered by the token, and
+there is no permission name to check. `NotificationInboxAction` is shared, so
+marking read invalidates the cached count AND the cached recent list exactly as
+the web path does; clearing only the count was the worst version of that bug and
+is still the thing to watch for here.
+
+`App\Support\SafeUrl` was extracted in the same change. The same-origin check on
+`notification.data['url']` had been a private method on `NotificationInboxAction`
+guarding the web view, and the API channel put the same question in a second
+place — and a second copy of a security check is the copy that gets forgotten when
+one of them is edited. Both call `SafeUrl::actionFor()` now, and
+`NotificationPentestTest` probes it over a token with `javascript:`,
+`//evil.example`, an absolute URL and a slashless relative path.
+
+One number to know before writing a polling client: the inbox API's ceiling is
+the protected group's `throttle:user-state-actions` at **15/minute**, not the web
+route's 120. A 30-second poll spends 2 of those.
+
+Written up in `phase-12-api-v1.md` §2.
+
+---
+
+## Phase 11 owns BOTH dashboards — Pulse and Vantage (added 2026-10-12)
+
+Phase 11 shipped Pulse. The queue-monitoring decision that followed lands here,
+not in Phase 10 — `phase-10-audit-trail.md` §11 P10-E13 raised it and filed it
+cross-phase, and P10-E14 (the queue conventions) with it. Both are summarised
+below so the full argument is in one place; the evidence trail is in §11 there.
+
+### What exists today
+
+| | Status |
+|---|---|
+| `laravel/pulse ^1.8` | installed. `Recorders\Queues` and `Recorders\SlowJobs` enabled (`config/pulse.php`), `livewire:pulse.queues` + `pulse.slow-jobs` on the default dashboard. Driver-agnostic — it records from Laravel's queue events, so `database` and `redis` behave identically |
+| `feature:pulse` + `pulse.view` | shipped (MON-P11-01..04) |
+| `failed_jobs` table | migrated. `queue:failed` / `queue:retry` / `queue:flush` |
+| `laravel/horizon` | **not installed, and evaluated out.** Redis-only — no configuration runs it over the `jobs` table. `.env` runs `redis` while `.env.example` defaults to `database`, and a base project template has to survive that fork |
+| `storviaio/vantage` | **not installed. This is Phase 11's item, and the recommendation stands: not yet** |
+
+### The gap Vantage would close
+
+Two, and they are real:
+
+1. **Live backlog depth.** Pulse's queues card is a throughput-and-failures graph
+   over time, not a "N jobs waiting right now" gauge. On the database driver that
+   number currently costs a hand-written `select count(*) from jobs`.
+2. **The retry chain.** With `GenerateAuditExport::$tries = 3` (§11 P10-E12),
+   `failed_jobs` keeps ONE row per job and overwrites it per attempt, so the
+   stack trace that survives is the one that did **not** explain the first two.
+   Vantage stores every attempt separately.
+
+### What Vantage costs — checked in its source, not the README
+
+- `Gate::define('viewVantage')` defaults to **any authenticated user**, and
+  `store_payload` defaults to `true`, so full job payloads would be readable by
+  anyone who can log in. Both need an explicit decision, not a default — job
+  payloads in this project carry export filters, model ids and mail arguments.
+- `config/vantage.php` has **no `middleware` key** and `VantageServiceProvider`
+  calls `loadRoutesFrom()` bare. There is no hook for `feature:vantage`.
+- 264 stars / 1 watcher / ~11 months, and the repo has already changed owner
+  (`houdaslassi/vantage` → `storviaio/vantage`). For a template, that is a
+  bus-factor question rather than a feature question.
+- A fourth source of truth beside Pulse, `failed_jobs` and the log; plus a
+  migration in the base schema and a `vantage:prune` command to own.
+
+### Pennant does not fit a vendor route
+
+The obvious move — `config(['vantage.enabled' => false])` inside
+`AppServiceProvider::boot()` — was evaluated and rejected. It half-works, which
+is the dangerous part: the event listeners re-read the key inside `handle()` so
+tracking does stop, but `loadRoutesFrom()`, the four commands and the package's
+own `Gate::define('viewVantage')` have already run, because **package providers
+boot before app providers**. `/vantage/*` would keep serving and the only control
+left standing would be our own gate. Worse, `Feature::inactive()` in `boot()` is
+a Pennant store query on every request — the exact thing
+`AppServiceProvider::bindTokenExpirations()`'s comment forbids, with the
+database store fail-closed behind `FeatureFlagSeeder`.
+
+An app provider CAN overwrite `Gate::define('viewVantage')`, deterministically —
+`Application::registerConfiguredProviders()` splices the package manifest at
+index 1, so the package boots first and ours second, always. That is a property
+of Laravel 13 and it still needs a test that removes the definition and watches
+the gate turn green, the way the `User::can()` `canMemo` trap needed one.
+
+### Decision (Jaya, 2026-10-12): Pulse only, layered
+
+| Layer | Mechanism |
+|---|---|
+| Kill tracking entirely | `VANTAGE_ENABLED` env — zero cost, and what the switch is for |
+| Who may read a dashboard | `Gate::define('viewVantage')` → a `queues.view` permission, plus the test |
+| Route-level kill switch | only by declaring the routes ourselves (`VANTAGE_ROUTES=false`) — accepted cost, deferred |
+
+Revisit Vantage when backlog depth or UI retry becomes something an operator
+needs **routinely** rather than during an incident. If it does, six decisions go
+in first: `queues.view` + `queues.retry` in `PermissionCatalog`, the gate and its
+test, the `store_payload` decision, the route strategy, `vantage:prune` on the
+scheduler, and ADR + `dependency-map.md` + `changelog.md`.
+
+`queues.view` and `queues.retry` are worth adding to `PermissionCatalog` even
+before any package arrives — Pulse needs the same permission, and an unused
+permission costs one line in a constant list. `queues.retry` is separate from
+`queues.view` for the reason `notifications.send_test` is separate from
+`notifications.manage`: permission answers *who*, not *how often*.
+
+### MON-P11-05 — queue conventions (P10-E14, cross-referenced)
+
+All three are upstream of every dashboard above, cost nothing, and are what makes
+Horizon, Vantage or Pulse useful on day one. Retrofitted onto forty jobs, queue
+naming is expensive; a wrong dashboard choice is not.
+
+1. **Named queues behind constants.** Every job goes to `default` today.
+2. **Every job declares `$tries`, `$timeout`, `$backoff`, `$maxExceptions`.**
+   Vantage's retry chain is only meaningful because these are declared.
+3. **Every job has `failed()` and logs with `request_id`.** `queue.md:79` already
+   mandates it; today it is a per-job habit, not a trait.
+
+---
 
 ## Security Notes
 
@@ -293,6 +420,11 @@ docs describe the target state, and the code now matches them.
 - Application code must never depend on Pulse. It is a passive observer.
 - Recording is bounded by Pulse's own retention; the `pulse_*` tables are
   ignored by the sensitive-data scrubber at `config/pulse.php:216`.
+- A SECOND dashboard has the same exposure and none of the same gating. Vantage's
+  own gate admits every authenticated user and its `store_payload` default keeps
+  full job payloads — which in this project carry export filters, model ids and
+  mail arguments. If it is ever installed, `queues.view` and `store_payload=false`
+  are both decisions, and neither may be left at its default.
 
 ## Deliberate Simplifications
 

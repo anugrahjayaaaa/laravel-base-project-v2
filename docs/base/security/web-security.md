@@ -2,19 +2,105 @@
 
 ## Secure Defaults
 
-| Header | Recommended Value |
-|--------|------------------|
-| HTTPS | Enforce (redirect HTTP to HTTPS) |
-| HSTS | `max-age=31536000; includeSubDomains; preload` |
-| Content-Security-Policy | Strict, allowlist only |
-| X-Content-Type-Options | `nosniff` |
-| Referrer-Policy | `strict-origin-when-cross-origin` |
-| Permissions-Policy | Restrictive defaults |
-| X-Frame-Options | `DENY` or `SAMEORIGIN` (frame protection) |
-| Cookie Secure | `true` |
-| Cookie SameSite | `Lax` or `Strict` |
-| CSRF | Laravel Sanctum/VerifyCsrfToken middleware |
-| CORS | Restrict to known origins |
+| Header | Recommended Value | Sent by the application (2026-10-15) |
+|--------|-------------------|----------------------------------------|
+| HTTPS | Enforce (redirect HTTP to HTTPS) | Deployment decision (reverse proxy) |
+| HSTS | `max-age=31536000; includeSubDomains; preload` | ✅ `max-age=31536000; includeSubDomains` — `preload` deliberately withheld, see below |
+| Content-Security-Policy | Strict, allowlist only | ✅ nonce policy, documented below |
+| X-Content-Type-Options | `nosniff` | ✅ |
+| Referrer-Policy | `strict-origin-when-cross-origin` | ✅ |
+| Permissions-Policy | Restrictive defaults | ✅ every device feature this app uses (none) denied |
+| X-Frame-Options | `DENY` or `SAMEORIGIN` (frame protection) | ✗ answered by `frame-ancestors 'none'` in the policy instead — same decision, one source of truth |
+| Cookie Secure | `true` | `env('SESSION_SECURE_COOKIE')` — deployment decision, like `APP_DEBUG` |
+| Cookie SameSite | `Lax` or `Strict` | ✅ `Lax` (`config/session.php` default) |
+| CSRF | Laravel Sanctum/VerifyCsrfToken middleware | ✅ including under test — see `VerifyCsrfToken::runningUnitTests()` |
+| CORS | Restrict to known origins | No `config/cors.php`; nothing opts in |
+
+A header missing from a response is a different gap from a header configured
+wrongly, so the third column is asserted rather than asserted-about:
+`tests/Feature/Security/SecurityHeadersTest.php` checks the four response
+headers and `ContentSecurityPolicyTest` checks the policy.
+
+## Response Headers
+
+All four are set by `App\Http\Middleware\AddSecurityHeaders`, on **every**
+response the application makes — it is appended to global middleware, because
+each of these is a decision about this origin rather than about one page:
+
+| Header | Value | Reasoning |
+|--------|-------|-----------|
+| `X-Content-Type-Options` | `nosniff` | Most valuable on the streamed CSV download — the file a browser is most likely to sniff into something it will execute. |
+| `Referrer-Policy` | `strict-origin-when-cross-origin` | Full URL same-origin, origin only cross-origin, nothing over a downgrade. |
+| `Permissions-Policy` | `accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()` | The app has a use for none of them. An absent header means "the browser's default", and the default for `camera` is not "no". |
+| `Strict-Transport-Security` | `max-age=31536000; includeSubDomains` | Sent unconditionally rather than gated on `$request->isSecure()`: a browser honours it only over https, so a dev server's plain-http answer is ignored, while gating it would drop the header behind any TLS terminator absent from `TrustProxies`. |
+
+**`preload` is withheld on purpose.** Submitting a domain to the HSTS preload
+list is effectively irreversible for ~18 months and outlives this header being
+removed, so it is an owner decision and not a default: add `; preload` to the
+value above when that decision is made.
+
+## Content-Security-Policy
+
+`App\Http\Middleware\AddSecurityHeaders`, appended to global middleware, sets the
+policy **only** on `text/html` responses — on JSON there is no document for a
+policy to govern, and on a file response it would govern nothing. The four
+response headers above are written on every response including that one, and
+that is safe: they are set here, before the response is returned, which is
+before a `StreamedResponse` starts sending. A header set after output has begun
+is what corrupts a stream. The nonce is shared on every request and read only
+where a view renders.
+
+| Directive | Value | Reason |
+|-----------|-------|--------|
+| `script-src` | `'self' 'nonce-…'` | The XSS primitive. A nonce and NOTHING else: no `'unsafe-inline'`, no `'unsafe-eval'`, so an injected `<script>`, a surviving inline handler or a `javascript:` URL does not run. |
+| `style-src` | `'self' 'unsafe-inline'` | Accepted compromise — see below. |
+| `img-src` / `font-src` | `'self' data:` + allowed origins | Inline SVG and data URIs on the notification and channel screens. |
+| `connect-src` | `'self'` (+ the dev server while it runs) | The two pollers fetch from this origin and nowhere else. |
+| `object-src` / `base-uri` / `form-action` | `'none'` / `'self'` / `'self'` | The three exfiltration routes that are not script. |
+| `frame-ancestors` | `'none'` | Answers the `X-Frame-Options` row above; the header itself is not sent. |
+
+Allowed external origins are the asset allowlist, named once in the middleware:
+`https://fonts.bunny.net` (fonts) and `https://unpkg.com` (Stoplight Elements on
+`/docs/api`). Naming an origin is the allowlist doing its job — a path-shaped
+exemption breaks the moment the path moves.
+
+**Nonce, not a hash list.** Thirteen inline `<script>` blocks across twelve views,
+three more on the API docs page: a hash list would mean re-hashing all sixteen
+every time one line of one changes, and a policy that fails closed on an unrelated
+edit is a policy somebody deletes. `<script @nonce>` at the call site (the Blade
+directive lives in `AppServiceProvider`), so the attribute name and the variable
+cannot drift apart.
+
+**Inline handlers are gone, not neutered.** `onclick`/`onsubmit` never run under
+this `script-src`, so every one was converted: submit buttons carry
+`data-disable-on-submit` and the filter form carries `data-prevent-submit`, both
+handled by the delegated listeners in `resources/js/helpers/form-guards.js`; the
+sortable headers on the users table are real `<a href>` links (they were
+`onclick="window.location.href=…"` on a `<th>`, which a keyboard user could not
+reach at all).
+
+**`style-src` is deliberately not strict.** 113 inline `style=` attributes, and an
+inline style *attribute* is governed by `style-src`, not by a script nonce —
+keeping them strict means `'unsafe-inline'` or one hash per attribute. CSS
+injection is a much weaker primitive than script injection: there is no
+`javascript:` equivalent for a stylesheet, and the routes that matter
+(`form-action`, `object-src`, `base-uri`) are strict above. Converting 113
+attributes to utility classes is its own project, and the asymmetry is why the
+compromise is acceptable rather than merely tolerated.
+
+**The dev server is allowed only while it is running.** `npm run dev` writes
+`public/hot` and serves the entrypoints from its own origin, which `script-src
+'self'` would block — a 200 page whose JavaScript never loads. The origin (and
+its `ws://` HMR socket) joins the policy only while that file exists, so a
+production install, which has no hot file, cannot inherit it.
+
+Guarded by `tests/Feature/Security/ContentSecurityPolicyTest.php`, which asserts
+the header and the rendered HTML **together** — a nonce nobody prints blocks the
+page, and a printed nonce the policy does not carry blocks nothing. What the
+policy then binds on every view author — `<script @nonce>` and nothing else,
+no inline handlers, the data-attribute pattern for behaviour — is written up as
+a standard in `docs/base/ui/design-system.md` (Content Security Policy — What a
+View May Contain), with the self-check greps for views the test does not cover.
 
 ## CSRF Protection
 

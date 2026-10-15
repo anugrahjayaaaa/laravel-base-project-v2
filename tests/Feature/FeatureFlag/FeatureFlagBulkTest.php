@@ -66,7 +66,7 @@ class FeatureFlagBulkTest extends TestCase
         return $user;
     }
 
-        public function test_it_disables_several_flags_in_one_request (): void
+    public function test_it_disables_several_flags_in_one_request(): void
     {
         $this->login();
 
@@ -83,7 +83,7 @@ class FeatureFlagBulkTest extends TestCase
         }
     }
 
-        public function test_it_enables_several_flags_in_one_request (): void
+    public function test_it_enables_several_flags_in_one_request(): void
     {
         $this->login();
         Feature::deactivate('users');
@@ -101,7 +101,7 @@ class FeatureFlagBulkTest extends TestCase
     /**
      * The whole point of the action: one request, one audit row.
      */
-        public function test_one_request_writes_exactly_one_audit_row(): void
+    public function test_one_request_writes_exactly_one_audit_row(): void
     {
         $this->login();
 
@@ -140,7 +140,7 @@ class FeatureFlagBulkTest extends TestCase
      * `from` read after the write is the single most likely bug in this action:
      * every row would say from=true to=false and look perfectly plausible.
      */
-        public function test_every_from_is_read_before_the_first_write(): void
+    public function test_every_from_is_read_before_the_first_write(): void
     {
         $this->login();
         Feature::deactivate('roles');
@@ -175,7 +175,7 @@ class FeatureFlagBulkTest extends TestCase
         );
     }
 
-        public function test_a_slug_outside_the_catalogue_is_refused (): void
+    public function test_a_slug_outside_the_catalogue_is_refused(): void
     {
         $this->login();
 
@@ -192,7 +192,7 @@ class FeatureFlagBulkTest extends TestCase
      * the operator asked for as one action is the worst outcome: they see an
      * error and have no idea which half landed.
      */
-        public function test_an_undeclared_slug_changes_nothing_in_the_batch (): void
+    public function test_an_undeclared_slug_changes_nothing_in_the_batch(): void
     {
         $this->login();
 
@@ -214,7 +214,7 @@ class FeatureFlagBulkTest extends TestCase
         );
     }
 
-        public function test_an_unknown_action_is_refused (): void
+    public function test_an_unknown_action_is_refused(): void
     {
         $this->login();
 
@@ -226,7 +226,7 @@ class FeatureFlagBulkTest extends TestCase
         $this->assertTrue(Feature::active('users'));
     }
 
-        public function test_a_caller_without_the_manage_permission_is_refused (): void
+    public function test_a_caller_without_the_manage_permission_is_refused(): void
     {
         $this->login(SystemRole::USER);
 
@@ -238,7 +238,7 @@ class FeatureFlagBulkTest extends TestCase
         $this->assertTrue(Feature::active('users'), 'an unauthorized POST still changed a flag');
     }
 
-        public function test_a_duplicate_slug_is_applied_once (): void
+    public function test_a_duplicate_slug_is_applied_once(): void
     {
         $this->login();
 
@@ -265,7 +265,7 @@ class FeatureFlagBulkTest extends TestCase
      * That guard is what protects every OTHER caller — a queued job, a console
      * command, a future API route — none of which run form requests.
      */
-        public function test_the_action_itself_refuses_an_unknown_slug (): void
+    public function test_the_action_itself_refuses_an_unknown_slug(): void
     {
         $this->login();
 
@@ -279,7 +279,7 @@ class FeatureFlagBulkTest extends TestCase
         }
     }
 
-        public function test_the_flag_state_survives_a_reread_from_the_store (): void
+    public function test_the_flag_state_survives_a_reread_from_the_store(): void
     {
         $this->login();
 
@@ -304,7 +304,7 @@ class FeatureFlagBulkTest extends TestCase
      * so lifting the kill switch brought the module straight back, and the bulk
      * path disagreed with FeatureToggleAction, which always writes.
      */
-        public function test_a_kill_switched_flag_is_still_written (): void
+    public function test_a_kill_switched_flag_is_still_written(): void
     {
         $this->login();
 
@@ -337,7 +337,7 @@ class FeatureFlagBulkTest extends TestCase
      * Guards the specific comparison the fix changed: `unchanged` must be decided
      * by the store, not by the effective state.
      */
-        public function test_a_flag_already_in_the_requested_store_state_is_unchanged (): void
+    public function test_a_flag_already_in_the_requested_store_state_is_unchanged(): void
     {
         $this->login();
 
@@ -358,7 +358,7 @@ class FeatureFlagBulkTest extends TestCase
      * request's `array_unique` is not enough on its own — without this the audit
      * row claimed three changes where one happened.
      */
-        public function test_the_action_de_duplicates_slugs_itself (): void
+    public function test_the_action_de_duplicates_slugs_itself(): void
     {
         $this->login();
 
@@ -381,7 +381,7 @@ class FeatureFlagBulkTest extends TestCase
      * `enable_feature` through would be invisible to a test that only ever posts
      * the disable action.
      */
-        public function test_the_enable_direction_is_gated_too (): void
+    public function test_the_enable_direction_is_gated_too(): void
     {
         $this->login(SystemRole::USER);
 
@@ -403,7 +403,7 @@ class FeatureFlagBulkTest extends TestCase
      * back and the store would look untouched either way. So this counts the
      * writes instead — a guard that runs first can never have written.
      */
-        public function test_the_catalogue_guard_runs_before_any_write (): void
+    public function test_the_catalogue_guard_runs_before_any_write(): void
     {
         $this->login();
 
@@ -435,7 +435,7 @@ class FeatureFlagBulkTest extends TestCase
      * from the bulk action passed the whole suite, because every other bulk test
      * reads the store rather than the cached snapshot.
      */
-        public function test_the_resolved_snapshot_cache_is_dropped (): void
+    public function test_the_resolved_snapshot_cache_is_dropped(): void
     {
         $this->login();
 
@@ -457,7 +457,7 @@ class FeatureFlagBulkTest extends TestCase
      * happened. Nothing else in the suite can see this, because every other
      * failure path here throws before the writes begin.
      */
-        public function test_a_rolled_back_batch_leaves_no_audit_row (): void
+    public function test_a_rolled_back_batch_leaves_no_audit_row(): void
     {
         $this->login();
 

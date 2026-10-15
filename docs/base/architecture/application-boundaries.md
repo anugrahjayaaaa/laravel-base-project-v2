@@ -167,9 +167,11 @@ So the two writers that remain are the only two:
   authenticated causer. It stamps `causer => SYSTEM` rather than fabricating a
   user, and delegates its context to `User::auditContext()` like everything else.
 
-`Controller::audit()` still exists for the Profile controllers only and is
-tracked as AUD-006; it delegates to `User::auditContext()` so its rows are
-identical, and it is deleted when Profile is migrated. Do not add new callers.
+`Controller::audit()` is deleted. It existed for the Profile controllers only
+and was removed with them — the rows are owned by `UserUpdateAction` and
+`UserRequestEmailChangeAction`, and both controllers call the action and nothing
+else. Every entry point is listed above. Do not add callers of a method that no
+longer exists; add a call to the owning action.
 
 ### Why the Action, not the controller
 

@@ -41,7 +41,7 @@
                 </div>
                 <div class="d-grid mb-3">
                     <button type="submit" class="btn btn-primary" id="forgotBtn"
-                                 onclick="this.disabled=true;this.form.submit()">Send Reset Link</button>
+                                 data-disable-on-submit>Send Reset Link</button>
                 </div>
                 <div class="text-center">
                     <a href="{{ route('login') }}" class="text-decoration-none small">Back to Login</a>
@@ -53,7 +53,7 @@
 @endsection
 
 @push('scripts')
-<script>
+<script @nonce>
 (function() {
     document.querySelectorAll('.rate-limit-seconds').forEach(function(el) {
         var seconds = parseInt(el.dataset.seconds);

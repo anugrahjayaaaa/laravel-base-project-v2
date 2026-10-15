@@ -2,8 +2,9 @@
 
 namespace App\Actions\V1\Notification;
 
-use App\Support\UnreadNotificationCount;
 use App\Models\User;
+use App\Support\SafeUrl;
+use App\Support\UnreadNotificationCount;
 
 /** The viewer's own notifications, and the two ways they clear them. */
 class NotificationInboxAction
@@ -19,15 +20,115 @@ class NotificationInboxAction
      *
      * Safe for the same reason the bell's is: delivery invalidates on
      * `NotificationSent`, and both mark-read paths below invalidate here.
+     *
+     * ## `actions` — the call to action, resolved here rather than in the view
+     *
+     * Keyed by notification id, and EMPTY for every notification that does not
+     * carry one. The inbox is generic over notification classes, so a notification
+     * that finishes an action the viewer has to take — a generated file, a
+     * confirmation — states it in `data['url']`, and this is where that becomes a
+     * button.
+     *
+     * Resolving it in the Action is the security control, not an aesthetic
+     * preference: `data` is a JSON column that whatever wrote the notification
+     * controls, and `data['url']` lands in an `href`. A payload carrying
+     * `javascript:alert(1)` or `//evil.example` would otherwise be one click
+     * away from executing. Only a same-origin absolute path survives; anything
+     * else yields no entry at all, which renders as an ordinary notification.
+     *
+     * The row itself is left untouched — this adds a control, it does not make
+     * the row a link, because "mark as read" is a POST and a GET that changes
+     * state is its own defect.
+     *
+     * @return array{notifications: \Illuminate\Contracts\Pagination\LengthAwarePaginator, unreadCount: int, actions: array<string, array{url: string, label: string}>}
      */
     public function inbox(User $viewer): array
     {
+        $notifications = $viewer
+            ->notifications()
+            ->latest()
+            ->paginate(30);
+
         return [
-            'notifications' => $viewer
-                ->notifications()
-                ->latest()
-                ->paginate(30),
+            'notifications' => $notifications,
             'unreadCount' => UnreadNotificationCount::for($viewer),
+            'actions' => $this->actionsFor($notifications),
+        ];
+    }
+
+    /**
+     * The call-to-action for each notification on this page that has one.
+     *
+     * Scoped to the PAGE, not to the whole inbox: the map is read per row, and a
+     * view that only ever renders 30 of them has no reason to make the other 4000
+     * carry a decision this page cannot show.
+     *
+     * The same-origin rule itself lives in `App\Support\SafeUrl` rather than in a
+     * private method here. It was one, until adding the API channel put the same
+     * question in a Resource — and a second copy of a security check is the copy
+     * that gets forgotten when one of them is edited.
+     *
+     * @param  iterable<int, \Illuminate\Notifications\DatabaseNotification>  $notifications
+     * @return array<string, array{url: string, label: string}>
+     */
+    private function actionsFor(iterable $notifications): array
+    {
+        $actions = [];
+
+        foreach ($notifications as $notification) {
+            $action = SafeUrl::actionFor($notification);
+
+            if ($action !== null) {
+                $actions[(string) $notification->getKey()] = $action;
+            }
+        }
+
+        return $actions;
+    }
+
+    /**
+     * One notification, opened — and read, because that is what opening one is.
+     *
+     * The bell and the inbox both linked every row at the inbox, so "the notification
+     * I clicked" was indistinguishable from "all the notifications". Opening one now
+     * goes to one.
+     *
+     * ## Reading on open is a GET that writes, and it is the right trade here
+     *
+     * The alternative — a separate "mark as read" click — makes reading two clicks
+     * and leaves an inbox that fills with things the user has demonstrably read. The
+     * risk a GET-with-side-effect carries is a prefetch or a crawler marking rows
+     * read without a human, so the write is bounded: it touches ONE row the viewer
+     * owns, it is idempotent (a read row is left alone), and losing it costs a
+     * re-click rather than data. A prefetched inbox with N rows pre-read would be a
+     * problem; a prefetched detail page marks one row read.
+     */
+    public function show(User $viewer, string $id): array
+    {
+        $notification = $viewer->notifications()->whereKey($id)->first();
+
+        // 404, not 403: the inbox carries no permission, so a wrong id here is
+        // "no such notification for you" and a 403 would confirm the row exists.
+        if ($notification === null) {
+            abort(404, 'Notification not found.');
+        }
+
+        if ($notification->read_at === null) {
+            $notification->markAsRead();
+
+            // The dropdown sits under the badge and caches the same rows this page
+            // just changed; leaving that snapshot stale is how a row stays bold
+            // after being read.
+            UnreadNotificationCount::forgetAllFor($viewer);
+        }
+
+        // `callToAction`, NOT `action`: these keys become view data, and
+        // `layouts/partials/modal` reads `$confirmLabel ?? $action` from the
+        // layout scope. A view variable named `action` replaces that object with
+        // this array and 500s every page that renders the modal.
+        return [
+            'notification' => $notification->fresh(),
+            'callToAction' => SafeUrl::actionFor($notification),
         ];
     }
 

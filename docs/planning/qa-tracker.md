@@ -95,7 +95,7 @@
 ||----|----------|----------|---------|--------|
 || QA-SEC-001 | Verify HSTS header present | Security | Headers | PLANNED |
 || QA-SEC-002 | Verify CSP header present | Security | Headers | PLANNED |
-|| QA-SEC-003 | Verify X-Frame-Options set | Security | Headers | PLANNED |
+|| QA-SEC-003 | Verify frame protection (CSP `frame-ancestors 'none'`; `X-Frame-Options` is not sent) | Security | Headers | PLANNED |
 || QA-SEC-004 | Verify CSRF token on web forms | Security | CSRF | PLANNED |
 || QA-SEC-005 | Verify no stack traces in production errors | Security | Error handling | PLANNED |
 || QA-SEC-006 | Verify no secrets in error responses | Security | Error handling | PLANNED |
@@ -104,15 +104,22 @@
 
 ### Audit QA
 
-|| ID | Scenario | Category | Feature | Status |
-||----|----------|----------|---------|--------|
-|| QA-AUDIT-001 | Verify audit records created on mutations | Functional | Audit Trail | PLANNED |
-||| QA-AUDIT-002 | Verify audit metadata includes IP, UA, request_id | Security | Audit Trail | PLANNED |
-||| QA-AUDIT-003 | Verify audit records are read-only in UI | Authorization | Audit Trail | PLANNED |
-||| QA-AUDIT-004 | Verify async export works end-to-end | Functional | Audit Export | PLANNED |
-||| QA-AUDIT-005 | Verify export file expires after lifecycle | Security | Audit Export | PLANNED |
-||| QA-AUDIT-006 | Verify audit records written within transaction before commit | Security | Audit Trail | TODO |
-||| QA-AUDIT-007 | Verify rollback produces no audit record | Functional | Audit Trail | TODO |
+Automated coverage is **already closed** for the scenarios below — the "Proof"
+column names the test that pins it, and the F2 pentest covers the attack-shaped
+versions. What is left here is the manual pass, because the export round-trip has
+one client-side behaviour no curl test reaches: the table must resolve ITSELF.
+
+|| ID | Scenario | Category | Feature | Status | Proof / Manual step |
+||----|----------|----------|---------|--------|---------------------|
+|| QA-AUDIT-001 | Verify audit records created on mutations | Functional | Audit Trail | DONE | `ActionFirstAuditTest` — 11 cases, including "exactly one row" and rollback |
+||| QA-AUDIT-002 | Verify audit metadata includes IP, UA, request_id | Security | Audit Trail | DONE | `AuditRequestIdTest`, `AuditContextTest` — **and** that `ip`/`ua` are NULL outside a request, not `127.0.0.1` |
+||| QA-AUDIT-003 | Verify audit records are read-only | Authorization | Audit Trail | DONE | `AuditReadOnlyTest` (structural), `AuditPentestTest` probe 4 (all four verbs, both channels) |
+||| QA-AUDIT-004 | Verify async export end-to-end | Functional | Audit Export | **PARTIAL — needs a human** | Automated half done. **Manual:** run `php artisan queue:work`, click Export, and confirm the row flips `Preparing` → `Ready` with a Download button **without a page reload** |
+||| QA-AUDIT-005 | Verify export file expires after lifecycle | Security | Audit Export | DONE | `AuditExportTest` — 410 past the window, and `test_a_failed_export_leaves_no_file_behind_even_when_the_row_never_recorded_one` |
+||| QA-AUDIT-006 | Verify audit records written within transaction before commit | Security | Audit Trail | DONE | `ActionFirstAuditTest::test_a_rolled_back_delete_leaves_no_audit_record` |
+||| QA-AUDIT-007 | Verify rollback produces no audit record | Functional | Audit Trail | DONE | same file, three rollback cases |
+||| QA-AUDIT-008 | Verify the bell badge updates when an export finishes | Functional | Audit Export | **PARTIAL — needs a human** | Automated half done (`notification-poll` script ships and the event name is asserted). **Manual:** confirm the badge rises within ~5 s, not the 30 s interval |
+||| QA-AUDIT-009 | Verify a dead flag closes the module for superadmin too | Authorization | Audit Trail | DONE | `AuditPentestTest::test_a_dead_flag_closes_the_module_for_everyone_including_superadmin` |
 
 ### Logging QA
 

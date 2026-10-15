@@ -11,6 +11,7 @@ use App\Models\RoleLookup;
 use Database\Seeders\PermissionSeeder;
 use Database\Seeders\RoleSeeder;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Database\Eloquent\Relations\Relation;
 
 class UserStateTest extends TestCase
 {
@@ -142,7 +143,7 @@ class UserStateTest extends TestCase
 
         $this->assertDatabaseMissing('personal_access_tokens', [
             'tokenable_id' => $user->id,
-            'tokenable_type' => User::class,
+            'tokenable_type' => Relation::getMorphAlias(User::class),
         ]);
     }
 
@@ -156,7 +157,7 @@ class UserStateTest extends TestCase
 
         $this->assertDatabaseMissing('personal_access_tokens', [
             'tokenable_id' => $user->id,
-            'tokenable_type' => User::class,
+            'tokenable_type' => Relation::getMorphAlias(User::class),
         ]);
     }
 
@@ -192,7 +193,7 @@ class UserStateTest extends TestCase
 
         $this->assertDatabaseMissing('personal_access_tokens', [
             'tokenable_id' => $user->id,
-            'tokenable_type' => User::class,
+            'tokenable_type' => Relation::getMorphAlias(User::class),
         ]);
         $this->assertDatabaseMissing('sessions', ['user_id' => $user->id]);
         $this->assertNull(User::withTrashed()->find($user->id)->remember_token);

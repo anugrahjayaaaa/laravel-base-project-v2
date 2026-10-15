@@ -56,7 +56,7 @@
                         <div class="invalid-feedback d-block">{{ $message }}</div>
                     @enderror
                     <button type="submit" class="btn btn-primary w-100" id="resendBtn"
-                            onclick="this.disabled=true;this.form.submit()">
+                            data-disable-on-submit>
                         Resend Verification Email
                     </button>
                 </form>

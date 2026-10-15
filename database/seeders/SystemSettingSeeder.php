@@ -72,6 +72,35 @@ class SystemSettingSeeder extends Seeder
         SystemSetting::set('registration_default_role', 'user');
         SystemSetting::set('registration_rate_limit_per_minute', '3');
 
+        // Audit trail export ceiling — Phase 10, §11 P10-E9.
+        //
+        // Five per HOUR, per user + IP. The number is the same one the route
+        // enforced before it moved here; what changed is that an operator can now
+        // read it and change it without a deploy, which the literal could not.
+        SystemSetting::set('audit_export_rate_limit_per_hour', '5');
+
+        // Manual retries on a failed export, PER ROW. Three clicks by default,
+        // counted as clicks while the job already retries three times inside
+        // each one.
+        //
+        // Same reason as the ceiling above: an operator whose exports keep dying
+        // on something environmental should be able to turn the button off (0)
+        // or widen it for an incident without waiting for a deploy. Read through
+        // `AuditExport::maxRetries()`, which is also what the Action and the
+        // resource call, so this row is the single source for all three.
+        SystemSetting::set('audit_export_max_manual_retries', '3');
+
+        // The three remaining route limiters — Phase 12 P12-2.
+        //
+        // Same reason as the export ceiling above: an operator who wants a
+        // different number should not need a deploy. The literals they replace
+        // were not wrong, they were unreachable — a mail relay ceiling an
+        // admin cannot raise during an incident is a ceiling they must work
+        // around in code.
+        SystemSetting::set('user_state_actions_rate_limit_per_minute', '15');
+        SystemSetting::set('bulk_action_rate_limit_per_minute', '5');
+        SystemSetting::set('send_test_mail_rate_limit_per_minute', '5');
+
         // Mail transport — Phase 9 Group B.
         //
         // Seeded from the .env values this app already boots with, so an install

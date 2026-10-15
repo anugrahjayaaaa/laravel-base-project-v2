@@ -143,7 +143,7 @@ class UserRoleFormTest extends TestCase
      * a browser. Asserted against the rendered HTML rather than the partial, so
      * a future edit to the form that drops it fails here.
      */
-    public function test_the_role_picker_renders_the_placeholder_before_the_checkboxes (): void
+    public function test_the_role_picker_renders_the_placeholder_before_the_checkboxes(): void
     {
         $target = $this->makeUser();
 

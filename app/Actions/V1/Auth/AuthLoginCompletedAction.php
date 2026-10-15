@@ -62,7 +62,13 @@ class AuthLoginCompletedAction
 
             $user->updateQuietly(['last_activity_at' => now()]);
 
-            $user->audit('auth.login', null, [
+            // The causer is the account that logged in. This was `null` until the
+            // audit calls moved out of the controller (4f591e3), where the old
+            // `Controller::audit($event, $subject, $causer, $props)` signature made
+            // it explicit; the Action form made it optional and it was omitted. The
+            // row rendered "Anonymous" for the one event where the actor is the
+            // single most obvious fact in the table.
+            $user->audit('auth.login', $user, [
                 'remember' => $remember,
             ]);
 

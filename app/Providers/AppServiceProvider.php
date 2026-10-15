@@ -12,13 +12,16 @@ use App\Observers\SystemSettingObserver;
 use App\Observers\UserObserver;
 use App\Services\PasswordExpiry;
 use App\Support\FeatureCatalog;
+use App\Support\MorphMap;
 use App\View\Composers\AccountOptionsComposer;
 use App\View\Composers\AppMenuComposer;
 use App\View\Composers\PasswordStrengthComposer;
 use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Pagination\Paginator;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\View\View;
@@ -40,6 +43,43 @@ class AppServiceProvider extends ServiceProvider
         Paginator::useBootstrap();
         LengthAwarePaginator::useBootstrap();
 
+        // The nonce itself is per-response: `AddSecurityHeaders` shares a fresh
+        // one on every request, and only that request's views are rendered
+        // while it holds the real value. (The policy is attached to `text/html`
+        // only; the share runs unconditionally because the middleware does.)
+        //
+        // The default exists because a view is also rendered by things that are
+        // not an HTTP response at all — a mail body, a queue job, `view()->render()`
+        // inside a test — and none of those pass through the middleware. Without a
+        // value here `@nonce` there is an "Undefined variable" error, so one shared
+        // variable turns "no policy applies" into a crash. An empty nonce is never
+        // served under a real policy, because the header and the value come from
+        // the same middleware.
+        view()->share('cspNonce', '');
+
+        // `<script @nonce>` rather than `nonce="{{ $cspNonce }}"` at every call
+        // site: the attribute name and the variable name then cannot drift apart.
+        //
+        // The value is resolved at COMPILE time, not at run time: a bare `@nonce`
+        // reaches here with an empty expression, and building `( ?: $cspNonce)`
+        // into the compiled output is a PHP parse error in every view that uses
+        // the directive — a fatal a unit test would never see until a page renders.
+        //
+        // `\\e` rather than `\e`: this is a DOUBLE-QUOTED PHP string, where `\e`
+        // is PHP's own escape for the ESC control character — the compiled view
+        // then reads `.0x1B($cspNonce)` and every page using it dies with a
+        // ParseError, which is how this shipped once already.
+        //
+        // Registered HERE and not in `bootstrap/app.php`, because `withMiddleware()`
+        // runs while the application is still being built and the Blade facade has
+        // no root to resolve against yet — calling it there fatals the console and
+        // every request with "A facade root has not been set".
+        Blade::directive('nonce', function (string $expression): string {
+            $value = $expression === '' ? '$cspNonce' : $expression;
+
+            return "<?php echo 'nonce=\"'.\\e({$value}).'\"'; ?>";
+        });
+
         view()->composer('layouts.partials.sidebar', AppMenuComposer::class);
         // The header dropdown carries its own Sessions link, outside $menuGroups,
         // and reads ONE boolean — so it gets a closure, not the full composer.
@@ -56,35 +96,42 @@ class AppServiceProvider extends ServiceProvider
         // first, so `activeMap()` has resolved the whole catalogue by the time
         // this runs. Measured, cold cache, flushing Pennant between requests —
         // sidebar first: 1 feature-store read per page; header first: 2.
-        view()->composer('layouts.partials.header', function (View $view): void {
-            $view->with('sessionsVisible', FeatureCatalog::isActive('sessions'));
+        // Registered against the LIST partial as well as the header, because the
+        // poll endpoint returns that partial on its own and it would otherwise
+        // render with no `$recentNotifications` — the same class of bug
+        // `AppMenuComposer` exists to prevent, one level down.
+        view()->composer(
+            ['layouts.partials.header', 'layouts.partials.notification-dropdown-list'],
+            function (View $view): void {
+                $view->with('sessionsVisible', FeatureCatalog::isActive('sessions'));
 
-            // The bell points at the inbox, so it follows the INBOX's gate — the
-            // flag only, no permission. It previously carried
-            // `notifications.view` because its target was the configuration page,
-            // which is permission-gated; the inbox is every user's own rows, and
-            // keeping the check would hide the bell from exactly the people an
-            // inbox is for.
-            $view->with('notificationsVisible', FeatureCatalog::isActive('notifications'));
+                // The bell points at the inbox, so it follows the INBOX's gate — the
+                // flag only, no permission. It previously carried
+                // `notifications.view` because its target was the configuration page,
+                // which is permission-gated; the inbox is every user's own rows, and
+                // keeping the check would hide the bell from exactly the people an
+                // inbox is for.
+                $view->with('notificationsVisible', FeatureCatalog::isActive('notifications'));
 
-            // The unread count, read HERE rather than in the partial: the partial
-            // renders on every authenticated page and a count read in its markup
-            // is a query per render.
-            //
-            // Cached, so it is a query on a cold cache rather than on every
-            // render — see `UnreadNotificationCount` for why it is invalidated on
-            // the notification event and not when the inbox is opened.
-            //
-            // a flag-off module leaves no icon pointing at a 403. The unread
-            // badge and the inbox target land with P9-C2; until then it points
-            // at the inbox, which every authenticated user can open.
-            $show = auth()->check();
+                // The unread count, read HERE rather than in the partial: the partial
+                // renders on every authenticated page and a count read in its markup
+                // is a query per render.
+                //
+                // Cached, so it is a query on a cold cache rather than on every
+                // render — see `UnreadNotificationCount` for why it is invalidated on
+                // the notification event and not when the inbox is opened.
+                //
+                // a flag-off module leaves no icon pointing at a 403. The unread
+                // badge and the inbox target land with P9-C2; until then it points
+                // at the inbox, which every authenticated user can open.
+                $show = auth()->check();
 
-            $view->with([
-                'unreadNotificationCount' => $show ? UnreadNotificationCount::for(auth()->user()) : 0,
-                'recentNotifications' => $show ? UnreadNotificationCount::recent(auth()->user()) : collect(),
-            ]);
-        });
+                $view->with([
+                    'unreadNotificationCount' => $show ? UnreadNotificationCount::for(auth()->user()) : 0,
+                    'recentNotifications' => $show ? UnreadNotificationCount::recent(auth()->user()) : collect(),
+                ]);
+            }
+        );
         view()->composer('layouts.partials.password-strength', PasswordStrengthComposer::class);
 
         // Roles and the identity-change policy: shared by every page that shows
@@ -156,13 +203,20 @@ class AppServiceProvider extends ServiceProvider
             Feature::define($slug, fn (): bool => false);
         }
 
+        // The audit table's polymorphic columns store an ALIAS instead of
+        // `App\Models\Whatever`, so renaming a model does not orphan every
+        // historical row pointing at it. Permissive on purpose — see
+        // `App\Support\MorphMap` for why `enforceMorphMap()` is the wrong call on
+        // a write path that records what just happened.
+        Relation::morphMap(MorphMap::ALIASES);
+
         // Both are reachable from the API, so both need the JSON branch too.
         $throttle = app(LoginThrottle::class);
 
         RateLimiter::for('user-state-actions', function ($request) use ($throttle) {
             $key = $request->user()?->id ?: $request->ip();
 
-            return Limit::perMinute(15)
+            return Limit::perMinute(SystemSetting::getInt('user_state_actions_rate_limit_per_minute', 15))
                 ->by($key)
                 ->response($throttle->responseFor('user'));
         });
@@ -181,7 +235,7 @@ class AppServiceProvider extends ServiceProvider
             $key = $throttle->key('send-test-mail', (string) $request->user()?->id, $request->ip())
                 .':'.$to;
 
-            return Limit::perMinute(5)
+            return Limit::perMinute(SystemSetting::getInt('send_test_mail_rate_limit_per_minute', 5))
                 ->by($key)
                 ->response($throttle->responseFor('email'));
         });
@@ -189,9 +243,42 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('bulk-action', function ($request) use ($throttle) {
             $key = $request->user()?->id ?: $request->ip();
 
-            return Limit::perMinute(5)
+            return Limit::perMinute(SystemSetting::getInt('bulk_action_rate_limit_per_minute', 5))
                 ->by($key)
                 ->response($throttle->responseFor('users'));
+        });
+
+        // One audit export streams the whole filtered table into a file. Five an
+        // hour is roughly an operator's working pace; a permission answers "may
+        // this person" and not "how often", and without a ceiling a compromised
+        // operator account turns this route into a lever against the database and
+        // against disk — a worker burning its whole timeout on rows nobody reads.
+        //
+        // Keyed on user AND ip, so spraying across accounts does not widen it,
+        // and per HOUR rather than per minute: the cost per call here is orders of
+        // magnitude above the send-test-mail route it borrows the shape from.
+        //
+        // The ceiling is a `SystemSetting` (Phase 10, §11 P10-E9) rather than the
+        // literal it was, because the audit page QUOTES this number to the operator
+        // in a tooltip. A number shown in two places and stored in one is a number
+        // that cannot drift; a literal behind a hardcoded label can, and the first
+        // edit in the settings UI would have made the tooltip a lie.
+        //
+        // Read per request inside the closure, never at boot: boot runs before the
+        // table exists on a fresh install, and this project has already been bitten
+        // by that (`bindTokenExpirations()` and its comment).
+        //
+        // The refusal rides on `format` because that is the one field this POST
+        // carries — `responseFor()` flashes the field's value back so the filters
+        // the user had chosen survive the redirect. On a field that is not in the
+        // form the message would be attached to nothing the page renders.
+        RateLimiter::for('audit-export', function ($request) use ($throttle) {
+            $key = $throttle->key('audit-export', (string) $request->user()?->id, $request->ip());
+            $perHour = SystemSetting::getInt('audit_export_rate_limit_per_hour', 5);
+
+            return Limit::perHour($perHour)
+                ->by($key)
+                ->response($throttle->responseFor('format'));
         });
     }
 

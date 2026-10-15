@@ -92,6 +92,33 @@ class SystemSettingRequest extends BaseFormRequest
                 'string',
                 Rule::in(RoleLookup::visibleTo($this->user())->pluck('name')),
             ],
+
+            // Audit trail export ceiling — Phase 10, §11 P10-E9.
+            //
+            // An HOUR rather than a minute, which is why the bound tops out at 500
+            // where the per-minute limiters stop at 120: at five an hour this is a
+            // ceiling an operator never reaches by accident, and the only way to
+            // change the cost of one export from the UI is this field.
+            'audit_export_rate_limit_per_hour' => ['integer', 'min:1', 'max:500'],
+
+            // Manual retries on ONE failed export. Zero is a real answer, not a
+            // hole in the validation: it is how an operator disables the button
+            // and sends every failure straight to a human.
+            //
+            // Ten at the top, and the number is not arbitrary — the job retries
+            // three times inside ONE click, so the ceiling at 10 is thirty
+            // whole-table CSV builds against a single row. Past that this stops
+            // being a retry budget and becomes a way to hammer the database from
+            // the audit page.
+            'audit_export_max_manual_retries' => ['integer', 'min:0', 'max:10'],
+
+            // Phase 12 P12-2: the three limiters that were still literals.
+            // Same bound as the per-minute registration limit — past 120 a value
+            // stops being a rate limit and becomes a denial of service against
+            // the operator's own workflow.
+            'user_state_actions_rate_limit_per_minute' => ['integer', 'min:1', 'max:120'],
+            'bulk_action_rate_limit_per_minute' => ['integer', 'min:1', 'max:120'],
+            'send_test_mail_rate_limit_per_minute' => ['integer', 'min:1', 'max:120'],
         ];
     }
 

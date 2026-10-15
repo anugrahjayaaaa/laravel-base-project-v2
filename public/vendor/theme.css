@@ -557,3 +557,19 @@ input:focus-visible,
   background: transparent;
   border: 1px solid var(--lbp-border, rgba(0, 0, 0, .15));
 }
+
+/* The one animated thing in the interface: the spinner on a `pending` audit
+   export row. It runs forever, and an infinite rotation is exactly the kind of
+   motion that triggers vestibular discomfort — so the user's OS preference wins
+   and the icon holds still.
+
+   `animation: none` rather than a shorter duration: there is no second animation
+   to fall back to, and a spinner that still creeps is still moving. The state is
+   still legible because the badge carries the word "Preparing" beside the icon —
+   `design-system.md` §Accessibility is that state is never carried by one channel
+   alone, and that is what makes stopping the motion safe. */
+@media (prefers-reduced-motion: reduce) {
+  .fa-spin {
+    animation: none !important;
+  }
+}

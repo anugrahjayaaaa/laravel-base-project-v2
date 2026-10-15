@@ -14,6 +14,7 @@ use Tests\TestCase;
 use App\Http\Middleware\VerifyCsrfToken;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\PermissionRegistrar;
+use Illuminate\Database\Eloquent\Relations\Relation;
 
 /**
  * P6-E8 — the role sync contract, end to end over HTTP.
@@ -314,7 +315,7 @@ class RbacRoleSyncTest extends TestCase
 
         $row = DB::table('activity_log')
             ->where('event', 'user.roles_assigned')
-            ->where('subject_type', User::class)
+            ->where('subject_type', Relation::getMorphAlias(User::class))
             ->where('subject_id', $target->id)
             ->latest('id')
             ->first();

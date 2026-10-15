@@ -25,7 +25,6 @@ use Tests\TestCase;
  */
 class FeatureSelectAllTest extends TestCase
 {
-    
     public function test_select_all_works_on_both_page_shapes(): void
     {
         $node = trim((string) shell_exec('command -v node 2>/dev/null'));

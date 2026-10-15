@@ -22,7 +22,8 @@ class ProfileController extends Controller
     public function __construct(
         private readonly UserUpdateAction $updateAction,
         private readonly AuthChangePasswordAction $changePasswordAction,
-    ) {}
+    ) {
+    }
 
     /**
      * Get the authenticated user's profile.

@@ -85,8 +85,8 @@ override `source` (a job passes `system`). No model observers. See
 `docs/base/architecture/application-boundaries.md` §
 Action-First Audit Logging Standard and `docs/base/features/audit-trail.md`.
 
-Migrated: User, System, Role, Feature (already compliant), Auth web + API.
-Remaining: AUD-006 (Profile) — the last caller of `Controller::audit()`.
+Migrated: User, System, Role, Feature (already compliant), Auth web + API, Profile.
+`Controller::audit()` is deleted; there is no caller left to migrate.
 
 ---
 
@@ -1123,7 +1123,7 @@ Detail: `docs/planning/phase-9-notifications-mail.md`.
       "P6-C5"
     ],
     "status": "DONE",
-    "note": "Phase 6 Group C4, shipped 2026-09-30 in 015d6c3, EXTENDED: extracted to the App\Concerns\\AuthorizesBulkAction trait and adopted by BulkRoleRequest too, which is what closed P6C1-005. One BULK_ACTIONS map plus an entity prefix, so a new action is added once and both bars get it; an unmapped action fails closed because authorize() runs before rules()."
+    "note": "Phase 6 Group C4, shipped 2026-09-30 in 015d6c3, EXTENDED: extracted to the App\\Concerns\\\\AuthorizesBulkAction trait and adopted by BulkRoleRequest too, which is what closed P6C1-005. One BULK_ACTIONS map plus an entity prefix, so a new action is added once and both bars get it; an unmapped action fails closed because authorize() runs before rules()."
   },
   {
     "id": "P6-C18",
@@ -1168,7 +1168,7 @@ Detail: `docs/planning/phase-9-notifications-mail.md`.
       "FEAT-001"
     ],
     "status": "DONE",
-    "note": "DONE 2026-10-02. EnsureFeatureIsEnabled exists (403, fail-closed, no superadmin bypass, reads the config kill switch that Pennant\'s own middleware cannot see); the feature: alias is registered in bootstrap/app.php; 62/62 module routes are gated across web.php and api.php, plus vendor /pulse through pulse.middleware; the sidebar filters on the flag before the permission. Verified by walking gatherMiddleware() at runtime — route:list hides middleware GROUPS, so the gate is invisible there."
+    "note": "DONE 2026-10-02. EnsureFeatureIsEnabled exists (403, fail-closed, no superadmin bypass, reads the config kill switch that Pennant's own middleware cannot see); the feature: alias is registered in bootstrap/app.php; 62/62 module routes are gated across web.php and api.php, plus vendor /pulse through pulse.middleware; the sidebar filters on the flag before the permission. Verified by walking gatherMiddleware() at runtime — route:list hides middleware GROUPS, so the gate is invisible there."
   },
   {
     "id": "P7-A1",
@@ -1540,9 +1540,9 @@ Detail: `docs/planning/phase-9-notifications-mail.md`.
     "depends_on": ["P7-E4", "P7-E6"],
     "status": "PLANNED",
     "note": "NOT STARTED."
-  }
+  },
 
-{
+  {
     "id": "P7-F7",
     "task": "AssetBundleFreshnessTest — the built bundle actually contains the feature actions and matches every page select-all markup",
     "phase": 7,
@@ -1553,9 +1553,9 @@ Detail: `docs/planning/phase-9-notifications-mail.md`.
     ],
     "status": "DONE",
     "note": "Built 2026-10-01, after the bulk dropdown shipped EMPTY. Nothing in PHP can see JavaScript: Blade rendered correct data-bulk-* attributes and all 800+ request tests passed while the browser ran a stale pre-Group-F Vite bundle. Reads app.js THROUGH public/build/manifest.json, because Vite content-hashes filenames and the old bundle stays on disk, so a glob reads whichever file sorts first. Also pins the driver select-all selector against the markup the views actually ship: users and roles use an id, features uses a class because it renders one table per module, and matching only one form silently kills the other pages. Sabotage-verified by pointing the manifest at a stale bundle and by narrowing the selector."
-}
+  },
 
-{
+  {
     "id": "P7-F8",
     "task": "FeatureSelectAllTest — select-all scoped to its own card on the multi-table page",
     "phase": 7,
@@ -1566,9 +1566,9 @@ Detail: `docs/planning/phase-9-notifications-mail.md`.
     ],
     "status": "DONE",
     "note": "Built 2026-10-01. Runs the real bundle over BOTH page shapes in SEPARATE vm contexts. Evaluated in one context they fight over the shared DOM stub and produce flaky results, which is what an earlier attempt did. Catches three regressions distinctly: a class-only selector (users and roles select-all dead), an id-only selector (features select-all dead), and a page-wide select-all (one card header ticking every flag). Sabotage-verified against all three."
-}
+  },
 
-{
+  {
     "id": "P7-F9",
     "task": "FeatureBulkDropdownTest — the dropdown offers only actions safe for the selection",
     "phase": 7,
@@ -1579,7 +1579,7 @@ Detail: `docs/planning/phase-9-notifications-mail.md`.
     ],
     "status": "DONE",
     "note": "Built 2026-10-01. Executes the shipped bundle via vm rather than a reimplementation, so it tests the artifact and not a copy of its logic. Asserts active rows offer disable, inactive rows offer enable, and a MIXED selection offers only the one action safe for all rows. Forces an active/inactive spread first: the baseline seeder activates every flag, so without that the mixed rule is never exercised and a broken driver passes. The PHP side asserts EVERY check line by name plus a blanket no-FAIL check, after an earlier version asserted only the first and so missed a real failure the script had already printed."
-},
+  },
   {
     "id": "SET-001",
     "task": "Design settings schema",
@@ -1692,7 +1692,8 @@ Detail: `docs/planning/phase-9-notifications-mail.md`.
     "depends_on": [
       "RBAC-005"
     ],
-    "status": "PLANNED"
+    "status": "DONE",
+    "note": "spatie/laravel-activitylog ^4.8 installed; 3 migrations on `activity_log`; 41 call sites writing through the `Auditable` trait. `docs/planning/phase-10-audit-trail.md` §9."
   },
   {
     "id": "AUDIT-002",
@@ -1702,7 +1703,8 @@ Detail: `docs/planning/phase-9-notifications-mail.md`.
     "depends_on": [
       "AUDIT-001"
     ],
-    "status": "PLANNED"
+    "status": "DONE — as a trait, not a service",
+    "note": "The task said \"abstraction layer\". What shipped is `App\\Models\\Concerns\\Auditable` (D4): a model trait, because the derivation of source/ip/UA/request_id belongs on the model that carries it, making `Auditable::auditContext()` the single place it exists. `Controller::audit()` and `bulkAudit()` were deleted. DEP-003 corrected; `docs/base/dependencies/overview.md` corrected 2026-10-13."
   },
   {
     "id": "AUDIT-003",
@@ -1712,7 +1714,8 @@ Detail: `docs/planning/phase-9-notifications-mail.md`.
     "depends_on": [
       "AUDIT-002"
     ],
-    "status": "PLANNED"
+    "status": "DONE",
+    "note": "Every `->audit()` call site is an Action, a Job or one service (`InactivityLock`). Zero controllers and zero observers write a row. Pinned by `AuditReadOnlyTest::test_nothing_in_the_application_writes_through_the_activity_model` and by `ActionFirstAuditTest` (11 cases, incl. three rollback cases proving a failed mutation leaves no row)."
   },
   {
     "id": "AUDIT-004",
@@ -1722,7 +1725,8 @@ Detail: `docs/planning/phase-9-notifications-mail.md`.
     "depends_on": [
       "AUDIT-002"
     ],
-    "status": "PLANNED"
+    "status": "DONE",
+    "note": "Web: `ActivityLogController` index/show. API: `Api\\V1\\Audit\\AuditController` added 2026-10-13 after a route audit found the module browser-only on the read side. Same Actions, same Form Requests, same `audit.view` split. Satisfied by P10-A1..A7, P10-B2/B3/B5, P10-C1/C3..C8, P10-D5..D9, P10-F2/F3. See `phase-12-api-v1.md` §1."
   },
   {
     "id": "AUDIT-005",
@@ -1733,7 +1737,8 @@ Detail: `docs/planning/phase-9-notifications-mail.md`.
       "AUDIT-002",
       "QUEUE-001"
     ],
-    "status": "PLANNED"
+    "status": "DONE",
+    "note": "Migration + model + `GenerateAuditExport` job on the private disk + retention sweep + rate limit now in `system_settings` + notification on both channels. Satisfied by P10-E1..E8, P10-E9..E12, and the API half in `phase-12-api-v1.md` §1. Two defects found in review and closed: the flash was rendered by no admin view, and a retry could orphan a complete CSV because the path column is written after the file lands."
   },
   {
     "id": "RATE-001",

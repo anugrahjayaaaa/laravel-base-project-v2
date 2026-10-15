@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Controllers\Web\V1\ActivityLogController;
+use App\Http\Controllers\Web\V1\AuditExportController;
 use App\Http\Controllers\Web\V1\Auth\AuthController;
 use App\Http\Controllers\Web\V1\DashboardController;
 use App\Http\Controllers\Web\V1\FeatureController;
@@ -261,10 +263,108 @@ Route::middleware(['auth:web,sanctum', 'verified', 'password.change.required', '
     Route::middleware('feature:notifications')->group(function () {
         Route::controller(NotificationInboxController::class)->group(function () {
             Route::get('/notifications/inbox', 'index')->name('notifications.inbox');
+            // The bell's live count and list, for the poll that stops the badge
+            // going stale until a reload. Both GET, both reading the viewer's own
+            // rows — nothing to forge, so no CSRF exemption is involved.
+            //
+            // `throttle:120,1` rather than a custom limiter: one tab polls every
+            // 30 seconds, so this is ~2/min, and the ceiling exists to stop a
+            // stuck retry loop (or a hostile client) from turning a badge into
+            // load. A dedicated limiter would answer "how often may an operator
+            // refresh a badge", which is not a question anyone asks.
+            Route::get('/notifications/unread-count', 'unreadCount')
+                ->name('notifications.unread-count')
+                ->middleware('throttle:120,1');
+            Route::get('/notifications/preview', 'preview')->name('notifications.preview');
+            // One notification, opened. Registered BEFORE the read route below so
+            // the two are visibly a pair: a GET that shows one row and a POST that
+            // clears one without showing it. Every bell and inbox row links here
+            // rather than at the list, so the row that was clicked is the row that
+            // opens — and it is marked read by opening it.
+            Route::get('/notifications/inbox/{notification}', 'show')->name('notifications.inbox.show');
             Route::post('/notifications/inbox/{id}/read', 'markAsRead')
                 ->name('notifications.inbox.read');
             Route::post('/notifications/inbox/read-all', 'markAllAsRead')
                 ->name('notifications.inbox.read-all');
         });
+    });
+
+    // -----------------------------------------------------------------------
+    // Audit trail viewer — Phase 10 Groups A and C.
+    //
+    // Two gates, both required, both failing as 403 so a caller cannot tell
+    // which fired: `feature:activity_logs` is the deploy-time kill switch and
+    // `audit.view` is the per-role authorization. Same deliberate shape as
+    // Phase 7 and Phase 11 — the two answer different questions, and collapsing
+    // them into one check loses whichever question gets dropped.
+    //
+    // READ-ONLY. There is no POST/PUT/DELETE on the viewer itself, and
+    // `App\Models\Activity` carries `$guarded = ['*']`. An audit row is evidence:
+    // a write path here would let the record of something be edited by the thing
+    // that records it.
+    //
+    // The two export routes below are the one POST this surface has, and it
+    // writes NO audit row — it writes an `audit_exports` row, which is a
+    // hand-off to the queue and not a record of the audit trail. The table stays
+    // append-only.
+    //
+    // `audit.export`, not `audit.view`: seeing a row is not the same authority as
+    // taking the whole table out of the application. `PermissionCatalog` documents
+    // that split, and collapsing them would hand every read-only auditor a copy
+    // of everything everybody did.
+    // -----------------------------------------------------------------------
+    Route::middleware('feature:activity_logs')->group(function () {
+        Route::get('/activity-logs', [ActivityLogController::class, 'index'])->name('activity-logs.index')->can('audit.view');
+        // `whereNumber`, for the same reason as the API twin: `/activity-logs/exports/…`
+        // lives one segment below this route, and an unconstrained `{activity}`
+        // swallows any literal path of the same length depending on which was
+        // registered first. The column is `bigIncrements`, so nothing numeric is
+        // lost by saying so.
+        Route::get('/activity-logs/{activity}', [ActivityLogController::class, 'show'])
+            ->whereNumber('activity')
+            ->name('activity-logs.show')
+            ->can('audit.view');
+
+        // Named under the viewer's namespace so the download link in the
+        // notification reads `activity-logs.exports.download`, and so both
+        // surfaces are switched off by the same flag.
+        Route::post('/activity-logs/exports', [AuditExportController::class, 'store'])
+            ->name('activity-logs.exports.store')
+            ->middleware(['can:audit.export', 'throttle:audit-export']);
+
+        // `audit.export` on this one too, and the ownership check lives in
+        // `AuditExportDownloadAction`: the permission says "may extract", not
+        // "may download extract #41", and the id is attacker-supplied.
+        //
+        // Throttled on the SAME limiter as the POST, per plan P10-B4. The export
+        // is one act in two requests, and a limit that only covers half of it is
+        // a limit an operator can walk around by pressing Download instead of
+        // Export — which is exactly the request that costs a disk read.
+        Route::get('/activity-logs/exports/{export}/download', [AuditExportController::class, 'download'])
+            ->name('activity-logs.exports.download')
+            ->middleware(['can:audit.export', 'throttle:audit-export']);
+
+        // Re-run one FAILED export. Same permission and the SAME limiter as the
+        // request and the download: a retry builds the same file, so giving it a
+        // budget of its own would make it the cheapest way to produce one — the
+        // limit would stop covering the act it exists to cover.
+        //
+        // The state transition, the cap and the ownership check are the Action's,
+        // not the route's: `AuditExportRequestAction::retry()` answers 409 for a
+        // row that is not `failed` and for one out of retries, which is what a
+        // POST sent straight to the URL gets. The button that reaches this is
+        // hidden in both cases — the button is presentation, this is the control.
+        Route::post('/activity-logs/exports/{export}/retry', [AuditExportController::class, 'retry'])
+            ->name('activity-logs.exports.retry')
+            ->middleware(['can:audit.export', 'throttle:audit-export']);
+
+        // The card's own refresh. Same permission as the PAGE it is a fragment of,
+        // not the export permission — it returns part of a page `audit.view`
+        // already opens, and `AuditExportRequestAction::recentFor()` scopes the
+        // rows to the viewer. Throttled like the bell's poll: a few requests a
+        // minute per tab, with a ceiling so a retry loop cannot become load.
+        Route::get('/activity-logs/exports/recent', [AuditExportController::class, 'recent'])
+            ->name('activity-logs.exports.recent')
+            ->middleware(['can:audit.view', 'throttle:120,1']);
     });
 });

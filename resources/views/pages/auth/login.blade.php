@@ -73,7 +73,7 @@
                 </div>
                 <div class="d-grid mb-3">
                     <button type="submit" class="btn btn-primary" id="loginBtn"
-                                 onclick="this.disabled=true;this.form.submit()">Login</button>
+                                 data-disable-on-submit>Login</button>
                 </div>
                 {{-- Stacked, not side by side: a separator puts "Forgot password?"
                      and "Create an account" on the same rank, when they are two
@@ -92,7 +92,7 @@
 @endsection
 
 @push('scripts')
-<script>
+<script @nonce>
 (function() {
     document.querySelectorAll('.rate-limit-seconds').forEach(function(el) {
         var seconds = parseInt(el.dataset.seconds);
