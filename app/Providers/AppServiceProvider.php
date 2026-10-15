@@ -43,9 +43,10 @@ class AppServiceProvider extends ServiceProvider
         Paginator::useBootstrap();
         LengthAwarePaginator::useBootstrap();
 
-        // The nonce itself is per-response: `AddContentSecurityPolicy` overwrites
-        // this on every HTML request, and only that request's views are rendered
-        // while it holds the real value.
+        // The nonce itself is per-response: `AddSecurityHeaders` shares a fresh
+        // one on every request, and only that request's views are rendered
+        // while it holds the real value. (The policy is attached to `text/html`
+        // only; the share runs unconditionally because the middleware does.)
         //
         // The default exists because a view is also rendered by things that are
         // not an HTTP response at all — a mail body, a queue job, `view()->render()`

@@ -2,30 +2,53 @@
 
 ## Secure Defaults
 
-| Header | Recommended Value |
-|--------|------------------|
-| HTTPS | Enforce (redirect HTTP to HTTPS) |
-| HSTS | `max-age=31536000; includeSubDomains; preload` |
-| Content-Security-Policy | Strict, allowlist only |
-| X-Content-Type-Options | `nosniff` |
-| Referrer-Policy | `strict-origin-when-cross-origin` |
-| Permissions-Policy | Restrictive defaults |
-| X-Frame-Options | `DENY` or `SAMEORIGIN` (frame protection) |
-| Cookie Secure | `true` |
-| Cookie SameSite | `Lax` or `Strict` |
-| CSRF | Laravel Sanctum/VerifyCsrfToken middleware |
-| CORS | Restrict to known origins |
+| Header | Recommended Value | Sent by the application (2026-10-15) |
+|--------|-------------------|----------------------------------------|
+| HTTPS | Enforce (redirect HTTP to HTTPS) | Deployment decision (reverse proxy) |
+| HSTS | `max-age=31536000; includeSubDomains; preload` | ✅ `max-age=31536000; includeSubDomains` — `preload` deliberately withheld, see below |
+| Content-Security-Policy | Strict, allowlist only | ✅ nonce policy, documented below |
+| X-Content-Type-Options | `nosniff` | ✅ |
+| Referrer-Policy | `strict-origin-when-cross-origin` | ✅ |
+| Permissions-Policy | Restrictive defaults | ✅ every device feature this app uses (none) denied |
+| X-Frame-Options | `DENY` or `SAMEORIGIN` (frame protection) | ✗ answered by `frame-ancestors 'none'` in the policy instead — same decision, one source of truth |
+| Cookie Secure | `true` | `env('SESSION_SECURE_COOKIE')` — deployment decision, like `APP_DEBUG` |
+| Cookie SameSite | `Lax` or `Strict` | ✅ `Lax` (`config/session.php` default) |
+| CSRF | Laravel Sanctum/VerifyCsrfToken middleware | ✅ including under test — see `VerifyCsrfToken::runningUnitTests()` |
+| CORS | Restrict to known origins | No `config/cors.php`; nothing opts in |
 
-Only `Content-Security-Policy` in that table is sent by the application today;
-the rest are recommendations this project has not implemented, and a header
-missing from a response is a separate gap from a header configured wrongly.
+A header missing from a response is a different gap from a header configured
+wrongly, so the third column is asserted rather than asserted-about:
+`tests/Feature/Security/SecurityHeadersTest.php` checks the four response
+headers and `ContentSecurityPolicyTest` checks the policy.
+
+## Response Headers
+
+All four are set by `App\Http\Middleware\AddSecurityHeaders`, on **every**
+response the application makes — it is appended to global middleware, because
+each of these is a decision about this origin rather than about one page:
+
+| Header | Value | Reasoning |
+|--------|-------|-----------|
+| `X-Content-Type-Options` | `nosniff` | Most valuable on the streamed CSV download — the file a browser is most likely to sniff into something it will execute. |
+| `Referrer-Policy` | `strict-origin-when-cross-origin` | Full URL same-origin, origin only cross-origin, nothing over a downgrade. |
+| `Permissions-Policy` | `accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()` | The app has a use for none of them. An absent header means "the browser's default", and the default for `camera` is not "no". |
+| `Strict-Transport-Security` | `max-age=31536000; includeSubDomains` | Sent unconditionally rather than gated on `$request->isSecure()`: a browser honours it only over https, so a dev server's plain-http answer is ignored, while gating it would drop the header behind any TLS terminator absent from `TrustProxies`. |
+
+**`preload` is withheld on purpose.** Submitting a domain to the HSTS preload
+list is effectively irreversible for ~18 months and outlives this header being
+removed, so it is an owner decision and not a default: add `; preload` to the
+value above when that decision is made.
 
 ## Content-Security-Policy
 
-`App\Http\Middleware\AddContentSecurityPolicy`, appended to the `web` group and
-set **only** on `text/html` responses — the JSON API carries no document for a
-policy to govern, and a header written onto the streamed CSV export is the
-classic way to corrupt the stream.
+`App\Http\Middleware\AddSecurityHeaders`, appended to global middleware, sets the
+policy **only** on `text/html` responses — on JSON there is no document for a
+policy to govern, and on a file response it would govern nothing. The four
+response headers above are written on every response including that one, and
+that is safe: they are set here, before the response is returned, which is
+before a `StreamedResponse` starts sending. A header set after output has begun
+is what corrupts a stream. The nonce is shared on every request and read only
+where a view renders.
 
 | Directive | Value | Reason |
 |-----------|-------|--------|

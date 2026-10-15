@@ -200,7 +200,7 @@ public function validated($key = null, $default = null): array
 2. The CSV this system exports neutralizes formula cells at the source
    (`GenerateAuditExport::cell()`, CWE-1236): a leading `=`, `+`, `-` or `@`
    after whitespace is prefixed with `'`, so a display name is inert in Excel.
-3. `AddContentSecurityPolicy` ships the "defense-in-depth" the recommendation
+3. `AddSecurityHeaders` ships the "defense-in-depth" the recommendation
    asked for, and more than it asked: every HTML response carries a Content-
    Security-Policy whose `script-src` is a per-request nonce with no
    `'unsafe-inline'`, so an injected `<script>` does not run even if a `{!! !!}`

@@ -564,9 +564,11 @@ already included in both `layouts/auth.blade.php` and `layouts/app.blade.php`).
 
 ## Content Security Policy — What a View May Contain
 
-Every page under the `web` group is served with a nonce-based CSP
+Every HTML response is served with a nonce-based CSP
 (`docs/base/security/web-security.md`): `script-src` carries a per-request nonce
-and NOTHING else — no `'unsafe-inline'`, no `'unsafe-eval'`. An inline script
+and NOTHING else — no `'unsafe-inline'`, no `'unsafe-eval'`. (The policy is
+attached by `AddSecurityHeaders` on the `text/html` check, so it covers the API
+docs page as much as the `web` group's pages.) An inline script
 without `@nonce`, and an inline `on*` handler of any kind, therefore does not
 RUN. Not "warns in the console": silently absent, on a page that still answers
 200 and still passes `assertOk()`. That is the failure mode these rules exist to
@@ -608,7 +610,7 @@ prevent, and it is why they bind every view and not only the security module.
 ### External assets and inline styles
 
 8. An external `<script src>` or `<link>` may point at this origin or at the
-   allowlist in `AddContentSecurityPolicy` (`fonts.bunny.net`, `unpkg.com` for
+   allowlist in `AddSecurityHeaders` (`fonts.bunny.net`, `unpkg.com` for
    Stoplight Elements). Adding an origin is a security-docs change reviewed
    there, not a change a view makes on its own.
 9. Inline `style=` attributes are allowed — `style-src 'unsafe-inline'` is the one

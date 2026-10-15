@@ -57,7 +57,7 @@
     button disabled by the time its own click's default action runs is a
     submission that is ABORTED, and the disable alone posted nothing.
 
-    `AddContentSecurityPolicy` now forbids inline handlers outright, so the
+    `AddSecurityHeaders` now forbids inline handlers outright, so the
     behaviour lives in `resources/js/helpers/form-guards.js`: a listener delegated
     on `document` that disables every `[data-disable-on-submit]` button it finds
     when a form submits. The `submit` event fires once the submission is already

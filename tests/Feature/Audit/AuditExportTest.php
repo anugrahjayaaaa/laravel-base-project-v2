@@ -1150,7 +1150,7 @@ class AuditExportTest extends TestCase
      * submission, so the disable alone greyed the button out and posted nothing —
      * the exact bug this shipped with once.
      *
-     * `AddContentSecurityPolicy` now forbids inline handlers outright, so the
+     * `AddSecurityHeaders` now forbids inline handlers outright, so the
      * button carries `data-disable-on-submit` and the behaviour lives in the
      * listener delegated on `document` in `resources/js/helpers/form-guards.js`.
      * It fires on `submit`, which is after the submission is committed — the moment

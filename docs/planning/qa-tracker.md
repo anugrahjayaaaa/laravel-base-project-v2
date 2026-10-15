@@ -95,7 +95,7 @@
 ||----|----------|----------|---------|--------|
 || QA-SEC-001 | Verify HSTS header present | Security | Headers | PLANNED |
 || QA-SEC-002 | Verify CSP header present | Security | Headers | PLANNED |
-|| QA-SEC-003 | Verify X-Frame-Options set | Security | Headers | PLANNED |
+|| QA-SEC-003 | Verify frame protection (CSP `frame-ancestors 'none'`; `X-Frame-Options` is not sent) | Security | Headers | PLANNED |
 || QA-SEC-004 | Verify CSRF token on web forms | Security | CSRF | PLANNED |
 || QA-SEC-005 | Verify no stack traces in production errors | Security | Error handling | PLANNED |
 || QA-SEC-006 | Verify no secrets in error responses | Security | Error handling | PLANNED |

@@ -30,7 +30,7 @@ Secure defaults for:
 - X-Content-Type-Options
 - Referrer Policy
 - Permissions Policy
-- Frame protection (X-Frame-Options)
+- Frame protection (CSP `frame-ancestors`; `X-Frame-Options` deliberately not sent)
 - Secure cookies + SameSite
 - CSRF tokens
 - CORS policy
