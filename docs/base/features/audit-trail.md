@@ -697,7 +697,10 @@ channel may widen it.
 - View requires `audit.view` permission.
 - The download route checks ownership before expiry, on both channels.
 - The retry route checks ownership before it changes anything, and requires the
-  row to be `failed` — a `pending` row retried is two workers on one file.
+  row to be `failed` — a `pending` row retried is two workers on one file. The
+  `failed` check is enforced by the claim itself, one conditional `UPDATE` that
+  carries the same conditions, so two simultaneous retries cannot both win: one
+  takes the row, the other gets **409** and dispatches nothing.
 - Never store sensitive data in plaintext in audit logs.
 - Consider log rotation/archiving for long-term retention.
 

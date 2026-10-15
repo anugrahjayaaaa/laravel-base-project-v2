@@ -111,6 +111,13 @@ class AuditExportRequestAction
      * finished last. Re-dispatching a `ready` row is merely pointless. Both are
      * refused with 409 rather than absorbed.
      *
+     * The precondition is enforced TWICE, because reading it is not enforcing it:
+     * the aborts below answer the ordinary request from a snapshot, and two
+     * simultaneous POSTs can both read `failed` before either of them writes. The
+     * `UPDATE` below is the one that actually decides — it carries the same
+     * conditions in its `WHERE`, so the database lets exactly one request claim
+     * the row and the loser is refused instead of dispatching a second job.
+     *
      * ## The cap is enforced HERE, not in the view
      *
      * The Blade hides the button past `AuditExport::maxRetries()` so the operator is not offered
@@ -141,16 +148,30 @@ class AuditExportRequestAction
         abort_if($row->status !== AuditExportStatus::FAILED, 409, 'This export is not in a failed state.');
         abort_if($row->isRetryExhausted(), 409, 'This export has already been retried '.$row->retry_count.' times. Please contact an administrator.');
 
-        $row->update([
-            'status' => AuditExportStatus::PENDING,
-            // Cleared, not merely overwritten later: `isDownloadable()` reads all
-            // three, and a `pending` row carrying yesterday's `path` would answer
-            // true until the job finished.
-            'path' => null,
-            'row_count' => null,
-            'completed_at' => null,
-            'retry_count' => $row->retry_count + 1,
-        ]);
+        // The claim. Four conditions, one statement, no transaction: a single
+        // UPDATE is atomic on every driver this runs on, so two requests that both
+        // passed the aborts above still cannot both win. Without it the guard in
+        // the docblock is a TOCTOU — both read `failed`, both write `pending`, and
+        // two workers build the same path while the loser's `N+1` erases the
+        // winner's click. A loser here affects 0 rows and is refused below.
+        $claimed = AuditExport::query()
+            ->whereKey($row->getKey())
+            ->where('status', AuditExportStatus::FAILED)
+            ->where('retry_count', $row->retry_count)
+            ->update([
+                'status' => AuditExportStatus::PENDING,
+                // Cleared, not merely overwritten later: `isDownloadable()` reads all
+                // three, and a `pending` row carrying yesterday's `path` would answer
+                // true until the job finished.
+                'path' => null,
+                'row_count' => null,
+                'completed_at' => null,
+                'retry_count' => $row->retry_count + 1,
+            ]);
+
+        abort_if($claimed === 0, 409, 'This export changed while you were retrying it. Refresh the page and try again.');
+
+        $row->refresh();
 
         GenerateAuditExport::dispatch(
             $row->getKey(),

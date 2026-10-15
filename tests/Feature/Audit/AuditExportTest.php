@@ -20,6 +20,7 @@ use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Queue;
@@ -750,6 +751,48 @@ class AuditExportTest extends TestCase
         $this->assertSame(AuditExportStatus::FAILED, $export->fresh()->status);
         $this->assertSame(AuditExport::maxRetries(), $export->fresh()->retry_count);
 
+        Queue::assertNothingPushed();
+    }
+
+    /**
+     * The window between the checks and the write, closed (pentest F2).
+     *
+     * `retry()` read the row, checked `failed`, then wrote. Two POSTs could both
+     * pass those reads, and the loser dispatched a SECOND job for a row the
+     * winner had already claimed: two workers building the same path, and the
+     * loser's `retry_count + 1` written from a snapshot that missed the winner's
+     * click. The row is moved inside the `retrieved` event — the exact moment this
+     * request's snapshot goes stale — so the claim, not the read, has to refuse.
+     */
+    public function test_a_retry_loses_the_claim_when_the_row_moves_under_it(): void
+    {
+        Queue::fake();
+
+        $admin = $this->login(SystemRole::ADMIN);
+        $export = $this->failedExport($admin);
+
+        // Whoever wins the race claims the row right after this request has read
+        // it as `failed`. One shot, so the `fresh()` calls below cannot fire it.
+        $moved = false;
+        Event::listen('eloquent.retrieved: '.AuditExport::class, function (AuditExport $model) use (&$moved, $export): void {
+            if ($moved || $model->getKey() !== $export->getKey()) {
+                return;
+            }
+
+            $moved = true;
+
+            AuditExport::query()->whereKey($export->getKey())->update([
+                'status' => AuditExportStatus::PENDING,
+                'retry_count' => 1,
+            ]);
+        });
+
+        $response = $this->post(route('activity-logs.exports.retry', $export));
+
+        $this->assertTrue($moved, 'the race window never opened, so this probe proves nothing');
+        $response->assertStatus(409);
+        $this->assertSame(AuditExportStatus::PENDING, $export->fresh()->status);
+        $this->assertSame(1, $export->fresh()->retry_count, "the loser's N+1 must not erase the winner's click");
         Queue::assertNothingPushed();
     }
 
