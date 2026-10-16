@@ -159,7 +159,7 @@ email-verification-notice, password-change pages using AdminLTE auth layout.
 - System health dashboard (permission `health.view` + flag `health`) — **DONE** (2026-10-15, P11-B3/C1/A2 + A3/A4 gate and render tests)
 - Queue conventions (named queues, `$tries`/`$timeout`, `failed()`) — **DONE** (2026-10-16, P11-E1..E3)
 - Slow-query detection on production — **DEFERRED by decision**: MySQL slow log covers it; the `DB::listen()` logger is added only when a case appears the slow log cannot see
-- Status: **DONE 2026-10-16** — Groups A–F closed; full suite 2009 passed / 6907 assertions. Awaiting commit + PR on `feature/phase-11-monitoring-observability`
+- Status: **DONE 2026-10-16** — Groups A–F closed, plus the post-audit gap closure (§14 of the breakdown); full suite 2016 passed / 6940 assertions, Pint clean. Committed on `feature/phase-11-monitoring-observability`, awaiting review and merge to `main`
 
 > Full breakdown: [phase-11-monitoring-observability.md](phase-11-monitoring-observability.md)
 > — Groups A–F, the access-gating decision table, the slow-query diagnosis

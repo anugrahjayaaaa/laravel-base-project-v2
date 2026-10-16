@@ -156,6 +156,18 @@ Each entry contains:
 
 ---
 
+## 2026-10-16 — Phase 11 post-audit gap closure (docs, tests, one dead env var)
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-10-16 |
+| **Change** | A read-only audit of the Phase 11 branch found eight gaps, none a code defect; all eight closed. **Docs truth:** the phase header, `progress.md` row 11 + current-task paragraph, `feature-tracker.md` rows 27/28 and the MONITOR-001 note in `task-tracker.md` all still called this work uncommitted or unstarted, and recorded 2009/6907 tests — corrected against `git log` and a fresh full run (**2016 passed / 6940 assertions**, +2 cases from this closure). **One decision closed:** D-3 — superadmin *does* respect the feature flag, now pinned by `test_the_flag_off_refuses_superadmin_too` in `PulsePermissionGateTest` and `HealthPermissionGateTest` (5 cases each, was 4). **One dead config removed:** `phpunit.xml` still set `TELESCOPE_ENABLED=false` for a package deleted in `85384b4`. **New coverage records:** a `Monitoring` section in `qa-tracker.md` (10 scenarios with the test that proves each, one flagged manual), the flag-reseed deploy step in `phase-11-monitoring-observability.md` §7 + `monitoring.md`, and upgrade notes for the two project-side Pulse dependencies (the `array` cache driver and the two nonce-overridden vendor views). |
+| **Reason** | The audit's job was to say what was true, and four documents described a state that had already been left behind — "uncommitted" over nine commits, "planned" over shipped work, and a test count five runs old. D-3 had been carried as an open question whose premise (superadmin reaching a flag-off `/pulse`) was never true: `EnsureFeatureIsEnabled` consults no actor, so the answer needed a test, not a redesign. The reseed step and the Pulse upgrade notes belong to the same class — facts a maintainer needs before touching this module, previously only in the breakdown's prose. |
+| **Impact** | Docs only, plus two added test cases and one deleted dead env line: no application behaviour changes, no route, permission, flag or gate is altered. `TELESCOPE_ENABLED` was never read (no Telescope in `vendor/`), so removing it changes no test outcome. |
+| **Related** | P11-B4, P11-F1, G-1…G-8, `phase-11-monitoring-observability.md` §14, `docs/base/features/monitoring.md`, `qa-tracker.md` |
+
+---
+
 ## 2026-10-14 — Phase 10: the audit export handed a spreadsheet a formula
 
 | Field | Value |

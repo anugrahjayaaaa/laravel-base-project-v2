@@ -1,6 +1,6 @@
 # Phase 11 — Monitoring & Observability
 
-> Date: 2026-10-02 (breakdown) · 2026-10-15 (restructured into Groups A–F; roadmap details folded in) | Branch: feature/phase-11-monitoring | Status: **COMPLETE 2026-10-16 — Groups A–F all closed** (A1–A4, B1–B4, C1 shipped 2026-10-15; E1–E3, F1, F6 closed 2026-10-16; C2 deferred by decision, D N/A by design). Full suite **2009 passed / 6907 assertions, 0 failures** (F1). The Pulse stack and the `pulse` flag had shipped earlier (Phase 7 + `85384b4`). Work sits uncommitted on this branch pending owner review.
+> Date: 2026-10-02 (breakdown) · 2026-10-15 (restructured into Groups A–F; roadmap details folded in) | Branch: feature/phase-11-monitoring-observability | Status: **COMPLETE 2026-10-16 — Groups A–F all closed** (A1–A4, B1–B4, C1 shipped 2026-10-15; E1–E3, F1, F6 closed 2026-10-16; C2 deferred by decision, D N/A by design), plus the post-audit gap closure in §14. Full suite **2016 passed / 6940 assertions, 0 failures** (re-measured 2026-10-16 on the audit-closure tree; pre-audit HEAD `f6f262b` measured 2014/6936, and F1's recorded 2009/6907 predates the three post-F1 fixes). The Pulse stack and the `pulse` flag had shipped earlier (Phase 7 + `85384b4`). All work is committed on this branch; it awaits review and merge to `main`.
 > Purpose: execution breakdown for the technical observability layer — Laravel Pulse behind a permission, the system health dashboard, and the queue conventions every dashboard depends on. Replaces the Telescope + Periscope stack with Laravel Pulse and gates it the way every other module in the admin is gated.
 > Groups: **A = every view, the sidebar entry and the nav.** B onward is logic, validation, access control, audit trail.
 > Decisions locked 2026-10-02: **permission = `pulse.view`** (not `pulse.manage`), **flag and permission both stay**, **superadmin keeps access via `Gate::before`**, **admin inherits via `PermissionCatalog::all()`**.
@@ -145,11 +145,14 @@ change as the routes and pages that check them.
 | P11-B3 | **`health.view` + `health` flag + route** — `private const HEALTH = ['health.view']` in `PermissionCatalog`; `'health'` entry in `config/pennant.php` (group `Monitoring`); `GET /health` web route named `health.index` under `middleware(['can:health.view', 'feature:health'])` inside the authenticated group; the Pennant `database` store is fail-closed, so the `FeatureFlagSeeder` must write the row or the route 403s forever | — | small | Three places, or it is not gated: pennant config, route middleware, sidebar key (A3). The seeder row is the trap — a declared flag is not an active flag. The API `/api/v1/health` route is **untouched and ungated** (F3) |
 | P11-B4 | **Gating tests** — `tests/Feature/PulsePermissionGateTest.php`: (1) role holding `pulse.view` + flag on → `/pulse` 200; (2) without the permission → 403; (3) superadmin, **no permission rows at all** → 200; (4) flag off + permission held → 403. Mirror the same four for `/health` | B1–B3 | medium | Case 3 is the one that catches a mistake here: define the gate and accidentally lose `Gate::before`, and 1, 2 and 4 all still pass. Case 4 pins the two gates as independent. This file is also what P10-B5 in `phase-10-audit-trail.md` says to copy — landing it unblocks that reference |
 
-**Superadmin and the flag.** Phase 7 established no flag bypass and tested it: a
-flag-off module 403s for everyone including superadmin. Phase 11 noted the same
-tension (an operator sees "Pulse Dashboard — Inactive" yet superadmin still
-reaches `/pulse`) and **deliberately deferred it** — decide separately, never
-bundle it with this work.
+**Superadmin and the flag — CLOSED 2026-10-16 (owner decision).** Superadmin
+respects the feature flag. `Gate::before` answers the PERMISSION question;
+`EnsureFeatureIsEnabled` has no actor check at all
+(`app/Http/Middleware/EnsureFeatureIsEnabled.php:35`), so a flag-off module 403s
+for superadmin exactly as it does for a permission holder. Measured, not
+assumed: `test_the_flag_off_refuses_superadmin_too` in both gate test files.
+An earlier note in this section claimed superadmin still reached `/pulse` with
+the flag off — that was wrong then and is pinned now.
 
 ### Group C — Read Logic & Dashboards
 
@@ -229,9 +232,14 @@ deterministically (the manifest is spliced at index 1 — package first, ours
 second, always), but that still needs a test that removes the definition and
 watches the gate turn green.
 
-**D-3 — Open question, deferred: does superadmin respect the feature flag?**
-Today: no, by design. Two switches for one page, answering different questions,
-but the combination reads as confusing. Decide separately (see Group B).
+**D-3 — Closed 2026-10-16 (owner decision): yes, superadmin respects the flag.**
+The flag is a kill switch, not a role — `Gate::before` answers `can:`, and
+`EnsureFeatureIsEnabled` does not consult the actor, so an off module refuses
+superadmin too. The two switches answer different questions and the combination
+is intended: the operator can look at `/features` (never gated), see
+"Pulse Dashboard — Inactive", and know nobody is reaching `/pulse` at all.
+Pinned by the fifth case in both gate test files, so a
+future "superadmin bypass" cannot be added silently.
 
 ## 7. Operational runbooks (moved from `implementation-roadmap.md`)
 
@@ -278,6 +286,22 @@ Note: `.env` is excluded from the rsync sync, so a toggle made there persists
 across deploys. The flag itself lives in Pennant's store, not `.env` — which is
 why flipping it in the UI survives a deploy.
 
+### Deploying to an environment that predates the flags
+
+A declared flag is not an active flag: the Pennant `database` store is
+fail-closed, so a slug with no `features` row reads FALSE and its route 403s for
+everyone, superadmin included. An environment seeded before Phase 11 therefore
+has no `health` row and `/health` refuses every request until the seeder runs.
+
+```bash
+php artisan db:seed --class=FeatureFlagSeeder   # fills blanks only; never
+                                               # overwrites an operator's choice
+```
+
+`FeatureFlagSeeder` iterates `FeatureCatalog::slugs()`, so it needs no edit when
+a flag is added — but it does need to be RUN. `pulse` already had a row from
+Phase 7 in most environments; `health` is the new one.
+
 ## 8. Execution order
 
 1. **B1 + B2** (permission and gate — inseparable, one commit)
@@ -295,7 +319,7 @@ why flipping it in the UI survives a deploy.
 | P11-B1 | `PULSE` const → `pulse.view` in `PermissionCatalog` | B | **DONE 2026-10-15** (was MON-P11-01) |
 | P11-B2 | `viewPulse` override in `AuthServiceProvider` | B | **DONE 2026-10-15** (was MON-P11-02) |
 | P11-A1 | Pulse sidebar entry in `AppMenuComposer::groups()` | A | **DONE 2026-10-15** (was MON-P11-03) — Monitoring group, both dashboards together |
-| P11-B4 | `PulsePermissionGateTest` + health gate tests — 8 cases | B | **DONE 2026-10-15** (was MON-P11-04) — split per route: `tests/Feature/PulsePermissionGateTest.php` (4) + `tests/Feature/Health/HealthPermissionGateTest.php` (4) |
+| P11-B4 | `PulsePermissionGateTest` + health gate tests — 10 cases (5 per route; the 5th, added 2026-10-16, pins D-3) | B | **DONE 2026-10-15** (was MON-P11-04) — split per route: `tests/Feature/PulsePermissionGateTest.php` (5) + `tests/Feature/Health/HealthPermissionGateTest.php` (5) |
 | P11-F2 | Docs: Telescope DEP deleted, `DEP-004` reused | F | **DONE** (was MON-P11-05) |
 | P11-F3 | Docs: `monitoring.md`, `observability.md` rewritten | F | **DONE** (was MON-P11-06) |
 | P11-F4 | Docs: roadmap scope moved into this file | F | **DONE 2026-10-15** (was MON-P11-07) |
@@ -306,7 +330,7 @@ why flipping it in the UI survives a deploy.
 | P11-C2 | Slow-query logger | C | **DEFERRED by decision** (new, recorded) |
 | P11-A2, A3, A4 | Health page, sidebar entry, render gate | A | **DONE 2026-10-15** (new) — A4's "every feedback div d-block + aria-describedby" step is N/A: the page has no form fields (stated in the test's docblock) |
 | P11-D1 | Audit trail | D | **N/A by design** — read-only dashboards |
-| P11-F1, F6 | Full suite, changelog entry | F | F1 **measured green 2026-10-16: 2009 passed / 6907 assertions, 0 failures** (1215s, full run including Group E) — supersedes the 2000/6853 interim run taken before Group E landed; +50 tests vs the 1959 baseline. F6 **DONE** — README row (`docs/planning/README.md`) plus the changelog entry "Phase 11 Groups A–C and E shipped" (2026-10-16) |
+| P11-F1, F6 | Full suite, changelog entry | F | F1 **re-measured green 2026-10-16: 2016 passed / 6940 assertions, 0 failures** on the audit-closure tree (pre-audit HEAD `f6f262b`: 2014/6936) — supersedes the 2009/6907 run, which predated the three post-F1 fixes (CSP nonce, Pulse cache store, new-tab entry) and the D-3 case. Baseline before Phase 11: 1959. F6 **DONE** — README row (`docs/planning/README.md`) plus the changelog entry "Phase 11 Groups A–C and E shipped" (2026-10-16) |
 
 F2–F5 were already done and independent of the code tasks — the docs describe
 the target state, and Groups A–C are what make the code match them.
@@ -420,3 +444,24 @@ Two, and they are real:
   migration in the base schema and a `vantage:prune` command to own.
 
 The layered decision is D-1 in §6; the Pennant-does-not-fit analysis is D-2.
+
+## 14. Post-audit gap closure (2026-10-16)
+
+A read-only audit of this branch found eight gaps. None was a code defect, and
+all eight are closed; the one that was an open question (G-5) is answered, not
+changed — the shipped behaviour is identical.
+
+| ID | Gap found | Closed by |
+|---|---|---|
+| G-1 | Four places still described the work as uncommitted or unstarted: this file's header, `progress.md` (row 11 and the current-task paragraph), `feature-tracker.md` row 28, and the MON-P11 note in `task-tracker.md` | all four rewritten against `git log` |
+| G-2 | Recorded suite number was stale — 2009/6907 documented, 2016/6940 measured after the closure (2014/6936 at pre-audit HEAD) | this file's header and §9, plus `progress.md` row 11 |
+| G-3 | `phpunit.xml` still carried `TELESCOPE_ENABLED=false` for a package removed in `85384b4` — the one survivor of F5's sweep | the line is deleted |
+| G-4 | `qa-tracker.md` had no QA scenarios for Monitoring at all (no Pulse, no health, no queue) | a `Monitoring` section added under the file's own ID scheme |
+| G-5 | D-3 (does superadmin respect the flag?) was open, and the Group B note claimed superadmin still reached `/pulse` with the flag off — which the middleware never did | closed as "yes it respects it", measured by `test_the_flag_off_refuses_superadmin_too` in both gate test files |
+| G-6 | The deploy step for an environment that predates the flags was undocumented — `/health` 403s forever without it | §7, "Deploying to an environment that predates the flags" |
+| G-7 | `PULSE_CACHE_DRIVER` carried no warning that a persistent driver reintroduces the `__PHP_Incomplete_Class` crash | comment in `.env.example` + a note in `docs/base/features/monitoring.md` |
+| G-8 | The two overridden vendor Pulse views can drift on a Pulse upgrade; the tests catch nonce regressions only | upgrade note in `docs/base/features/monitoring.md` |
+
+G-9 (no API surface for either dashboard) is not a gap and is recorded as
+deliberate in §12: `ChannelParityTest` declares both as one-sided capabilities
+with their reason, so a future reader cannot mistake the absence for an oversight.
