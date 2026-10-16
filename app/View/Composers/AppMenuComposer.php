@@ -268,6 +268,12 @@ class AppMenuComposer
                         'active' => 'pulse',
                         'permission' => 'pulse.view',
                         'feature' => 'pulse',
+                        // Opens in a new tab: Pulse renders its OWN full-page
+                        // layout (not this app's AdminLTE shell), so an
+                        // in-tab click would replace the admin with a page
+                        // that has no sidebar to click back out of. `rel` is
+                        // set by the partial for every new-tab item.
+                        'target' => '_blank',
                     ],
                     [
                         'label' => 'System Health',

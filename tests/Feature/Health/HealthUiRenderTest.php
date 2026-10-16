@@ -166,6 +166,39 @@ class HealthUiRenderTest extends TestCase
     }
 
     /**
+     * Pulse renders its OWN full-page layout — no AdminLTE shell, no sidebar to
+     * navigate back out of — so its entry opens in a new tab (`rel="noopener"`
+     * is set by the partial for every new-tab item). The health page is this
+     * application's own, so it stays an in-tab link.
+     */
+    public function test_the_pulse_entry_opens_in_a_new_tab_and_the_health_entry_does_not(): void
+    {
+        $this->login('admin');
+        $html = $this->sidebar();
+
+        $pulseAnchor = $this->anchorAround($html, 'fa-heart-pulse');
+        $healthAnchor = $this->anchorAround($html, 'fa-stethoscope');
+
+        $this->assertStringContainsString('target="_blank"', $pulseAnchor, 'Pulse must open in a new tab');
+        $this->assertStringContainsString('rel="noopener"', $pulseAnchor, 'a new-tab link needs rel=noopener');
+        $this->assertStringNotContainsString('target="_blank"', $healthAnchor, 'the health page is ours; it stays in-tab');
+    }
+
+    /**
+     * The `<a …>` opening tag surrounding an icon class in the rendered page.
+     */
+    private function anchorAround(string $html, string $icon): string
+    {
+        $pos = strpos($html, $icon);
+        $this->assertNotFalse($pos, "icon {$icon} not found in the sidebar");
+
+        $start = strrpos(substr($html, 0, $pos), '<a');
+        $this->assertNotFalse($start, "no <a> opens before {$icon}");
+
+        return substr($html, $start, $pos - $start + strlen($icon));
+    }
+
+    /**
      * The Pulse sidebar entry needs `pulse.view` AND the `pulse` flag — the
      * same two gates its route has, so the sidebar cannot advertise a screen
      * the route refuses. Flag independence is the point of the third case:

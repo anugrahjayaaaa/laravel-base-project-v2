@@ -21,6 +21,7 @@
                   : false)
               <li class="nav-item">
                 <a href="{{ $href }}"
+                   @if (! empty($item['target'])) target="{{ $item['target'] }}" rel="noopener" @endif
                    class="nav-link{{ $active ? ' active' : '' }}">
                   @if (isset($item['icon']))
                     <i class="{{ $item['icon'] }} me-2"></i>
