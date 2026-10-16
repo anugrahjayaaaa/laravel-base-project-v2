@@ -8,6 +8,7 @@ use App\Support\SystemRole;
 use Database\Seeders\FeatureFlagSeeder;
 use Database\Seeders\PermissionSeeder;
 use Database\Seeders\RoleSeeder;
+use DOMDocument;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Testing\TestResponse;
 use Spatie\Permission\PermissionRegistrar;
@@ -255,5 +256,80 @@ class ContentSecurityPolicyTest extends TestCase
             $this->policyOf($this->get('/login')),
             'the allowance outlived the hot file it was conditional on',
         );
+    }
+
+    /**
+     * `'unsafe-eval'` exists on exactly one route: `/pulse`.
+     *
+     * Pulse inlines Livewire's normal build, whose Alpine evaluates every
+     * `x-data`/`wire:*` expression with `new Function` — blocked without it, so
+     * every `#[Lazy]` card stays on its skeleton forever. The other half of the
+     * assertion is the one that matters for safety: the relaxation is scoped by
+     * route name, so an XSS hole is not being opened application-wide to make
+     * one vendor page render.
+     */
+    public function test_only_the_pulse_route_grants_unsafe_eval(): void
+    {
+        $admin = User::factory()->create(['email_verified_at' => now()]);
+        $admin->assignRole(SystemRole::SUPERADMIN);
+
+        $this->actingAs($admin, 'web');
+
+        $pulse = $this->directives($this->policyOf($this->get('/pulse')));
+        $dashboard = $this->directives($this->policyOf($this->get('/dashboard')));
+        $login = $this->directives($this->policyOf($this->get('/login')));
+
+        $this->assertStringContainsString("'unsafe-eval'", $pulse['script-src'] ?? '', 'Pulse cannot evaluate its Alpine expressions without it');
+        // The nonce stays even there: `unsafe-eval` is not `unsafe-inline`, and a
+        // raw injected `<script>` must keep refusing to run on /pulse too.
+        $this->assertStringContainsString("'nonce-", $pulse['script-src'] ?? '');
+        $this->assertStringNotContainsString("'unsafe-inline'", $pulse['script-src'] ?? '');
+
+        $this->assertStringNotContainsString("'unsafe-eval'", $dashboard['script-src'] ?? '', 'the eval allowance leaked past the Pulse route');
+        $this->assertStringNotContainsString("'unsafe-eval'", $login['script-src'] ?? '', 'the eval allowance leaked past the Pulse route');
+    }
+
+    /**
+     * Every `<script>` element on /pulse carries the policy's nonce.
+     *
+     * Counted through the DOM, not with a regex over the raw HTML: /pulse inlines
+     * two ~800 KB bundles, and those bundles keep their own `<script>` text
+     * (Sfdump debug code), which a regex counts as tags that can never carry a
+     * nonce — a probe that then fails for the wrong reason. A browser parses
+     * script content as raw text; so does this.
+     */
+    public function test_every_script_on_the_pulse_page_carries_the_policys_nonce(): void
+    {
+        $admin = User::factory()->create(['email_verified_at' => now()]);
+        $admin->assignRole(SystemRole::SUPERADMIN);
+
+        $this->actingAs($admin, 'web');
+
+        $response = $this->get('/pulse');
+        $nonce = $this->nonceOf($this->policyOf($response));
+
+        $document = new DOMDocument();
+        $previous = libxml_use_internal_errors(true);
+        $document->loadHTML((string) $response->getContent());
+        libxml_clear_errors();
+        libxml_use_internal_errors($previous);
+
+        $inline = 0;
+
+        foreach ($document->getElementsByTagName('script') as $script) {
+            if ($script->getAttribute('src') !== '') {
+                continue;
+            }
+
+            $inline++;
+
+            $this->assertSame(
+                $nonce,
+                $script->getAttribute('nonce'),
+                'a script on /pulse is not the one the policy nonced — the browser refuses to run it and the page stays half dead',
+            );
+        }
+
+        $this->assertGreaterThan(0, $inline, 'the Pulse page carries no inline script, so this probe proves nothing');
     }
 }

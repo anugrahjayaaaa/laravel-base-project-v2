@@ -22,7 +22,9 @@ use Symfony\Component\HttpFoundation\Response;
  * left to whoever adds it: `script-src` carries a nonce and NOTHING else — no
  * `'unsafe-inline'`, no `'unsafe-eval'` — so an injected `<script>` tag, an
  * injected inline handler or a `javascript:` URL does not run. That is the XSS
- * primitive, and closing it is the reason this middleware exists.
+ * primitive, and closing it is the reason this middleware exists. The single
+ * documented exception is the Pulse route, which adds `'unsafe-eval'` because
+ * the Alpine it inlines cannot evaluate expressions without it; see `policy()`.
  *
  * ## Why the nonce and not a hash list
  *
@@ -116,6 +118,10 @@ class AddSecurityHeaders
         // alternative is threading the value through the response instead.
         View::share('cspNonce', $nonce);
 
+        // `@livewireScriptConfig` (Pulse's layout) asks Vite for the nonce, not
+        // the shared view variable — same per-request value, so both read one source.
+        Vite::useCspNonce($nonce);
+
         $response = $next($request);
 
         // Set BEFORE the CSP block and unconditionally: these four are origin
@@ -134,7 +140,7 @@ class AddSecurityHeaders
         // therefore before a StreamedResponse starts sending. A header set
         // after output has begun is what corrupts a stream.
         if (str_contains((string) $response->headers->get('Content-Type'), 'text/html')) {
-            $response->headers->set('Content-Security-Policy', $this->policy($nonce));
+            $response->headers->set('Content-Security-Policy', $this->policy($nonce, $request->routeIs('pulse')));
         }
 
         return $response;
@@ -147,8 +153,15 @@ class AddSecurityHeaders
      * and nowhere else; `img-src` allows `data:` because the notification and
      * channel screens render inline SVG and data URIs. `frame-ancestors 'none'`
      * replaces `X-Frame-Options`, which this policy subsumes.
+     *
+     * `$pulse` adds `'unsafe-eval'` and nothing else. Pulse inlines Livewire's
+     * normal build, whose Alpine evaluates every `x-data`/`wire:*` expression
+     * with `new Function` — CSP blocks that without `'unsafe-eval'`, so every
+     * `#[Lazy]` card would stay on its skeleton forever. The nonce still governs:
+     * an injected `<script>` tag cannot run. Scoped to the route by name, so a
+     * path change cannot silently widen it.
      */
-    private function policy(string $nonce): string
+    private function policy(string $nonce, bool $pulse): string
     {
         $assets = implode(' ', self::ASSET_ORIGINS);
 
@@ -163,9 +176,11 @@ class AddSecurityHeaders
         // `ws://host`: the scheme has to be named or the socket never opens.
         $devConnect = $dev === null ? '' : ' '.$dev.' '.preg_replace('#^http#', 'ws', $dev);
 
+        $eval = $pulse ? " 'unsafe-eval'" : '';
+
         return implode('; ', [
             "default-src 'self'",
-            "script-src 'self' 'nonce-{$nonce}' {$assets}{$devAssets}",
+            "script-src 'self' 'nonce-{$nonce}'{$eval} {$assets}{$devAssets}",
             "style-src 'self' 'unsafe-inline' {$assets}{$devAssets}",
             "img-src 'self' data: {$assets}{$devAssets}",
             "font-src 'self' data: {$assets}{$devAssets}",

@@ -99,6 +99,18 @@ class AppServiceProvider extends ServiceProvider
             return "<?php echo 'nonce=\"'.\\e({$value}).'\"'; ?>";
         });
 
+        // Pulse's root layout is `<x-pulse>`, and the package resolves it through
+        // an `anonymousComponentPath` whose hash namespace points ONLY at the
+        // vendor directory — `resources/views/vendor/pulse/` overrides never reach
+        // it (unlike `x-pulse::theme-switcher`, which resolves via the `pulse`
+        // view namespace where app paths win). Registering the tag as an alias
+        // pointing at that namespace re-routes `x-pulse` to the overridden view;
+        // `Blade::component`'s view branch is the framework's own escape hatch
+        // (`componentClass()` checks `$viewFactory->exists($alias)`). Only the
+        // exact tag `x-pulse` is affected — namespaced `x-pulse::*` tags have
+        // their own lookup keys and still resolve normally.
+        Blade::component('pulse::components.pulse', 'pulse');
+
         view()->composer('layouts.partials.sidebar', AppMenuComposer::class);
         // The header dropdown carries its own Sessions link, outside $menuGroups,
         // and reads ONE boolean — so it gets a closure, not the full composer.

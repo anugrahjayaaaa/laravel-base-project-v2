@@ -132,6 +132,18 @@ Each entry contains:
 
 ---
 
+## 2026-10-16 — CSP: `'unsafe-eval'` scoped to the Pulse route
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-10-16 |
+| **Change** | `AddSecurityHeaders::policy()` gained a `bool $pulse` parameter (`$request->routeIs('pulse')`): only that route's `script-src` carries `'unsafe-eval'` beside the nonce; every other response's policy is byte-identical. `handle()` now also calls `Vite::useCspNonce($nonce)` so Livewire's `@livewireScriptConfig` prints the same nonce the policy carries. Two Pulse views overridden in `resources/views/vendor/pulse/components/`: the layout nonces the two `Pulse::js()` bundle tags (anchored `preg_replace` — a blanket replace would corrupt the `<script>` literals inside the bundles), the theme-switcher gained `@nonce`. `x-pulse` is re-routed to that override by `Blade::component('pulse::components.pulse', 'pulse')`, because the package resolves the root layout through an `anonymousComponentPath` hash namespace that never sees `resources/views/vendor/`. |
+| **Reason** | `/pulse` rendered as a 200 that never loaded: all four of its inline `<script>` elements were blocked by the nonce-only policy, and even nonced the inlined Livewire build compiles every `x-data`/`wire:*` expression with `new Function`, which needs `'unsafe-eval'` — so `#[Lazy]` cards stay on their skeletons forever. The relaxation is scoped by route name (Livewire is used nowhere else in this application) rather than weakening the policy application-wide. |
+| **Impact** | `/pulse` only; nonce stays mandatory and `'unsafe-inline'` stays absent everywhere. Enforced by `ContentSecurityPolicyTest::test_only_the_pulse_route_grants_unsafe_eval` and `::test_every_script_on_the_pulse_page_carries_the_policys_nonce` (DOM-parsed — a raw-HTML regex counts the Sfdump literals inside the inlined bundles as tags). The two overridden vendor views can drift on a Pulse upgrade; the tests catch nonce regressions, not other drift. |
+| **Related** | `docs/base/security/web-security.md`, `app/Http/Middleware/AddSecurityHeaders.php`, P11-A1 |
+
+---
+
 ## 2026-10-14 — Phase 10: the audit export handed a spreadsheet a formula
 
 | Field | Value |
