@@ -73,6 +73,31 @@ overwrites by name and our provider boots after Pulse's. Do not call
 permission row, and `admin` inherits the permission via
 `PermissionCatalog::all()` in `PermissionSeeder`.
 
+**The flag is not a role.** `Gate::before` answers the *permission* question;
+`EnsureFeatureIsEnabled` consults no actor at all
+(`app/Http/Middleware/EnsureFeatureIsEnabled.php:35`), so a flag-off `/pulse`
+403s superadmin exactly as it does a permission holder. That is what makes it a
+kill switch. Pinned by `test_the_flag_off_refuses_superadmin_too`
+(Phase 11 D-3, closed 2026-10-16).
+
+### Pulse upgrade notes
+
+Two things this project layers on top of the package; both cost maintenance on
+upgrade.
+
+- **Keep `PULSE_CACHE_DRIVER` on `array`.** `RemembersQueries` caches Collection
+  payloads, and `cache.serializable_classes => false` (phase-1 hardening) turns
+  every object read back from a serializing store into `__PHP_Incomplete_Class`.
+  Setting redis/file/database per environment reintroduces the crash —
+  `PulseQueryCacheTest` reproduces it and fails at `Queues.php:35`. The cost of
+  `array` is per-process state: the Servers heartbeat throttle and `pulse:check`
+  signals do not cross processes.
+- **Two vendor views are overridden for the CSP nonce** —
+  `resources/views/vendor/pulse/components/pulse.blade.php` and
+  `theme-switcher.blade.php`. A Pulse upgrade can drift them;
+  `ContentSecurityPolicyTest` catches nonce regressions and nothing else. Re-diff
+  both against `vendor/laravel/pulse` after any upgrade touching Pulse.
+
 ### Toggling Pulse off
 
 ```bash
@@ -139,6 +164,12 @@ Phase 7. The sidebar entry (`System Health`, `fas fa-stethoscope`) is filtered i
 advertise a screen the route refuses. Superadmin reaches it through
 `Gate::before` without holding the row; `admin` inherits the permission via
 `PermissionCatalog::all()`.
+
+**A declared flag is not an active flag.** The Pennant `database` store is
+fail-closed, so `/health` 403s for everyone — superadmin included — until
+`FeatureFlagSeeder` writes the `health` row. `pulse` had a row from Phase 7, but
+an environment seeded before Phase 11 needs
+`php artisan db:seed --class=FeatureFlagSeeder` once.
 
 The API endpoint above and this dashboard answer the same service checks at two
 authorization levels: machine-to-machine without a login, and inside the admin
