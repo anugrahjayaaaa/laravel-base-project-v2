@@ -108,6 +108,30 @@ Each entry contains:
 
 ---
 
+## 2026-10-16 — Queue conventions promoted to a base standard (docs)
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-10-16 |
+| **Change** | The Group E conventions moved from "how this repo's jobs happen to be written" to a normative standard in three places: `docs/base/infrastructure/queue.md` gains § *The standard every job follows* (named queue from `QueueName` via `onQueue()`, explicit `$tries`/`$timeout`/`$maxExceptions`/`backoff()`, `failed()` with `request_id` via `ReadsCorrelationId`, after-commit dispatch, idempotency) plus the two ways to break the correlation contract on purpose; `docs/planning/ai-execution-guide.md` rule 35 and `AGENTS.md` hard rules now point every future change at it. |
+| **Reason** | The conventions were only enforced by a test and described in prose; without a normative section a new job could be reviewed as "fine, different style" and drift — and the two silent failure modes (a job on a queue nobody listens to, `request_id` read from a container binding that does not exist in the worker) look like working code until they are needed. |
+| **Impact** | Every future job in `app/Jobs`; docs only, no behaviour change. `JobConventionTest` remains the enforcement. |
+| **Related** | P11-E1..E3, `phase-11-monitoring-observability.md`, `docs/base/infrastructure/queue.md` |
+
+---
+
+## 2026-10-16 — Phase 11 Groups A–C and E shipped
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-10-16 |
+| **Change** | Groups A–C: `pulse.view`/`health.view` in `PermissionCatalog`, the `viewPulse` gate override (permission, not `environment('local')`), the `health` flag + `GET /health` → `health.index` web dashboard (`HealthController@index`, one card per check, read-only), a **Monitoring** sidebar group (Pulse + System Health, each behind its own permission AND flag), and 16 gate/render tests. Group E: `App\Support\QueueName` (named queues `exports`/`sweeps`, set via `onQueue()` in the constructor — a `public $queue` property is a class-load fatal against the `Queueable` trait that `php -l` misses), `$maxExceptions` on the export job, the dispatch-time `request_id` propagated into every job payload (`Queue::createPayloadUsing` in `AppServiceProvider`, read by `Jobs\Concerns\ReadsCorrelationId` in every `failed()`), `bin/run-workers.sh` now listens `default,exports,sweeps`, and `JobConventionTest` asserts the conventions by reflection over every class in `app/Jobs`. |
+| **Reason** | The permission half and both dashboards were the phase's core; Group E is upstream of every dashboard — a job that silently rides `default`, declares no retry chain and logs no correlation id is invisible in review and only shows up as a stuck queue or a failure nobody was told about. The API twin `/api/v1/health` stays deliberately ungated (uptime monitor caller). |
+| **Impact** | Existing installs MUST run `php artisan db:seed --class=FeatureFlagSeeder` (fail-closed Pennant store) and restart queue workers with the new `--queue` list, or named-queue jobs wait forever. Worker deployments that overrode `QUEUE_NAME` keep their override. |
+| **Related** | P11-A1..A4, P11-B1..B4, P11-C1, P11-E1..E3, P11-F1, P11-F6 |
+
+---
+
 ## 2026-10-14 — Phase 10: the audit export handed a spreadsheet a formula
 
 | Field | Value |

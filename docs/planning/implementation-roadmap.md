@@ -153,13 +153,13 @@ email-verification-notice, password-change pages using AdminLTE auth layout.
 ### Phase 11: Monitoring & Observability
 - Laravel Pulse integration (`^1.8`, in `require`) — **DONE** (`85384b4`)
 - `pulse` feature flag + route enforcement — **DONE** (`b08b8b4`)
-- `pulse.view` permission + `viewPulse` gate override — **PLANNED** (P11-B1/B2)
-- Sidebar entry for Pulse — **PLANNED** (P11-A1)
+- `pulse.view` permission + `viewPulse` gate override — **DONE** (2026-10-15, P11-B1/B2)
+- Sidebar entry for Pulse — **DONE** (2026-10-15, P11-A1 — Monitoring group, both dashboards)
 - Health check API endpoint — **DONE** (`/api/v1/health`, ungated by design)
-- System health dashboard (permission `health.view` + flag `health`) — **PLANNED** (P11-B3/C1/A2)
-- Queue conventions (named queues, `$tries`/`$timeout`, `failed()`) — **PLANNED** (P11-E1..E3)
+- System health dashboard (permission `health.view` + flag `health`) — **DONE** (2026-10-15, P11-B3/C1/A2 + A3/A4 gate and render tests)
+- Queue conventions (named queues, `$tries`/`$timeout`, `failed()`) — **DONE** (2026-10-16, P11-E1..E3)
 - Slow-query detection on production — **DEFERRED by decision**: MySQL slow log covers it; the `DB::listen()` logger is added only when a case appears the slow log cannot see
-- Status: IN PROGRESS
+- Status: **DONE 2026-10-16** — Groups A–F closed; full suite 2009 passed / 6907 assertions. Awaiting commit + PR on `feature/phase-11-monitoring-observability`
 
 > Full breakdown: [phase-11-monitoring-observability.md](phase-11-monitoring-observability.md)
 > — Groups A–F, the access-gating decision table, the slow-query diagnosis

@@ -127,7 +127,15 @@
 34. **Serialization source of truth = Resource layer.** Resources must not
     perform mutations or contain business logic.
 
-35. **Asynchronous work source of truth = Job.**
+35. **Asynchronous work source of truth = Job.** Every job follows the standard
+    in `docs/base/infrastructure/queue.md` § *The standard every job follows*:
+    a named queue from `App\Support\QueueName` (set with `onQueue()` in the
+    constructor — never a `public $queue` property), an explicit `$tries` /
+    `$timeout` / `$maxExceptions` / `backoff()`, a `failed()` that logs event
+    name + exception + `request_id` read via `Jobs\Concerns\ReadsCorrelationId`
+    (never from the container — the worker is another process), and idempotency.
+    `JobConventionTest` enforces the first three by reflection over every class
+    in `app/Jobs`.
 
 36. **Do not version API application logic unless behavior diverges.**
     If V1 and V2 share behavior, both call the same shared Action/Service.

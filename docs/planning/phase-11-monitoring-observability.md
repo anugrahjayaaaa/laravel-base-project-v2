@@ -1,6 +1,6 @@
 # Phase 11 — Monitoring & Observability
 
-> Date: 2026-10-02 (breakdown) · 2026-10-15 (restructured into Groups A–F; roadmap details folded in) | Branch: feature/phase-11-monitoring | Status: **IN PROGRESS** — Groups A–F below; the Pulse stack and the `pulse` flag already shipped, the permission half and both dashboards' remaining tasks have not.
+> Date: 2026-10-02 (breakdown) · 2026-10-15 (restructured into Groups A–F; roadmap details folded in) | Branch: feature/phase-11-monitoring | Status: **COMPLETE 2026-10-16 — Groups A–F all closed** (A1–A4, B1–B4, C1 shipped 2026-10-15; E1–E3, F1, F6 closed 2026-10-16; C2 deferred by decision, D N/A by design). Full suite **2009 passed / 6907 assertions, 0 failures** (F1). The Pulse stack and the `pulse` flag had shipped earlier (Phase 7 + `85384b4`). Work sits uncommitted on this branch pending owner review.
 > Purpose: execution breakdown for the technical observability layer — Laravel Pulse behind a permission, the system health dashboard, and the queue conventions every dashboard depends on. Replaces the Telescope + Periscope stack with Laravel Pulse and gates it the way every other module in the admin is gated.
 > Groups: **A = every view, the sidebar entry and the nav.** B onward is logic, validation, access control, audit trail.
 > Decisions locked 2026-10-02: **permission = `pulse.view`** (not `pulse.manage`), **flag and permission both stay**, **superadmin keeps access via `Gate::before`**, **admin inherits via `PermissionCatalog::all()`**.
@@ -31,9 +31,11 @@
 | `laravel/horizon` — evaluated out (Redis-only) | see §13 | yes |
 | `storviaio/vantage` — not installed, recommendation stands: not yet | see §13 | yes |
 
-The flag half of this phase shipped in `b08b8b4`. What is missing is the
-**permission** half, the two dashboards' remaining tasks, and the queue
-conventions upstream of them.
+The flag half of this phase shipped in `b08b8b4`. What was missing when this
+audit was taken is the **permission** half and the two dashboards' remaining
+tasks — **all closed 2026-10-15** (Groups A–C: the four "no — absent/PLANNED"
+rows above now exist; see §9). The queue conventions (Group E) closed
+2026-10-16, and F1 measured the whole phase green the same day.
 
 ## 2. Findings that shape the design
 
@@ -290,21 +292,21 @@ why flipping it in the UI survives a deploy.
 
 | ID | Task | Group | Status |
 |---|---|---|---|
-| P11-B1 | `PULSE` const → `pulse.view` in `PermissionCatalog` | B | PLANNED (was MON-P11-01) |
-| P11-B2 | `viewPulse` override in `AuthServiceProvider` | B | PLANNED (was MON-P11-02) |
-| P11-A1 | Pulse sidebar entry in `AppMenuComposer::groups()` | A | PLANNED (was MON-P11-03) |
-| P11-B4 | `PulsePermissionGateTest` + health gate tests — 8 cases | B | PLANNED (was MON-P11-04) |
+| P11-B1 | `PULSE` const → `pulse.view` in `PermissionCatalog` | B | **DONE 2026-10-15** (was MON-P11-01) |
+| P11-B2 | `viewPulse` override in `AuthServiceProvider` | B | **DONE 2026-10-15** (was MON-P11-02) |
+| P11-A1 | Pulse sidebar entry in `AppMenuComposer::groups()` | A | **DONE 2026-10-15** (was MON-P11-03) — Monitoring group, both dashboards together |
+| P11-B4 | `PulsePermissionGateTest` + health gate tests — 8 cases | B | **DONE 2026-10-15** (was MON-P11-04) — split per route: `tests/Feature/PulsePermissionGateTest.php` (4) + `tests/Feature/Health/HealthPermissionGateTest.php` (4) |
 | P11-F2 | Docs: Telescope DEP deleted, `DEP-004` reused | F | **DONE** (was MON-P11-05) |
 | P11-F3 | Docs: `monitoring.md`, `observability.md` rewritten | F | **DONE** (was MON-P11-06) |
 | P11-F4 | Docs: roadmap scope moved into this file | F | **DONE 2026-10-15** (was MON-P11-07) |
 | P11-F5 | Docs: mechanical sweep of 17 files | F | **DONE** (was MON-P11-08) |
-| P11-E1..E3 | Queue conventions | E | PLANNED — **renumbered from the "MON-P11-05" that collided with the docs task of the same number**; this is the ID `phase-10-audit-trail.md` § P10-E13/E14 points at |
-| P11-B3 | `health.view` + `health` flag + route + seeder row | B | PLANNED (new) |
-| P11-C1 | `HealthController@index` | C | PLANNED (new) |
+| P11-E1..E3 | Queue conventions | E | **DONE 2026-10-16** — `QueueName` (named `exports`/`sweeps`, set via `onQueue()` in the constructor: a `public $queue` property is a class-load fatal against the `Queueable` trait that `php -l` misses), `$maxExceptions` on the export job, dispatch-time `request_id` in every payload (`Queue::createPayloadUsing` + `Jobs\Concerns\ReadsCorrelationId` in every `failed()`), `bin/run-workers.sh` listens `default,exports,sweeps`, `JobConventionTest` pins it all. Originally renumbered from the "MON-P11-05" that collided with the docs task of the same number; the ID `phase-10-audit-trail.md` § P10-E13/E14 points at |
+| P11-B3 | `health.view` + `health` flag + route + seeder row | B | **DONE 2026-10-15** (new) — `FeatureFlagSeeder` needs no edit: it iterates `FeatureCatalog::slugs()`, which reads `config/pennant.php` |
+| P11-C1 | `HealthController@index` | C | **DONE 2026-10-15** (new) |
 | P11-C2 | Slow-query logger | C | **DEFERRED by decision** (new, recorded) |
-| P11-A2, A3, A4 | Health page, sidebar entry, render gate | A | PLANNED (new) |
+| P11-A2, A3, A4 | Health page, sidebar entry, render gate | A | **DONE 2026-10-15** (new) — A4's "every feedback div d-block + aria-describedby" step is N/A: the page has no form fields (stated in the test's docblock) |
 | P11-D1 | Audit trail | D | **N/A by design** — read-only dashboards |
-| P11-F1, F6 | Full suite, changelog entry | F | PLANNED (new) |
+| P11-F1, F6 | Full suite, changelog entry | F | F1 **measured green 2026-10-16: 2009 passed / 6907 assertions, 0 failures** (1215s, full run including Group E) — supersedes the 2000/6853 interim run taken before Group E landed; +50 tests vs the 1959 baseline. F6 **DONE** — README row (`docs/planning/README.md`) plus the changelog entry "Phase 11 Groups A–C and E shipped" (2026-10-16) |
 
 F2–F5 were already done and independent of the code tasks — the docs describe
 the target state, and Groups A–C are what make the code match them.
@@ -386,7 +388,7 @@ is in §11 there.
 | | Status |
 |---|---|
 | `laravel/pulse ^1.8` | installed. `Recorders\Queues` and `Recorders\SlowJobs` enabled (`config/pulse.php`), `livewire:pulse.queues` + `pulse.slow-jobs` on the default dashboard. Driver-agnostic — it records from Laravel's queue events, so `database` and `redis` behave identically |
-| `feature:pulse` + `pulse.view` | flag shipped (P11-B1..B4 pending) |
+| `feature:pulse` + `pulse.view` | flag shipped (Phase 7), permission + gate override + gate tests shipped (P11-B1..B4, 2026-10-15) |
 | `failed_jobs` table | migrated. `queue:failed` / `queue:retry` / `queue:flush` |
 | `laravel/horizon` | **not installed, and evaluated out.** Redis-only — no configuration runs it over the `jobs` table. `.env` runs `redis` while `.env.example` defaults to `database`, and a base project template has to survive that fork |
 | `storviaio/vantage` | **not installed. This is Phase 11's item, and the recommendation stands: not yet** |
