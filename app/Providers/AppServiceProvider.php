@@ -23,6 +23,7 @@ use Illuminate\Pagination\Paginator;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\View\View;
 use Laravel\Pennant\Feature;
@@ -42,6 +43,24 @@ class AppServiceProvider extends ServiceProvider
     {
         Paginator::useBootstrap();
         LengthAwarePaginator::useBootstrap();
+
+        // The correlation id travels with the job, carried in the payload.
+        //
+        // `GenerateRequestCorrelationId` binds `request_id` on the REQUEST;
+        // the worker that later runs the job is a different process where that
+        // binding never happened, so the container read the rest of the
+        // application uses (`app()->bound('request_id')`) answers null exactly
+        // where the correlation matters most — a failed export is queued work,
+        // not the request that asked for it. Capturing the id at PUSH time,
+        // still inside the request, is what lets `Jobs\Concerns\ReadsCorrelationId`
+        // answer it later from the payload.
+        //
+        // Null stays valid and present: a sweep dispatched by the scheduler has
+        // no request behind it, and jobs queued before this hook existed read
+        // null the same way — the key is merged at the payload's top level.
+        Queue::createPayloadUsing(static fn (): array => [
+            'request_id' => app()->bound('request_id') ? app('request_id') : null,
+        ]);
 
         // The nonce itself is per-response: `AddSecurityHeaders` shares a fresh
         // one on every request, and only that request's views are rendered

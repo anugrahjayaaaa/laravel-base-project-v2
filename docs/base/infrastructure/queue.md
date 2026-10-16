@@ -20,6 +20,42 @@ QUEUE_CONNECTION=database  # default
 # QUEUE_CONNECTION=redis  # when Redis available
 ```
 
+## Named Queues
+
+Application jobs never ride `default` silently — every job names its queue from
+`App\Support\QueueName`, and `tests/Feature/Queue/JobConventionTest.php` asserts
+it over every class in `app/Jobs` by reflection (a new job is covered the day it
+is written).
+
+| Constant | Queue | Jobs |
+|---|---|---|
+| `QueueName::EXPORTS` | `exports` | `GenerateAuditExport` — heavy, IO-bound, user-initiated |
+| `QueueName::SWEEPS` | `sweeps` | `PasswordExpirySweep`, `InactivityLockSweep` — scheduled, idempotent, never urgent |
+
+The queue is set **on the instance** (`$this->onQueue(...)` in the constructor),
+never as a `public $queue` property: `Queueable` already declares `$queue`, and
+the redeclaration is a class-load fatal that `php -l` does not catch.
+
+Workers listen to all three in priority order — `default` first (queued
+notifications and mails are user-facing), then `exports`, then `sweeps`:
+
+```bash
+QUEUE_NAME="${QUEUE_NAME:-default,exports,sweeps}"   # bin/run-workers.sh
+```
+
+A worker started with `QUEUE_NAME=default` alone leaves every named-queue job
+waiting forever.
+
+### Correlation id on the payload
+
+`GenerateRequestCorrelationId` binds `request_id` on the **request**; the worker
+that later runs the job is a different process where that binding never
+happened. `AppServiceProvider` therefore merges `request_id` into every queue
+payload via `Queue::createPayloadUsing()` at push time, and jobs read it with
+`Jobs\Concerns\ReadsCorrelationId::requestId()` in `failed()`. The key is always
+present — a scheduler-dispatched sweep reads `null` — so a log consumer can rely
+on the field existing.
+
 ## Password Security Workers
 
 The expiry and inactivity jobs are dispatched by the minute scheduler only when the configured sweep time and timezone match. Run the scheduler and queue as separate processes:
@@ -44,6 +80,34 @@ Production `queue` should run under Supervisor/systemd. Queue lifecycle verbosit
 
 ## Job Patterns
 
+### The standard every job follows
+
+This is the standard, not a description — `tests/Feature/Queue/JobConventionTest.php`
+asserts items 1–3 by reflection over **every** class in `app/Jobs`, so a new job
+is held to them the day it is written:
+
+1. **Names its queue** from `App\Support\QueueName`, set with `onQueue()` in the
+   constructor — see *Named Queues* above. A new queue name means one constant
+   there AND one addition to `bin/run-workers.sh`'s `QUEUE_NAME` default, or the
+   job waits forever on a queue nobody listens to.
+2. **Declares its retry chain** — `$tries`, `$timeout`, `$maxExceptions` and
+   `backoff()` (see *Failure Handling*). The declarations are the point: a retry
+   chain read off the framework's defaults is a retry chain nobody wrote down.
+3. **Implements `failed()`** — logs event name + exception + `request_id`, read
+   through `Jobs\Concerns\ReadsCorrelationId` (see *Correlation id on the
+   payload*).
+4. **Dispatches after commit** when it depends on committed database state.
+5. **Is idempotent** — a retried job must not duplicate side effects.
+
+Two ways to break the correlation contract deliberately, both wrong:
+
+- Do **not** pass `request_id` as a job constructor argument. The value belongs
+  to the push-time request; a per-job argument is a call site that can forget
+  it, and forgetting is silent.
+- Do **not** read it from the container inside a job
+  (`app()->bound('request_id')`). The worker is a different process where that
+  binding never happened — it answers `null` exactly when the id matters most.
+
 ### Dispatch After Commit
 
 ```php
@@ -56,7 +120,11 @@ DB::transaction(function () use ($data) {
 ### Failure Handling
 
 - Failed jobs stored in `failed_jobs` table (database).
-- Configure `retry_until`, `tries`, `backoff`.
+- Every job declares `$tries`, `$timeout`, `$maxExceptions` and `backoff()`, and
+  implements `failed()` logging event name + exception + `request_id`
+  (Phase 11 P11-E2/E3). `JobConventionTest` enforces all of it — the
+  declarations are the point: a retry chain read off the framework's defaults is
+  a retry chain nobody wrote down.
 - Monitor failed job queue via Horizon (if Redis) or database monitoring.
 
 **The ceiling belongs to the setting, not the code.** `audit-export` reads

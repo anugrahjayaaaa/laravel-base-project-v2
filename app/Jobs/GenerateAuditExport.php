@@ -3,9 +3,11 @@
 namespace App\Jobs;
 
 use App\Enums\AuditExportStatus;
+use App\Jobs\Concerns\ReadsCorrelationId;
 use App\Models\Activity;
 use App\Models\AuditExport;
 use App\Notifications\AuditExportReadyNotification;
+use App\Support\QueueName;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Database\Eloquent\Model;
@@ -53,6 +55,7 @@ class GenerateAuditExport implements ShouldQueue
     use Dispatchable;
     use InteractsWithQueue;
     use Queueable;
+    use ReadsCorrelationId;
     use SerializesModels;
 
     /**
@@ -110,6 +113,17 @@ class GenerateAuditExport implements ShouldQueue
     public $timeout = 80;
 
     /**
+     * Three exceptions, matching `$tries` (Phase 11 P11-E2).
+     *
+     * The declaration is the point: a retry chain read off the framework's
+     * defaults is a retry chain nobody wrote down. Equal to `$tries`, so this
+     * job fails when it runs out of attempts rather than before.
+     *
+     * @var int
+     */
+    public $maxExceptions = 3;
+
+    /**
      * Seconds to wait before attempts two and three.
      *
      * Without this, a Redis outage burns all three tries inside the backoff the
@@ -147,6 +161,18 @@ class GenerateAuditExport implements ShouldQueue
         private readonly array $filters,
         private readonly string $direction = 'desc',
     ) {
+        // Named queue, not `default` (Phase 11 P11-E1). Set on the instance,
+        // NOT as a `public $queue = ...` class property: `Queueable` already
+        // declares `$queue`, and PHP refuses the redeclaration — a fatal at
+        // class load that `php -l` does not catch. The same rule is why
+        // `$afterCommit` is not a property above, and the framework's own
+        // jobs set the queue the same way (`SendQueuedMailable`).
+        //
+        // An export is the heaviest job this application dispatches, and one
+        // shared queue is how a 125-second export delays every password reset
+        // behind it. The worker in `bin/run-workers.sh` listens to this queue
+        // alongside `default`.
+        $this->onQueue(QueueName::EXPORTS);
     }
 
     /**
@@ -177,6 +203,7 @@ class GenerateAuditExport implements ShouldQueue
                 'export_id' => $this->exportId,
                 'attempt' => $this->attempts(),
                 'max_tries' => $this->tries,
+                'request_id' => $this->requestId(),
                 'exception' => $e->getMessage(),
             ]);
 
@@ -317,6 +344,7 @@ class GenerateAuditExport implements ShouldQueue
         Log::error('audit.export.failed', [
             'export_id' => $export->id,
             'user_id' => $export->user_id,
+            'request_id' => $this->requestId(),
             'exception' => $exception?->getMessage(),
         ]);
     }

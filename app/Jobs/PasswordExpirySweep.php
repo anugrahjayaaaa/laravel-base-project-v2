@@ -3,9 +3,11 @@
 namespace App\Jobs;
 
 use App\Jobs\Concerns\AuditsSystemActivity;
+use App\Jobs\Concerns\ReadsCorrelationId;
 use App\Models\SystemSetting;
 use App\Models\User;
 use App\Services\PasswordExpiry;
+use App\Support\QueueName;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -27,7 +29,20 @@ class PasswordExpirySweep implements ShouldQueue
     use Dispatchable;
     use InteractsWithQueue;
     use Queueable;
+    use ReadsCorrelationId;
     use SerializesModels;
+
+    /**
+     * Named queue, not `default` (Phase 11 P11-E1) — set on the instance, NOT
+     * as a `public $queue` property: `Queueable` already declares it and PHP
+     * refuses the redeclaration (a class-load fatal `php -l` misses; see
+     * `GenerateAuditExport`, which documents the rule). Sweeps are last in
+     * the worker's `--queue` order: scheduled, idempotent, never urgent.
+     */
+    public function __construct()
+    {
+        $this->onQueue(QueueName::SWEEPS);
+    }
 
     /**
      * Queue conventions (Phase 11 MON-P11-05, raised as Phase 10 §11 P10-E14).
@@ -69,6 +84,7 @@ class PasswordExpirySweep implements ShouldQueue
     {
         Log::error('Password expiry sweep failed', [
             'attempts' => $this->tries,
+            'request_id' => $this->requestId(),
             'exception' => $exception?->getMessage(),
         ]);
     }
