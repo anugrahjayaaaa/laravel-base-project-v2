@@ -92,7 +92,7 @@ full ladder: `/up` → `top`/`free` → MySQL slow log → `DB::listen()` →
 
 ## Health Check Endpoint
 
-`/api/v1/health`:
+`GET /api/v1/health`:
 
 ```json
 {
@@ -107,8 +107,42 @@ full ladder: `/up` → `top`/`free` → MySQL slow log → `DB::listen()` →
 }
 ```
 
-Status: **PLANNED** (Phase 11, MONITOR scope). Documented here so the contract is
-agreed; not yet implemented.
+Status: **shipped** (FOUND-010 — `Api\V1\HealthCheck\HealthCheckController`,
+`HealthCheckService`, `HealthCheckResource`). It stays **ungated and
+unauthenticated** because its caller is an uptime monitor that cannot log in;
+the response shape above is the ceiling on what it may ever expose
+(phase-11-monitoring-observability.md F3).
+
+## System Health Dashboard (web)
+
+`GET /health` — the read-only admin page over the **same** `HealthCheckService`
+(Phase 11 A2/C1):
+
+| Piece | Where |
+|---|---|
+| View | `resources/views/pages/health/index.blade.php` — page-level badge + one card per check (database, cache, queue, storage), no query from Blade |
+| Controller | `App\Http\Controllers\Web\V1\HealthController@index` — passes `$checks` + `$isHealthy()`; no FormRequest, no audit (a read writes nothing) |
+| Route | `GET /health` → `health.index` |
+
+### Access — two independent gates
+
+`/health` requires **both**, same deliberate shape as `/pulse`:
+
+| Gate | Kind | Enforced in |
+|---|---|---|
+| `health` feature flag | deploy-time kill switch | route middleware `feature:health` (`EnsureFeatureIsEnabled`) |
+| `health.view` permission | per-role | route middleware `can:health.view` |
+
+Both failures return 403, so a caller cannot tell which fired — consistent with
+Phase 7. The sidebar entry (`System Health`, `fas fa-stethoscope`) is filtered in
+`AppMenuComposer` on the same flag + permission pair, so the menu cannot
+advertise a screen the route refuses. Superadmin reaches it through
+`Gate::before` without holding the row; `admin` inherits the permission via
+`PermissionCatalog::all()`.
+
+The API endpoint above and this dashboard answer the same service checks at two
+authorization levels: machine-to-machine without a login, and inside the admin
+with the full treatment.
 
 ## ADR References
 

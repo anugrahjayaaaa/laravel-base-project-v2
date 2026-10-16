@@ -171,6 +171,11 @@ class ChannelParityTest extends TestCase
             'web' => ['pulse'],
             'why' => 'Laravel Pulse renders its own UI and owns its own authorization (`pulse.view`). An API wrapper would be a second surface over a third-party dashboard.',
         ],
+        'system health dashboard' => [
+            'only' => 'web',
+            'web' => ['health.index'],
+            'why' => 'The data twin is `GET /api/v1/health` — deliberately UNNAMED and ungated, because its caller is an uptime monitor that cannot log in, so a name-keyed map cannot see it and must not name it. The web page renders the same checks inside the admin behind `feature:health` + `health.view`.',
+        ],
     ];
 
     /**

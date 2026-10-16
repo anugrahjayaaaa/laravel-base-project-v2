@@ -85,6 +85,11 @@ return [
             'group' => 'Monitoring',
             'description' => 'Queue, cache, exception and slow-request metrics.',
         ],
+        'health' => [
+            'label' => 'System Health',
+            'group' => 'Monitoring',
+            'description' => 'Live ok/fail status of database, cache, queue and storage.',
+        ],
     ],
 
     /*

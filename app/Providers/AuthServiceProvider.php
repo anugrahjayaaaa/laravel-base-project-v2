@@ -37,6 +37,7 @@ class AuthServiceProvider extends ServiceProvider
     {
         ThrottleRequests::shouldHashKeys(false);
         $this->configureSuperAdmin();
+        $this->configurePulseGate();
         $this->configureRateLimiters();
         $this->configurePasswordResetNotification();
         $this->configureEmailVerification();
@@ -65,6 +66,26 @@ class AuthServiceProvider extends ServiceProvider
         Gate::before(function (User $user, string $ability): ?bool {
             return $user->hasRole(SystemRole::SUPERADMIN) ? true : null;
         });
+    }
+
+    /**
+     * Override Pulse's own `viewPulse` gate with the `pulse.view` permission.
+     *
+     * Pulse defines `viewPulse` as `environment('local')` at
+     * `vendor/laravel/pulse/src/PulseServiceProvider.php:100` via
+     * `callAfterResolving`. `Gate::define()` overwrites by name, and resolving
+     * the Gate here fires Pulse's pending callback first — so this definition
+     * is the one that stands (measured, phase-11-monitoring-observability.md F1).
+     *
+     * `environment('local')` is deliberately replaced rather than supplemented:
+     * one predicate, one reason to fail, and local devs hold the permission like
+     * anyone else. Do NOT call `Pulse::auth()` — removed in 1.8, the gate is
+     * the supported hook. `Gate::before` stays untouched, so superadmin keeps
+     * access without holding the permission row.
+     */
+    protected function configurePulseGate(): void
+    {
+        Gate::define('viewPulse', fn (User $user): bool => $user->can('pulse.view'));
     }
 
     /**

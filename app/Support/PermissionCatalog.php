@@ -109,6 +109,27 @@ class PermissionCatalog
     ];
 
     /**
+     * Monitoring dashboards — read-only, `.view` only, deliberately no
+     * `.manage`: both dashboards read a status and run nothing, so a second
+     * action would be a row no `can()` call ever checks — the exact "row that
+     * lies in the permissions UI" this class exists to prevent (same argument
+     * as Phase 11 §3 for `pulse.view`).
+     *
+     * Two consts, not one `MONITORING`: every other const here is one resource
+     * prefix, which is what `grouped()` renders as one heading.
+     *
+     * @var array<int, string>
+     */
+    private const PULSE = [
+        'pulse.view',
+    ];
+
+    /** @var array<int, string> */
+    private const HEALTH = [
+        'health.view',
+    ];
+
+    /**
      * Every permission name the application defines.
      *
      * @return array<int, string>
@@ -123,6 +144,8 @@ class PermissionCatalog
             ...self::NOTIFICATIONS,
             ...self::FEATURES,
             ...self::AUDIT,
+            ...self::PULSE,
+            ...self::HEALTH,
         ];
     }
 

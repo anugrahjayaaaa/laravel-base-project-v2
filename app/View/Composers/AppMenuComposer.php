@@ -253,6 +253,35 @@ class AppMenuComposer
                 ],
             ],
             [
+                // Own group, matching the `Monitoring` heading the two flags
+                // already sit under at /features — two read-only dashboards
+                // with their own permissions, both hidden by their own flag.
+                'label' => 'Monitoring',
+                'items' => [
+                    // First menu entry pointing at a vendor URL: Pulse
+                    // registers the `pulse` route itself. `Route::has` in
+                    // visible() keeps it honest if the package ever goes.
+                    [
+                        'label' => 'Pulse',
+                        'icon' => 'fas fa-heart-pulse',
+                        'route' => 'pulse',
+                        'active' => 'pulse',
+                        'permission' => 'pulse.view',
+                        'feature' => 'pulse',
+                    ],
+                    [
+                        'label' => 'System Health',
+                        'icon' => 'fas fa-stethoscope',
+                        'route' => 'health.index',
+                        // `health*`, safe because no other route name starts
+                        // with `health` — the API twin is unnamed by design.
+                        'active' => 'health*',
+                        'permission' => 'health.view',
+                        'feature' => 'health',
+                    ],
+                ],
+            ],
+            [
                 'label' => 'Labels',
                 'items' => [
                     [

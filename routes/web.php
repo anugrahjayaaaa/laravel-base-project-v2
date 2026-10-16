@@ -5,6 +5,7 @@ use App\Http\Controllers\Web\V1\AuditExportController;
 use App\Http\Controllers\Web\V1\Auth\AuthController;
 use App\Http\Controllers\Web\V1\DashboardController;
 use App\Http\Controllers\Web\V1\FeatureController;
+use App\Http\Controllers\Web\V1\HealthController;
 use App\Http\Controllers\Web\V1\NotificationController;
 use App\Http\Controllers\Web\V1\NotificationInboxController;
 use App\Http\Controllers\Web\V1\PermissionController;
@@ -366,5 +367,28 @@ Route::middleware(['auth:web,sanctum', 'verified', 'password.change.required', '
         Route::get('/activity-logs/exports/recent', [AuditExportController::class, 'recent'])
             ->name('activity-logs.exports.recent')
             ->middleware(['can:audit.view', 'throttle:120,1']);
+    });
+
+    // -----------------------------------------------------------------------
+    // System health dashboard — Phase 11 Groups B and C.
+    //
+    // Two gates, both required, both failing as 403 so a caller cannot tell
+    // which fired: `feature:health` is the deploy-time kill switch and
+    // `health.view` is the per-role authorization. Same deliberate shape as
+    // `/pulse` and the audit viewer (Phase 7 / Phase 10 / Phase 11 §3).
+    //
+    // READ-ONLY: a GET that renders ok/fail per service, with no POST beside
+    // it. The page reads a status, it does not run anything.
+    //
+    // The API twin stays untouched and ungated — `GET /api/v1/health` answers
+    // an uptime monitor that cannot log in, and its response shape is the
+    // ceiling on what it may ever expose (phase-11 F3). This web dashboard is
+    // a different matter: it renders who-can-see-what inside the admin, so it
+    // takes the full permission + flag treatment.
+    // -----------------------------------------------------------------------
+    Route::middleware('feature:health')->group(function () {
+        Route::get('/health', [HealthController::class, 'index'])
+            ->name('health.index')
+            ->can('health.view');
     });
 });
