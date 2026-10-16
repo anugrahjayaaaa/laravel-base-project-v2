@@ -144,6 +144,18 @@ Each entry contains:
 
 ---
 
+## 2026-10-16 — Pulse cards on a warm cache: objects out of the persistent store
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-10-16 |
+| **Change** | `config/pulse.php` now defaults `pulse.cache` to the array store — `env('PULSE_CACHE_DRIVER', 'array')` (was `env('PULSE_CACHE_DRIVER')`, i.e. `null` → the default store). Pulse's `RemembersQueries` caches `[$collection, $duration, $start]` through `CacheStoreResolver`, and `cache.serializable_classes => false` (phase-1 hardening) makes every persistent store hand a cached object back as `__PHP_Incomplete_Class`. The env var stays overridable per environment and is documented in `.env.example`, but any persistent driver reintroduces the crash. Regression test `PulseQueryCacheTest`: forces the default store to the serializing `file` driver, mounts `Livewire\Queues` cold then warm (`Livewire::withoutLazyLoading()` before each mount — the cards are `#[Lazy]` and Livewire's `flush-state` re-enables the placeholder between mounts), and fails at `Queues.php:35` without the fix. |
+| **Reason** | The CSP fix let the page's JS run for the first time, so `wire:poll` started exercising the cache-hit path inside the 5-second recall window — every card then died with "The script tried to call a method on an incomplete object" (reported at `vendor/laravel/pulse/src/Livewire/Queues.php:35`). The suite could never see it: `phpunit.xml` pins `CACHE_STORE=array`, and the array store never serializes. Pulse is the one component that caches objects, so it gets the one store where nothing serializes — the project's "cache primitives, instantiate objects outside `Cache::remember`" rule (AGENTS.md trap) stays enforced for everything else. |
+| **Impact** | `/pulse` renders on a warm cache again; `cache.serializable_classes` stays `false` — no security policy loosened. Costs: Pulse's cross-process state (Servers heartbeat throttle, `pulse:check` restart signal/locks) becomes per-process, and card queries recompute per request instead of once per 5s across all viewers. Stale `laravel:pulse:*` Redis keys expire on their own (5s TTL). |
+| **Related** | P11-A1, `tests/Feature/PulseQueryCacheTest.php`, `config/pulse.php` |
+
+---
+
 ## 2026-10-14 — Phase 10: the audit export handed a spreadsheet a formula
 
 | Field | Value |

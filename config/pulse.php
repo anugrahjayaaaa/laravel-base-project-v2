@@ -107,7 +107,14 @@ return [
     |
     */
 
-    'cache' => env('PULSE_CACHE_DRIVER'),
+    // Default 'array': RemembersQueries caches Collection payloads, and
+    // cache.serializable_classes=false (phase-1 hardening) turns every object
+    // read back from a serializing store (redis, file, database…) into
+    // __PHP_Incomplete_Class — the cards crash on a warm cache. A persistent
+    // driver can still be chosen per environment, but it reintroduces that
+    // bug. Cross-process state (Servers heartbeat throttle, pulse:check
+    // signals) is per-process on 'array'.
+    'cache' => env('PULSE_CACHE_DRIVER', 'array'),
 
     /*
     |--------------------------------------------------------------------------
