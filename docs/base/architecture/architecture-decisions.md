@@ -1,11 +1,11 @@
 # Architecture Decision Records
 
 > Key ADRs that shape the architecture. Full list with details in `[decisions.md](../../planning/decisions.md)`.
-> **Numbering convention:** Architecture ADRs use `ADR-001` through `ADR-022` (inline in `decisions.md`).
+> **Numbering convention:** Architecture ADRs use `ADR-001` through `ADR-023` (inline in `decisions.md`).
 > Dependency-selection ADRs use `DEP-001` through `DEP-007` (files in `decision-records/`).
 > This separation prevents numbering collisions. To determine the next ADR number: count existing architecture ADRs in `decisions.md` + 1 for the next architecture ADR; count files in `decision-records/` + 1 for the next dependency ADR.
 >
-> 22 architecture ADRs total (ADR-001 through ADR-022), plus 7 dependency-specific
+> 23 architecture ADRs total (ADR-001 through ADR-023), plus 7 dependency-specific
 > ADRs in `docs/base/architecture/decision-records/` (DEP-001 through DEP-007).
 
 ## ADR-001: API-first architecture
@@ -117,6 +117,12 @@
 - Installed `storviaio/vantage ^0.1.25`; the app declares the six web routes itself (`config/vantage.php` → `routes => false`) so they carry `feature:vantage` + `can:queues.*`.
 - `queues.view` / `queues.retry` in `PermissionCatalog`; `viewVantage` gate overridden to `queues.view`; `store_payload => false`; retry reads the payload from `failed_jobs`.
 - The one follow-up this ADR left open (CSP scoping for the vendor layout) was closed 2026-10-17.
+
+## ADR-023: the ungated health endpoint gets a ceiling and a cached check set
+- `GET /api/v1/health` keeps no gate — no auth, no permission, no flag — for the reason `F3` gave: its caller is a monitor that cannot log in.
+- What `F3` did not decide is now decided: the check set is cached for 10s (`health_check:results`), and the route carries `throttle:health` at `health_rate_limit_per_minute` (120/min, validated 1..600), keyed on IP.
+- Ten seconds because a third of the shortest interval a legitimate caller polls at costs nothing in accuracy and caps the work at six executions a minute per server; 120/min because an IP is a shared unit where the per-user limiters' 3-15 is not.
+- A cache store that cannot answer is reported (`cache: fail`), never thrown — the endpoint must not hide the failure it exists to name. The refusal is always JSON, so a monitor that sends no `Accept` header cannot follow a 302 into the login page and read it as UP.
 
 ## Dependency-decision ADRs (DEP-001–DEP-007)
 
