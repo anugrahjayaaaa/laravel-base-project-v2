@@ -112,10 +112,11 @@ PHP-FPM, or opcache keeps serving the old config.
 
 ## Slow-Query Diagnosis
 
-Pulse is deliberately **absent** from the slow-query diagnosis ladder. See
-[implementation-roadmap.md](../../planning/implementation-roadmap.md) for the
-full ladder: `/up` → `top`/`free` → MySQL slow log → `DB::listen()` →
-`EXPLAIN`.
+Pulse is deliberately **absent** from the slow-query diagnosis ladder. The full
+ladder — `/up` → `top`/`free` → MySQL slow log → `DB::listen()` → `EXPLAIN` —
+lives in
+[phase-11-monitoring-observability.md](../../planning/phase-11-monitoring-observability.md)
+§7 (Operational runbooks).
 
 ## Health Check Endpoint
 

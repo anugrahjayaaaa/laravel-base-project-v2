@@ -553,8 +553,11 @@ It replaced `laravel/telescope` + `seanbarton/laravel-periscope` in commit
 for the reasoning.
 
 **What Pulse is not:** a request-level debugger. Slow-query diagnosis goes
-through the MySQL slow log and `EXPLAIN`, not Pulse — see `observability.md`
-and the Phase 11 ladder in `implementation-roadmap.md`.
+through the MySQL slow log and `EXPLAIN`, not Pulse — see
+[observability.md](../infrastructure/observability.md) and the Phase 11 ladder
+in
+[phase-11-monitoring-observability.md](../../planning/phase-11-monitoring-observability.md)
+§7.
 
 ### Security / Production Requirements
 
@@ -599,6 +602,87 @@ and the Phase 11 ladder in `implementation-roadmap.md`.
 Pulse is a **technical tool**, not an application dependency. Application
 code must NOT depend on Pulse APIs. Pulse observes the application;
 the application does not call Pulse.
+
+---
+
+## Storvia Vantage
+
+| Field | Value |
+|-------|-------|
+| Composer package | `storviaio/vantage` |
+| Status | Required |
+| Priority | P1 |
+| Architecture area | Monitoring / Observability (Phase 11 `MONITOR-003`) |
+| Package constraint | `^0.1.25` (Laravel 13 compatible) |
+| Decision record | ADR-022 (supersedes the Phase 11 D-1 deferral) |
+
+### Purpose
+
+Queue monitor: a live view over `vantage_jobs` that Pulse's queue card does not
+give.
+
+- Live backlog and processing counts, per queue
+- One row per attempt, so a retry chain survives (`failed_jobs` keeps only the
+  latest failure)
+- Job detail: duration, memory, CPU, tags, exception and stack
+
+### Why Vantage
+
+Pulse's queues card is a throughput graph, not a backlog count, and
+`failed_jobs` keeps one row per job — the retry chain and the stack trace that
+explains the *first* failure are lost. Vantage records one row per attempt and
+keeps them for `vantage.retention_days` (14). See ADR-022, which reversed the
+Phase 11 D-1 deferral.
+
+### Security / Production Requirements
+
+- Every route requires **both** the `vantage` feature flag (deploy-time kill
+  switch) and a permission — `queues.view` to read, `queues.retry` for the one
+  mutating route (`POST /vantage/jobs/{id}/retry`).
+- The app declares the six web routes itself (`config/vantage.php` sets
+  `routes => false`) because the vendor's `loadRoutesFrom()` offers no middleware
+  hook; route names stay the vendor's (`vantage.*`).
+- The package's own `viewVantage` gate (default: **any authenticated user**) is
+  overridden in `AuthServiceProvider` to `queues.view` as a safety net.
+- `store_payload` is forced `false`: the package default persists full job
+  payloads, which would expose export filters, model ids and mail arguments to
+  every `queues.view` holder. Retry reads the payload back from `failed_jobs`
+  instead (`App\Support\Vantage\FailedJobPayloadRestorer`).
+- The dashboard's CSP allowance (two CDN origins + `'unsafe-eval'`) is scoped to
+  `vantage.*` by route name, and the script-bearing vendor views are overridden
+  to carry the nonce.
+
+### How It Integrates
+
+- Installed via Composer (`composer.json`, `require` — production observability).
+- Routes declared in `routes/web.php` under `feature:vantage`, not by the vendor.
+- `queues.view` / `queues.retry` in `PermissionCatalog`; a `vantage` Pennant flag
+  under the Monitoring group; sidebar entry in `AppMenuComposer`.
+- `vantage:prune --force --keep-processing` runs daily, guarded on
+  `config('vantage.enabled')`.
+- Data lands in `vantage_jobs` / `vantage_job_tags`.
+
+### Maintenance / Upgrade Considerations
+
+- Single-maintainer package that has already changed owners — re-check after
+  every upgrade: the vendor layout (nonce overrides), the six declared routes,
+  and the `viewVantage` default.
+- The app-declared routes can drift from the vendor's (a new vendor route is
+  invisible) — the accepted cost recorded in ADR-022.
+
+### Testing Implications
+
+- `tests/Feature/Vantage/VantagePermissionGateTest.php` (7 gate cases),
+  `VantageRetryTest.php` (3 cases) and `ContentSecurityPolicyTest` (nonce +
+  scoped origins, all five reachable pages) cover it.
+- `/vantage/failed` and `/vantage/jobs/{id}` render vendor views the app does not
+  override; they carry no script of their own.
+
+### Application-Level Abstraction
+
+Vantage is a **technical tool**, not an application dependency. Application code
+must NOT depend on Vantage APIs — the one exception is the
+`FailedJobPayloadRestorer` binding, which adapts the package's own `JobRestorer`.
 
 ---
 
