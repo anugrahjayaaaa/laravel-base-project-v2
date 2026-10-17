@@ -68,7 +68,9 @@ class HealthCheckService
         try {
             Cache::put('__health_check__', true, 1);
 
-            return 'ok';
+            // Read it back: a store that accepts a write and silently drops it
+            // (disk full, unreachable Redis) answers `ok` on the write alone.
+            return Cache::get('__health_check__') === true ? 'ok' : 'fail';
         } catch (\Throwable $e) {
             Log::error('health_check.cache.failed', [
                 'exception' => get_class($e),
