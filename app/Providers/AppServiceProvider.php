@@ -313,6 +313,33 @@ class AppServiceProvider extends ServiceProvider
                 ->by($key)
                 ->response($throttle->responseFor('format'));
         });
+
+        // `GET /api/v1/health` is the one endpoint in the app with no gate of
+        // any kind — no auth, no permission, no feature flag — because its
+        // caller is a monitor that cannot log in (Phase 11 §F3). That decision
+        // is right and this limiter does not revisit it. What it fixes is the
+        // other half: nothing bounded the REQUEST COUNT either, so an anonymous
+        // caller could buy an unbounded number of those seven round trips.
+        //
+        // Keyed on the IP alone, because there is no user to key on. That unit
+        // is WEAK in a way the per-user limiters above are not: one address can
+        // be a whole mobile carrier's NAT or a corporate egress, so the same
+        // thousands of people share one counter. Hence 120/min (2/s) rather
+        // than the 3-15/min those use — sixty times a monitor that polls every
+        // thirty seconds, which is the slowest thing that can honestly be
+        // called a client here. With the check set cached for ten seconds
+        // (`HealthCheckService`), an allowed request is roughly one cache read,
+        // so the ceiling is about keeping the count finite, not about metering.
+        //
+        // `jsonOnly`, because this route has no web branch: a 302 to the login
+        // page reads as UP to a monitor that follows redirects.
+        RateLimiter::for('health', function ($request) use ($throttle) {
+            $key = $throttle->key('health', 'ip', $request->ip());
+
+            return Limit::perMinute(SystemSetting::getInt('health_rate_limit_per_minute', 120))
+                ->by($key)
+                ->response($throttle->responseFor('health', jsonOnly: true));
+        });
     }
 
     /**

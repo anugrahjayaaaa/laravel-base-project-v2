@@ -166,13 +166,20 @@ class LoginThrottle
      * ship half of it again.
      *
      * @param  string  $field  form field the error is attached to on the web side
+     * @param  bool  $jsonOnly  for a route with no web branch at all. `expectsJson()`
+     *                          is the caller's `Accept` header, and a route reached
+     *                          by a machine that does not set one — an uptime
+     *                          monitor polling `/api/v1/health` — would otherwise
+     *                          get the redirect below, which reads as SUCCESS to
+     *                          anything that follows it: it lands on the login
+     *                          page and returns 200.
      */
-    public function responseFor(string $field): Closure
+    public function responseFor(string $field, bool $jsonOnly = false): Closure
     {
-        return function (Request $request, array $headers) use ($field) {
+        return function (Request $request, array $headers) use ($field, $jsonOnly) {
             $retryAfter = $headers['Retry-After'] ?? 60;
 
-            if ($request->expectsJson()) {
+            if ($jsonOnly || $request->expectsJson()) {
                 return response()->json([
                     'message' => 'Too many requests. Please try again later.',
                     'code' => 'RATE_LIMITED',

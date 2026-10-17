@@ -381,11 +381,12 @@ Route::middleware(['auth:web,sanctum', 'verified', 'password.change.required', '
     // READ-ONLY: a GET that renders ok/fail per service, with no POST beside
     // it. The page reads a status, it does not run anything.
     //
-    // The API twin stays untouched and ungated — `GET /api/v1/health` answers
-    // an uptime monitor that cannot log in, and its response shape is the
-    // ceiling on what it may ever expose (phase-11 F3). This web dashboard is
-    // a different matter: it renders who-can-see-what inside the admin, so it
-    // takes the full permission + flag treatment.
+    // The API twin stays ungated — `GET /api/v1/health` answers an uptime
+    // monitor that cannot log in, and its response shape is the ceiling on what
+    // it may ever expose (phase-11 F3). Since ADR-023 it is bounded by a rate
+    // limit and a cached check set instead of by a permission. This web
+    // dashboard is a different matter: it renders who-can-see-what inside the
+    // admin, so it takes the full permission + flag treatment.
     // -----------------------------------------------------------------------
     Route::middleware('feature:health')->group(function () {
         Route::get('/health', [HealthController::class, 'index'])
