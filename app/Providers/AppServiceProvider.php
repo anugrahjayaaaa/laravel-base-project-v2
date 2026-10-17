@@ -13,6 +13,7 @@ use App\Observers\UserObserver;
 use App\Services\PasswordExpiry;
 use App\Support\FeatureCatalog;
 use App\Support\MorphMap;
+use App\Support\Vantage\FailedJobPayloadRestorer;
 use App\View\Composers\AccountOptionsComposer;
 use App\View\Composers\AppMenuComposer;
 use App\View\Composers\PasswordStrengthComposer;
@@ -27,6 +28,7 @@ use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\View\View;
 use Laravel\Pennant\Feature;
+use Storvia\Vantage\Support\JobRestorer;
 use Throwable;
 
 /**
@@ -477,6 +479,16 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        // Vantage's retry re-dispatch lives inside its own controller and is
+        // built from `vantage_jobs.payload`, a column `config/vantage.php`
+        // keeps empty on purpose (`store_payload => false`, ADR-022). The
+        // binding is the only hook the package leaves for that: the controller
+        // resolves `JobRestorer` from the container at call time.
         //
+        // It answers from the failed-job store the framework already keeps —
+        // the record `queue:retry` reads — rather than a second copy of every
+        // job's arguments. See `FailedJobPayloadRestorer` for the security
+        // checks it reuses and for how the two stores' retentions differ.
+        $this->app->bind(JobRestorer::class, FailedJobPayloadRestorer::class);
     }
 }
