@@ -416,10 +416,13 @@ is in §11 there.
 > `viewVantage` gate override maps to `queues.view`, `queues.view`/`queues.retry`
 > are in `PermissionCatalog`, a `vantage` flag sits under Monitoring, and
 > `vantage:prune` runs daily. Pinned by
-> `tests/Feature/Vantage/VantagePermissionGateTest` (7 cases). One follow-up is
-> unresolved: the vendor layout's two CDN scripts and nonce-less inline script
-> are blocked by the CSP, so the page renders unstyled until
-> `AddSecurityHeaders::policy()` is scoped to `vantage.*` as it is to `pulse`.
+> `tests/Feature/Vantage/VantagePermissionGateTest` (7 cases). **Follow-up closed
+> 2026-10-17:** `AddSecurityHeaders::policy()` is now scoped to `vantage.*` as it
+> already is to `pulse` — the two CDN origins (`cdn.tailwindcss.com`,
+> `cdn.jsdelivr.net`) and `'unsafe-eval'` travel only with the Vantage routes, and
+> the four script-bearing vendor views (`dashboard`, `jobs`, `tags`, `layout`) are
+> overridden under `resources/views/vendor/vantage/` to nonce them. Pinned by
+> `ContentSecurityPolicyTest`.
 
 ### What exists today
 

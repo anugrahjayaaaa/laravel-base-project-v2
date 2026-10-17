@@ -300,8 +300,8 @@ explicit and safe-by-default.
 3. `ModelWatcher` off — the most expensive watcher, serialises every model.
 4. `QueryWatcher` on — the actual requirement behind this decision.
 5. Slow-query diagnosis does not depend on Telescope. Production uses the MySQL
-   slow log plus a `DB::listen()` threshold logger; see Phase 11 in
-   `implementation-roadmap.md` for the ordered ladder.
+   slow log plus a `DB::listen()` threshold logger; the ordered ladder is in
+   `phase-11-monitoring-observability.md` §7.
 
 Disabling costs nothing at runtime: `TelescopeServiceProvider::boot()` returns
 before `Telescope::start()` when `telescope.enabled` is false, so no watcher is
@@ -430,12 +430,14 @@ keeps the attempt, and only their overlap is retryable — an operator who flush
 the failed jobs (or `queue:prune-failed`) loses retries for rows Vantage still
 shows for `vantage.retention_days` (14), which the restorer logs rather than
 dispatches wrongly. Accepted, because the alternative is the payload column this
-ADR keeps empty. One follow-up is **unresolved**: the
-vendor's Blade layout loads `https://cdn.tailwindcss.com` and `https://unpkg.com`
-and its inline script carries no nonce, so under the nonce-only CSP the dashboard
-renders unstyled until `AddSecurityHeaders::policy()` is scoped to `vantage.*`
-as it already is to `pulse` — deferred because that widens `script-src` to two
-third-party CDNs, a security decision of its own.
+ADR keeps empty. The one follow-up this ADR left open — the vendor layout's two
+third-party CDN scripts and nonce-less inline script under the nonce-only CSP —
+was **closed 2026-10-17**: `AddSecurityHeaders::policy()` is scoped to
+`vantage.*` as it already is to `pulse`, so those two CDNs and `'unsafe-eval'`
+travel only with the Vantage routes, and the four script-bearing vendor views
+are overridden under `resources/views/vendor/vantage/` to nonce them. Widening
+`script-src` to two third-party CDNs stayed a route-name-bound decision rather
+than an application-wide one; pinned by `ContentSecurityPolicyTest`.
 
 **Related**: ADR-008, DEP-004, D-1/D-2 (superseded), P11-B1..B4,
 `docs/base/features/monitoring.md`, `tests/Feature/Vantage/VantagePermissionGateTest.php`

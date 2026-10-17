@@ -1962,6 +1962,26 @@ Detail: `docs/planning/phase-9-notifications-mail.md`.
     ]
   },
   {
+    "id": "MONITOR-003",
+    "task": "Integrate the Vantage queue monitor (reverses the Phase 11 D-1 deferral)",
+    "phase": 11,
+    "priority": "P1",
+    "depends_on": [
+      "MONITOR-001"
+    ],
+    "status": "DONE",
+    "docs": [
+      "monitoring.md",
+      "overview.md"
+    ],
+    "tests": [
+      "VantagePermissionGateTest",
+      "VantageRetryTest",
+      "ContentSecurityPolicyTest"
+    ],
+    "note": "storviaio/vantage ^0.1.25, installed 2026-10-16 per ADR-022 (supersedes the Phase 11 D-1 deferral). The app declares the six web routes itself (config/vantage.php routes => false) so they carry feature:vantage + can:queues.view / can:queues.retry; viewVantage is overridden to queues.view; store_payload is forced false and retry reads the payload from failed_jobs via App\\Support\\Vantage\\FailedJobPayloadRestorer; vantage:prune runs daily. See docs/planning/phase-11-monitoring-observability.md §13."
+  },
+  {
     "id": "CORR-001",
     "task": "Implement correlation ID middleware",
     "phase": 1,

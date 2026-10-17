@@ -34,24 +34,25 @@ Auto-generated from codebase scan. Not committed.
 | 26 | Notifications (email + DB) | — | — | — | features/notifications.md | done — Phase 9 complete. Global admin switches (mail + database), personal inbox with no permission behind it and user isolation as its only boundary, cached bell badge, `NotificationAudience` resolving per-action trigger permissions. Re-audited 2026-10-08: seven boundary findings closed (credential reachable via the settings module, in-transaction dispatch, badge/list cache divergence, no retention, no send-test rate limit, a dead model, the mail switch able to break account-critical flows). Copy rewritten against researched guidance and pinned by `NotificationCopyTest`; `NotificationBenchmarkTest` found no N+1; `NotificationPentestTest` found nothing across 11 probes. Two items left open at the end of the audit were closed on request: audience membership now matches the Gate's own definition (a permission granted directly to a person counts), and the bell and the inbox now read one cached unread number |
 | 27 | Health check | ✅ | ✅ | — | features/monitoring.md | done — `GET /api/v1/health` (ungated, uptime-monitor caller) plus the `/health` web dashboard behind `health.view` + `feature:health` (Phase 11 A2/B3/C1, 2026-10-15) |
 | 28 | Laravel Pulse | — | — | — | features/monitoring.md | done — replaced Telescope + Periscope (`85384b4`); flag gated (`b08b8b4`); `pulse.view` permission + `viewPulse` gate override shipped in Phase 11 (P11-B1/B2, 2026-10-15); `permission + flag` both applied, superadmin respects both |
-| 29 | Queue (DB + Redis compat) | — | — | — | infrastructure/queue.md | done |
-| 30 | Cache abstraction | — | — | — | infrastructure/cache.md | done |
-| 31 | API v1 (versioned) | — | ✅ | — | api/api-architecture.md | done |
-| 32 | Scramble API docs | — | — | — | api/documentation.md | done |
-| 33 | Storage abstraction | — | — | — | infrastructure/storage.md | done |
-| 34 | Data retention | — | — | — | operations/retention.md | planned |
-| 35 | Backup/DR | — | — | — | infrastructure/backup-disaster-recovery.md | planned |
-| 36 | Correlation ID tracing | ✅ | ✅ | — | infrastructure/logging.md | done |
-| 37 | Password history | — | — | — | security/password-security.md | planned |
-| 38 | Password expiration | — | — | — | security/password-security.md | planned |
-| 39 | Password policy (IM8) | — | — | — | security/password-security.md | planned |
-| 40 | Initial password gen (temp) | — | ✅ | admin | security/password-security.md | planned |
-| 41 | Admin reset password | — | ✅ | admin | security/password-security.md | planned |
-| 42 | Inactivity lock | — | — | — | features/user-management.md | planned |
-| 43 | Theme toggle (UI) | ✅ | — | own | ui/design-system.md | done |
-| 44 | Password toggle (UI) | ✅ | — | — | — | done |
-| 45 | Blade components (UI primitives) | ✅ | — | — | ui/design-system.md | done |
-| 46 | AdminLTE 4 layout | ✅ | — | — | ui/ui-adminlte-setup.md | done |
+| 29 | Storvia Vantage (queue monitor) | ✅ | — | — | features/monitoring.md | done — `storviaio/vantage ^0.1.25` (MONITOR-003, ADR-022; installed 2026-10-16, reversing the Phase 11 D-1 deferral). Six app-declared web routes behind `feature:vantage` + `can:queues.view` (`can:queues.retry` on the retry POST only); `viewVantage` overridden to `queues.view`; `store_payload=false` with retry reading `failed_jobs`. Pinned by `VantagePermissionGateTest` (7) + `VantageRetryTest` (3) |
+| 30 | Queue (DB + Redis compat) | — | — | — | infrastructure/queue.md | done |
+| 31 | Cache abstraction | — | — | — | infrastructure/cache.md | done |
+| 32 | API v1 (versioned) | — | ✅ | — | api/api-architecture.md | done |
+| 33 | Scramble API docs | — | — | — | api/documentation.md | done |
+| 34 | Storage abstraction | — | — | — | infrastructure/storage.md | done |
+| 35 | Data retention | — | — | — | operations/retention.md | planned |
+| 36 | Backup/DR | — | — | — | infrastructure/backup-disaster-recovery.md | planned |
+| 37 | Correlation ID tracing | ✅ | ✅ | — | infrastructure/logging.md | done |
+| 38 | Password history | — | — | — | security/password-security.md | planned |
+| 39 | Password expiration | — | — | — | security/password-security.md | planned |
+| 40 | Password policy (IM8) | — | — | — | security/password-security.md | planned |
+| 41 | Initial password gen (temp) | — | ✅ | admin | security/password-security.md | planned |
+| 42 | Admin reset password | — | ✅ | admin | security/password-security.md | planned |
+| 43 | Inactivity lock | — | — | — | features/user-management.md | planned |
+| 44 | Theme toggle (UI) | ✅ | — | own | ui/design-system.md | done |
+| 45 | Password toggle (UI) | ✅ | — | — | — | done |
+| 46 | Blade components (UI primitives) | ✅ | — | — | ui/design-system.md | done |
+| 47 | AdminLTE 4 layout | ✅ | — | — | ui/ui-adminlte-setup.md | done |
 
 ## Legend
 - Web = web routes (routes/web.php)
