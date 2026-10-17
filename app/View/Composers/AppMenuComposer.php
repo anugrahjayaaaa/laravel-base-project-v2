@@ -285,6 +285,19 @@ class AppMenuComposer
                         'permission' => 'health.view',
                         'feature' => 'health',
                     ],
+                    // Also a vendor dashboard with its own full-page layout
+                    // (Tailwind from a CDN, like Pulse), so it opens in a new
+                    // tab for the same reason. `vantage*` is safe: no other
+                    // route name starts with `vantage`.
+                    [
+                        'label' => 'Queue Monitor',
+                        'icon' => 'fas fa-list-check',
+                        'route' => 'vantage.dashboard',
+                        'active' => 'vantage*',
+                        'permission' => 'queues.view',
+                        'feature' => 'vantage',
+                        'target' => '_blank',
+                    ],
                 ],
             ],
             [

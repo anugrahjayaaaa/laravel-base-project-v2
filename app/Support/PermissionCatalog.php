@@ -130,6 +130,23 @@ class PermissionCatalog
     ];
 
     /**
+     * Queue monitoring (Vantage) — Phase 11 §13.
+     *
+     * Two permissions, not one, on the `audit.view`/`audit.export` rule: reading
+     * the queue is not the same act as re-queueing a job. `queues.view` opens the
+     * dashboard; `queues.retry` guards the one mutating button on it, which
+     * enqueues work again. Handing a reader the retry button would make every
+     * queue reader able to trigger a job — the same widening
+     * `notifications.send_test` avoids.
+     *
+     * @var array<int, string>
+     */
+    private const QUEUES = [
+        'queues.view',
+        'queues.retry',
+    ];
+
+    /**
      * Every permission name the application defines.
      *
      * @return array<int, string>
@@ -146,6 +163,7 @@ class PermissionCatalog
             ...self::AUDIT,
             ...self::PULSE,
             ...self::HEALTH,
+            ...self::QUEUES,
         ];
     }
 

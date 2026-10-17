@@ -16,6 +16,7 @@ use App\Http\Controllers\Web\V1\UserStateController;
 use App\Http\Controllers\Web\V1\UserController;
 use App\Models\User;
 use Illuminate\Support\Facades\Route;
+use Storvia\Vantage\Http\Controllers\QueueMonitorController;
 
 // ---------------------------------------------------------------------------
 // Public routes — no authentication required
@@ -390,5 +391,43 @@ Route::middleware(['auth:web,sanctum', 'verified', 'password.change.required', '
         Route::get('/health', [HealthController::class, 'index'])
             ->name('health.index')
             ->can('health.view');
+    });
+
+    // -----------------------------------------------------------------------
+    // Queue monitor (Vantage) — Phase 11 §13.
+    //
+    // Declared HERE, not by the package: `config/vantage.php` sets
+    // `routes => false`, because the vendor's `loadRoutesFrom()` is bare — it
+    // offers no middleware hook — so its own group cannot carry
+    // `feature:vantage` or a permission. Declaring the group is the only way
+    // this dashboard gets the same two gates every other module has.
+    //
+    // Split by act, like the audit viewer: `queues.view` reads the queue,
+    // `queues.retry` re-queues a job. Retry is the only mutating route, and it
+    // is the only place `queues.retry` is checked — one row, one reader.
+    //
+    // Route NAMES must stay the vendor's (`vantage.*`): the package's own Blade
+    // views build every link with `route('vantage.jobs.show')` and friends, so a
+    // rename here breaks the dashboard's internal navigation.
+    // -----------------------------------------------------------------------
+    Route::middleware('feature:vantage')->group(function () {
+        Route::get('/vantage', [QueueMonitorController::class, 'index'])
+            ->name('vantage.dashboard')
+            ->can('queues.view');
+        Route::get('/vantage/jobs', [QueueMonitorController::class, 'jobs'])
+            ->name('vantage.jobs')
+            ->can('queues.view');
+        Route::get('/vantage/jobs/{id}', [QueueMonitorController::class, 'show'])
+            ->name('vantage.jobs.show')
+            ->can('queues.view');
+        Route::get('/vantage/tags', [QueueMonitorController::class, 'tags'])
+            ->name('vantage.tags')
+            ->can('queues.view');
+        Route::get('/vantage/failed', [QueueMonitorController::class, 'failed'])
+            ->name('vantage.failed')
+            ->can('queues.view');
+        Route::post('/vantage/jobs/{id}/retry', [QueueMonitorController::class, 'retry'])
+            ->name('vantage.jobs.retry')
+            ->can('queues.retry');
     });
 });

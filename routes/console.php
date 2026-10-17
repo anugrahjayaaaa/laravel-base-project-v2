@@ -97,3 +97,29 @@ Schedule::call(function (): void {
             $export->delete();
         });
 })->daily()->name('audit-export-retention')->withoutOverlapping();
+
+/**
+ * Prune Vantage job history past its retention window.
+ *
+ * `vantage_jobs` is the one table Vantage owns that nothing else in the app
+ * sweeps, and it grows one row per job run (plus one per tagged job in
+ * `vantage_job_tags`). Without this the table outlives the retention the config
+ * promises (`vantage.retention_days`, 14 days) — the same failure the
+ * notification sweep above exists to prevent.
+ *
+ * `--force` skips the confirmation prompt an unattended run cannot answer;
+ * `--keep-processing` spares in-flight jobs the command would otherwise treat
+ * as history. `--days` is deliberately omitted so the command reads
+ * `vantage.retention_days` — the number an operator overrides — so the schedule
+ * and the config cannot disagree.
+ *
+ * Guarded on `vantage.enabled`: the package registers its commands only when
+ * enabled, and the scheduler would otherwise log a "command not found" every
+ * night on a deployment that switched Vantage off.
+ */
+if (config('vantage.enabled')) {
+    Schedule::command('vantage:prune --force --keep-processing')
+        ->daily()
+        ->name('vantage-retention')
+        ->withoutOverlapping();
+}

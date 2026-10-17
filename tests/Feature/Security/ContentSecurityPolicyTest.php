@@ -179,7 +179,7 @@ class ContentSecurityPolicyTest extends TestCase
 
         $this->actingAs($admin, 'web');
 
-        foreach (['/dashboard', route('users.index')] as $uri) {
+        foreach (['/dashboard', route('users.index'), '/vantage', '/vantage/jobs', '/vantage/tags'] as $uri) {
             $this->assertNoInlineHandler($this->get($uri), $uri);
         }
     }
@@ -259,16 +259,18 @@ class ContentSecurityPolicyTest extends TestCase
     }
 
     /**
-     * `'unsafe-eval'` exists on exactly one route: `/pulse`.
+     * `'unsafe-eval'` exists on exactly the two vendor dashboards: `/pulse` and
+     * `/vantage`.
      *
      * Pulse inlines Livewire's normal build, whose Alpine evaluates every
      * `x-data`/`wire:*` expression with `new Function` — blocked without it, so
-     * every `#[Lazy]` card stays on its skeleton forever. The other half of the
-     * assertion is the one that matters for safety: the relaxation is scoped by
-     * route name, so an XSS hole is not being opened application-wide to make
-     * one vendor page render.
+     * every `#[Lazy]` card stays on its skeleton forever. Vantage's layout loads
+     * Tailwind's Play CDN, which compiles utility classes the same way. The other
+     * half of the assertion is the one that matters for safety: the relaxation is
+     * scoped by route name, so an XSS hole is not being opened application-wide to
+     * make two vendor pages render.
      */
-    public function test_only_the_pulse_route_grants_unsafe_eval(): void
+    public function test_only_the_vendor_dashboards_grant_unsafe_eval(): void
     {
         $admin = User::factory()->create(['email_verified_at' => now()]);
         $admin->assignRole(SystemRole::SUPERADMIN);
@@ -276,6 +278,7 @@ class ContentSecurityPolicyTest extends TestCase
         $this->actingAs($admin, 'web');
 
         $pulse = $this->directives($this->policyOf($this->get('/pulse')));
+        $vantage = $this->directives($this->policyOf($this->get('/vantage')));
         $dashboard = $this->directives($this->policyOf($this->get('/dashboard')));
         $login = $this->directives($this->policyOf($this->get('/login')));
 
@@ -285,8 +288,44 @@ class ContentSecurityPolicyTest extends TestCase
         $this->assertStringContainsString("'nonce-", $pulse['script-src'] ?? '');
         $this->assertStringNotContainsString("'unsafe-inline'", $pulse['script-src'] ?? '');
 
-        $this->assertStringNotContainsString("'unsafe-eval'", $dashboard['script-src'] ?? '', 'the eval allowance leaked past the Pulse route');
-        $this->assertStringNotContainsString("'unsafe-eval'", $login['script-src'] ?? '', 'the eval allowance leaked past the Pulse route');
+        $this->assertStringContainsString("'unsafe-eval'", $vantage['script-src'] ?? '', "Vantage's Tailwind Play CDN needs it");
+        $this->assertStringContainsString("'nonce-", $vantage['script-src'] ?? '');
+        $this->assertStringNotContainsString("'unsafe-inline'", $vantage['script-src'] ?? '');
+
+        $this->assertStringNotContainsString("'unsafe-eval'", $dashboard['script-src'] ?? '', 'the eval allowance leaked past the vendor routes');
+        $this->assertStringNotContainsString("'unsafe-eval'", $login['script-src'] ?? '', 'the eval allowance leaked past the vendor routes');
+    }
+
+    /**
+     * Vantage's two extra script origins travel only with the `vantage.*` route.
+     *
+     * The vendor layout pulls Tailwind's Play CDN and Chart.js from
+     * `cdn.jsdelivr.net`; both are named origins, and both must be absent from
+     * every other page — an allowlist that leaked would be a second source an XSS
+     * payload could load from.
+     */
+    public function test_the_vantage_cdn_origins_are_scoped_to_the_vantage_route(): void
+    {
+        $admin = User::factory()->create(['email_verified_at' => now()]);
+        $admin->assignRole(SystemRole::SUPERADMIN);
+
+        $this->actingAs($admin, 'web');
+
+        $vantage = $this->directives($this->policyOf($this->get('/vantage')));
+
+        $this->assertStringContainsString('https://cdn.tailwindcss.com', $vantage['script-src'] ?? '');
+        $this->assertStringContainsString('https://cdn.jsdelivr.net', $vantage['script-src'] ?? '');
+        // Lucide's source map is a `connect-src` fetch; it is the only reason
+        // unpkg needs to be in Vantage's connect-src.
+        $this->assertStringContainsString('https://unpkg.com', $vantage['connect-src'] ?? '');
+
+        foreach (['/dashboard', '/login'] as $uri) {
+            $other = $this->directives($this->policyOf($this->get($uri)));
+
+            $this->assertStringNotContainsString('https://cdn.tailwindcss.com', $other['script-src'] ?? '', "the Tailwind CDN leaked onto {$uri}");
+            $this->assertStringNotContainsString('https://cdn.jsdelivr.net', $other['script-src'] ?? '', "the jsDelivr CDN leaked onto {$uri}");
+            $this->assertStringNotContainsString('https://unpkg.com', $other['connect-src'] ?? '', "the unpkg connect allowance leaked onto {$uri}");
+        }
     }
 
     /**
@@ -331,5 +370,52 @@ class ContentSecurityPolicyTest extends TestCase
         }
 
         $this->assertGreaterThan(0, $inline, 'the Pulse page carries no inline script, so this probe proves nothing');
+    }
+
+    /**
+     * Every inline `<script>` on the Vantage pages carries the policy's nonce.
+     *
+     * The vendor layouts write their scripts without one, so the app overrides
+     * four of them (`resources/views/vendor/vantage/`); this is the probe that
+     * fails if an upgrade drifts one back, or if a fifth page ships a script the
+     * override missed. Read through the DOM for the same reason the Pulse probe
+     * is: the chart script inlines a JSON payload, and a regex over raw HTML is
+     * the wrong tool for script content.
+     */
+    public function test_every_script_on_the_vantage_pages_carries_the_policys_nonce(): void
+    {
+        $admin = User::factory()->create(['email_verified_at' => now()]);
+        $admin->assignRole(SystemRole::SUPERADMIN);
+
+        $this->actingAs($admin, 'web');
+
+        foreach (['/vantage', '/vantage/jobs', '/vantage/tags'] as $uri) {
+            $response = $this->get($uri);
+            $nonce = $this->nonceOf($this->policyOf($response));
+
+            $document = new DOMDocument();
+            $previous = libxml_use_internal_errors(true);
+            $document->loadHTML((string) $response->getContent());
+            libxml_clear_errors();
+            libxml_use_internal_errors($previous);
+
+            $inline = 0;
+
+            foreach ($document->getElementsByTagName('script') as $script) {
+                if ($script->getAttribute('src') !== '') {
+                    continue;
+                }
+
+                $inline++;
+
+                $this->assertSame(
+                    $nonce,
+                    $script->getAttribute('nonce'),
+                    "a script on {$uri} is not the one the policy nonced — the browser refuses to run it and the page stays half dead",
+                );
+            }
+
+            $this->assertGreaterThan(0, $inline, "{$uri} carries no inline script, so this probe proves nothing");
+        }
     }
 }

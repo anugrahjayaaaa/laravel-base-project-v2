@@ -90,6 +90,11 @@ return [
             'group' => 'Monitoring',
             'description' => 'Live ok/fail status of database, cache, queue and storage.',
         ],
+        'vantage' => [
+            'label' => 'Queue Monitor (Vantage)',
+            'group' => 'Monitoring',
+            'description' => 'Per-attempt job history, failure detail, retry chains and live queue depth.',
+        ],
     ],
 
     /*

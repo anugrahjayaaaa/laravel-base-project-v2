@@ -176,6 +176,11 @@ class ChannelParityTest extends TestCase
             'web' => ['health.index'],
             'why' => 'The data twin is `GET /api/v1/health` — deliberately UNNAMED and ungated, because its caller is an uptime monitor that cannot log in, so a name-keyed map cannot see it and must not name it. The web page renders the same checks inside the admin behind `feature:health` + `health.view`.',
         ],
+        'vantage queue monitor' => [
+            'only' => 'web',
+            'web' => ['vantage.dashboard', 'vantage.jobs', 'vantage.jobs.show', 'vantage.tags', 'vantage.failed', 'vantage.jobs.retry'],
+            'why' => 'A third-party dashboard owning its own UI, like `pulse dashboard`: an API wrapper would be a second surface over queued-job rows the queue backend already exposes. Declared behind `feature:vantage` + `queues.*`. The retry action reads the queue, so it too is a dashboard surface, not an API capability of this app.',
+        ],
     ];
 
     /**

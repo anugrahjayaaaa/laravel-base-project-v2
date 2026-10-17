@@ -65,11 +65,15 @@ class PermissionSeedTest extends TestCase
         // `pulse` and `health` join in Phase 11 Group B, in the same change
         // that overrides Pulse's `viewPulse` gate and registers
         // `health.index` behind `feature:health` + `->can('health.view')`.
+        //
+        // `queues` joins in Phase 11 with Vantage, in the same change that
+        // registers the six `vantage.*` routes behind `feature:vantage` +
+        // `->can('queues.view')` (retry behind `queues.retry`).
         // The expected list is updated HERE rather than the assertion loosened:
         // a stale list is a stale fixture, and dropping the assertion would
         // leave the guard guarding nothing at all.
         $this->assertEqualsCanonicalizing(
-            ['users', 'roles', 'permissions', 'settings', 'notifications', 'features', 'audit', 'pulse', 'health'],
+            ['users', 'roles', 'permissions', 'settings', 'notifications', 'features', 'audit', 'pulse', 'health', 'queues'],
             array_keys(PermissionCatalog::grouped()),
             'The catalogue has a group with no feature behind it.'
         );

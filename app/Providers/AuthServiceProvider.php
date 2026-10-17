@@ -38,6 +38,7 @@ class AuthServiceProvider extends ServiceProvider
         ThrottleRequests::shouldHashKeys(false);
         $this->configureSuperAdmin();
         $this->configurePulseGate();
+        $this->configureVantageGate();
         $this->configureRateLimiters();
         $this->configurePasswordResetNotification();
         $this->configureEmailVerification();
@@ -86,6 +87,24 @@ class AuthServiceProvider extends ServiceProvider
     protected function configurePulseGate(): void
     {
         Gate::define('viewPulse', fn (User $user): bool => $user->can('pulse.view'));
+    }
+
+    /**
+     * Override Vantage's own `viewVantage` gate with the `queues.view` permission.
+     *
+     * Vantage defines `viewVantage` as "any authenticated user" at
+     * `vendor/storviaio/vantage/src/VantageServiceProvider.php` and reads it from
+     * its `AuthorizeVantage` middleware. The application declares the Vantage
+     * routes itself (`config/vantage.php` → `routes => false`) with
+     * `can:queues.*`, so this gate is NOT what our routes consult — it is the
+     * safety net for the package's own middleware: were `routes` ever re-enabled,
+     * the default would open the queue dashboard to every logged-in account,
+     * while this override keeps it on the permission. Same overwrite-by-name
+     * mechanism as `configurePulseGate()` (package provider boots first).
+     */
+    protected function configureVantageGate(): void
+    {
+        Gate::define('viewVantage', fn (User $user): bool => $user->can('queues.view'));
     }
 
     /**
