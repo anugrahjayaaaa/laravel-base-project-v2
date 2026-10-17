@@ -8,6 +8,7 @@ use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 use App\Http\Middleware\VerifyCsrfToken;
 use App\Models\RoleLookup;
+use App\Models\SystemSetting;
 use Database\Seeders\PermissionSeeder;
 use Database\Seeders\RoleSeeder;
 use Database\Seeders\SystemSettingSeeder;
@@ -141,5 +142,23 @@ class ThrottleJsonResponseTest extends TestCase
             ->post(route('users.deactivate', $target))
             ->assertStatus(302)
             ->assertSessionHasErrors('user');
+    }
+
+    /**
+     * A route with no web branch, called by a machine that sends no `Accept`
+     * header — an uptime monitor. `expectsJson()` is false for that caller, so
+     * the builder's web branch would have answered `back()`: a 302 to `/`,
+     * which a monitor that follows redirects reads as a 200 login page and
+     * therefore as UP — the one answer a health check must never give while it
+     * is refusing to answer.
+     */
+    public function test_a_route_with_no_web_branch_answers_json_without_an_accept_header(): void
+    {
+        SystemSetting::set('health_rate_limit_per_minute', '2');
+
+        $this->get('/api/v1/health')->assertOk();
+        $this->get('/api/v1/health')->assertOk();
+
+        $this->assertThrottledForJson($this->get('/api/v1/health'));
     }
 }
