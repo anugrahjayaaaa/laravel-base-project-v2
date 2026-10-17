@@ -579,6 +579,26 @@
                                     <div class="invalid-feedback d-block" id="send_test_mail_rate_limit_per_minute_error">{{ $message }}</div>
                                 @enderror
                             </div>
+
+                            <div class="col-12">
+                                <h6 class="text-body-secondary text-uppercase small fw-semibold mb-0 mt-1">System Health</h6>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label for="health_rate_limit_per_minute" class="form-label">
+                                    Health Endpoint
+                                    <i class="bi bi-info-circle text-muted fs-7 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Requests per minute to GET /api/v1/health, counted per IP address. That endpoint has no login, so an address is the only unit there is — raise this if monitors or app clients share one."></i>
+                                </label>
+                                <div class="input-group">
+                                    <input type="number" name="health_rate_limit_per_minute" id="health_rate_limit_per_minute"
+                                           class="form-control form-control-sm @error('health_rate_limit_per_minute') is-invalid @enderror" @error('health_rate_limit_per_minute') aria-invalid="true" aria-describedby="health_rate_limit_per_minute_error" @enderror
+                                           value="{{ old('health_rate_limit_per_minute', $settings['health_rate_limit_per_minute'] ?? 120) }}" min="1" max="600">
+                                    <span class="input-group-text bg-body-tertiary">/ min</span>
+                                </div>
+                                @error('health_rate_limit_per_minute')
+                                    <div class="invalid-feedback d-block" id="health_rate_limit_per_minute_error">{{ $message }}</div>
+                                @enderror
+                            </div>
                         </div>
                     </div>
                 </div>

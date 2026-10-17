@@ -130,6 +130,11 @@ class SystemSettingsUpdateAction
             'user_state_actions_rate_limit_per_minute' => (string) ($data['user_state_actions_rate_limit_per_minute'] ?? 15),
             'bulk_action_rate_limit_per_minute' => (string) ($data['bulk_action_rate_limit_per_minute'] ?? 5),
             'send_test_mail_rate_limit_per_minute' => (string) ($data['send_test_mail_rate_limit_per_minute'] ?? 5),
+
+            // Phase 11 A1. The default matches the limiter's own fallback and
+            // the seeder, so a payload that omits the field — an API client
+            // that never heard of it — leaves the ceiling where it was.
+            'health_rate_limit_per_minute' => (string) ($data['health_rate_limit_per_minute'] ?? 120),
         ];
 
         $graceEnabled = $updates['inactivity_lock_grace_enabled'] === 'true';

@@ -101,6 +101,14 @@ class SystemSettingSeeder extends Seeder
         SystemSetting::set('bulk_action_rate_limit_per_minute', '5');
         SystemSetting::set('send_test_mail_rate_limit_per_minute', '5');
 
+        // The health endpoint's ceiling — Phase 11 A1. The one limiter in the
+        // app whose unit is a shared IP rather than a person, so the default is
+        // 120/min (2/s) where the per-user limiters use 3-15. It is a setting
+        // for the same reason as the three above, and more so: the address in
+        // the counter can be a whole carrier's NAT, and the operator who
+        // discovers that has to be able to raise it without a deploy.
+        SystemSetting::set('health_rate_limit_per_minute', '120');
+
         // Mail transport — Phase 9 Group B.
         //
         // Seeded from the .env values this app already boots with, so an install
