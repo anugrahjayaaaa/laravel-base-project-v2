@@ -168,6 +168,30 @@ Each entry contains:
 
 ---
 
+## 2026-10-16 — Vantage queue monitor installed and gated (supersedes Phase 11 D-1)
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-10-16 |
+| **Change** | Installed `storviaio/vantage ^0.1.25` and put it behind this project's two gates. `config/vantage.php` (published) sets `routes => false` and `store_payload => false`; `routes/web.php` declares the six web routes under `feature:vantage` with `can:queues.view` on the reads and `can:queues.retry` on the retry POST. `queues.view`/`queues.retry` added to `PermissionCatalog`, a `vantage` flag to `config/pennant.php` (group Monitoring), a `Queue Monitor` sidebar entry, and a `viewVantage` gate override in `AuthServiceProvider` → `queues.view`. `vantage:prune --force --keep-processing` runs daily. New `tests/Feature/Vantage/VantagePermissionGateTest` (7 cases). |
+| **Reason** | Owner decision 2026-10-16 reversed the Phase 11 D-1 deferral: the two gaps Vantage closes are real (Pulse's queue card is a throughput graph, not a live backlog count; `failed_jobs` keeps one row per job, so the retry chain is lost). D-2's objection — that Pennant cannot gate a vendor route — dissolves once the app declares the routes itself, which is the option D-1 had listed as an accepted, deferred cost. The package defaults (`viewVantage` admits any authenticated user; `store_payload` true) are its own stated need for an explicit decision. |
+| **Impact** | New `vantage_jobs` / `vantage_job_tags` tables in the base schema. Existing installs MUST run `php artisan db:seed --class=FeatureFlagSeeder` (fail-closed Pennant store) or `/vantage` 403s for everyone, superadmin included. **Known follow-up:** the vendor layout loads two third-party CDN scripts and an inline script with no nonce, so under the nonce-only CSP the dashboard renders unstyled until `AddSecurityHeaders::policy()` is scoped to `vantage.*` like `pulse` (deferred — it widens `script-src`). |
+| **Related** | ADR-022, D-1/D-2 (superseded), P11-B1..B4, `phase-11-monitoring-observability.md` §13, `tests/Feature/Vantage/VantagePermissionGateTest.php` |
+
+---
+
+## 2026-10-17 — Vantage retry answers from `failed_jobs` (ADR-022, decision 7)
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-10-17 |
+| **Change** | `AppServiceProvider::register()` now binds `Storvia\Vantage\Support\JobRestorer` to the new `App\Support\Vantage\FailedJobPayloadRestorer`. When `vantage_jobs.payload` is empty (this project's `store_payload => false`), the restorer reads the job's raw payload back from `queue.failer` — the `failed_jobs` record `queue:retry` reads — keyed on the payload uuid Vantage already stores per attempt, and hands it to the package's own `JobRestorer::restore()` unchanged, `class_exists`/`allowed_classes`/`instanceof` checks included. New `tests/Feature/Vantage/VantageRetryTest` (3 cases: restored from the framework record; refused with nothing dispatched when the record is gone; the Vantage payload still wins when it exists). ADR-022 gained decision 7, and `config/vantage.php` + `docs/base/features/monitoring.md` record that retry does not depend on `store_payload`. A manual check ships with it: `php artisan queue:probe-failure` dispatches `App\Jobs\QueueFailureProbe`, one job that always throws, so an operator can produce the `failed_jobs` + `vantage_jobs` pair on demand and press Retry to watch the chain. |
+| **Reason** | `POST /vantage/jobs/{id}/retry` was shipped, gated by `queues.retry`, rendered by the vendor's own views — and could never succeed: `PayloadExtractor::getPayload()` returns null when `store_payload` is off, so `JobRestorer::restore()` returned null and every press answered "Unable to restore job. Payload might be missing or corrupted." Nothing in the code said so, because every gate on the route passes. The payload the button needs exists one table away: `WorkCommand::logFailedJob()` writes it for exactly the final attempt Vantage marks `failed`, so the retry reuses that copy instead of switching on the column ADR-022 keeps off — which would persist export filters, model ids and mail arguments for every `queues.view` holder to read. |
+| **Impact** | Retry works without a second copy of any job payload. No route, permission, gate, flag or `config/vantage.php` value changes; `vantage_jobs.payload` stays empty. New dependency to know about: a retry now needs the failed-job record, so `queue:flush` / `queue:prune-failed` empties it while `vantage_jobs` lives on for `vantage.retention_days` (14) — those rows refuse the retry, logged as `Queue Monitor: no failed-job record for this retry`, because the vendor's button stays visible. Rows whose job class is a queued notification or mailable were already unrestorable (the vendor validates the `SendQueued*` job class while the payload holds the Notification/Mailable) — unchanged. |
+| **Related** | ADR-022, Phase 11 §13, `docs/base/features/monitoring.md`, `tests/Feature/Vantage/VantageRetryTest.php`, `app/Support/Vantage/FailedJobPayloadRestorer.php` |
+
+---
+
 ## 2026-10-14 — Phase 10: the audit export handed a spreadsheet a formula
 
 | Field | Value |

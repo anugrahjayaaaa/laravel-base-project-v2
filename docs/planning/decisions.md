@@ -361,3 +361,81 @@ that a genuinely destructive migration cannot be undone quickly; the dump is
 the only route, and it costs a maintenance window.
 
 **Related**: ADR-019, `bin/deploy-rollback.sh`, `.github/workflows/ci-cd.yml`
+
+## ADR-022: Vantage queue monitor, gated like every other module (supersedes D-1)
+
+**Status**: Accepted 2026-10-16 — supersedes the "recommendation stands: not
+yet" deferral recorded as D-1 in
+[phase-11-monitoring-observability.md](phase-11-monitoring-observability.md) §6.
+
+**Context**: Phase 11 named `storviaio/vantage` as its second dashboard but
+deferred the install (D-1), on four findings read from the package *source*: its
+`viewVantage` gate admits any authenticated user, `store_payload` defaults to
+`true`, its config has no `middleware` key and its provider calls
+`loadRoutesFrom()` bare (so there is no hook for `feature:vantage`), and it is a
+single-maintainer package that has already changed owners. The owner revisited
+the deferral on 2026-10-16 and chose to install it, because the two gaps it
+closes are real: Pulse's queues card is a throughput graph, not a live backlog
+count, and `failed_jobs` keeps one row per job, so the retry chain is lost — the
+stack trace that survives is the one that did not explain the first failure.
+
+**Decision**: Install `storviaio/vantage ^0.1.25` and impose this project's
+standard on it rather than accept its defaults.
+
+1. **The app declares the routes, not the package.** `config/vantage.php` sets
+   `routes => false`; `routes/web.php` declares the six web routes so they carry
+   `feature:vantage` and `can:queues.*` — the same two gates `/pulse` and
+   `/health` have. The vendor group cannot be given middleware, which is exactly
+   what D-2 recorded as the reason Pennant "does not fit"; declaring the routes
+   removes the objection. Route names stay the vendor's (`vantage.*`) because its
+   Blade views build every link from them.
+2. **`queues.view` + `queues.retry` in `PermissionCatalog`.** Reading the queue
+   and re-queueing a job are different acts, on the `audit.view`/`audit.export`
+   rule; `queues.retry` guards the one mutating route.
+3. **`viewVantage` gate overridden** in `AuthServiceProvider` to `queues.view`,
+   neutralising the package default ("any authenticated user"). Our routes use
+   `can:` and do not consult it — it is the safety net for the package's own
+   `AuthorizeVantage` middleware if vendor routes were ever re-enabled.
+4. **`store_payload => false`.** The package default (`true`) persists full job
+   payloads; redaction covers named keys, not the export filters, model ids and
+   mail arguments this project's jobs carry.
+5. **`vantage:prune` on the scheduler**, daily, `--force --keep-processing`,
+   reading `vantage.retention_days`. `vantage_jobs` is otherwise unswept.
+6. **The JSON API stays off** (`vantage.api.enabled` keeps the package default
+   `false`) — the one-sidedness `ChannelParityTest` records for Pulse and health.
+
+7. **Retry answers from the framework's failed-job payload, not a Vantage one.**
+   With `store_payload => false` the vendor's retry could never succeed: it
+   re-dispatches the job from `vantage_jobs.payload`, which is always null here,
+   so every press answered "Payload might be missing or corrupted".
+   `AppServiceProvider::register()` binds
+   `Storvia\Vantage\Support\JobRestorer` to
+   `App\Support\Vantage\FailedJobPayloadRestorer`, which falls back to
+   `queue.failer` — the `failed_jobs` row `queue:retry` reads, written by the
+   worker on the same final attempt Vantage marks `failed` — keyed on the
+   payload uuid both stores already share, and hands it to the package's own
+   restore path so its `class_exists`/`allowed_classes`/`instanceof` checks
+   still apply.
+
+`VANTAGE_ENABLED` stays the deploy-time switch (like `PULSE_ENABLED`); the new
+`vantage` Pennant flag is the runtime kill switch.
+
+**Consequences**: A fourth source of truth for job data beside Pulse,
+`failed_jobs` and the log, plus a `vantage_jobs` / `vantage_job_tags` pair in the
+base schema and a nightly prune to own. The declared routes can drift on a vendor
+upgrade (a new vendor route would be invisible) — accepted, and the reason the
+route names are pinned to the vendor's. Item 7 makes retry the one path that
+depends on two stores agreeing: `failed_jobs` keeps the payload, `vantage_jobs`
+keeps the attempt, and only their overlap is retryable — an operator who flushes
+the failed jobs (or `queue:prune-failed`) loses retries for rows Vantage still
+shows for `vantage.retention_days` (14), which the restorer logs rather than
+dispatches wrongly. Accepted, because the alternative is the payload column this
+ADR keeps empty. One follow-up is **unresolved**: the
+vendor's Blade layout loads `https://cdn.tailwindcss.com` and `https://unpkg.com`
+and its inline script carries no nonce, so under the nonce-only CSP the dashboard
+renders unstyled until `AddSecurityHeaders::policy()` is scoped to `vantage.*`
+as it already is to `pulse` — deferred because that widens `script-src` to two
+third-party CDNs, a security decision of its own.
+
+**Related**: ADR-008, DEP-004, D-1/D-2 (superseded), P11-B1..B4,
+`docs/base/features/monitoring.md`, `tests/Feature/Vantage/VantagePermissionGateTest.php`

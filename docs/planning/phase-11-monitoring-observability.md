@@ -195,7 +195,7 @@ jobs, queue naming is expensive; a wrong dashboard choice is not.
 
 ## 6. Decisions taken — and the one that needed Jaya
 
-**D-1 — Pulse only, layered (Jaya, 2026-10-12).** Horizon is Redis-only and this
+**D-1 — Pulse only, layered (Jaya, 2026-10-12). [SUPERSEDED 2026-10-16 by [ADR-022](decisions.md) — Vantage was installed and gated; the body below is kept as the record of the deferral it reversed.]** Horizon is Redis-only and this
 project's `.env` runs `redis` while `.env.example` defaults to `database` — a
 base template must survive that fork, so Horizon is evaluated out. Vantage was
 checked in *its source*, not its README, and carries four problems: its
@@ -331,6 +331,7 @@ Phase 7 in most environments; `health` is the new one.
 | P11-A2, A3, A4 | Health page, sidebar entry, render gate | A | **DONE 2026-10-15** (new) — A4's "every feedback div d-block + aria-describedby" step is N/A: the page has no form fields (stated in the test's docblock) |
 | P11-D1 | Audit trail | D | **N/A by design** — read-only dashboards |
 | P11-F1, F6 | Full suite, changelog entry | F | F1 **re-measured green 2026-10-16: 2016 passed / 6940 assertions, 0 failures** on the audit-closure tree (pre-audit HEAD `f6f262b`: 2014/6936) — supersedes the 2009/6907 run, which predated the three post-F1 fixes (CSP nonce, Pulse cache store, new-tab entry) and the D-3 case. Baseline before Phase 11: 1959. F6 **DONE** — README row (`docs/planning/README.md`) plus the changelog entry "Phase 11 Groups A–C and E shipped" (2026-10-16) |
+| P11-G1 | **Vantage queue monitor installed + gated** (supersedes D-1) | — | **DONE 2026-10-16** — `storviaio/vantage ^0.1.25`; `config/vantage.php` published with `routes => false` + `store_payload => false`; the six web routes declared in `routes/web.php` under `feature:vantage` with `can:queues.view` (reads) / `can:queues.retry` (retry); `queues.view`+`queues.retry` in `PermissionCatalog`; `viewVantage` gate override; `vantage` flag; Monitoring sidebar entry; `vantage:prune` daily; `tests/Feature/Vantage/VantagePermissionGateTest` (7 cases). See ADR-022. |
 
 F2–F5 were already done and independent of the code tasks — the docs describe
 the target state, and Groups A–C are what make the code match them.
@@ -407,6 +408,19 @@ cross-phase, and P10-E14 (the queue conventions) with it. Both are summarised in
 Group E and §13 above so the full argument is in one place; the evidence trail
 is in §11 there.
 
+> **UPDATE 2026-10-16 — Vantage is INSTALLED. D-1 is superseded by [ADR-022](decisions.md).**
+> The owner reversed the deferral. `storviaio/vantage ^0.1.25` is in `require`
+> and gated like Pulse: `config/vantage.php` sets `routes => false` (the app
+> declares the six web routes in `routes/web.php` so they carry `feature:vantage`
+> + `can:queues.view`/`can:queues.retry`), `store_payload` is forced `false`, a
+> `viewVantage` gate override maps to `queues.view`, `queues.view`/`queues.retry`
+> are in `PermissionCatalog`, a `vantage` flag sits under Monitoring, and
+> `vantage:prune` runs daily. Pinned by
+> `tests/Feature/Vantage/VantagePermissionGateTest` (7 cases). One follow-up is
+> unresolved: the vendor layout's two CDN scripts and nonce-less inline script
+> are blocked by the CSP, so the page renders unstyled until
+> `AddSecurityHeaders::policy()` is scoped to `vantage.*` as it is to `pulse`.
+
 ### What exists today
 
 | | Status |
@@ -415,7 +429,7 @@ is in §11 there.
 | `feature:pulse` + `pulse.view` | flag shipped (Phase 7), permission + gate override + gate tests shipped (P11-B1..B4, 2026-10-15) |
 | `failed_jobs` table | migrated. `queue:failed` / `queue:retry` / `queue:flush` |
 | `laravel/horizon` | **not installed, and evaluated out.** Redis-only — no configuration runs it over the `jobs` table. `.env` runs `redis` while `.env.example` defaults to `database`, and a base project template has to survive that fork |
-| `storviaio/vantage` | **not installed. This is Phase 11's item, and the recommendation stands: not yet** |
+| `storviaio/vantage` | **INSTALLED `^0.1.25` 2026-10-16** — D-1 superseded by ADR-022; gated with `feature:vantage` + `queues.view`/`queues.retry` (see the update note above) |
 
 ### The gap Vantage would close
 

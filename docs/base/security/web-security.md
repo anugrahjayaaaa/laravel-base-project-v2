@@ -52,33 +52,54 @@ where a view renders.
 
 | Directive | Value | Reason |
 |-----------|-------|--------|
-| `script-src` | `'self' 'nonce-…'` (+ `'unsafe-eval'` on `/pulse` only) | The XSS primitive. A nonce and nothing else: no `'unsafe-inline'`, so an injected `<script>`, a surviving inline handler or a `javascript:` URL does not run. `/pulse` adds `'unsafe-eval'` alone — see below. |
+| `script-src` | `'self' 'nonce-…'` (+ `'unsafe-eval'` on `/pulse` and `/vantage`) | The XSS primitive. A nonce and nothing else: no `'unsafe-inline'`, so an injected `<script>`, a surviving inline handler or a `javascript:` URL does not run. The two vendor dashboards add `'unsafe-eval'` alone — see below. |
 | `style-src` | `'self' 'unsafe-inline'` | Accepted compromise — see below. |
 | `img-src` / `font-src` | `'self' data:` + allowed origins | Inline SVG and data URIs on the notification and channel screens. |
-| `connect-src` | `'self'` (+ the dev server while it runs) | The two pollers fetch from this origin and nowhere else. |
+| `connect-src` | `'self'` (+ `https://unpkg.com` on `/vantage`, + the dev server while it runs) | The two pollers fetch from this origin and nowhere else; Vantage's Lucide source map is the one cross-origin fetch. |
 | `object-src` / `base-uri` / `form-action` | `'none'` / `'self'` / `'self'` | The three exfiltration routes that are not script. |
 | `frame-ancestors` | `'none'` | Answers the `X-Frame-Options` row above; the header itself is not sent. |
 
 Allowed external origins are the asset allowlist, named once in the middleware:
 `https://fonts.bunny.net` (fonts) and `https://unpkg.com` (Stoplight Elements on
 `/docs/api`). Naming an origin is the allowlist doing its job — a path-shaped
-exemption breaks the moment the path moves.
+exemption breaks the moment the path moves. Two more origins —
+`https://cdn.tailwindcss.com` and `https://cdn.jsdelivr.net` (Tailwind's Play CDN
+and Chart.js, both loaded by Vantage's vendor layout) — join `script-src` **only**
+on `vantage.*`, so the allowlist does not grow for the pages that do not use them.
 
-**`'unsafe-eval'` on `/pulse`, and there only.** Pulse inlines Livewire's normal
-JavaScript build (`Pulse::js()` hardcodes `dist/livewire.js`, so the CSP-safe
-build is never in play), and that build's Alpine evaluates every `x-data` and
-`wire:*` expression by constructing a function — `new Function`, which CSP blocks
-unless `script-src` names `'unsafe-eval'`. Without it the page is 200 but every
-expression throws: the `#[Lazy]` cards never leave their `animate-pulse`
-skeletons and the dashboard sits loading forever. The allowance is scoped by
-**route name** (`policy($nonce, $request->routeIs('pulse'))`, evaluated after
-`$next()` when the route is already resolved), not by a path string, so it cannot
-outlive a route move — and Livewire is used nowhere else in this application, so
-no other page's policy changes. What the exception does not concede: the nonce
-stays mandatory (it is not `'unsafe-inline'`), so a raw injected `<script>` still
-does not run. What it concedes is that an injected Alpine expression on that one
-read-only, permission-gated, feature-flagged observability page could evaluate —
-the cost accepted for a vendor page this application does not write.
+**`'unsafe-eval'` on the two vendor dashboards, and there only.** Both are pages
+this application does not write, and both ship a script that builds code at run
+time:
+
+- `/pulse` inlines Livewire's normal JavaScript build (`Pulse::js()` hardcodes
+  `dist/livewire.js`, so the CSP-safe build is never in play), and that build's
+  Alpine evaluates every `x-data` and `wire:*` expression by constructing a
+  function — `new Function`, which CSP blocks unless `script-src` names
+  `'unsafe-eval'`. Without it the page is 200 but every expression throws: the
+  `#[Lazy]` cards never leave their `animate-pulse` skeletons and the dashboard
+  sits loading forever.
+- `/vantage` loads Tailwind's Play CDN, which compiles the utility classes it sees
+  in the DOM into a stylesheet the same way. Without `'unsafe-eval'` the page is
+  200 and completely unstyled.
+
+The allowance is scoped by **route name** (`policy($nonce, $request->routeIs('pulse'),
+$request->routeIs('vantage.*'))`, evaluated after `$next()` when the route is
+already resolved), not by a path string, so it cannot outlive a route move — and
+neither script runs anywhere else in this application, so no other page's policy
+changes. What the exception does not concede: the nonce stays mandatory (it is not
+`'unsafe-inline'`), so a raw injected `<script>` still does not run. What it
+concedes is that an injected Alpine or Tailwind expression on those read-only,
+permission-gated, feature-flagged observability pages could evaluate — the cost
+accepted for two vendor pages this application does not write.
+
+**Vendor views are overridden to carry the nonce.** A package view is not a view
+this application can add `<script @nonce>` to, so the four Vantage views that ship
+an inline script are overridden under `resources/views/vendor/vantage/`
+(`loadViewsFrom` registers that path ahead of the package's). The vendor's inline
+`onclick`/`onchange` handlers are the same problem as the sortable headers above —
+they never run under this policy — so they are re-bound by id inside the nonced
+script. `ContentSecurityPolicyTest` reads the rendered Vantage pages through the
+DOM and fails if an upgrade drifts a script back to a nonce-less `<script>`.
 
 **Nonce, not a hash list.** Thirteen inline `<script>` blocks across twelve views,
 three more on the API docs page: a hash list would mean re-hashing all sixteen

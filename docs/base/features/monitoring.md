@@ -12,6 +12,7 @@ Observability
 ├── Security Logs        (Security-relevant events: failed login, lock, etc.)
 ├── Server Logs          (Infrastructure/server problems)
 ├── Laravel Pulse        (Runtime metrics dashboard: queue, cache, exceptions)
+├── Queue Monitor        (Vantage: live backlog, job payloads, retry chain)
 └── System Health        (Operational status)
 ```
 
@@ -24,6 +25,7 @@ Observability
 | Security Logs | Security-relevant events (failed login, account lock, reset activity, violations) | Security team, developers | Typically shorter than audit (see retention.md) |
 | Server Logs | Infrastructure problems (web server, PHP-FPM, OS, reverse proxy) | SREs, platform | Managed by deployment infrastructure |
 | Laravel Pulse | Runtime metrics: queue depth, cache behaviour, exception rate, slow requests | Technical users (read-only) | Pulse's own retention config |
+| Queue Monitor (Vantage) | Live queue backlog, individual job rows and their retry chain | Technical users (read-only; retry is a separate permission) | `vantage.retention_days`, swept daily by `vantage:prune` |
 | System Health | Operational readiness checks | Monitoring tools, SREs | Live/operational |
 
 ## Separation of Concerns
@@ -175,8 +177,97 @@ The API endpoint above and this dashboard answer the same service checks at two
 authorization levels: machine-to-machine without a login, and inside the admin
 with the full treatment.
 
+## Queue Monitor (Vantage, web)
+
+`storviaio/vantage ^0.1.25` at `/vantage` (Phase 11 MONITOR-003, ADR-022). It
+closes the two gaps Pulse's queues card leaves: Pulse shows a throughput graph,
+not a live backlog count, and `failed_jobs` keeps one row per job, so the retry
+chain that explains the *first* failure is lost. Vantage keeps every attempt.
+
+| Piece | Where |
+|---|---|
+| Routes | `routes/web.php` — the six `vantage.*` web routes, declared by the app (not the package) |
+| Config | `config/vantage.php` — `routes => false`, `store_payload => env('VANTAGE_STORE_PAYLOAD', false)`, `enabled => env('VANTAGE_ENABLED', true)` |
+| Sidebar | `AppMenuComposer` — `Queue Monitor`, Monitoring group, `queues.view` + `feature:vantage` |
+
+### Access — two independent gates
+
+Same deliberate shape as `/pulse` and `/health`:
+
+| Gate | Kind | Enforced in |
+|---|---|---|
+| `vantage` feature flag | deploy-time kill switch | route middleware `feature:vantage` (`EnsureFeatureIsEnabled`) |
+| `queues.view` / `queues.retry` | per-role | route middleware `can:queues.*` — `view` on all reads, `retry` on the one POST |
+
+Both failures return 403, so a caller cannot tell which fired. Reading the queue
+and re-queueing a job are different acts, on the `audit.view` / `audit.export`
+rule: `queues.retry` guards only `POST /vantage/jobs/{job}/retry`.
+
+**The app declares the routes, not the package.** The vendor provider calls
+`loadRoutesFrom()` bare, so its routes carry no `feature:`/`can:` middleware and
+the group cannot be given any from config. `config/vantage.php` sets
+`routes => false` and `routes/web.php` re-declares the six routes under the
+admin middleware group. Route names stay the vendor's (`vantage.*`) because its
+Blade views build every link from them.
+
+**The `viewVantage` gate is overridden** in `AuthServiceProvider` to
+`$user->can('queues.view')`. The package default admits *any authenticated user*;
+our routes use `can:` and never consult it, so the override is the safety net for
+the package's own `AuthorizeVantage` middleware if vendor routes were re-enabled.
+
+**`store_payload => false`.** The package default (`true`) persists full job
+payloads; redaction covers named keys, not the export filters, model ids and mail
+arguments this project's jobs carry. Set `VANTAGE_STORE_PAYLOAD=true` only where
+that exposure is understood.
+
+**Retry reads the framework's payload, not a Vantage one.** With
+`store_payload => false` the vendor's retry had nothing to restore, so
+`POST /vantage/jobs/{id}/retry` shipped and could never succeed.
+`JobRestorer` is bound to `App\Support\Vantage\FailedJobPayloadRestorer`
+(`AppServiceProvider::register()`), which falls back to the `failed_jobs` record
+`queue:retry` reads — matched on the payload uuid Vantage already stores — and
+then runs the package's own restore path, security checks included. Two
+consequences worth knowing before reading a refusal: `queue:flush` empties that
+store while `vantage_jobs` lives on, so those rows refuse the retry (logged as
+`Queue Monitor: no failed-job record for this retry`), and a job class that is a
+queued notification or mailable was never restorable either way — the vendor
+validates `job_class` (`SendQueuedNotifications`), while the payload holds the
+Notification itself.
+
+**Checking it by hand.** `php artisan queue:probe-failure` dispatches
+`App\Jobs\QueueFailureProbe`, which always throws on its first attempt, so a
+worker produces both rows these screens read: `failed_jobs` (the payload the
+retry restores from) and `vantage_jobs` (`status = failed`). A worker has to be
+running on `sweeps` — `bin/run-workers.sh local`; `composer dev`'s listener takes
+no `--queue` and answers `default` only. Pressing Retry then queues another
+attempt, which fails the same way: the new row is the proof, and it links back
+through `retried_from_id`.
+
+`vantage:prune --force --keep-processing` runs daily on the scheduler (name
+`vantage-retention`, `withoutOverlapping`) behind `config('vantage.enabled')`.
+`vantage_jobs` is otherwise unswept.
+
+**A declared flag is not an active flag** — the Pennant store is fail-closed, so
+`/vantage` 403s for everyone until `FeatureFlagSeeder` writes the `vantage` row.
+
+**Content Security Policy.** The vendor layouts load Tailwind's Play CDN and
+Chart.js, and inline scripts and `onclick`/`onchange` handlers the nonce-only
+policy refuses. `AddSecurityHeaders::policy()` now scopes two extra `script-src`
+origins (`cdn.tailwindcss.com`, `cdn.jsdelivr.net`) and `'unsafe-eval'` to
+`vantage.*` — the same route-scoped shape `pulse` uses, for the same reason (the
+Play CDN compiles classes with `new Function`). The four vendor views that carry an
+inline script are overridden under `resources/views/vendor/vantage/` to add
+`@nonce`, and their inline handlers are re-bound by id inside the nonced script.
+No `'unsafe-inline'` anywhere; `ContentSecurityPolicyTest` pins all of it. Re-diff
+those four views against `vendor/storviaio/vantage` after every upgrade — the drift
+cost is the same as Pulse's two view overrides. The retry override is the fourth
+project-side dependency on the vendor's internals; an upgrade that changes
+`JobRestorer::restore()`'s signature breaks `FailedJobPayloadRestorer`, which
+`VantageRetryTest` reports.
+
 ## ADR References
 
 - ADR-013: Application Logging Strategy
 - ADR-008: Audit Trail vs Technical Observability separation
 - DEP-004: Laravel Pulse for Technical Observability
+- ADR-022: Vantage queue monitor, gated like every other module
