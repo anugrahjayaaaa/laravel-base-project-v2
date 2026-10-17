@@ -3,8 +3,10 @@
 use App\Enums\AuditExportStatus;
 use App\Jobs\InactivityLockSweep;
 use App\Jobs\PasswordExpirySweep;
+use App\Jobs\QueueFailureProbe;
 use App\Models\AuditExport;
 use App\Models\SystemSetting;
+use App\Support\QueueName;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
@@ -14,6 +16,24 @@ use Illuminate\Support\Facades\Storage;
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
+
+/**
+ * One deliberately failing job, for exercising the queue monitoring screens
+ * (Pulse's queues card, `/vantage`, and Vantage's retry button) by hand.
+ *
+ * A failure only becomes visible through a worker: `failed_jobs` is written by
+ * `queue:work`, not by the dispatch, so this names the worker to have running.
+ * `composer dev`'s listener takes no `--queue`, which means it answers `default`
+ * only and would sit through this job forever — the one place the queue list
+ * lives is `bin/run-workers.sh`, so that is what the output points at.
+ */
+Artisan::command('queue:probe-failure', function () {
+    QueueFailureProbe::dispatch();
+
+    $this->info('Dispatched '.QueueFailureProbe::class.' — it always fails.');
+    $this->line('A worker must be listening to the `'.QueueName::SWEEPS.'` queue: bin/run-workers.sh local');
+    $this->line('Then open /vantage (or /pulse) for the failed row and press Retry.');
+})->purpose('Dispatch one deliberately failing job (queue monitoring + Vantage retry check)');
 
 // Password/security lifecycle sweeps. The schedule runs each minute; the
 // callback dispatches both jobs only at the configured local time.
