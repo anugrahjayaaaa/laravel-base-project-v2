@@ -180,6 +180,18 @@ Each entry contains:
 
 ---
 
+## 2026-10-17 — Phase 11: the ungated health endpoint gets a ceiling and a cached check set (ADR-023)
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-10-17 |
+| **Change** | `GET /api/v1/health` now carries `throttle:health`: a new `RateLimiter::for('health')` keyed on the IP, its number from `SystemSetting::getInt('health_rate_limit_per_minute', 120)` (validated `1..600`, seeded at `120`, with a settings-page field), refusing in JSON regardless of the caller's `Accept` header via the new `jsonOnly` argument on `LoginThrottle::responseFor()`. `HealthCheckService::check()` caches its check set for 10s under `health_check:results`; a store that cannot answer is logged as `health_check.results_cache.failed` and the checks run uncached. New tests: three in `HealthCheckEndpointTest` (a stored set is served instead of the checks re-running; a completed set is stored; an unreachable store is reported rather than thrown — the class gained `RefreshDatabase`, because the limiter reads `system_settings`) and one in `ThrottleJsonResponseTest`. |
+| **Reason** | A read-only performance pass over Phase 11 (finding A1) measured this route as the only endpoint in the app with no gate of any kind: the `api` group's middleware is `[SubstituteBindings]` and there is no `RateLimiter::for('api')`, so nothing bounded the request count, while one uncached run costs seven round trips — a PDO connect, a cache write **and** a read back, a queue `size()` and three storage operations (0 queries on the harness; 3 queries + 1 write on `database`/`database`). Phase 11 §F3 decided the *permission* question deliberately and left the *cost* question open; closing it had to keep the endpoint answerable by a monitor that cannot log in, so the answer is a ceiling plus a cache, not a gate. |
+| **Impact** | The response shape is unchanged. Checks are up to 10s old while `status` and `checks` stay consistent with each other and `timestamp` remains the response time. A database that is down **and** a settings cache that is cold makes the limiter itself 500 before the checks run — the same shape every other limiter in the app already has, and still a non-2xx for the monitor. The one place that answers for a health endpoint must never be less available than the endpoint itself, which is why a failing store is reported as `cache: fail` instead of thrown. `docs/base/security/rate-limiting.md`'s table was re-derived while adding the row: it listed `bulk-action` and `user-state-actions` with no setting key and omitted `send-test-mail` and `audit-export`, and its claim that `user-state-actions` lacks the `expectsJson()` branch was stale. |
+| **Related** | ADR-023, Phase 11 §F3 and finding A1, `docs/base/security/rate-limiting.md`, `tests/Feature/CrossCutting/HealthCheckEndpointTest.php`, `tests/Feature/CrossCutting/ThrottleJsonResponseTest.php` |
+
+---
+
 ## 2026-10-17 — Vantage retry answers from `failed_jobs` (ADR-022, decision 7)
 
 | Field | Value |

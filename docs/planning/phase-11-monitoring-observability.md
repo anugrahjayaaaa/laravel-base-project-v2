@@ -82,6 +82,17 @@ is the ceiling on what it may ever expose. The *web* dashboard over the same
 service is a different matter: it renders who-can-see-what inside the admin, so
 it takes the full permission + flag treatment (B3).
 
+> **Follow-up closed 2026-10-17** (ADR-023; finding A1 of the Phase 11 read-only
+> performance pass). "Ungated" answered the *permission* question and left the
+> *cost* question open: the route sits in the `api` group, whose middleware is
+> `[SubstituteBindings]`, so nothing bounded the request count — and one uncached
+> run is a PDO connect, a cache write **and** a read back, a queue `size()` and
+> three storage operations. It is still ungated. It now also caches the check set
+> for 10s (`health_check:results`) and carries `throttle:health` at
+> `health_rate_limit_per_minute` (120/min, keyed on IP, validated 1..600). The
+> refusal is JSON unconditionally, so a monitor that sends no `Accept` header is
+> not redirected to the login page where it would read as UP.
+
 ### F4 — the API could read settings but not notifications (CLOSED 2026-10-13)
 
 A route audit found the inversion: the API could read a user's notification
@@ -142,7 +153,7 @@ change as the routes and pages that check them.
 |----|------|-----------|------|-------|
 | P11-B1 | **`pulse.view` in `PermissionCatalog`** — new `private const PULSE = ['pulse.view']`, appended to `all()` | — | tiny | `grouped()` groups on the prefix, so it appears under a **pulse** heading in the role matrix with no other edit. Follow the file's own rule: added in the same commit as the page it guards |
 | P11-B2 | **`viewPulse` gate override** — `Gate::define('viewPulse', fn (User $user): bool => $user->can('pulse.view'))` in `AuthServiceProvider`, next to `configureSuperAdmin()` | B1 | tiny | The F1 boot-order argument in full: overwrite-by-name + later provider boot = ours wins. Do **not** call `Pulse::auth()` (gone in 1.8). Do **not** touch `Gate::before` |
-| P11-B3 | **`health.view` + `health` flag + route** — `private const HEALTH = ['health.view']` in `PermissionCatalog`; `'health'` entry in `config/pennant.php` (group `Monitoring`); `GET /health` web route named `health.index` under `middleware(['can:health.view', 'feature:health'])` inside the authenticated group; the Pennant `database` store is fail-closed, so the `FeatureFlagSeeder` must write the row or the route 403s forever | — | small | Three places, or it is not gated: pennant config, route middleware, sidebar key (A3). The seeder row is the trap — a declared flag is not an active flag. The API `/api/v1/health` route is **untouched and ungated** (F3) |
+| P11-B3 | **`health.view` + `health` flag + route** — `private const HEALTH = ['health.view']` in `PermissionCatalog`; `'health'` entry in `config/pennant.php` (group `Monitoring`); `GET /health` web route named `health.index` under `middleware(['can:health.view', 'feature:health'])` inside the authenticated group; the Pennant `database` store is fail-closed, so the `FeatureFlagSeeder` must write the row or the route 403s forever | — | small | Three places, or it is not gated: pennant config, route middleware, sidebar key (A3). The seeder row is the trap — a declared flag is not an active flag. The API `/api/v1/health` route is **ungated (F3)** — since ADR-023 it also carries `throttle:health` and caches its check set, which caps cost without adding a gate |
 | P11-B4 | **Gating tests** — `tests/Feature/PulsePermissionGateTest.php`: (1) role holding `pulse.view` + flag on → `/pulse` 200; (2) without the permission → 403; (3) superadmin, **no permission rows at all** → 200; (4) flag off + permission held → 403. Mirror the same four for `/health` | B1–B3 | medium | Case 3 is the one that catches a mistake here: define the gate and accidentally lose `Gate::before`, and 1, 2 and 4 all still pass. Case 4 pins the two gates as independent. This file is also what P10-B5 in `phase-10-audit-trail.md` says to copy — landing it unblocks that reference |
 
 **Superadmin and the flag — CLOSED 2026-10-16 (owner decision).** Superadmin
@@ -347,6 +358,8 @@ the target state, and Groups A–C are what make the code match them.
 - `GET /api/v1/health` stays unauthenticated **and stays at `{status,
   timestamp, checks}`** — the moment it gains versions or config it becomes a
   reconnaissance endpoint, and its caller (an uptime probe) needs none of that.
+  ADR-023 added a rate ceiling and a 10s check cache *behind* it; it added no
+  field to the response.
 - Pulse ignores its own routes in the ignore list (`config/pulse.php`) so
   monitoring the monitor is not a feedback loop.
 - Application code must never depend on Pulse. It is a passive observer.

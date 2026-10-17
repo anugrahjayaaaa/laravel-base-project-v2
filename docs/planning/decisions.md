@@ -441,3 +441,66 @@ than an application-wide one; pinned by `ContentSecurityPolicyTest`.
 
 **Related**: ADR-008, DEP-004, D-1/D-2 (superseded), P11-B1..B4,
 `docs/base/features/monitoring.md`, `tests/Feature/Vantage/VantagePermissionGateTest.php`
+
+## ADR-023: the ungated health endpoint gets a ceiling and a cached check set
+
+**Status**: Accepted
+**Date**: 2026-10-17
+**Context**: `GET /api/v1/health` is the one endpoint in the app with no gate of
+any kind — no auth, no permission, no feature flag — decided deliberately in
+Phase 11 (`F3`) because its caller is a monitor that cannot log in. A read-only
+pass over Phase 11 measured what that decision left uncapped. The route sits in
+the `api` group, whose middleware is `[SubstituteBindings]`, so nothing bounded
+the request count: an anonymous caller could buy an unbounded number of real
+round trips. One uncached run is a PDO connect, a cache write **and** a read
+back, a queue `size()` and three storage operations — measured at 0 queries on
+the harness (`array` cache, `sync` queue) and at 3 queries plus 1 write on
+`database`/`database`, i.e. a real cost that scales with whoever is calling.
+
+**Decision**:
+
+1. **The gate stays off.** The endpoint keeps no authentication, no permission
+   and no feature flag. This ADR does not revisit `F3`; it addresses the two
+   things `F3` did not decide — how much work one request costs, and how many
+   requests one caller may make.
+2. **The check set is cached for 10 seconds** in `health_check:results`
+   (`HealthCheckService::check()`). It is deliberately short: a third of the
+   shortest interval a legitimate caller polls at, so the status served is never
+   one the caller would have measured differently. What it buys is a ceiling of
+   six executions a minute per server however many callers arrive. The payload
+   is `array<string,string>` only — primitives, because the Redis store returns
+   `__PHP_Incomplete_Class` for anything richer.
+3. **A store that cannot answer is reported, never thrown.** `Cache::remember`
+   cannot work without the cache store, and the cache store is one of the things
+   being checked. When it fails, `check()` logs
+   `health_check.results_cache.failed` and runs the checks uncached, so the one
+   endpoint you reach when Redis is down answers `cache: fail` instead of 500 —
+   it must not hide the failure it exists to name.
+4. **A rate ceiling, keyed on IP**: `RateLimiter::for('health')`,
+   `throttle:health` on the route, number from
+   `health_rate_limit_per_minute` (default **120**/min, validated 1..600).
+   The key unit is an IP because there is no user to key on, and 120 rather than
+   the 3-15 the per-user limiters use because that unit is weak: one address can
+   be a carrier's NAT or a corporate egress shared by thousands of people. With
+   the cached check set, an allowed request is roughly one cache read, so the
+   ceiling keeps the count finite rather than metering traffic. Operator-tunable
+   for the reason every other limiter is: the person who discovers the shared
+   address must be able to raise it without a deploy.
+5. **The refusal is JSON unconditionally** (`responseFor('health', jsonOnly:
+   true)`). This route has no web branch, so `expectsJson()` is not a question
+   about the caller's preference — and a monitor that sends no `Accept` header
+   would have been handed the `back()` redirect, which reads as a 200 login page
+   to anything that follows it, i.e. as UP.
+
+**Consequences**: The response `timestamp` is the response time while the checks
+behind it are up to 10 seconds old — `status` and `checks` stay consistent with
+each other because both come from the same cached set, so a monitor is never
+told two different things. The gated web dashboard (`/health`) calls the same
+service and gets the same cache. The limiter reads `SystemSetting` on every
+request, so a database that is down *and* a settings cache that is cold makes
+the limiter itself 500 before the checks run — the same shape every other
+limiter in the app already has, and still a non-2xx for the monitor.
+
+**Related**: ADR-008, ADR-017, ADR-019, F3 (`docs/planning/phase-11-monitoring-observability.md`),
+`docs/base/security/rate-limiting.md`, `HealthCheckEndpointTest`,
+`ThrottleJsonResponseTest`
