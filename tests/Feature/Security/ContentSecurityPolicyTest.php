@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Security;
 
+use App\Jobs\PasswordExpirySweep;
 use App\Models\SystemSetting;
 use App\Models\User;
 use App\Support\SystemRole;
@@ -10,8 +11,10 @@ use Database\Seeders\PermissionSeeder;
 use Database\Seeders\RoleSeeder;
 use DOMDocument;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Str;
 use Illuminate\Testing\TestResponse;
 use Spatie\Permission\PermissionRegistrar;
+use Storvia\Vantage\Models\VantageJob;
 use Tests\TestCase;
 
 /**
@@ -43,6 +46,21 @@ class ContentSecurityPolicyTest extends TestCase
         $this->seed(PermissionSeeder::class);
         $this->seed(FeatureFlagSeeder::class);
         $this->app->make(PermissionRegistrar::class)->forgetCachedPermissions();
+    }
+
+    /**
+     * A `vantage_jobs` row for the two pages that need one. Written by hand, not
+     * with the package factory: `VantageJobFactory` still assigns the pre-rename
+     * columns (`job_name`, `memory_usage`) and dies against the migrated table.
+     */
+    private function vantageJob(): VantageJob
+    {
+        return VantageJob::create([
+            'uuid' => (string) Str::uuid(),
+            'job_class' => PasswordExpirySweep::class,
+            'status' => 'failed',
+            'queue' => 'default',
+        ]);
     }
 
     /**
@@ -179,7 +197,13 @@ class ContentSecurityPolicyTest extends TestCase
 
         $this->actingAs($admin, 'web');
 
-        foreach (['/dashboard', route('users.index'), '/vantage', '/vantage/jobs', '/vantage/tags'] as $uri) {
+        // `/vantage/failed` and `/vantage/jobs/{id}` render two vendor views the
+        // app does NOT override (`failed`, `show`): they carry no script of their
+        // own, so the shared nonced layout is what keeps them working — which is
+        // exactly the assumption this pair of URIs pins.
+        $job = $this->vantageJob();
+
+        foreach (['/dashboard', route('users.index'), '/vantage', '/vantage/jobs', '/vantage/tags', '/vantage/failed', route('vantage.jobs.show', $job->id)] as $uri) {
             $this->assertNoInlineHandler($this->get($uri), $uri);
         }
     }
@@ -377,10 +401,11 @@ class ContentSecurityPolicyTest extends TestCase
      *
      * The vendor layouts write their scripts without one, so the app overrides
      * four of them (`resources/views/vendor/vantage/`); this is the probe that
-     * fails if an upgrade drifts one back, or if a fifth page ships a script the
-     * override missed. Read through the DOM for the same reason the Pulse probe
-     * is: the chart script inlines a JSON payload, and a regex over raw HTML is
-     * the wrong tool for script content.
+     * fails if an upgrade drifts one back, or if a page the app does not override
+     * (`/vantage/failed`, `/vantage/jobs/{id}`) grows a script of its own. Read
+     * through the DOM for the same reason the Pulse probe is: the chart script
+     * inlines a JSON payload, and a regex over raw HTML is the wrong tool for
+     * script content.
      */
     public function test_every_script_on_the_vantage_pages_carries_the_policys_nonce(): void
     {
@@ -389,7 +414,9 @@ class ContentSecurityPolicyTest extends TestCase
 
         $this->actingAs($admin, 'web');
 
-        foreach (['/vantage', '/vantage/jobs', '/vantage/tags'] as $uri) {
+        $job = $this->vantageJob();
+
+        foreach (['/vantage', '/vantage/jobs', '/vantage/tags', '/vantage/failed', route('vantage.jobs.show', $job->id)] as $uri) {
             $response = $this->get($uri);
             $nonce = $this->nonceOf($this->policyOf($response));
 
