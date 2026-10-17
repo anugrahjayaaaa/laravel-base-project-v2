@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "017756efdf0b73cf4b1a39e6e5ecacf0",
+    "content-hash": "c69c182f4459f4b7751b8a6faafc99c0",
     "packages": [
         {
             "name": "brick/math",
@@ -3917,6 +3917,82 @@
                 }
             ],
             "time": "2026-03-17T22:46:46+00:00"
+        },
+        {
+            "name": "storviaio/vantage",
+            "version": "v0.1.25",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/storviaio/vantage.git",
+                "reference": "0afdb12d0daf0d1d78cff7d48779691fc9a3f767"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/storviaio/vantage/zipball/0afdb12d0daf0d1d78cff7d48779691fc9a3f767",
+                "reference": "0afdb12d0daf0d1d78cff7d48779691fc9a3f767",
+                "shasum": ""
+            },
+            "require": {
+                "illuminate/events": "^10.0|^11.0|^12.0|^13.0",
+                "illuminate/notifications": "^10.0|^11.0|^12.0|^13.0",
+                "illuminate/queue": "^10.0|^11.0|^12.0|^13.0",
+                "illuminate/support": "^10.0|^11.0|^12.0|^13.0",
+                "php": "^8.2|^8.3|^8.4"
+            },
+            "require-dev": {
+                "larastan/larastan": "^3.0",
+                "laravel/pint": "^1.14",
+                "orchestra/testbench": "^11.0|^10.0|^9.0|^8.0",
+                "pestphp/pest": "^3.8|^4.0",
+                "pestphp/pest-plugin-arch": "^3.0|^4.0",
+                "pestphp/pest-plugin-laravel": "^3.0|^4.0",
+                "phpstan/extension-installer": "^1.4",
+                "phpstan/phpstan": "^2.1",
+                "phpstan/phpstan-deprecation-rules": "^2.0",
+                "phpstan/phpstan-phpunit": "^2.0"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "aliases": {
+                        "Vantage": "Storvia\\Vantage\\Facades\\Vantage"
+                    },
+                    "providers": [
+                        "Storvia\\Vantage\\VantageServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Storvia\\Vantage\\": "src/",
+                    "Storvia\\Vantage\\Database\\Factories\\": "database/factories/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Houda Slassi",
+                    "role": "Developer"
+                }
+            ],
+            "description": "Vantage: Strategic queue monitoring and observability for Laravel applications.",
+            "homepage": "https://github.com/storviaio/vantage",
+            "keywords": [
+                "laravel",
+                "monitoring",
+                "observability",
+                "queue",
+                "storviaio",
+                "vantage"
+            ],
+            "support": {
+                "issues": "https://github.com/storviaio/vantage/issues",
+                "source": "https://github.com/storviaio/vantage/tree/v0.1.25"
+            },
+            "time": "2026-04-15T11:56:33+00:00"
         },
         {
             "name": "symfony/clock",
