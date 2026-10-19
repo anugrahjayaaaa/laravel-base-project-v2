@@ -475,7 +475,11 @@ the harness (`array` cache, `sync` queue) and at 3 queries plus 1 write on
    being checked. When it fails, `check()` logs
    `health_check.results_cache.failed` and runs the checks uncached, so the one
    endpoint you reach when Redis is down answers `cache: fail` instead of 500 —
-   it must not hide the failure it exists to name.
+   it must not hide the failure it exists to name. **Amended by ADR-024 (clause
+   6):** the fallback asks the `file` store before giving up, and `check()` reads
+   before it computes, because `remember()` runs the callback before attempting a
+   store it cannot write to — which made the ceiling disappear whenever the cache
+   needed reporting.
 4. **A rate ceiling, keyed on IP**: `RateLimiter::for('health')`,
    `throttle:health` on the route, number from
    `health_rate_limit_per_minute` (default **120**/min, validated 1..600).
@@ -504,3 +508,107 @@ limiter in the app already has, and still a non-2xx for the monitor.
 **Related**: ADR-008, ADR-017, ADR-019, F3 (`docs/planning/phase-11-monitoring-observability.md`),
 `docs/base/security/rate-limiting.md`, `HealthCheckEndpointTest`,
 `ThrottleJsonResponseTest`
+
+## ADR-024: the flag reaches the writes, and the permission follows the flag
+
+**Status**: Accepted
+**Date**: 2026-10-17
+**Context**: A security pass over the Phase 11 surface (Pulse, Vantage, the health
+endpoint, the queue conventions) found four defects, all of them one shape: a
+control that exists at the edge of a module and not inside it.
+
+1. **The flags gated the dashboards, not the recording.** `pulse` and `vantage`
+   were enforced by route middleware, so switching Pulse off during an incident
+   stopped the page and kept the writer. Both packages decide whether to record
+   once, at their own boot, from an env master switch (`PULSE_ENABLED`,
+   `VANTAGE_ENABLED`); `viewPulse`/`viewVantage` were route details rather than
+   module switches, and the vendor default for `viewVantage` admits **any
+   authenticated user**.
+2. **The flag had no authority over the permission.** A role that already held
+   `pulse.view` kept it while the module was off, and the role matrix kept
+   offering it: the grant outlived the flag with nobody able to see it to remove
+   it. The permission index advertised it too (`PermissionCatalog` was built
+   before any flag needed an opinion).
+3. **The health endpoint's cache fallback ran the checks uncached.** ADR-023
+   clause 3 answered a store that cannot answer by running all seven round trips
+   per request — the amortisation it exists to provide disappeared in exactly the
+   situation that makes the endpoint matter, on the one route in the app with no
+   gate in front of it.
+4. **`queues.retry` answered "may this person" and not "how often".** It is the
+   only mutating control on the queue dashboard, and a permission with no ceiling
+   lets a compromised operator account re-dispatch work as fast as it can click.
+
+**Decision**:
+
+1. **The flag stops the writes, at call time.** `Pulse::filter(fn () =>
+   FeatureCatalog::isActive('pulse'))` in `AppServiceProvider::boot()` — the
+   package's supported extension point, consulted at INGEST, so it reaches the
+   worker as well as the request and costs no store read on a request that writes
+   nothing. Vantage has no such hook, so an `Event::listen(Looping::class, ...)`
+   listener refreshes `config('vantage.enabled')` — the key its recorders re-read
+   inside `handle()` — once per daemon iteration. Not `JobProcessing`: the
+   package listens on that event and registered first (packages boot before app
+   providers), so an app listener on the same event is one job behind. The env
+   master switches (`PULSE_ENABLED`, `VANTAGE_ENABLED`) stay, as deploy-time
+   kills; nothing is read at boot from the flag store, because boot runs before
+   the `features` table exists on a fresh install.
+2. **The gates are `flag AND permission`.** `viewPulse` and `viewVantage` answer
+   `FeatureCatalog::isActive(...) && $user->can(...)`. Two readers of one question
+   must not be able to disagree, and the vendor's `Authorize` middleware (were
+   the routes ever re-enabled) would otherwise read an unflagged gate. Note the
+   limit: `Gate::before` short-circuits before any gate callback, so superadmin's
+   bypass is untouched by design — the flag stops them at
+   `EnsureFeatureIsEnabled`, which consults no actor (D-3).
+3. **A switched-off module is revoked, hidden, and cannot be re-granted.**
+   `PermissionCatalog::FEATURE_BY_RESOURCE` maps a resource prefix to its flag
+   (one place answers "whose permission is this"); `FeatureToggleAction` and
+   `FeatureBulkToggleAction` call `FeatureRevokePermissionsAction` inside their
+   transaction, which deletes both pivots for every held permission in two
+   statements whatever the selection — flat in the size of the batch, as
+   `FeatureFlagPerformanceTest` requires — and records the names in the audit
+   row's `revoked` property. The role matrix and the permission index filter by
+   `PermissionCatalog::visibleNames()`.
+4. **The revoke is final.** Switching the flag back on re-grants nothing:
+   restoring would need the previous holdings stored somewhere, and it would
+   silently undo the state the operator asked for. Re-granting is a deliberate act
+   through the role matrix.
+5. **A hidden grant is preserved, and a crafted one is refused.**
+   `PersistsRole` assigns the intersection of what was posted with what the
+   matrix can offer, and keeps grants it cannot render. Hiding alone would be a
+   data-loss bug (a config-level kill switch leaves the grant in place with no
+   checkbox to keep it), and not filtering would leave the write path open to a
+   request that names a hidden permission id.
+6. **The health endpoint reads before it computes.** `check()` reads the
+   configured store, then the `file` store, and only then runs the probes; the
+   write is best effort to both. This amends ADR-023 clause 3: `Cache::remember()`
+   runs the callback before attempting the store, so a store that cannot be
+   written ran the whole probe set on every request. Reading first means a store
+   that cannot answer costs a read and nothing else. The residual is unchanged
+   and now pinned: with both stores down, the checks run per request.
+7. **`queues.retry` gets a ceiling** — `RateLimiter::for('queue-retry')`,
+   `throttle:queue-retry` on the retry route, `SystemSetting`
+   `queue_retry_rate_limit_per_minute` (default **10**/min, validated `1..120`),
+   keyed on user id + IP like `audit-export`. Its over-limit response is a
+   redirect with a session `error` flash rather than a field error: the queue
+   monitor is a vendor layout that renders `session('error')` and has no
+   `$errors` bag, so the standard shape would reload the page saying nothing.
+
+**Consequences**: One map (`FEATURE_BY_RESOURCE`) is now the single answer to
+"which flag owns this permission", pinned by `PermissionFeatureMapTest` — every
+resource is mapped or on `UNMAPPED_RESOURCES`, every mapped flag is declared, and
+the sidebar's own `feature` keys must agree with it. `features` is deliberately
+unmapped: the page that re-enables a flag cannot be behind a flag.
+`translations` and `sessions` own no permissions. The revoke writes the pivots
+directly rather than through `detach()`, so a soft-deleted role cannot come back
+holding permissions for a module that was switched off while it was gone
+(`config('permission.teams')` is false here; with teams on, a delete keyed on
+`permission_id` alone would reach every team). A worker started before a flip
+applies it from its next loop, and `queue:listen` / a synchronous connection
+never fires `Looping` at all — those keep `VANTAGE_ENABLED` as their only switch.
+
+**Related**: ADR-022, ADR-023 (clause 3 amended), P11-B4, Phase 11 §15,
+`docs/base/features/monitoring.md`, `docs/base/security/rate-limiting.md`,
+`docs/base/authorization.md`, `PermissionFeatureMapTest`,
+`FeaturePermissionRevokeTest`, `PulseRecordingKillSwitchTest`,
+`VantageRecordingKillSwitchTest`, `HealthCheckCacheFallbackTest`,
+`QueueRetryThrottleTest`

@@ -31,9 +31,11 @@
 for what is open: rows 0–2, 4–5 and 7–11 DONE (Phase 10 Audit Trail closed 2026-10-13, Phase 11
 Monitoring/Observability closed 2026-10-16), row 12 with
 only its capability gap audit done, rows 3 and 6 still IN PROGRESS, rows 13–17 PLANNED.
-`feature/phase-11-monitoring-observability` carries Phase 11 (Groups A–F, full suite 2040/7106,
-Pint clean) — committed, awaiting review and merge, now including the Vantage queue monitor
-(MONITOR-003, added 2026-10-16, reversing the D-1 deferral).
+`feature/phase-11-monitoring-observability` carries Phase 11 (Groups A–F, full suite 2078/7265,
+Pint clean) — committed through the Vantage queue monitor
+(MONITOR-003, added 2026-10-16, reversing the D-1 deferral), ADR-023, and the §15 security
+pass (ADR-024: four findings fixed, docs re-synced, plus the same-day follow-up that made the
+flag modal state the revoke), all committed 2026-10-19.
 `feature/phase-10-audit-trail` is **merged into `main`** (PR #34, `61484e6`) — Phase 10 plus its
 pentest remediation: nonce CSP, the four response headers, the re-verified audit report,
 pint/import housekeeping. Its finding tracker closed 2026-10-15: 10/10 findings FIXED, with
@@ -329,10 +331,14 @@ None — no implementation has started yet.
   Logs, Server Logs, Pulse) formalized
 - System role protection formalized (superadmin bypass table, system role
   deletion/renaming restrictions)
+- ADR-022: Vantage queue monitor, gated like every other module
+- ADR-023: the ungated health endpoint gets a ceiling and a cached check set
+- ADR-024: the flag reaches the writes, and the permission follows the flag
+  (Phase 11 security pass)
 
 ## Test Status
 
-**2040 passed / 7106 assertions** (2026-10-17, `feature/phase-11-monitoring-observability` — Phase 11 Groups A–F plus the Vantage queue monitor, MONITOR-003, plus ADR-023). `vendor/bin/pint --test` passes across the whole tree. PHPUnit 12, `test_` prefix, SQLite
+**2078 passed / 7265 assertions** (2026-10-17, `feature/phase-11-monitoring-observability` — Phase 11 Groups A–F plus the Vantage queue monitor, MONITOR-003, plus ADR-023, the §15 security pass (ADR-024) and its same-day follow-up that has the flag modal state what disabling revokes, kept to two sentences by test). `vendor/bin/pint --test` passes across the whole tree. PHPUnit 12, `test_` prefix, SQLite
 `:memory:`, 5 intentionally assertion-free benchmark cases. This is the LIVE figure; the counts inside the phase rows above are dated gate measurements, deliberately left at what each gate actually saw.
 
 The suite is grouped by domain (13 folders under `tests/Feature/`, nothing at the root) and governed by

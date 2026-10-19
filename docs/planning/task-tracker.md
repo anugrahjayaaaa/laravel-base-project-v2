@@ -1943,7 +1943,7 @@ Detail: `docs/planning/phase-9-notifications-mail.md`.
       "PulseQueryCacheTest",
       "ContentSecurityPolicyTest"
     ],
-    "note": "Telescope at FOUND-007 plus Periscope v0.3 as a companion UI, both removed in commit 85384b4 in favour of Laravel Pulse ^1.8 (DEP-004). The pulse feature flag gates /pulse through pulse.middleware (b08b8b4), verified by PulseFeatureGateTest. The pulse.view permission + viewPulse gate override shipped in Phase 11 P11-B1/B2 (2026-10-15) and is pinned by PulsePermissionGateTest, which also pins D-3: a flag-off module 403s superadmin too. See docs/planning/phase-11-monitoring-observability.md."
+    "note": "Telescope at FOUND-007 plus Periscope v0.3 as a companion UI, both removed in commit 85384b4 in favour of Laravel Pulse ^1.8 (DEP-004). The pulse feature flag gates /pulse through pulse.middleware (b08b8b4), verified by PulseFeatureGateTest. The pulse.view permission + viewPulse gate override shipped in Phase 11 P11-B1/B2 (2026-10-15) and is pinned by PulsePermissionGateTest, which also pins D-3: a flag-off module 403s superadmin too. Since ADR-024 (2026-10-17) the flag is ANDed into the gate and also stops ingestion (Pulse::filter), and switching the flag off revokes pulse.view from every role. See docs/planning/phase-11-monitoring-observability.md."
   },
   {
     "id": "MONITOR-002",
@@ -1979,7 +1979,7 @@ Detail: `docs/planning/phase-9-notifications-mail.md`.
       "VantageRetryTest",
       "ContentSecurityPolicyTest"
     ],
-    "note": "storviaio/vantage ^0.1.25, installed 2026-10-16 per ADR-022 (supersedes the Phase 11 D-1 deferral). The app declares the six web routes itself (config/vantage.php routes => false) so they carry feature:vantage + can:queues.view / can:queues.retry; viewVantage is overridden to queues.view; store_payload is forced false and retry reads the payload from failed_jobs via App\\Support\\Vantage\\FailedJobPayloadRestorer; vantage:prune runs daily. See docs/planning/phase-11-monitoring-observability.md §13."
+    "note": "storviaio/vantage ^0.1.25, installed 2026-10-16 per ADR-022 (supersedes the Phase 11 D-1 deferral). The app declares the six web routes itself (config/vantage.php routes => false) so they carry feature:vantage + can:queues.view / can:queues.retry; viewVantage is overridden to queues.view (since ADR-024, the vantage flag ANDed with it); the retry POST is throttled by queue-retry; store_payload is forced false and retry reads the payload from failed_jobs via App\\Support\\Vantage\\FailedJobPayloadRestorer; vantage:prune runs daily. See docs/planning/phase-11-monitoring-observability.md §13."
   },
   {
     "id": "CORR-001",
