@@ -6,6 +6,7 @@ use App\Auth\LoginThrottle;
 use App\Models\SystemSetting;
 use App\Models\User;
 use App\Policies\UserPolicy;
+use App\Support\FeatureCatalog;
 use App\Support\SystemRole;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Auth\Notifications\VerifyEmail;
@@ -83,10 +84,18 @@ class AuthServiceProvider extends ServiceProvider
      * anyone else. Do NOT call `Pulse::auth()` — removed in 1.8, the gate is
      * the supported hook. `Gate::before` stays untouched, so superadmin keeps
      * access without holding the permission row.
+     *
+     * The flag is ANDed in, so the switch answers through the gate as well as
+     * through `feature:pulse` on the route. Two readers ask one question and
+     * cannot disagree: a gate that still said yes for a switched-off module
+     * would let any `@can('viewPulse')` or the package's own `Authorize`
+     * middleware through on a module the operator turned off. And the flag is
+     * checked BEFORE the permission, because it is not a role check — the
+     * superadmin's `Gate::before` bypass reaches the permission, never this.
      */
     protected function configurePulseGate(): void
     {
-        Gate::define('viewPulse', fn (User $user): bool => $user->can('pulse.view'));
+        Gate::define('viewPulse', fn (User $user): bool => FeatureCatalog::isActive('pulse') && $user->can('pulse.view'));
     }
 
     /**
@@ -100,11 +109,14 @@ class AuthServiceProvider extends ServiceProvider
      * safety net for the package's own middleware: were `routes` ever re-enabled,
      * the default would open the queue dashboard to every logged-in account,
      * while this override keeps it on the permission. Same overwrite-by-name
-     * mechanism as `configurePulseGate()` (package provider boots first).
+     * mechanism as `configurePulseGate()` (package provider boots first), and
+     * the same ANDed flag check: were `routes` re-enabled, the vendor group
+     * carries neither `feature:vantage` nor `can:queues.*`, so the gate would be
+     * the only thing standing between a switched-off module and a reader.
      */
     protected function configureVantageGate(): void
     {
-        Gate::define('viewVantage', fn (User $user): bool => $user->can('queues.view'));
+        Gate::define('viewVantage', fn (User $user): bool => FeatureCatalog::isActive('vantage') && $user->can('queues.view'));
     }
 
     /**

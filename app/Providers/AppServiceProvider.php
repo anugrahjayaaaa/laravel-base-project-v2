@@ -19,15 +19,18 @@ use App\View\Composers\AppMenuComposer;
 use App\View\Composers\PasswordStrengthComposer;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Eloquent\Relations\Relation;
+use Illuminate\Queue\Events\Looping;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Pagination\Paginator;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Blade;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\View\View;
 use Laravel\Pennant\Feature;
+use Laravel\Pulse\Facades\Pulse;
 use Storvia\Vantage\Support\JobRestorer;
 use Throwable;
 
@@ -235,6 +238,46 @@ class AppServiceProvider extends ServiceProvider
         foreach (array_keys(config('pennant.features', [])) as $slug) {
             Feature::define($slug, fn (): bool => false);
         }
+
+        // Both monitoring recorders follow their flag — at CALL time, not at
+        // boot. Until now the flag guarded only the dashboard route, so an
+        // operator switching Pulse off to stop the write load during an
+        // incident stopped the page and kept the writer: the package decides
+        // whether to record once, in its own `boot()`, from `PULSE_ENABLED`.
+        //
+        // `Pulse::filter()` is the package's supported extension point and it is
+        // consulted at INGEST, so the store is read when there is something to
+        // write and never on a request that writes nothing. It reaches the
+        // worker too, because ingestion happens in both processes.
+        //
+        // `PULSE_ENABLED=false` is untouched and stays the deploy-time master
+        // switch: with it off, Pulse registers no recorders at all and this
+        // filter is never asked.
+        //
+        // Not read at boot, deliberately — see `bindTokenExpirations()` and its
+        // comment. Boot runs before the `features` table exists on a fresh
+        // install, and a store read there takes the whole boot down with it.
+        Pulse::filter(fn (): bool => FeatureCatalog::isActive('pulse'));
+
+        // Vantage offers no such hook: its recorders re-read
+        // `config('vantage.enabled')` inside `handle()`, so that config key IS
+        // the call-time switch and something has to set it before the work.
+        //
+        // `Looping`, not `Queue::before` / `JobProcessing`: the package listens
+        // on `JobProcessing` and registered first (packages boot before app
+        // providers — see the boot-order section in AGENTS.md), so a listener of
+        // ours on the same event would run AFTER it and this switch would always
+        // be one job behind. `Looping` fires once per daemon iteration, before
+        // the job is fetched — a worker pays one flag read per job for that, and
+        // it is the only way to ask the question at call time.
+        //
+        // ponytail: a worker started before the flip applies it from its next
+        // loop, and `queue:listen`/a synchronous connection never fires
+        // `Looping` at all — those keep `VANTAGE_ENABLED` as their only switch.
+        // `bin/run-workers.sh` runs `queue:work`, which is the shape this covers.
+        Event::listen(Looping::class, function (): void {
+            config(['vantage.enabled' => FeatureCatalog::isActive('vantage')]);
+        });
 
         // The audit table's polymorphic columns store an ALIAS instead of
         // `App\Models\Whatever`, so renaming a model does not orphan every
