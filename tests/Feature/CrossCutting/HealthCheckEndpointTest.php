@@ -22,6 +22,19 @@ class HealthCheckEndpointTest extends TestCase
      * caller and that work, and that it can never make the answer worse.
      */
     private const RESULTS_KEY = 'health_check:results';
+
+    /**
+     * The fallback store is the real disk and outlives the per-test app, while
+     * the default store does not: a set another health test left behind would be
+     * served here instead of the fresh one this test is about.
+     */
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        Cache::store('file')->forget(self::RESULTS_KEY);
+    }
+
     public function test_health_check_returns_ok_status(): void
     {
         $response = $this->getJson('/api/v1/health');
