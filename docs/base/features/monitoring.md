@@ -64,16 +64,18 @@ Both failures return 403, so a caller cannot tell which one fired. That is
 deliberate and consistent with the Phase 7 decision (see
 [phase-7-feature-flags.md](../../planning/phase-7-feature-flags.md)).
 
-**The gate is an override.** Pulse defines `viewPulse` itself as
-`environment('local')` at
+**The gate is an override, and it reads the flag too.** Pulse defines `viewPulse`
+itself as `environment('local')` at
 `vendor/laravel/pulse/src/PulseServiceProvider.php:100`. `AuthServiceProvider`
-redefines it as `$user->can('pulse.view')`, which wins because `Gate::define()`
-overwrites by name and our provider boots after Pulse's. Do not call
-`Pulse::auth()` — it does not exist in 1.8.
+redefines it as `FeatureCatalog::isActive('pulse') && $user->can('pulse.view')`,
+which wins because `Gate::define()` overwrites by name and our provider boots
+after Pulse's. Do not call `Pulse::auth()` — it does not exist in 1.8.
 
 `Gate::before` is untouched, so superadmin keeps access without holding a
 permission row, and `admin` inherits the permission via
-`PermissionCatalog::all()` in `PermissionSeeder`.
+`PermissionCatalog::all()` in `PermissionSeeder`. The flag check sits inside the
+gate callback, so the bypass is unaffected by it — superadmin is stopped by the
+middleware below, not by the gate.
 
 **The flag is not a role.** `Gate::before` answers the *permission* question;
 `EnsureFeatureIsEnabled` consults no actor at all
@@ -81,6 +83,16 @@ permission row, and `admin` inherits the permission via
 403s superadmin exactly as it does a permission holder. That is what makes it a
 kill switch. Pinned by `test_the_flag_off_refuses_superadmin_too`
 (Phase 11 D-3, closed 2026-10-16).
+
+**The flag stops the writes, not just the page** (ADR-024). `Pulse::filter(fn ()
+=> FeatureCatalog::isActive('pulse'))` in `AppServiceProvider::boot()` is
+consulted at INGEST, so with the flag off nothing is recorded — in the worker as
+well as in a request — and the filter costs a store read only when there is
+something to write. Switching a flag off through `/features` also revokes its
+permission from every role (`pulse.view`); see
+[feature-flags.md](feature-flags.md#a-permission-follows-its-modules-flag).
+`PULSE_ENABLED` is unchanged and stays the deploy-time master switch: with it
+off, Pulse registers no recorders at all and this filter is never asked.
 
 ### Pulse upgrade notes
 
@@ -141,6 +153,25 @@ unauthenticated** because its caller is an uptime monitor that cannot log in;
 the response shape above is the ceiling on what it may ever expose
 (phase-11-monitoring-observability.md F3).
 
+Two things bound what one request costs (ADR-023, amended by ADR-024):
+
+- **A cached check set for 10 seconds** in `health_check:results`. `check()`
+  reads the configured store first, then the `file` store, and only then runs the
+  probes; the write is best effort to both. It reads *before* it computes because
+  `Cache::remember()` runs the callback before attempting the store — so a store
+  that cannot be written ran all seven round trips on every request, i.e. the
+  ceiling disappeared in exactly the situation that makes the endpoint matter.
+  When neither store can answer it logs `health_check.results_cache.failed` and
+  runs the checks per request; that residual is pinned by
+  `HealthCheckCacheFallbackTest`.
+- **`throttle:health`** — `RateLimiter::for('health')`, keyed on the IP,
+  `health_rate_limit_per_minute` (default 120, validated `1..600`), refusing in
+  JSON regardless of the caller's `Accept` header.
+
+The fallback store is the local disk, so the ceiling is per server: the same
+status answer ten seconds apart on one host, which is all this endpoint
+promises.
+
 ## System Health Dashboard (web)
 
 `GET /health` — the read-only admin page over the **same** `HealthCheckService`
@@ -176,7 +207,8 @@ an environment seeded before Phase 11 needs
 
 The API endpoint above and this dashboard answer the same service checks at two
 authorization levels: machine-to-machine without a login, and inside the admin
-with the full treatment.
+with the full treatment. The page calls the same `check()`, so it inherits the
+same ten-second set and the same fallback store.
 
 ## Queue Monitor (Vantage, web)
 
@@ -212,9 +244,31 @@ admin middleware group. Route names stay the vendor's (`vantage.*`) because its
 Blade views build every link from them.
 
 **The `viewVantage` gate is overridden** in `AuthServiceProvider` to
-`$user->can('queues.view')`. The package default admits *any authenticated user*;
-our routes use `can:` and never consult it, so the override is the safety net for
-the package's own `AuthorizeVantage` middleware if vendor routes were re-enabled.
+`FeatureCatalog::isActive('vantage') && $user->can('queues.view')`. The package
+default admits *any authenticated user*; our routes use `can:` and never consult
+it, so the override is the safety net for the package's own `AuthorizeVantage`
+middleware if vendor routes were re-enabled — with the flag ANDed in, so the
+switch answers there too (ADR-024).
+
+**The flag stops the recording, not only the page** (ADR-024). Vantage offers no
+`filter()` hook: its recorders re-read `config('vantage.enabled')` inside
+`handle()`, so that config key *is* the call-time switch.
+`Event::listen(Looping::class, ...)` in `AppServiceProvider::boot()` refreshes it
+from the flag once per daemon iteration, before the job is fetched. Not
+`JobProcessing`: the package listens on that event and registered first (packages
+boot before app providers), so an app listener there is always one job behind.
+`VANTAGE_ENABLED` stays the deploy-time master switch, and it is the only switch
+a worker reaching the queue through `queue:listen` or a synchronous connection
+ever consults — those never fire `Looping`. `bin/run-workers.sh` runs
+`queue:work`, which is the shape this covers; a worker started before a flip
+applies it from its next loop.
+
+**Retry has a ceiling** (ADR-024). `POST /vantage/jobs/{id}/retry` carries
+`throttle:queue-retry`: `RateLimiter::for('queue-retry')`, keyed on user id + IP,
+reading `queue_retry_rate_limit_per_minute` (default 10, validated `1..120`). Its
+over-limit response is a redirect with a session `error` flash, not a field
+error, because the vendor layout renders `session('error')` and has no `$errors`
+bag — the standard shape would reload the page saying nothing.
 
 **`store_payload => false`.** The package default (`true`) persists full job
 payloads; redaction covers named keys, not the export filters, model ids and mail
@@ -272,3 +326,5 @@ project-side dependency on the vendor's internals; an upgrade that changes
 - ADR-008: Audit Trail vs Technical Observability separation
 - DEP-004: Laravel Pulse for Technical Observability
 - ADR-022: Vantage queue monitor, gated like every other module
+- ADR-023: the ungated health endpoint gets a ceiling and a cached check set
+- ADR-024: the flag reaches the writes, and the permission follows the flag

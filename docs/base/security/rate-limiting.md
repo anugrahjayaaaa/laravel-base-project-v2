@@ -24,6 +24,7 @@ stale. Re-derive it rather than editing by hand when a limiter changes.
 | `bulk-action` | `bulk_action_rate_limit_per_minute` (5) | per minute | user id, else IP | 302 + errors (web) / 429 JSON |
 | `send-test-mail` | `send_test_mail_rate_limit_per_minute` (5) | per minute | user id + IP + recipient | 302 + errors (web) / 429 JSON |
 | `audit-export` | `audit_export_rate_limit_per_hour` (5) | per hour | user id + IP | 302 + errors (web) / 429 JSON |
+| `queue-retry` | `queue_retry_rate_limit_per_minute` (10) | per minute | user id + IP | 302 + flash `error` (web) / 429 JSON |
 | `health` | `health_rate_limit_per_minute` (120) | per minute | IP | 429 JSON only |
 
 `email-verification` and `resend-verification` deliberately share one setting
@@ -33,6 +34,14 @@ Every limiter answers through the shared builder
 (`App\Auth\LoginThrottle::responseFor()`), so every one branches on
 `$request->expectsJson()`: an API client gets 429 JSON, a browser gets a
 redirect with a field error.
+
+`queue-retry` is the one exception to the field error:
+`LoginThrottle::flashResponseFor()` sends a flash under `error` instead, because
+the queue monitor is a vendor layout that renders `session('error')` and carries
+no `$errors` bag — the standard shape would reload the page with no message on
+it, i.e. a button that silently stops working. Its JSON branch is identical to
+every other limiter's; the shape a machine reads cannot depend on which page a
+human happened to be looking at.
 
 `health` is the one exception, and for a reason none of the others have: its
 route (`GET /api/v1/health`) has no web branch at all, so the shape is not a
