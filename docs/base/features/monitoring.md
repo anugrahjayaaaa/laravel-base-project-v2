@@ -62,7 +62,12 @@ classification.
 
 Both failures return 403, so a caller cannot tell which one fired. That is
 deliberate and consistent with the Phase 7 decision (see
-[phase-7-feature-flags.md](../../planning/phase-7-feature-flags.md)).
+[phase-7-feature-flags.md](../../planning/phase-7-feature-flags.md)). That 403 is
+for an **authenticated** caller: a guest is redirected to `/login` by
+`auth:web,sanctum`, which `config/pulse.php` puts ahead of the gate, because
+Pulse's routes are the package's and this config list is the only place that
+middleware can be added. `/vantage` gets it from the admin group in
+`routes/web.php`; both dashboards now answer "who are you" before "may you".
 
 **The gate is an override, and it reads the flag too.** Pulse defines `viewPulse`
 itself as `environment('local')` at

@@ -129,6 +129,15 @@ return [
 
     'middleware' => [
         'web',
+
+        // Authentication before authorization, like every route in the admin
+        // group. Pulse is the one module whose routes this project does not
+        // declare, so without this line its dashboard was the one admin surface
+        // that answered a guest with the 403 meant for a signed-in caller
+        // without the permission — `/vantage` redirects to `/login`, `/pulse`
+        // did not. The 403 below stays for authenticated callers only.
+        'auth:web,sanctum',
+
         Authorize::class,
 
         // The `pulse` feature flag, enforced on the vendor route group.
