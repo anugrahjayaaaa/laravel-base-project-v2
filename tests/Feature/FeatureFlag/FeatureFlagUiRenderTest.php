@@ -3,6 +3,7 @@
 namespace Tests\Feature\FeatureFlag;
 
 use App\Models\User;
+use App\Support\PermissionCatalog;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\ViewErrorBag;
@@ -76,6 +77,9 @@ class FeatureFlagUiRenderTest extends TestCase
                     'enabled' => true,
                     // An ON flag's toggle turns it OFF.
                     'toggle_url' => '/features/users/toggle?enabled=0',
+                    // The set the flag owns, resolved by the action — the toggle's
+                    // modal copy counts on it.
+                    'permissions' => PermissionCatalog::forFeature('users'),
                 ],
                 [
                     'slug' => 'pulse',
@@ -83,6 +87,7 @@ class FeatureFlagUiRenderTest extends TestCase
                     'description' => '',
                     'enabled' => false,
                     'toggle_url' => '/features/pulse/toggle?enabled=1',
+                    'permissions' => PermissionCatalog::forFeature('pulse'),
                 ],
             ],
             'Monitoring' => [
@@ -92,6 +97,7 @@ class FeatureFlagUiRenderTest extends TestCase
                     'description' => 'Audit trail viewer.',
                     'enabled' => true,
                     'toggle_url' => '/features/activity_logs/toggle?enabled=0',
+                    'permissions' => PermissionCatalog::forFeature('activity_logs'),
                 ],
             ],
         ];
@@ -488,6 +494,97 @@ class FeatureFlagUiRenderTest extends TestCase
         $this->assertStringContainsString('/features/pulse/toggle?enabled=1', $switches[1]);
         $this->assertStringContainsString('data-label="Enable"', $switches[1]);
         $this->assertStringContainsString('data-variant="success"', $switches[1]);
+    }
+
+    /**
+     * The DISABLE modal says what the switch takes away.
+     *
+     * Disabling a module revokes every permission it owns from every role and
+     * user, and re-enabling does not hand them back (`FeatureRevokePermissionsAction`).
+     * Without this copy the modal reads like a page toggle and the operator finds
+     * out from a user whose sidebar went quiet.
+     */
+    public function test_the_disable_modal_says_the_permissions_are_revoked(): void
+    {
+        $switches = $this->switches($this->render());
+
+        // `users` is ON and owns eleven: the count, not the list.
+        $this->assertStringContainsString(
+            'revokes its 11 permissions from all roles and users',
+            $switches[0]
+        );
+        $this->assertStringContainsString('assign them again', $switches[0]);
+
+        // `activity_logs` is ON as well, with two.
+        $this->assertStringContainsString('revokes its 2 permissions', $switches[2]);
+
+        // `pulse` is OFF, so its switch ENABLES — nothing is revoked on the way
+        // in, and copy that said otherwise would be a lie in the other direction.
+        $this->assertStringNotContainsString('revoked', $switches[1]);
+
+        // One permission is NAMED rather than counted. The two single-permission
+        // modules (`pulse`, `health`) are the common case, and "Its 1
+        // permissions" is the kind of sentence that makes an operator trust the
+        // rest of the modal less.
+        $single = $this->toggleMessage('pulse', ['pulse.view']);
+
+        $this->assertStringContainsString('revokes', $single);
+        $this->assertStringContainsString('pulse.view', $single);
+        $this->assertStringContainsString('from all roles and users', $single);
+        $this->assertStringContainsString('assign it again', $single);
+
+        // A flag that owns none — `translations`, `sessions` — claims nothing.
+        $this->assertStringNotContainsString('revoked', $this->toggleMessage('translations', []));
+
+        // Ceiling, not a target. The modal is read in one glance: what the switch
+        // takes away, then the way back. It grew to four sentences once — the
+        // module, the menu items, the permissions, the reassurance — and an
+        // operator who has to read a paragraph to find the consequence stops
+        // reading the modal at all.
+        $copy = $this->messageText($switches[0]);
+
+        $this->assertLessThanOrEqual(
+            2,
+            substr_count($copy, '.'),
+            "The disable copy grew past two sentences: {$copy}"
+        );
+        $this->assertLessThan(
+            220,
+            strlen($copy),
+            "The disable copy grew back into a paragraph: {$copy}"
+        );
+    }
+
+    /** The confirmation message a rendered switch carries, as plain text. */
+    private function messageText(string $switch): string
+    {
+        preg_match('/data-message="([^"]*)"/', $switch, $m);
+
+        return trim(strip_tags(html_entity_decode($m[1] ?? '')));
+    }
+
+    /**
+     * One switch, rendered in isolation, as the confirmation message it carries.
+     *
+     * The page fixture cannot reach every branch: no ENABLED flag in it owns
+     * exactly one permission, and adding one would move the row, switch, table
+     * and column counts a dozen other cases assert. The component is the unit
+     * under test here, so it is rendered on its own.
+     *
+     * @param  array<int, string>  $permissions
+     */
+    private function toggleMessage(string $slug, array $permissions): string
+    {
+        return view('components.ui.feature-toggle', [
+            'feature' => [
+                'slug' => $slug,
+                'label' => ucfirst($slug),
+                'enabled' => true,
+                'permissions' => $permissions,
+                'toggle_url' => '/features/'.$slug.'/toggle?enabled=0',
+            ],
+            'manageable' => true,
+        ])->render();
     }
 
     /**

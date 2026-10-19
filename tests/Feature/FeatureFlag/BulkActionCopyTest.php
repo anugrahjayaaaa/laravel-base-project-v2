@@ -140,6 +140,39 @@ class BulkActionCopyTest extends TestCase
     }
 
     /**
+     * The bulk-disable modal has to stay a warning, not a paragraph.
+     *
+     * Read in one glance: what the switch takes away, then the way back. It grew
+     * to four sentences once — the module stopping, the menu items, the revoked
+     * permissions, the reassurance — and an operator who has to read a paragraph
+     * to find the consequence stops reading the modal at all. Same ceiling as the
+     * row switch's copy (`FeatureFlagUiRenderTest`), so the two paths cannot
+     * drift apart in length any more than they can in wording.
+     */
+    public function test_the_disable_copy_stays_two_sentences(): void
+    {
+        preg_match('/disable_feature:\s*\{[^}]*msg:\s*\'([^\']*)\'/s', $this->actionConfig(), $m);
+
+        $this->assertNotEmpty($m, 'disable_feature has no msg in ACTION_CONFIG');
+
+        // `__ITEM__` is what the driver substitutes ("3 selected feature(s)"); the
+        // copy around it is what the operator reads.
+        $msg = trim(strip_tags(html_entity_decode($m[1])));
+
+        $this->assertStringContainsString('assign them again', $msg, 'the copy must say the way back');
+        $this->assertLessThanOrEqual(
+            2,
+            substr_count($msg, '.'),
+            "The bulk disable copy grew past two sentences: {$msg}"
+        );
+        $this->assertLessThan(
+            220,
+            strlen($msg),
+            "The bulk disable copy grew back into a paragraph: {$msg}"
+        );
+    }
+
+    /**
      * Every page with a bulk bar, keyed by route for readable failures.
      *
      * Reads the RENDERED pages rather than the templates: the `data-bulk-states`
