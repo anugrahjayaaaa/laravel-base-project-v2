@@ -2,6 +2,7 @@
 
 namespace App\Services\HealthCheck;
 
+use Illuminate\Contracts\Cache\Repository;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -14,6 +15,15 @@ class HealthCheckService
      * Where a completed set of checks is kept between callers.
      */
     private const CACHE_KEY = 'health_check:results';
+
+    /**
+     * The store asked when the configured one cannot answer.
+     *
+     * The local disk, which a dead Redis does not take with it — and the one
+     * store among the four subsystems this endpoint checks that is not itself
+     * checked (`cache` is the other cache; `storage` is the application disk).
+     */
+    private const FALLBACK_STORE = 'file';
 
     /**
      * How long a completed set of checks is reused, in seconds.
@@ -31,29 +41,102 @@ class HealthCheckService
     /**
      * Run all health checks and return the results.
      *
+     * A READ, then a best-effort write, rather than `Cache::remember()`. The
+     * difference is the ceiling `CACHE_TTL_SECONDS` promises: `remember()` asks
+     * the store for the key, and on a miss it runs the callback BEFORE trying to
+     * store the result — so a store that cannot be written runs the whole probe
+     * set on every request and only then fails. Reading first means a store that
+     * cannot answer costs a read and nothing else, and the store that CAN answer
+     * is the one that decides whether the probes run.
+     *
      * @return array<string, string>
      */
     public function check(): array
     {
+        $cached = $this->cachedResults();
+
+        if ($cached !== null) {
+            return $cached;
+        }
+
+        $checks = $this->runChecks();
+
+        $this->rememberResults($checks);
+
+        return $checks;
+    }
+
+    /**
+     * The stored set, from whichever store can answer.
+     *
+     * The configured store first, so a healthy install is unchanged. It is a
+     * cache store, and a cache store is one of the things being checked: without
+     * a second answer, the one endpoint you reach when Redis is down answers 500
+     * instead of reporting `cache: fail` — hiding the failure it exists to name.
+     *
+     * @return array<string, string>|null
+     */
+    private function cachedResults(): ?array
+    {
         try {
-            return Cache::remember(
-                self::CACHE_KEY,
-                self::CACHE_TTL_SECONDS,
-                fn (): array => $this->runChecks()
-            );
+            $cached = Cache::get(self::CACHE_KEY);
+
+            if (is_array($cached)) {
+                return $cached;
+            }
+        } catch (\Throwable) {
+            // Expected while the cache is the broken subsystem, and reported as
+            // `cache: fail` in the answer itself. Not logged: this runs on every
+            // request from an untroubled uptime monitor, and the payload already
+            // names the failure.
+        }
+
+        try {
+            $cached = $this->fallbackStore()->get(self::CACHE_KEY);
         } catch (\Throwable $e) {
-            // `Cache::remember` cannot answer without the cache store, and the
-            // cache store is one of the things being checked. Without this
-            // branch, the one endpoint you reach when Redis is down answers 500
-            // instead of reporting `cache: fail` — it would hide the failure it
-            // exists to name.
+            // Neither store can answer, so the ceiling is gone and every request
+            // runs the probes. That is worth a log line the payload cannot give.
             Log::error('health_check.results_cache.failed', [
                 'exception' => get_class($e),
                 'message'   => $e->getMessage(),
             ]);
 
-            return $this->runChecks();
+            return null;
         }
+
+        return is_array($cached) ? $cached : null;
+    }
+
+    /**
+     * Store the completed set, in both stores, best effort.
+     *
+     * Both, not just the one asked first: the fallback has to be warm for the
+     * request that finds the configured store down, and a store that cannot be
+     * written is a store this must not fail on — there is nothing left to do
+     * about it here, and the next request that finds no stored set runs the
+     * checks again, which is what this branch always did.
+     */
+    private function rememberResults(array $checks): void
+    {
+        try {
+            Cache::put(self::CACHE_KEY, $checks, self::CACHE_TTL_SECONDS);
+        } catch (\Throwable) {
+            //
+        }
+
+        try {
+            $this->fallbackStore()->put(self::CACHE_KEY, $checks, self::CACHE_TTL_SECONDS);
+        } catch (\Throwable) {
+            //
+        }
+    }
+
+    /**
+     * The store the fallback read and write go to.
+     */
+    private function fallbackStore(): Repository
+    {
+        return Cache::store(self::FALLBACK_STORE);
     }
 
     /**
