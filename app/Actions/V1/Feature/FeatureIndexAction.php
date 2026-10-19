@@ -4,6 +4,7 @@ namespace App\Actions\V1\Feature;
 
 use App\Models\User;
 use App\Support\FeatureCatalog;
+use App\Support\PermissionCatalog;
 use Illuminate\Support\Facades\Cache;
 
 /**
@@ -132,7 +133,15 @@ class FeatureIndexAction
 
                 $enabled += (int) $isEnabled;
 
-                $rows[] = [...$flag, 'enabled' => $isEnabled];
+                // The permissions this flag owns, resolved from the catalogue
+                // (pure array work, no query), so the confirmation modal can say
+                // what switching the module off takes away. Cached with the rest:
+                // the catalogue is code, so this cannot go stale.
+                $rows[] = [
+                    ...$flag,
+                    'enabled' => $isEnabled,
+                    'permissions' => PermissionCatalog::forFeature($flag['slug']),
+                ];
             }
 
             $groups[$group] = $rows;

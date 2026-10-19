@@ -21,6 +21,7 @@ use App\Http\Requests\V1\Role\UpdateRoleRequest;
 use App\Models\Role;
 use App\Models\RoleLookup;
 use App\Models\User;
+use App\Support\PermissionCatalog;
 use App\Support\SystemRole;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
@@ -258,6 +259,12 @@ class RoleController extends Controller
     {
         $permissions = Permission::query()
             ->where('guard_name', RoleLookup::guard())
+            // A permission whose module flag is off is not offered. Hiding it
+            // alone would be worse than showing it: the grant would become
+            // invisible and unremovable from the UI. That is why the toggle
+            // also revokes it (FeatureRevokePermissionsAction) and why
+            // PersistsRole keeps an existing grant instead of dropping it.
+            ->whereIn('name', PermissionCatalog::visibleNames())
             ->orderBy('name')
             ->get();
 

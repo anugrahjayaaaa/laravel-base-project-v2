@@ -147,6 +147,63 @@ class PermissionCatalog
     ];
 
     /**
+     * Which feature flag owns which resource.
+     *
+     * A permission for a module that is switched off must not be handed out:
+     * the role matrix hides it and `FeatureToggleAction` revokes it from every
+     * role when the flag goes off. Both need one answer to "whose permission is
+     * this", and this map is that answer.
+     *
+     * Keyed by RESOURCE, not by permission name, for the same reason
+     * `grouped()` derives the prefix instead of listing it: a new
+     * `users.impersonate` inherits its module's flag with no entry here, so the
+     * map cannot rot one permission at a time. A new RESOURCE does need a line
+     * — `PermissionFeatureMapTest` fails when one is missing, which is the
+     * point: silently unmapped is the one outcome that must be loud.
+     *
+     * `features` is deliberately absent and is the only such resource. The flag
+     * management page must stay reachable and editable from any role the
+     * operator handed it to: gating `features.view`/`features.manage` on the
+     * `features` flag would revoke both the moment it was switched off, and the
+     * routes are not gated on it either (see routes/web.php) — the page that
+     * re-enables a flag cannot be one of the flags it re-enables.
+     *
+     * `translations` and `sessions` own no permissions, so they have no entry
+     * either.
+     *
+     * @var array<string, string> resource prefix => flag slug
+     */
+    private const FEATURE_BY_RESOURCE = [
+        'users' => 'users',
+        'roles' => 'roles',
+        'permissions' => 'permissions',
+        'settings' => 'settings',
+        'notifications' => 'notifications',
+        // The resource is `audit`, the flag is `activity_logs`: the viewer was
+        // named after the module before the flag existed. Spelled out here
+        // rather than pluralised from the prefix, which is exactly how the two
+        // would silently drift.
+        'audit' => 'activity_logs',
+        'pulse' => 'pulse',
+        'health' => 'health',
+        'queues' => 'vantage',
+    ];
+
+    /**
+     * Resources with no feature flag behind them.
+     *
+     * Not a fallback for a forgotten entry — `PermissionFeatureMapTest` asserts
+     * the set of unmapped resources is exactly this list, so a new resource
+     * with no flag has to be added here on purpose or the suite goes red.
+     *
+     * @var array<int, string>
+     */
+    private const UNMAPPED_RESOURCES = [
+        // See FEATURE_BY_RESOURCE: the toggle page cannot be behind a toggle.
+        'features',
+    ];
+
+    /**
      * Every permission name the application defines.
      *
      * @return array<int, string>
@@ -195,5 +252,91 @@ class PermissionCatalog
     public static function forResource(string $resource): array
     {
         return self::grouped()[$resource] ?? [];
+    }
+
+    /**
+     * The flag that owns a permission, or null when it has none.
+     *
+     * Null means "unconditional", not "unknown": `features.view` is visible and
+     * assignable whatever the store says, because no flag governs it.
+     */
+    public static function featureFor(string $permission): ?string
+    {
+        return self::FEATURE_BY_RESOURCE[Str::before($permission, '.')] ?? null;
+    }
+
+    /**
+     * Every permission a flag owns — what switching it off takes away.
+     *
+     * @return array<int, string>
+     */
+    public static function forFeature(string $flag): array
+    {
+        return array_values(array_filter(
+            self::all(),
+            fn (string $name): bool => self::featureFor($name) === $flag
+        ));
+    }
+
+    /**
+     * The permissions whose module is switched on — what the UI offers.
+     *
+     * @return array<int, string>
+     */
+    public static function visibleNames(): array
+    {
+        return self::partition()[0];
+    }
+
+    /**
+     * The permissions whose module is switched off — what a toggle revokes.
+     *
+     * @return array<int, string>
+     */
+    public static function namesForInactiveFeatures(): array
+    {
+        return self::partition()[1];
+    }
+
+    /**
+     * The unmapped resources, for the test that keeps this map honest.
+     *
+     * @return array<int, string>
+     */
+    public static function unmappedResources(): array
+    {
+        return self::UNMAPPED_RESOURCES;
+    }
+
+    /**
+     * Split the catalogue by whether the owning flag is on.
+     *
+     * ONE store read for the whole catalogue: `activeMap()` takes every flag
+     * this class names and reads them in a single `WHERE name IN (...)`. Asking
+     * `FeatureCatalog::isActive()` per permission would be one query per
+     * permission on a page that renders the whole matrix.
+     *
+     * @return array{0: array<int, string>, 1: array<int, string>} [visible, hidden]
+     */
+    private static function partition(): array
+    {
+        $flags = FeatureCatalog::activeMap(array_values(self::FEATURE_BY_RESOURCE));
+
+        $visible = [];
+        $hidden = [];
+
+        foreach (self::all() as $name) {
+            $flag = self::featureFor($name);
+
+            if ($flag === null || ($flags[$flag] ?? false)) {
+                $visible[] = $name;
+
+                continue;
+            }
+
+            $hidden[] = $name;
+        }
+
+        return [$visible, $hidden];
     }
 }

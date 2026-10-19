@@ -40,6 +40,11 @@ use Laravel\Pennant\Feature;
  */
 class FeatureBulkToggleAction
 {
+    public function __construct(
+        private readonly FeatureRevokePermissionsAction $revokePermissionsAction,
+    ) {
+    }
+
     /**
      * The audit event name. Distinct from FeatureToggleAction::EVENT so the
      * audit viewer can filter a batch apart from a row switch.
@@ -61,7 +66,7 @@ class FeatureBulkToggleAction
      * @param  array<int, string>  $slugs  Declared flags. Anything else aborts.
      * @param  bool  $enabled  The state being asked for.
      * @param  User|null  $causer  Who to attribute the audit record to
-     * @return array{enabled: bool, changed: array<int, array{slug: string, label: string, from: bool, to: bool}>, unchanged: array<int, string>}
+     * @return array{enabled: bool, changed: array<int, array{slug: string, label: string, from: bool, to: bool}>, unchanged: array<int, string>, revoked: array<string, array<int, string>>}
      *
      * @throws \Symfony\Component\HttpKernel\Exception\NotFoundHttpException When any slug is not declared
      */
@@ -109,8 +114,9 @@ class FeatureBulkToggleAction
 
         $changed = [];
         $unchanged = [];
+        $revoked = [];
 
-        DB::transaction(function () use ($slugs, $enabled, $causer, $store, $before, &$changed, &$unchanged): void {
+        DB::transaction(function () use ($slugs, $enabled, $causer, $store, $before, &$changed, &$unchanged, &$revoked): void {
             $toWrite = [];
 
             foreach ($slugs as $slug) {
@@ -140,6 +146,18 @@ class FeatureBulkToggleAction
                 $enabled
                     ? Feature::activate($toWrite)
                     : Feature::deactivate($toWrite);
+            }
+
+            // Every flag this batch switched OFF loses its permissions in the
+            // same transaction — see FeatureRevokePermissionsAction for why the
+            // toggle owns this and not the role form. ONE pass over the whole
+            // batch, the same reason the write above is one statement: the cost
+            // must not grow with the selection. And only the slugs that actually
+            // moved: a flag that was already off has already had its permissions
+            // revoked, and re-reporting it would tell the auditor something was
+            // taken this time.
+            if (! $enabled) {
+                $revoked = $this->revokePermissionsAction->runMany($toWrite);
             }
 
             // Inside the transaction (DEP-003): an audit row that survives a
@@ -172,6 +190,10 @@ class FeatureBulkToggleAction
                             'to' => $c['to'],
                         ], $changed),
                         'unchanged' => $unchanged,
+                        // slug => permission names dropped from every role. The
+                        // map is sparse on purpose: a flag whose permissions
+                        // nobody held contributed nothing to change.
+                        'revoked' => $revoked,
                     ],
                 ]],
                 $causer ?? auth()->user(),
@@ -187,6 +209,7 @@ class FeatureBulkToggleAction
             'enabled' => $enabled,
             'changed' => $changed,
             'unchanged' => $unchanged,
+            'revoked' => $revoked,
         ];
     }
 }

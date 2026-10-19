@@ -3,6 +3,7 @@
 namespace App\Actions\V1\Permission;
 
 use App\Models\RoleLookup;
+use App\Support\PermissionCatalog;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Spatie\Permission\Models\Permission;
 
@@ -65,6 +66,11 @@ class PermissionIndexAction
 
         $permissions = Permission::query()
             ->where('guard_name', RoleLookup::guard())
+            // Same rule as the role matrix: a permission whose module flag is
+            // off is not shown, because it cannot be assigned to anything. The
+            // two pages read one answer so one cannot list a permission the
+            // other has stopped offering.
+            ->whereIn('name', PermissionCatalog::visibleNames())
             // roles for the names in the Assigned Roles column, roles_count for
             // the Unused metric and the unassigned marker. Two statements, not
             // one per permission.

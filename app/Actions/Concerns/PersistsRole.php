@@ -5,10 +5,12 @@ namespace App\Actions\Concerns;
 use App\Models\Role;
 use App\Models\RoleLookup;
 use App\Models\User;
+use App\Support\PermissionCatalog;
 use App\Support\SystemRole;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
+use Spatie\Permission\Models\Permission;
 
 /**
  * The shared write path for creating and updating a role.
@@ -49,7 +51,7 @@ trait PersistsRole
             // syncPermissions() resolves each value through findByName() when it is
             // not an int key, so '19' is looked up as a permission literally NAMED
             // "19" and throws PermissionDoesNotExist.
-            $role->syncPermissions(array_map('intval', $data['permissions'] ?? []));
+            $role->syncPermissions($this->assignablePermissionIds($role, $data['permissions'] ?? []));
 
             // Inside the transaction (DEP-003): an audit row that survives a
             // rollback records a save that never happened.
@@ -66,6 +68,51 @@ trait PersistsRole
 
             return $role;
         });
+    }
+
+    /**
+     * The permission ids a save is allowed to leave on the role.
+     *
+     * Two rules about a permission whose module flag is off (`PermissionCatalog`
+     * owns the mapping):
+     *
+     *  - A crafted POST must not grant one. The matrix is not the only way to
+     *    reach this write, and "not offered" has to survive a request that
+     *    names the id anyway.
+     *  - A grant that already exists is KEPT. The matrix cannot render it, so
+     *    dropping it here would mean an unrelated save silently rewrote a
+     *    permission set the admin could not see — the data loss
+     *    PermissionMatrixTest exists to prevent, one flag away from happening.
+     *
+     * So: assignable = the module is on, or the role already holds it.
+     *
+     * @param  array<int, mixed>  $submitted  Raw ids from the request, as strings
+     * @return array<int, int>
+     */
+    private function assignablePermissionIds(Role $role, array $submitted): array
+    {
+        $visible = PermissionCatalog::visibleNames();
+        $hidden = PermissionCatalog::namesForInactiveFeatures();
+
+        // The role's own grants, read before the sync — after it they are the
+        // new set and there is nothing left to preserve.
+        $keep = $role->exists
+            ? $role->permissions()->whereIn('name', $hidden)->pluck('id')
+            : collect();
+
+        $ids = array_map('intval', $submitted);
+
+        // The guard is applied to the name the row owns, never to the id alone:
+        // an id that is not in the table fails the same `whereIn`, so this also
+        // keeps the old `exists:permissions,id` promise at the write.
+        $granted = $ids === []
+            ? collect()
+            : Permission::query()
+                ->whereIn('id', $ids)
+                ->whereIn('name', $visible)
+                ->pluck('id');
+
+        return $granted->merge($keep)->unique()->values()->all();
     }
 
     /**
