@@ -5,6 +5,7 @@ namespace Tests\Feature\Vantage;
 use App\Http\Middleware\VerifyCsrfToken;
 use App\Models\RoleLookup;
 use App\Models\User;
+use App\Support\FeatureCatalog;
 use Database\Seeders\PermissionSeeder;
 use Database\Seeders\RoleSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -157,6 +158,44 @@ class VantagePermissionGateTest extends TestCase
         $this->assertFalse(
             Gate::forUser($plain)->allows('viewVantage'),
             'a plain authenticated user does NOT — the package default would let them'
+        );
+    }
+
+    /**
+     * The gate also answers to the flag, one level below the route.
+     *
+     * Phase 11 fix #1: with `config/vantage.php` turning the package's own routes
+     * off, `viewVantage` is the gate the vendor would consult if they were ever
+     * switched back on — and it defines it as "any authenticated user", so an
+     * unflagged gate is an open dashboard. The flag is ANDed in for the same
+     * reason it is on `/pulse`.
+     *
+     * Switched off by the CONFIG kill switch, which leaves the permission rows in
+     * place — a toggle revokes them, so a holder would be refused by the
+     * permission check and this case would prove nothing about the flag.
+     *
+     * Superadmin is not asserted: `Gate::before` answers before any callback
+     * runs, so their bypass is untouched by design, and the flag stops them at
+     * `EnsureFeatureIsEnabled` instead (case 5).
+     */
+    public function test_the_view_vantage_gate_refuses_while_the_module_is_kill_switched(): void
+    {
+        $admin = $this->login('admin');
+
+        $this->assertTrue($admin->can('queues.view'), 'precondition: the permission is held');
+        $this->assertTrue(
+            Gate::forUser($admin)->allows('viewVantage'),
+            'precondition: the gate answers yes while the module is on'
+        );
+
+        config(['pennant.features.vantage.disabled' => true]);
+
+        $this->assertFalse(FeatureCatalog::isActive('vantage'), 'precondition: the kill switch reads as off');
+        $this->assertTrue($admin->can('queues.view'), 'precondition: the grant is still in place');
+
+        $this->assertFalse(
+            Gate::forUser($admin)->allows('viewVantage'),
+            'the gate still says yes for a module that is switched off'
         );
     }
 }

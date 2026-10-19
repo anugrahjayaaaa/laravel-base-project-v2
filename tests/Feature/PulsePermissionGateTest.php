@@ -4,9 +4,11 @@ namespace Tests\Feature;
 
 use App\Models\RoleLookup;
 use App\Models\User;
+use App\Support\FeatureCatalog;
 use Database\Seeders\PermissionSeeder;
 use Database\Seeders\RoleSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Gate;
 use Laravel\Pennant\Feature;
 use Spatie\Permission\PermissionRegistrar;
 use Tests\TestCase;
@@ -125,5 +127,48 @@ class PulsePermissionGateTest extends TestCase
         Feature::flushCache();
 
         $this->get('/pulse')->assertForbidden();
+    }
+
+    /**
+     * The flag reaches the GATE, not only the route middleware.
+     *
+     * Phase 11 fix #1: `viewPulse` answers `flag AND permission`, so a reader of
+     * that gate — a `@can('viewPulse')` in a view, or the package's own
+     * `Authorize` middleware if the group were ever rewired — cannot be told yes
+     * for a switched-off module. Before, the gate said yes and only
+     * `feature:pulse` on the route said no, which left the flag a route detail
+     * rather than a module switch.
+     *
+     * The module is switched off by the CONFIG kill switch, and that is the point
+     * rather than a convenience: a toggle also revokes the permission, so a
+     * holder would be refused by the permission check alone and this would pass
+     * without the flag in the gate at all. The kill switch leaves the grant in
+     * place, which is the one state where the gate's own answer is the only thing
+     * standing between the reader and a switched-off module.
+     *
+     * Not asserted for superadmin: `Gate::before` answers before any gate
+     * callback runs, so their bypass is untouched by design — the flag stops them
+     * at `EnsureFeatureIsEnabled`, with no bypass, as case 5 pins.
+     */
+    public function test_the_gate_itself_refuses_while_the_module_is_kill_switched(): void
+    {
+        $admin = $this->login('admin');
+
+        $this->assertTrue($admin->can('pulse.view'), 'precondition: the permission is held');
+        $this->assertTrue(
+            Gate::forUser($admin)->allows('viewPulse'),
+            'precondition: the gate answers yes while the module is on'
+        );
+
+        config(['pennant.features.pulse.disabled' => true]);
+
+        $this->assertFalse(FeatureCatalog::isActive('pulse'), 'precondition: the kill switch reads as off');
+        $this->assertTrue($admin->can('pulse.view'), 'precondition: the grant is still in place');
+
+        $this->assertFalse(
+            Gate::forUser($admin)->allows('viewPulse'),
+            'the gate still says yes for a module that is switched off, so anything reading the '
+            .'gate instead of the route would let a caller through'
+        );
     }
 }
