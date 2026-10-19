@@ -383,6 +383,35 @@ class AppServiceProvider extends ServiceProvider
                 ->by($key)
                 ->response($throttle->responseFor('health', jsonOnly: true));
         });
+
+        // Re-queueing a failed job. `queues.retry` answers "may this person" and
+        // not "how often", and this is the one mutating control on the queue
+        // dashboard: a permission without a ceiling leaves a compromised
+        // operator account able to re-dispatch work as fast as it can click.
+        //
+        // Keyed on user AND ip, like `audit-export`, and per MINUTE rather than
+        // per hour because the unit of work is one job rather than a whole
+        // table. Ten is well past an operator working through a failure list by
+        // hand and far below what a script needs to matter.
+        //
+        // The `audit-export` limiter next door was the precedent this follows:
+        // that one is a SystemSetting because the page quotes the number. This
+        // one is a setting for the other half of the same reason — an operator
+        // draining a caught-up backlog after an incident should be able to raise
+        // it without a deploy.
+        RateLimiter::for('queue-retry', function ($request) use ($throttle) {
+            $key = $throttle->key('queue-retry', (string) $request->user()?->id, $request->ip());
+
+            return Limit::perMinute(SystemSetting::getInt('queue_retry_rate_limit_per_minute', 10))
+                ->by($key)
+                // A flash, not a field error: the queue monitor is a vendor
+                // layout that renders `session('error')` and has no `$errors`
+                // bag, so the standard field-error response would reload the
+                // page with no message on it.
+                ->response($throttle->flashResponseFor(
+                    'Too many job retries in a row. Please wait a moment and try again.'
+                ));
+        });
     }
 
     /**

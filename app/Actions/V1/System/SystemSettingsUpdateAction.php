@@ -135,6 +135,10 @@ class SystemSettingsUpdateAction
             // the seeder, so a payload that omits the field — an API client
             // that never heard of it — leaves the ceiling where it was.
             'health_rate_limit_per_minute' => (string) ($data['health_rate_limit_per_minute'] ?? 120),
+
+            // Phase 11 §13. Same three-way agreement as the health key above:
+            // limiter fallback, seeder and this default all say 10.
+            'queue_retry_rate_limit_per_minute' => (string) ($data['queue_retry_rate_limit_per_minute'] ?? 10),
         ];
 
         $graceEnabled = $updates['inactivity_lock_grace_enabled'] === 'true';

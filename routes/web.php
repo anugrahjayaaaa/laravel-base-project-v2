@@ -429,6 +429,11 @@ Route::middleware(['auth:web,sanctum', 'verified', 'password.change.required', '
             ->can('queues.view');
         Route::post('/vantage/jobs/{id}/retry', [QueueMonitorController::class, 'retry'])
             ->name('vantage.jobs.retry')
-            ->can('queues.retry');
+            ->can('queues.retry')
+            // `queues.retry` answers "may this person", not "how often". Same
+            // pairing as the audit-export retry button: a permission without a
+            // ceiling lets a compromised operator account re-dispatch work as
+            // fast as it can click.
+            ->middleware('throttle:queue-retry');
     });
 });

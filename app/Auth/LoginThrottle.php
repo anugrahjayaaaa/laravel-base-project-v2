@@ -194,6 +194,36 @@ class LoginThrottle
     }
 
     /**
+     * The same answer for a page that renders a session `error` flash.
+     *
+     * Not every page in the app carries the `$errors` bag. The queue monitor is
+     * a vendor layout: it renders `session('error')` and nothing else, so the
+     * field-error shape above would reload the page with no message on it —
+     * a throttle nobody can see is a button that silently stops working.
+     *
+     * The JSON branch is deliberately identical to `responseFor()`: the shape a
+     * machine reads must not depend on which page a human was looking at.
+     *
+     * @param  string  $message  what the human-facing page shows
+     */
+    public function flashResponseFor(string $message): Closure
+    {
+        return function (Request $request, array $headers) use ($message) {
+            $retryAfter = $headers['Retry-After'] ?? 60;
+
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'message' => 'Too many requests. Please try again later.',
+                    'code' => 'RATE_LIMITED',
+                    'retry_after_seconds' => $retryAfter,
+                ], 429);
+            }
+
+            return back()->with('error', $message)->with('rate_limit_seconds', $retryAfter);
+        };
+    }
+
+    /**
      * Seconds remaining until the current lockout expires.
      */
     public function lockedFor(string $identifier, string $ip): int

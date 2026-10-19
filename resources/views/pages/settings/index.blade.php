@@ -599,6 +599,22 @@
                                     <div class="invalid-feedback d-block" id="health_rate_limit_per_minute_error">{{ $message }}</div>
                                 @enderror
                             </div>
+
+                            <div class="col-md-6">
+                                <label for="queue_retry_rate_limit_per_minute" class="form-label">
+                                    Queue Job Retries
+                                    <i class="bi bi-info-circle text-muted fs-7 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Retries per minute on the queue monitor, counted per user and IP. Each press re-queues one failed job, so the ceiling is how fast one account can put work back on the queue."></i>
+                                </label>
+                                <div class="input-group">
+                                    <input type="number" name="queue_retry_rate_limit_per_minute" id="queue_retry_rate_limit_per_minute"
+                                           class="form-control form-control-sm @error('queue_retry_rate_limit_per_minute') is-invalid @enderror" @error('queue_retry_rate_limit_per_minute') aria-invalid="true" aria-describedby="queue_retry_rate_limit_per_minute_error" @enderror
+                                           value="{{ old('queue_retry_rate_limit_per_minute', $settings['queue_retry_rate_limit_per_minute'] ?? 10) }}" min="1" max="120">
+                                    <span class="input-group-text bg-body-tertiary">/ min</span>
+                                </div>
+                                @error('queue_retry_rate_limit_per_minute')
+                                    <div class="invalid-feedback d-block" id="queue_retry_rate_limit_per_minute_error">{{ $message }}</div>
+                                @enderror
+                            </div>
                         </div>
                     </div>
                 </div>
