@@ -198,4 +198,16 @@ class VantagePermissionGateTest extends TestCase
             'the gate still says yes for a module that is switched off'
         );
     }
+
+    /**
+     * A guest is redirected to `/login`, the same answer `/pulse` gives.
+     *
+     * This route gets the middleware from the admin group in `routes/web.php`
+     * rather than from a config list, so the test exists to pin the PARITY: the
+     * two dashboards must not answer a guest differently again.
+     */
+    public function test_a_guest_is_redirected_to_login(): void
+    {
+        $this->get('/vantage')->assertRedirect(route('login'));
+    }
 }

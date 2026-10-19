@@ -31,6 +31,9 @@ use Tests\TestCase;
  *    is a kill switch, not a role, and `EnsureFeatureIsEnabled` has no bypass
  *    for the before-rule to walk through)
  *
+ * A guest is not one of the five: they are redirected to `/login`, like every
+ * other admin page (`test_a_guest_is_redirected_to_login`).
+ *
  * Case 1 is why `AuthServiceProvider::configurePulseGate()` exists at all:
  * Pulse defines `viewPulse` as `environment('local')`, which is false in
  * testing — without the override, an admin holding the permission gets 403.
@@ -170,5 +173,20 @@ class PulsePermissionGateTest extends TestCase
             'the gate still says yes for a module that is switched off, so anything reading the '
             .'gate instead of the route would let a caller through'
         );
+    }
+
+    /**
+     * A guest is sent to the login page, not refused with the gate's 403.
+     *
+     * `/pulse` is the one admin surface whose routes the package declares, so
+     * `config/pulse.php` is the only place this middleware can be added — and
+     * without it the dashboard answered "forbidden" to a caller whose real
+     * problem was that nobody was signed in. `/vantage` has always redirected
+     * (the admin group in `routes/web.php` carries the same middleware); this
+     * pins the two together.
+     */
+    public function test_a_guest_is_redirected_to_login(): void
+    {
+        $this->get('/pulse')->assertRedirect(route('login'));
     }
 }
