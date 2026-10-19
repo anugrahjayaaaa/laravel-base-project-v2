@@ -114,9 +114,12 @@ export const ACTION_CONFIG = {
     },
     // --- feature flags (P7-F1) ---
     // Copy is deliberately asymmetric. Enabling a flag is a normal, reversible
-    // state change; disabling one removes a whole module for every user, so it
-    // says so. `__ITEM__` is the JS driver's "N selected feature(s)", which is
-    // why the plural noun is spelled out rather than relying on the singular.
+    // state change; disabling one removes a whole module for every user AND
+    // revokes the permissions the selected flags own, which re-enabling does not
+    // give back. Two short sentences say both, in the same shape as the row
+    // switch's modal (feature-toggle.blade.php) so the two paths read alike.
+    // `__ITEM__` is the JS driver's "N selected feature(s)", which is why the
+    // plural noun is spelled out rather than relying on the singular.
     enable_feature: {
         title: 'Enable Feature',
         msg: 'Enable <b>__ITEM__</b>? Anyone with the matching permission reaches it again.',
@@ -125,7 +128,7 @@ export const ACTION_CONFIG = {
     },
     disable_feature: {
         title: 'Disable Feature',
-        msg: 'Disable <b>__ITEM__</b>? The module stops loading for EVERY user, including superadmin, and its menu items disappear. You can switch it back on from this page.',
+        msg: 'Disable <b>__ITEM__</b>? They are hidden for everyone and their permissions are revoked from all roles and users. Re-enabling does not restore them — assign them again.',
         variant: 'warning',
         icon: 'bi bi-toggle-off'
     },
