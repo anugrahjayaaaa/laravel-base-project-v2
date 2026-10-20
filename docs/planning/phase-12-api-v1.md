@@ -1,4 +1,16 @@
-# Phase 12 — API V1 (web/API gap audit)
+# Phase 12 — API V1
+
+> Date: 2026-10-20 | Status: **PLANNED (breakdown)** | Branch: `feature/phase-12-api-v1`
+> Part I is the capability audit of 2026-10-13, kept as written because it is the
+> record of what the route-table comparison found and `ChannelParityTest`
+> references it. Part II is the execution breakdown that closes the remaining
+> gaps and puts API documentation under the same standard as the code.
+> Dependency chain: **A → B → C → D → E**. A cannot be skipped: every later
+> group's definition of done includes a documentation step that A makes possible.
+
+---
+
+# Part I — Capability gap audit (2026-10-13)
 
 > Raised 2026-10-13 by comparing the registered route tables rather than by
 > reading the feature docs, after Phase 10's export work surfaced that the audit
@@ -113,14 +125,14 @@ both sides.
 Flagged here because it is the kind of thing an audit finds and an eager
 implementer "fixes" into a bug.
 
-## Follow-ups
+## Follow-ups from the audit
 
-| # | Item | Why |
-|---|------|-----|
-| P12-1 | A test that diffs the two route tables by capability | The check is manual and this phase proves it can be missed silently |
-| P12-2 | The other three rate limiters (`user-state-actions`, `bulk-action`, `send-test-mail`) are still literals | Phase 10 §11 P10-E9 moved only `audit-export` |
-| P12-3 | Audit the API for **response** parity, not route parity | Route presence was checked here; whether two channels return the same facts was not |
-| P12-4 | `app/Http/Controllers/Api/V1/NotificationController.php` and the new `Notification/` sub-namespace coexist | Worth folding into the sub-namespace pattern the other modules use |
+| # | Item | Status (2026-10-20) |
+|---|------|---------------------|
+| P12-1 | A test that diffs the two route tables by capability | **DONE** — `tests/Feature/Api/ChannelParityTest.php`. A route missing from the map fails the test; a one-sided capability must carry `why` |
+| P12-2 | The other three rate limiters (`user-state-actions`, `bulk-action`, `send-test-mail`) are still literals | **OPEN** — Group D |
+| P12-3 | Audit the API for **response** parity, not route parity | **OPEN** — Group D |
+| P12-4 | `Api\V1\NotificationController.php` and the new `Notification/` sub-namespace coexist | **OPEN** — Group C |
 
 ## The lesson, stated once
 
@@ -129,4 +141,259 @@ on one. Both passes read as complete, and the tracker recorded them as such.
 
 A capability is not delivered by the UI that shows it. The audit that would have
 caught this is comparing `route:list` against itself — so it has to be a test,
-or it has to be a person remembering to look. **P12-1 is the one that matters.**
+or it has to be a person remembering to look. **P12-1 is the one that matters**,
+and it now exists.
+
+---
+
+# Part II — Implementation breakdown
+
+## Scope
+
+Three jobs, in this order:
+
+1. **Make the API documentation real.** Scramble is installed and `/docs/api`
+   already answers, but the interface is ungated outside `local`, the package is
+   dev-only, and the document says nothing about authentication. Group A.
+2. **Close the contract gaps** the audit could not see: the two documented error
+   codes the handler never emits, the one API endpoint that does not exist, the
+   routes that carry no `can:`, and a response shape that only holds outside
+   `APP_DEBUG`. Groups B–D.
+3. **Prove it.** Feature tests per module, plus a documentation-drift test that
+   fails when a route is undocumented. Group E.
+
+Not in scope: v2, header versioning, generated SDKs, Postman collections,
+annotating the web routes.
+
+## What already exists (measured 2026-10-20, before writing any task)
+
+This phase is mostly an **audit-and-close** list, not greenfield. The brief
+assumed a project with no API. The measured state:
+
+| Capability | Evidence | State |
+|---|---|---|
+| Scramble package | `dedoc/scramble ^0.13` in `require-dev` | Installed |
+| Scramble config | `config/scramble.php` published, `api_path = api` | Present, untuned |
+| Docs routes | `docs/api`, `docs/api.json`, `_scramble/dev-tools/*` in `route:list` | Live |
+| Docs access control | `RestrictedDocsAccess` in `scramble.middleware`; `Gate::define('viewApiDocs')` | **Missing** → 403 everywhere outside `local` |
+| Base JSON response | `App\Http\Controllers\Controller::respond()` with `meta.request_id` / `meta.timestamp` | Present |
+| Resource transformers | `Resources/Api/V1/{User,Role,Permission,Notification,Audit,HealthCheck}` | Present |
+| 422 contract | `BaseFormRequest` + `FormatsApiErrors` → `{message, errors, code, meta}` | Present + tested |
+| 400/401/403/404/409/429/500 | `bootstrap/app.php` `renderable()` | Present, **inside `!config('app.debug')`** |
+| API v1 routes | `routes/api.php` — auth, profile, sessions, settings, users, roles, permissions, notifications, inbox, audit, features, health | ~70 routes, shipped |
+| Feature-flag enforcement | `EnsureFeatureIsEnabled` → **403**, no superadmin bypass | Shipped, tested |
+| Route parity gate | `ChannelParityTest` | Shipped |
+| Audit `source = api` | `Auditable::auditContext()` (`$request->is('api/*')`) | Shipped |
+| Rate limiters | `user-state-actions`, `bulk-action`, `send-test-mail`, `audit-export`, `health`, auth set | No `api` limiter |
+| API feature tests | `tests/Feature/Api/V1/{Auth,User,Notification,Audit}` + `ProfileTest`, `UserCrudApiTest`, `ValidationErrorContractTest` | Partial — no Role, Permission, Settings, Feature |
+
+Consequence for the plan: **do not re-build what is listed as Present.** Every
+task below says what it touches and what it verifies; a task whose subject
+already exists is a *verification + annotation* task, and is worded that way.
+
+## Decisions that override the brief
+
+Six points in the brief disagree with shipped behaviour or with
+`docs/base/`. Each is recorded here rather than silently followed, per the
+project rule that docs win and conflicts get written down.
+
+| # | Brief says | Reality / decision | Why |
+|---|---|---|---|
+| **D-1** | Feature flag returns **404** on a disabled module | **403, and it stays 403** | Shipped in Phase 7 and pinned by `FeatureFlagMiddlewareTest` for every role including superadmin. `docs/planning/phase-7-feature-flags.md` §Overview rejects 404 explicitly: 404 claims the route does not exist, which is false, and produces "this page 404s intermittently" support tickets. Changing it now would break the flag tests and contradict `docs/base/` and `AGENTS.md`. The breakdown enforces 403 |
+| **D-2** | New `App\Http\Controllers\Api\V1\BaseApiController` | **Not created.** `App\Http\Controllers\Controller` already is that class — `respond()` is the single JSON envelope helper, every API controller extends it | A second empty class under a versioned namespace would be a second name for one thing, and the next person would have to guess which base a controller should use. If V2 needs a base, it gets created when it has behaviour to hold |
+| **D-3** | Groups C and D described as endpoint implementation | **Groups C and D are audit-and-close, not greenfield** | `routes/api.php`, the Resources and the `can:` gates are already there. Writing "implement user endpoints" would produce a plan that re-does shipped work; a task here verifies, annotates, and closes only what is actually missing |
+| **D-4** | Docs reachable in production behind a gate | **Scramble stays dev-only.** Under `composer install --no-dev` the routes do not exist at all, so a production gate would protect nothing | `docs/base/dependencies/overview.md` §Scramble records "documentation-only, no runtime dependency in production". If production docs are wanted, that is a dependency change: promote to `require` **plus** a changelog entry and an ADR, per the project rule for package changes. Group A carries that as an explicit decision task, not a default |
+| **D-5** | `throttle:api` on the API | **No `api` limiter exists, and adding one must not loosen anything** | The protected group already runs `throttle:user-state-actions` at 15/min per user — tighter than a typical 60/min `api` limiter. Adding `api` beside it is safe only because both apply and the tightest wins; adding it *instead* would be a 4× loosening on every authenticated endpoint. Group D states the ladder before touching it |
+| **D-6** | Group E starts testing from zero | **Four API test folders already exist** | New tests go beside them in the same shape (`tests/Feature/Api/V1/{Domain}`), not in a parallel tree |
+
+## The mandatory documentation step
+
+**This is the standard every task in Groups B, C and D inherits.** An endpoint is
+not done when it returns the right JSON; it is done when the generated document
+describes that JSON. Scramble reads the code, so this is not a separate
+annotation pass bolted on afterwards — it is the reason the code has to say what
+it returns.
+
+For **every** endpoint created or changed:
+
+| # | Requirement | Where it lives |
+|---|---|---|
+| 1 | Route is inside the `api/v1` prefix and named `api.v1.*` | `routes/api.php` |
+| 2 | Method signature has a return type (`JsonResponse`, `AnonymousResourceCollection`, `Resource`, …) | controller |
+| 3 | `@return` array shape on every `Resource::toArray()` — conditional keys declared, not inferred | `Resources/Api/V1/**` |
+| 4 | Every query parameter documented: name, type, required, default, allowlisted values | FormRequest + `@queryParam` / inferred from `$request->validated()` |
+| 5 | Request body from the FormRequest rules — no endpoint may validate inline | FormRequest |
+| 6 | Every status code the endpoint can return is present, with the envelope from `docs/base/api/error-contract.md`: **200, 201, 400, 401, 403, 404, 409, 422, 429, 500** (only the reachable subset, but the four always-present ones are 401/403/422/500) | controller docblock |
+| 7 | Authorization requirement stated (`can:*`, `feature:*`) | route + `@authenticated` / description |
+| 8 | `Authorization: Bearer` shown for every `auth:sanctum` route | `config/scramble.php` `security_strategy` (P12-D5) |
+| 9 | `GET /docs/api.json` contains the route, and a test asserts it | `ApiDocumentationTest` (Group E) |
+
+**Definition of done, restated:** a task that adds or edits an endpoint and leaves
+item 9 failing is `IN_PROGRESS`, not `REVIEW`.
+
+Two mechanical helpers this phase adds so the standard is not remembered by hand:
+
+- `php artisan scramble:analyze` — surfaces routes Scramble could not infer.
+- `ApiDocumentationTest` — asserts every `api.v1.*` route appears in the spec.
+  A new undocumented endpoint then fails CI on the commit that adds it, which is
+  the same trick `ChannelParityTest` uses for channels.
+
+---
+
+## Group A — UI & API documentation interface (Scramble)
+
+> Depends on: nothing. Blocks: every other group (the documentation step needs a
+> working document and a way to regenerate it).
+
+Status: **PLANNED**. Nothing here is written yet except the package itself.
+
+| ID | Task | Pri | Depends On | Status |
+|----|------|-----|-----------|--------|
+| P12-A1 | **Confirm package placement.** Verify `dedoc/scramble` in `require-dev` is deliberate, and record the consequence: with `--no-dev` the `/docs/api` routes do not exist. If docs must be reachable in staging or production, promote to `require` + changelog + ADR-025 (per D-4). Output: one paragraph in `docs/base/api/documentation.md` saying where docs exist and where they do not | P0 | — | PLANNED |
+| P12-A2 | **Tune `config/scramble.php`.** `info.version` defaults to `0.0.1` while the API is v1 — drive it from `API_VERSION=v1` (`.env.example` included). Set `info.description`, `ui.title` (`Laravel Base Project API`), and `renderer` (`elements`). Leave `export_path = api.json` | P0 | — | PLANNED |
+| P12-A3 | **Gate `viewApiDocs`.** `RestrictedDocsAccess` calls `Gate::allows('viewApiDocs')` outside `local`, and no such gate exists — so today `/docs/api` is 403 for everyone in staging. Define it against a real permission: add `api_docs.view` to `PermissionCatalog`, seed it (superadmin inherits via `Gate::before`; `admin` gets it from the catalogue), and define the gate in `AuthServiceProvider` beside `configureSuperAdmin()` | P0 | — | PLANNED |
+| P12-A4 | **`ApiDocsUiRenderTest`.** `/docs/api` renders 200 for a holder of `api_docs.view`; 403 for an authenticated non-holder; 403 for a guest; `/docs/api.json` returns 200 with a parseable body carrying `openapi`, `info.version`, and every `api.v1.*` path. Test env is `testing`, not `local`, so the gate branch is the one under test — assert that explicitly, or the suite passes because the bypass fired | P0 | P12-A3 | PLANNED |
+| P12-A5 | **Try-it credentials policy.** `ui.renderers.elements.tryItCredentialsPolicy` is `include`. A docs page behind a permission should not instruct the browser to send cookies to a host chosen in the UI. Set `same-origin`, and keep `dev_tools.enabled` tied to `APP_DEBUG` (already is) | P1 | P12-A2 | PLANNED |
+| P12-A6 | **Reconcile `docs/base/api/documentation.md`.** It advertises `/api/docs/v1/`; Scramble serves `/docs/api` + `/docs/api.json`. Rewrite the versioning note, the auth note (bearer token lives in Group D), and the dev-only paragraph from A1. Code is the truth; the doc follows it | P0 | P12-A2 | PLANNED |
+
+**Accepted deviations in this group:**
+
+- The UI is Scramble's bundled Stoplight Elements view. No custom Blade page —
+  a hand-built docs screen would be a second renderer for one document.
+- The OpenAPI document is generated per request (or from `scramble:cache` in
+  deployment). No checked-in `api.json`: a committed spec is a second source of
+  truth that drifts the first time someone forgets to export.
+
+**Gate A:** `/docs/api` opens for a permitted user, refuses everyone else, and
+`GET /docs/api.json` lists every registered `api.v1.*` route.
+
+---
+
+## Group B — Core API infrastructure, base responses & resources
+
+> Depends on: A (the schema needs somewhere to live). Blocks: C, D.
+> Most of this exists; the tasks are gap-closing, not construction.
+
+Status: **PLANNED**.
+
+| ID | Task | Pri | Depends On | Status |
+|----|------|-----|-----------|--------|
+| P12-B1 | **Base controller — keep one.** `App\Http\Controllers\Controller::respond()` is the base (D-2). No `Api/V1/BaseApiController` is created. Verify every API controller that returns a bare array uses `respond()` or a Resource, and record the decision in `docs/base/api/response-contract.md` so the next reader does not add a second base | P0 | — | PLANNED |
+| P12-B2 | **Resource schema pass.** Every `Resources/Api/V1/**::toArray()` gets an explicit `@return array{…}` shape covering conditional keys (e.g. `UserResource` omits relations when not loaded). Add the three missing transformers if a controller still returns an ad-hoc array: `SessionResource`, `SystemSettingResource`, `FeatureResource`. No new abstraction over `JsonResource` — it already does the job | P0 | P12-A4 | PLANNED |
+| P12-B3 | **Error envelope — close the documented-but-unreachable codes.** `docs/base/api/error-contract.md` lists `CONFLICT` (409) and `SERVICE_UNAVAILABLE` (503); the handler emits `LAST_SUPERADMIN` (409) and never 503. It also emits `HTTP_ERROR` for every generic 4xx. Reconcile doc against code, and add `meta.request_id` / `meta.timestamp` to handler-generated errors so an error and its neighbouring success share one shape (422 already does; the `renderable()` block does not) | P0 | — | PLANNED |
+| P12-B4 | **The `APP_DEBUG` hole.** The entire API error envelope is inside `! config('app.debug')`. In debug the API answers with Laravel's default HTML/JSON, so the contract is untested by default and a debug-enabled deployment leaks the framework shape. Decide explicitly: keep the branch (and make every contract test set `app.debug = false`), or emit the envelope unconditionally and let debug only add detail. Record the choice in `error-contract.md` | P0 | P12-B3 | PLANNED |
+| P12-B5 | **Pagination contract.** `AnonymousResourceCollection` wrapping is default; confirm the pagination envelope (`data`, `meta`, `links`) is what `docs/base/api/response-contract.md` claims, and that `withQueryString()` survives on every index. | P1 | P12-B2 | PLANNED |
+| P12-B6 | **Documentation step** — every resource above carries its schema, and `scramble:analyze` reports no uninferable route in the `v1` surface | P0 | P12-B1..B5 | PLANNED |
+
+**Gate B:** `GET /docs/api.json` shows typed schemas for every resource, every
+documented status code has a reachable emitter, and no API controller returns a
+bare `array`.
+
+---
+
+## Group C — API V1 routes & controller implementation
+
+> Depends on: A, B. Blocks: D, E.
+> Measured state: nearly all endpoints ship. This group is **verification +
+> annotation + the endpoints that are genuinely absent**.
+
+Status: **PLANNED**.
+
+| ID | Task | Pri | Depends On | Status |
+|----|------|-----|-----------|--------|
+| P12-C1 | **Auth** — verify `login`, `logout`, `logout-all`, `register`, password forgot/reset/change, `email/resend`, `verify/{id}/{hash}` against the web twin; annotate. **Suspected defect to confirm first:** `POST /api/v1/auth/unlock` is `fn () => to_route('api.v1.users.unlock', ['user' => request()->route('user')])` — that route has no `{user}`, so the parameter resolves `null` and URL generation should throw. Write the failing test before deciding the fix; do not fix blind | P0 | P12-B6 | PLANNED |
+| P12-C2 | **Users** — verify `index/show/store/update/destroy/restore/force-delete`, four state toggles, email-change pair, `resend-verification`, `bulk-action`. Annotate query parameters (`UserQueryRequest` allowlist) and the 409 from `LastSuperadminException` | P0 | P12-B6 | PLANNED |
+| P12-C3 | **Roles & permissions** — verify CRUD + restore/force + bulk, and `permissions.index`. Annotate the guard-scoped uniqueness 422 and the system-role refusals | P0 | P12-B6 | PLANNED |
+| P12-C4 | **Settings** — verify `GET/PUT /settings`; annotate the partial-key semantics (`update` replaces only submitted keys) and the `mail_password` filtering (P9-X1: secrets never leave the endpoint) | P0 | P12-B6 | PLANNED |
+| P12-C5 | **`GET /api/v1/features` — the one absent endpoint.** `ChannelParityTest` declares `feature list` as a one-sided capability with a `why`. Either implement the read under `feature`-free routing + `features.view` (the list must not be gated on the flag it reports), or keep the declared gap. Implementing it means updating `ChannelParityTest` in the same commit — the map and the routes are one unit | P1 | P12-B2 | PLANNED |
+| P12-C6 | **Notifications** — verify the settings pair, channels, test-mail, and the four inbox routes; annotate the inbox scoping ("the token answers whose inbox"). Fold `Api\V1\NotificationController` into the `Notification/` sub-namespace (P12-4) — a move, not a rewrite | P2 | P12-B6 | PLANNED |
+| P12-C7 | **Audit trail** — already shipped; annotate the export lifecycle (202 on create, the poll, the download, the retry) and the `whereNumber` constraint that keeps `/exports` out of `{activity}` | P1 | P12-B6 | PLANNED |
+| P12-C8 | **Action-First mutations.** Confirm every API mutation goes through the same Action as web and that the `DB::transaction` is inside the Action, not the controller. No controller may open a transaction around an Action that already owns one | P0 | P12-C1..C7 | PLANNED |
+
+**Gate C:** every capability in `ChannelParityTest` is either on both channels or
+carries a `why`; `scramble:analyze` is clean for `v1`; `/docs/api.json` documents
+every route added or touched.
+
+---
+
+## Group D — Security, rate limiting, RBAC & audit trail
+
+> Depends on: C. Blocks: E.
+
+Status: **PLANNED**.
+
+| ID | Task | Pri | Depends On | Status |
+|----|------|-----|-----------|--------|
+| P12-D1 | **Sanctum abilities.** `AuthLoginCompletedAction` calls `createToken('auth-token')` with no abilities, so every token is `['*']`. Decide once: keep `*` and document why (a first-party token has the user's whole authority), or define a named ability set in one place and apply `abilities:` per route. A decision with no code change is an acceptable outcome, but it must be written down — `docs/base/api/api-architecture.md` | P0 | P12-C1 | PLANNED |
+| P12-D2 | **`can:` coverage sweep.** Close the routes that carry no route-level gate: `users.request-email-change`, `users.cancel-email-change`, `email.verify-change`, `features.bulk-action`, `users.bulk-action`, `roles.bulk-action`. The bulk three are authorised by `AuthorizesBulkAction` inside the FormRequest — verify it, and add a route-level gate only where the permission is fixed rather than action-dependent (adding `can:` to a bulk route would pin one permission for six actions) | P0 | P12-C2..C7 | PLANNED |
+| P12-D3 | **Feature-flag enforcement — 403, per D-1.** Verify every module route carries `feature:*` on both channels, and that `EnsureFeatureIsEnabled` never consults the actor. Extend `FeatureFlagMiddlewareTest` only if a route is added in C | P0 | P12-C5 | PLANNED |
+| P12-D4 | **Rate-limiting ladder, documented then measured.** Produce the table: which limiter guards which route, at what rate, keyed by what (user id vs IP). There is no `api` limiter; the protected group uses `user-state-actions` at 15/min. Adding `throttle:api` is allowed only if it is **not looser** than what it accompanies, and the docblock must say which one actually refuses. Also close P12-2 (three literal numbers still in observers) | P0 | P12-D2 | PLANNED |
+| P12-D5 | **Bearer security scheme in the document.** `security_strategy` is `null`, so `/docs/api.json` publishes no `securitySchemes` and no route is marked `security: []` or bearer. Enable `MiddlewareAuthSecurityStrategy` for `auth:sanctum` (per the commented block in `config/scramble.php`) and assert the scheme exists | P0 | P12-A4 | PLANNED |
+| P12-D6 | **Audit trail HTTP context.** `Auditable::auditContext()` already resolves `source = api` from `$request->is('api/*')`. Prove it end to end: an API mutation writes one row inside the transaction with `source=api`, the real `ip`, `user_agent`, and `request_id`; the same Action over web writes `source=web`. No controller-level `audit()` | P0 | P12-C8 | PLANNED |
+| P12-D7 | **Response parity (P12-3).** For each capability on both channels, assert the same facts come back — the route-parity test cannot see this. Start with users and roles; declare the differing-by-design fields rather than silently normalising them | P1 | P12-C8 | PLANNED |
+
+**Gate D:** a zero-permission token gets 403 (not 404) on every admin route, the
+flag tests still pass for superadmin, and the audit row for an API mutation says
+`api` with a real request id.
+
+---
+
+## Group E — Automated tests & documentation verification
+
+> Depends on: A–D.
+
+Status: **PLANNED**.
+
+| ID | Task | Pri | Depends On | Status |
+|----|------|-----|-----------|--------|
+| P12-E1 | **Per-module feature tests** under `tests/Feature/Api/V1/`: `Role/RoleApiTest`, `Permission/PermissionApiTest`, `Settings/SettingsApiTest`, `Feature/FeatureApiTest`. Each covers the happy path, the 422 shape, and the 403 for a sibling permission (not an empty one — a route written `can('roles.view')` where `roles.update` was meant passes every zero-permission test) | P0 | P12-D2 | PLANNED |
+| P12-E2 | **`ApiDocumentationTest`** — the drift gate. Reads `/docs/api.json` and asserts: every route named `api.v1.*` appears as a path+method; every documented operation carries its 401/403/422/500 responses; the bearer scheme is declared. This is what makes the documentation step enforceable instead of aspirational | P0 | P12-D5 | PLANNED |
+| P12-E3 | **`ApiDocsUiRenderTest`** — from A4, kept here as the regression owner once the gate lands | P0 | P12-A3 | PLANNED |
+| P12-E4 | **Error-contract coverage** — one test per emitted code (400, 401, 403, 404, 409, 422, 429, 500), asserting the envelope and `meta.request_id`. Includes the `app.debug = false` branch from B4 | P0 | P12-B3, B4 | PLANNED |
+| P12-E5 | **Full verification** — `php artisan test` green (baseline 2078 passed / 7265 assertions), `vendor/bin/pint --test` clean on every touched file, `php artisan scramble:analyze` clean, `GET /docs/api.json` parses. Docs reconciled: this file, `task-tracker.md`, `progress.md`, `docs/base/api/{documentation,error-contract,response-contract}.md` | P0 | P12-E1..E4 | PLANNED |
+
+**Gate E:** the suite is green, and deleting a route from `routes/api.php` without
+touching the docs turns `ApiDocumentationTest` red — verified by doing exactly
+that once, then reverting.
+
+---
+
+## Execution rules
+
+- **Never commit or push.** This document is the deliverable; the branch and
+  commits are the owner's call.
+- One task at a time, in group order. `PLANNED → IN_PROGRESS → REVIEW → DONE`,
+  never skipping `REVIEW`.
+- A task that changes an endpoint is not `DONE` until `GET /docs/api.json`
+  describes the change and `ApiDocumentationTest` passes.
+- Every new permission (`api_docs.view`) lands with the route that checks it, in
+  the same commit. A `can()` against an unseeded permission is a 403 for
+  everyone, superadmin included.
+- No new Composer package. Scramble is installed; promoting it from
+  `require-dev` to `require` is the only dependency decision in this phase and
+  it needs the changelog + ADR first (D-4).
+- Tests: PHPUnit 12, `test_*` prefix, SQLite `:memory:`. No inline FQCN.
+- When the code and `docs/base/` disagree, the doc wins — change the code, or
+  file an ADR in `docs/planning/decisions.md`. Do not follow the brief over the
+  doc without recording it here (D-1..D-6 are the current instances).
+
+## Verification
+
+```bash
+php artisan route:list --path=api          # the surface, by route
+php artisan scramble:analyze               # routes Scramble cannot infer
+php artisan scramble:export                # writes api.json from config
+php artisan test --filter=ApiDocumentationTest
+php artisan test                           # full suite
+vendor/bin/pint --test
+```
+
+## Task index
+
+| Group | Tasks | Gate |
+|---|---|---|
+| A — Docs interface | P12-A1..A6 | `/docs/api` gated, spec live |
+| B — Infrastructure | P12-B1..B6 | typed schemas, one error envelope |
+| C — Routes | P12-C1..C8 | parity map complete, every route documented |
+| D — Security | P12-D1..D7 | 403/403/429, audit context, bearer scheme |
+| E — Tests | P12-E1..E5 | drift gate red when docs are stale |

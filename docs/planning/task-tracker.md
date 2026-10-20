@@ -297,6 +297,28 @@ permission it checks.
 
 Detail: `docs/planning/phase-9-notifications-mail.md`.
 
+### Phase 12 — API V1
+
+> Breakdown written 2026-10-20. Status of the *phase* is PLANNED; most endpoints
+> are already shipped, so Groups B–D are audit-and-close rather than greenfield.
+> The per-task detail (26 tasks, P12-A1..E5) lives in
+> `docs/planning/phase-12-api-v1.md`; this table is the summary only, to keep one
+> authority per task list.
+
+| ID | Task | Phase | Priority | Depends On | Status |
+|----|------|-------|----------|-----------|--------|
+| P12-A | Scramble docs interface — package placement, config, `viewApiDocs` gate, UI render test | 12 | P0 | — | PLANNED |
+| P12-B | Base responses & resources — one base controller (accepted), resource schemas, error envelope reconciliation | 12 | P0 | P12-A | PLANNED |
+| P12-C | Routes & controllers — verify + annotate every module, close the absent `GET /features` | 12 | P0 | P12-A, P12-B | PLANNED |
+| P12-D | Security — token abilities decision, `can:` sweep, rate-limit ladder, bearer scheme, audit context | 12 | P0 | P12-C | PLANNED |
+| P12-E | Tests — per-module API tests, `ApiDocumentationTest` drift gate, full verification | 12 | P0 | P12-D | PLANNED |
+
+**Deviations from the brief, recorded rather than applied:** flags return **403**
+(not 404 — Phase 7 decision, pinned by `FeatureFlagMiddlewareTest`); no second
+`Api\V1\BaseApiController` (`App\Http\Controllers\Controller::respond()` is that
+class); Scramble stays dev-only unless ADR-025 promotes it. See the phase doc
+§ *Decisions that override the brief* (D-1..D-6).
+
 ## Full Task List (JSON for AI parsing)
 
 ```json[
