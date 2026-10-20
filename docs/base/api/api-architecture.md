@@ -47,6 +47,25 @@ V2 Controller → new application service/action (where justified)
 V1 behavior must remain stable when V2 is introduced. Existing V1 clients
 must not break.
 
+## Token abilities
+
+`POST /api/v1/auth/login` mints the token with `createToken('auth-token')` and no
+ability list, so every token is `['*']`. **That is the decision, not an
+oversight.**
+
+A Sanctum token here is a logged-in session in another transport. What the
+caller may do is the user's RBAC, evaluated on every request by `can:` on the
+route and `authorize()` on the FormRequest — one authority, re-read each time.
+Abilities would be a second copy of that authority, written at login and stale
+the moment somebody's role changes; `tokenCan()` checks would also have to be
+restated on every route, which is the duplication the `can:` rule exists to
+prevent. Sanctum's ability feature pays for itself when tokens are delegated to
+a third party with a deliberately narrower scope. This API has no such token.
+
+Revisit only if machine or delegated tokens with a subset of a user's authority
+are introduced. `SessionResource` publishes `abilities` so a client can see what
+it holds; today it is always `["*"]`.
+
 ## API Resources
 
 Laravel API Resources are the serialization contract.
@@ -146,8 +165,11 @@ reason recorded beside the route.
 | `GET /api/v1/health` | bare body; controller does not extend the base | the caller is a monitor that cannot log in, and the one meaningful key is `status` |
 | `GET` / `PUT` `/api/v1/settings` | `data` is the key→value map, no wrapper | a form re-renders from the response |
 | `/notifications/inbox*`, `/profile`, `/sessions`, `/auth/password/change` | no `can:` | self-scoped — "whose record is this" is answered by the token |
+| `/users/{user}/request-email-change` | no `can:`; `EmailChangeRequest::authorize()` | the rule is "own account **or** `users.update`", the same OR `cancel-email-change` needs; a single `can:` would lock a user out of changing their own email |
 | `/users/{user}/cancel-email-change` | `abort_unless` in the controller | the rule is "own account **or** `users.update`"; `can:` cannot express OR |
-| `*/bulk-action` (users, roles, features) | no `can:` on the route | the permission depends on the requested action; the FormRequest decides |
+| `GET /email/verify-change/{user}` | `signed` + the token check in the Action | the caller is whoever holds the emailed link; there is no sign-in to authorize, and a permission would make the link unusable |
+| `*/bulk-action` (users, roles) | no `can:` on the route | the permission depends on the requested action; the FormRequest decides |
+| `/features/bulk-action` | `can:features.manage` **and** `BulkFeatureRequest::authorize()` | every flag action is the same permission, so unlike users/roles it can be pinned on the route; the FormRequest repeats it for the payload |
 | `GET /api/v1/activity-logs/{activity}` | `whereNumber` | `/activity-logs/exports` is one segment shorter and would otherwise be swallowed by `{activity}` |
 | `GET /api/v1/features` | list without a `pagination` block | a fixed catalogue of config, not a page of records |
 

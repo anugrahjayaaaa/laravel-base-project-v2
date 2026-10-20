@@ -338,7 +338,7 @@ None — no implementation has started yet.
 
 ## Test Status
 
-**2078 passed / 7265 assertions** (2026-10-17, `feature/phase-11-monitoring-observability` — Phase 11 Groups A–F plus the Vantage queue monitor, MONITOR-003, plus ADR-023, the §15 security pass (ADR-024) and its same-day follow-up that has the flag modal state what disabling revokes, kept to two sentences by test). `vendor/bin/pint --test` passes across the whole tree. PHPUnit 12, `test_` prefix, SQLite
+**2113 passed / 7416 assertions** (2026-10-20, `feature/phase-12-api-v1` — Phase 12 Groups A–D; Group D added the response-parity test and the audit correlation-id assertions). `vendor/bin/pint --test` passes across the whole tree. PHPUnit 12, `test_` prefix, SQLite
 `:memory:`, 5 intentionally assertion-free benchmark cases. This is the LIVE figure; the counts inside the phase rows above are dated gate measurements, deliberately left at what each gate actually saw.
 
 The suite is grouped by domain (13 folders under `tests/Feature/`, nothing at the root) and governed by

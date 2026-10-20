@@ -535,21 +535,86 @@ green with no remaining one-sided capability in the feature module,
 
 > Depends on: C. Blocks: E.
 
-Status: **PLANNED**.
+Status: **REVIEW**.
 
 | ID | Task | Pri | Depends On | Status |
 |----|------|-----|-----------|--------|
-| P12-D1 | **Sanctum abilities.** `AuthLoginCompletedAction` calls `createToken('auth-token')` with no abilities, so every token is `['*']`. Decide once: keep `*` and document why (a first-party token has the user's whole authority), or define a named ability set in one place and apply `abilities:` per route. A decision with no code change is an acceptable outcome, but it must be written down — `docs/base/api/api-architecture.md` | P0 | P12-C1 | PLANNED |
-| P12-D2 | **`can:` coverage sweep.** Close the routes that carry no route-level gate: `users.request-email-change`, `users.cancel-email-change`, `email.verify-change`, `features.bulk-action`, `users.bulk-action`, `roles.bulk-action`. The bulk three are authorised by `AuthorizesBulkAction` inside the FormRequest — verify it, and add a route-level gate only where the permission is fixed rather than action-dependent (adding `can:` to a bulk route would pin one permission for six actions) | P0 | P12-C2..C7 | PLANNED |
-| P12-D3 | **Feature-flag enforcement — 403, per D-1.** Verify every module route carries `feature:*` on both channels, and that `EnsureFeatureIsEnabled` never consults the actor. Extend `FeatureFlagMiddlewareTest` only if a route is added in C | P0 | P12-C5 | PLANNED |
-| P12-D4 | **Rate-limiting ladder, documented then measured.** Produce the table: which limiter guards which route, at what rate, keyed by what (user id vs IP). There is no `api` limiter; the protected group uses `user-state-actions` at 15/min. Adding `throttle:api` is allowed only if it is **not looser** than what it accompanies, and the docblock must say which one actually refuses. P12-2 is already closed (the three numbers read `SystemSetting`); the ladder doc is what remains | P0 | P12-D2 | PLANNED |
+| P12-D1 | **Sanctum abilities.** `AuthLoginCompletedAction` calls `createToken('auth-token')` with no abilities, so every token is `['*']`. Decide once: keep `*` and document why (a first-party token has the user's whole authority), or define a named ability set in one place and apply `abilities:` per route. A decision with no code change is an acceptable outcome, but it must be written down — `docs/base/api/api-architecture.md` | P0 | P12-C1 | DONE — keep `*`; § *Token abilities* in `api-architecture.md` states the reasoning and the condition that would reverse it. No code change |
+| P12-D2 | **`can:` coverage sweep.** Close the routes that carry no route-level gate: `users.request-email-change`, `users.cancel-email-change`, `email.verify-change`, `features.bulk-action`, `users.bulk-action`, `roles.bulk-action`. The bulk three are authorised by `AuthorizesBulkAction` inside the FormRequest — verify it, and add a route-level gate only where the permission is fixed rather than action-dependent (adding `can:` to a bulk route would pin one permission for six actions) | P0 | P12-C2..C7 | DONE — one route closed on both channels (`/features/bulk-action`, `can:features.manage`); the rest are verified exceptions and now each has a row in `api-architecture.md` § *Deliberate exceptions* |
+| P12-D3 | **Feature-flag enforcement — 403, per D-1.** Verify every module route carries `feature:*` on both channels, and that `EnsureFeatureIsEnabled` never consults the actor. Extend `FeatureFlagMiddlewareTest` only if a route is added in C | P0 | P12-C5 | DONE — route-table sweep: every module route shows `EnsureFeatureIsEnabled:<slug>`; the actor-blind handler was read and already pinned by `FeatureFlagMiddlewareTest`. C’s `GET /features` is deliberately flag-free and required no test change |
+| P12-D4 | **Rate-limiting ladder, documented then measured.** Produce the table: which limiter guards which route, at what rate, keyed by what (user id vs IP). There is no `api` limiter; the protected group uses `user-state-actions` at 15/min. Adding `throttle:api` is allowed only if it is **not looser** than what it accompanies, and the docblock must say which one actually refuses. P12-2 is already closed (the three numbers read `SystemSetting`); the ladder doc is what remains | P0 | P12-D2 | DONE — § *API ladder* in `docs/base/security/rate-limiting.md`; the stale Roadmap bullet that claimed authenticated API routes had no per-endpoint limits is corrected, and the one endpoint with no ceiling (`POST /auth/password/change`) is named |
 | P12-D5 | **Bearer security scheme in the document.** `security_strategy` is `null`, so `/docs/api.json` publishes no `securitySchemes` and no route is marked `security: []` or bearer. Enable `MiddlewareAuthSecurityStrategy` for `auth:sanctum` (per the commented block in `config/scramble.php`) and assert the scheme exists | P0 | P12-A4 | DONE — one line in `config/scramble.php`; the vendor strategy reads `auth:*` off the routes, so `/docs/api` renders the Authorize box and the public routes (login, register, health, verify link) are marked `security: []` instead of asking for a token they ignore. Pinned in `ApiDocsUiRenderTest` |
-| P12-D6 | **Audit trail HTTP context.** `Auditable::auditContext()` already resolves `source = api` from `$request->is('api/*')`. Prove it end to end: an API mutation writes one row inside the transaction with `source=api`, the real `ip`, `user_agent`, and `request_id`; the same Action over web writes `source=web`. No controller-level `audit()` | P0 | P12-C8 | PLANNED |
-| P12-D7 | **Response parity (P12-3).** For each capability on both channels, assert the same facts come back — the route-parity test cannot see this. Start with users and roles; declare the differing-by-design fields rather than silently normalising them | P1 | P12-C8 | PLANNED |
+| P12-D6 | **Audit trail HTTP context.** `Auditable::auditContext()` already resolves `source = api` from `$request->is('api/*')`. Prove it end to end: an API mutation writes one row inside the transaction with `source=api`, the real `ip`, `user_agent`, and `request_id`; the same Action over web writes `source=web`. No controller-level `audit()` | P0 | P12-C8 | DONE — the existing cross-channel audit test now also asserts `request_id` matches the response’s `X-Request-ID` on both channels; `grep 'audit(' app/Http/Controllers/Api/V1` prints nothing |
+| P12-D7 | **Response parity (P12-3).** For each capability on both channels, assert the same facts come back — the route-parity test cannot see this. Start with users and roles; declare the differing-by-design fields rather than silently normalising them | P1 | P12-C8 | DONE — `tests/Feature/Api/ResponseParityTest.php`: same rows/order for the same query, every web-rendered fact present in the API row, and an exact declared list of API-only keys |
 
 **Gate D:** a zero-permission token gets 403 (not 404) on every admin route, the
 flag tests still pass for superadmin, and the audit row for an API mutation says
 `api` with a real request id.
+
+### Measured (2026-10-20)
+
+**D1 — the decision is the deliverable, and it is "keep `*`".** A token minted by
+`/auth/login` is a logged-in session in another transport; authority is the
+user's RBAC re-read on every request by `can:` / `authorize()`. A named ability
+set would copy that authority into the token at login and go stale when a role
+changes, and `tokenCan()` would have to be restated on every route — the
+duplication the route-gate rule exists to remove. `SessionResource` already
+publishes `abilities`, so a client can see what it holds (today `["*"]`). The
+reversal condition is written down: delegated or machine tokens with a subset of
+a user's authority.
+
+**D2 — one real gap, five verified exceptions.** The route sweep found
+`/features/bulk-action` with no `can:` on either channel, while the comment
+beside it said the permission was action-dependent. It is not: both flag actions
+are `features.manage`, so unlike users/roles this route can pin the permission.
+It now carries `can:features.manage` on web and API, and `BulkFeatureRequest`
+keeps its own `authorize()` as the payload-level check. The other five routes
+are correct as they are, and each is now one row in
+`api-architecture.md` § *Deliberate exceptions*: `request-email-change`
+(FormRequest — "own account **or** `users.update`"), `cancel-email-change`
+(`abort_unless` for the same OR), `verify-change` (`signed` + token; there is no
+sign-in to authorize), and the users/roles bulk routes
+(`AuthorizesBulkAction` maps action → permission).
+
+**D3 — verified, nothing to change.** Every route inside a flagged module shows
+`EnsureFeatureIsEnabled:<slug>` in `route:list`. `EnsureFeatureIsEnabled` reads
+only `FeatureCatalog::isActive()` and never `$request->user()`, so the kill
+switch stays actor-blind; `FeatureFlagMiddlewareTest` already pins 403 for
+superadmin and for a `features.manage` holder. C added exactly one route without
+a flag — `GET /api/v1/features` — and that is deliberate: the surface that
+re-enables a module cannot live behind the module it re-enables.
+
+**D4 — the ladder existed as limits, not as a route map.** The limiter table in
+`rate-limiting.md` said what each limiter costs; it did not say which route meets
+which, or which one refuses when two apply. § *API ladder* now does, with the
+ceiling that actually wins (the tighter of the two). No `api` limiter was added:
+at 60/min beside `user-state-actions` it would never be the one to refuse, and
+in place of it, a 4× loosening. The Roadmap bullet claiming authenticated API
+routes had no per-endpoint limits was stale and is corrected. One gap is named
+rather than hidden: `POST /auth/password/change` sits outside the protected group
+on purpose (an expired password must be recoverable) and therefore has no
+limiter; `current_password` is still verified before any work, so the guess space
+is the same password that `/auth/login` throttles.
+
+**D6 — the context test existed; the correlation id was the missing half.**
+`SystemSettingUpdateTest` already proved `source=web` and `source=api` for one
+Action over two channels, plus `ip` and `user_agent`. It now also asserts each
+row's `request_id` equals the `X-Request-ID` the same response carried, which is
+the property an operator actually uses: one id links a body to a log to an audit
+row. `grep 'audit(' app/Http/Controllers/Api/V1` returns nothing — the writes are
+in the Actions, inside their transactions.
+
+**D7 — parity is declared, not inferred.** `ResponseParityTest` covers users and
+roles (the two capabilities every client touches first):
+the same `search` returns the same ids in the same order on both channels, which
+is what proves the controllers still share one Action; every fact the table
+renders is asserted present in the API row (`created_at` compared as the date
+prefix — one fact at two precisions); and the resource keys not on the table are
+an exact declared list (`username`, `email_verified_at`,
+`must_change_password` for users; `permissions` and the three timestamps for
+roles). A field added or dropped on one channel fails until the list is edited.
+Not extended to every capability: the pattern is established, and E1's
+per-module tests cover the remaining modules' shapes.
 
 ---
 

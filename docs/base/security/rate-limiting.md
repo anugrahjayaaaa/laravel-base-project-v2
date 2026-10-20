@@ -30,6 +30,46 @@ stale. Re-derive it rather than editing by hand when a limiter changes.
 `email-verification` and `resend-verification` deliberately share one setting
 key: they are the same action, reachable by two routes.
 
+## API ladder — which limiter is the one that refuses
+
+Two limiters can apply to one request. Both are checked, and **the tighter
+ceiling is the one a caller meets first** — a looser second limiter can only
+ever refuse someone the tighter one already refused. That is why no `api`
+limiter exists: the protected group already runs `user-state-actions` at
+15/minute, and a typical 60/minute `api` limiter beside it would change nothing
+while reading like a control that does the work. Adding one *instead* would be a
+4× loosening, which is not an option.
+
+| Route(s) | Limiter(s) | Effective ceiling |
+|---|---|---|
+| `POST /auth/login` | `login` | 5/min per identifier + IP |
+| `POST /auth/register` | `register` | 3/min per IP |
+| `POST /auth/password/forgot` | `forgot-password` | 3/min per identifier + IP |
+| `POST /auth/password/reset` | `reset-password` | 3/min per identifier + IP |
+| `GET /auth/email/verify/{id}/{hash}` | none — `signed` only | one valid link, expiring |
+| every route in the protected group | `user-state-actions` | 15/min per user (IP when no user) |
+| `POST /auth/email/resend`, `GET /email/verify-change/{user}` | `user-state-actions` + `resend-verification` / `email-verification` | 5/hour per user |
+| `POST /users/bulk-action`, `POST /roles/bulk-action`, `POST /features/bulk-action` | `user-state-actions` + `bulk-action` | 5/min per user |
+| `POST /notifications/test-mail` | `user-state-actions` + `send-test-mail` | 5/min per user + IP + recipient |
+| the three `/activity-logs/exports*` routes | `user-state-actions` + `audit-export` | 5/hour per user + IP |
+| `POST /auth/password/change` | **none** — see below | unbounded |
+| `GET /health` | `health` | 120/min per IP |
+
+The inbox is the one protected list that looks under-throttled against its web
+twin: the web polls at `120,1`, the API has no extra limiter, so the API's real
+ceiling is the group's 15/min. A 30-second poll uses 2 of those; a 5-second poll
+would not fit. The web number is not copied across because a second, looser
+limiter on the API route could never be the one to refuse.
+
+**Open gap, stated rather than hidden:** `POST /auth/password/change` sits
+outside the protected group on purpose — a user whose password expired must be
+able to reach it — and that is also why it inherits no limiter. It verifies
+`current_password` before doing any work, so an attacker holding a token is
+guessing the password they could have tried at `/auth/login`, which *is*
+throttled. It is still the one authenticated endpoint with no ceiling of its own;
+if a limiter is added it should be `throttle:user-state-actions`, which keys on
+the authenticated user and cannot block the recovery path for anybody else.
+
 Every limiter answers through the shared builder
 (`App\Auth\LoginThrottle::responseFor()`), so every one branches on
 `$request->expectsJson()`: an API client gets 429 JSON, a browser gets a
@@ -75,10 +115,11 @@ written as fact is what made the previous version of this file wrong.
   pattern of abuse, instead of a flat per-IP ceiling.
 - **Captcha on public sign-up** — the only effective answer to a botnet, which
   a per-IP limit cannot touch.
-- **Per-route budgets for the general API** — authenticated API routes still
-  rely on the framework's own throttling rather than explicit per-endpoint
-  limits. `GET /api/v1/health` is the first guest API route to carry one
-  (ADR-023).
+- **Per-route budgets for the general API** — no `api` limiter exists. The
+  protected group's `user-state-actions` (15/min per user) is the general API
+  budget; per-route limiters sit on top of it only where they are tighter. See
+  § *API ladder* above. `GET /api/v1/health` is the only guest API route with a
+  limiter of its own (ADR-023).
 - **Redis counters** — the current keying is per-node if the cache backend is
   local; Redis removes that caveat.
 
