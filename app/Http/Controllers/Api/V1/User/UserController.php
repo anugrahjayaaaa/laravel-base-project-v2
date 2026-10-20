@@ -100,13 +100,7 @@ class UserController extends Controller
     {
         $this->createAction->run($request->validated(), causer: $request->user());
 
-        return response()->json([
-            'data' => ['message' => 'User created successfully.'],
-            'meta' => [
-                'request_id' => app('request_id'),
-                'timestamp' => now()->toIso8601String(),
-            ],
-        ], 201);
+        return $this->respond('User created successfully.', 201);
     }
 
     /**

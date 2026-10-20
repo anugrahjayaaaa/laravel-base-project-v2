@@ -7,7 +7,6 @@ use App\Actions\V1\Auth\AuthLoginCompletedAction;
 use App\Auth\LoginThrottle;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\V1\Auth\LoginRequest;
-use App\Models\User;
 use Illuminate\Http\JsonResponse;
 
 /**
@@ -38,11 +37,10 @@ class LoginController extends Controller
 
         if (isset($result['error'])) {
             if (($result['error']['error_code'] ?? null) === 'UNVERIFIED_EMAIL') {
-                return response()->json([
-                    'message' => 'Email not verified',
+                return $this->respondError('Email not verified', 'UNVERIFIED_EMAIL', 403, [
                     'email' => $identifier,
                     'verified' => false,
-                ], 403);
+                ]);
             }
 
             if (isset($result['lockedSeconds']) && $result['lockedSeconds'] > 0) {

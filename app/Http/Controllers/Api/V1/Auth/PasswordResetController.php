@@ -33,25 +33,17 @@ class PasswordResetController extends Controller
         $result = $action->run($email, $ip, $request, $throttle);
 
         if (isset($result['error'])) {
-            return response()->json([
-                'message' => $result['error']['message'],
-                'code' => 'RESET_TOKEN_INVALID',
-            ], $result['error']['status']);
+            return $this->respondError(
+                $result['error']['message'],
+                'RESET_TOKEN_INVALID',
+                $result['error']['status'],
+            );
         }
 
         if ($result['status'] === Password::PASSWORD_RESET) {
-            return response()->json([
-                'data' => ['message' => 'Password reset successfully.'],
-                'meta' => [
-                    'request_id' => app('request_id'),
-                    'timestamp' => now()->toIso8601String(),
-                ],
-            ]);
+            return $this->respond('Password reset successfully.');
         }
 
-        return response()->json([
-            'message' => 'Invalid or expired token.',
-            'code' => 'RESET_TOKEN_INVALID',
-        ], 400);
+        return $this->respondError('Invalid or expired token.', 'RESET_TOKEN_INVALID', 400);
     }
 }

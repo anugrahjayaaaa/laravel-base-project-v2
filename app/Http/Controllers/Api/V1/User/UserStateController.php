@@ -41,7 +41,7 @@ class UserStateController extends Controller
     {
         $this->activateAction->run($user, $request->user());
 
-        return $this->success('User activated successfully.');
+        return $this->respond('User activated successfully.');
     }
 
     /**
@@ -55,7 +55,7 @@ class UserStateController extends Controller
     {
         $this->deactivateAction->run($user, $request->user());
 
-        return $this->success('User deactivated successfully.');
+        return $this->respond('User deactivated successfully.');
     }
 
     /**
@@ -69,7 +69,7 @@ class UserStateController extends Controller
     {
         $this->lockAction->run($user, $request->user());
 
-        return $this->success('User locked successfully.');
+        return $this->respond('User locked successfully.');
     }
 
     /**
@@ -83,23 +83,6 @@ class UserStateController extends Controller
     {
         $this->unlockAction->run($user, $request->user(), request()->ip(), request());
 
-        return $this->success('User unlocked successfully.');
-    }
-
-    /**
-     * Helper: return a standardized success JSON response.
-     *
-     * @param  string  $message
-     * @return JsonResponse
-     */
-    private function success(string $message): JsonResponse
-    {
-        return response()->json([
-            'data' => ['message' => $message],
-            'meta' => [
-                'request_id' => app('request_id'),
-                'timestamp' => now()->toIso8601String(),
-            ],
-        ]);
+        return $this->respond('User unlocked successfully.');
     }
 }
