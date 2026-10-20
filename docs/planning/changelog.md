@@ -96,6 +96,114 @@ Each entry contains:
 
 ---
 
+## 2026-10-15 — Phase 11 breakdown restructured into Groups A–F
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-10-15 |
+| **Change** | `phase-11-monitoring-observability.md` restructured to the Phase 10 group pattern: **Group A** = views/UI/sidebar (Pulse entry, system health page), **Groups B–F** = permissions, gates, routing, logic, audit (N/A, stated), queue conventions, verification/docs. New tasks: `health.view` + `health` flag + `/health` web route + its seeder row (P11-B3), `HealthController@index` (P11-C1), queue conventions renumbered from the colliding "MON-P11-05" to P11-E1..E3. The access-gating decision table, slow-query diagnosis ladder and the VM runbook moved OUT of `implementation-roadmap.md` INTO §3/§7 of the breakdown — the roadmap keeps a status summary + link only. Cross-refs in `phase-10-audit-trail.md` (§6 → Group B, MON-P11-05 → P11-E1..E3) updated. |
+| **Reason** | Two docs held the same Phase 11 detail, so neither was the single source of truth; MON-P11-05 named two different tasks (docs sweep AND queue conventions) in one file; and the roadmap carried runbook-level operational detail no other phase's roadmap section carries. The user also asked that any view/UI work land in Group A with the sidebar, and that permissions/feature flags be explicit per task. |
+| **Impact** | `implementation-roadmap.md` (Phase 11 section slimmed), `phase-10-audit-trail.md` (two cross-refs), task IDs P11-*. No code, no behaviour change. |
+| **Related** | P11-A1..A4, P11-B1..B4, P11-C1..C2, P11-E1..E3, P11-F1..F6; MON-P11-01..08 (renumbered); P10-E13, P10-E14 |
+
+---
+
+## 2026-10-16 — Queue conventions promoted to a base standard (docs)
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-10-16 |
+| **Change** | The Group E conventions moved from "how this repo's jobs happen to be written" to a normative standard in three places: `docs/base/infrastructure/queue.md` gains § *The standard every job follows* (named queue from `QueueName` via `onQueue()`, explicit `$tries`/`$timeout`/`$maxExceptions`/`backoff()`, `failed()` with `request_id` via `ReadsCorrelationId`, after-commit dispatch, idempotency) plus the two ways to break the correlation contract on purpose; `docs/planning/ai-execution-guide.md` rule 35 and `AGENTS.md` hard rules now point every future change at it. |
+| **Reason** | The conventions were only enforced by a test and described in prose; without a normative section a new job could be reviewed as "fine, different style" and drift — and the two silent failure modes (a job on a queue nobody listens to, `request_id` read from a container binding that does not exist in the worker) look like working code until they are needed. |
+| **Impact** | Every future job in `app/Jobs`; docs only, no behaviour change. `JobConventionTest` remains the enforcement. |
+| **Related** | P11-E1..E3, `phase-11-monitoring-observability.md`, `docs/base/infrastructure/queue.md` |
+
+---
+
+## 2026-10-16 — Phase 11 Groups A–C and E shipped
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-10-16 |
+| **Change** | Groups A–C: `pulse.view`/`health.view` in `PermissionCatalog`, the `viewPulse` gate override (permission, not `environment('local')`), the `health` flag + `GET /health` → `health.index` web dashboard (`HealthController@index`, one card per check, read-only), a **Monitoring** sidebar group (Pulse + System Health, each behind its own permission AND flag), and 16 gate/render tests. Group E: `App\Support\QueueName` (named queues `exports`/`sweeps`, set via `onQueue()` in the constructor — a `public $queue` property is a class-load fatal against the `Queueable` trait that `php -l` misses), `$maxExceptions` on the export job, the dispatch-time `request_id` propagated into every job payload (`Queue::createPayloadUsing` in `AppServiceProvider`, read by `Jobs\Concerns\ReadsCorrelationId` in every `failed()`), `bin/run-workers.sh` now listens `default,exports,sweeps`, and `JobConventionTest` asserts the conventions by reflection over every class in `app/Jobs`. |
+| **Reason** | The permission half and both dashboards were the phase's core; Group E is upstream of every dashboard — a job that silently rides `default`, declares no retry chain and logs no correlation id is invisible in review and only shows up as a stuck queue or a failure nobody was told about. The API twin `/api/v1/health` stays deliberately ungated (uptime monitor caller). |
+| **Impact** | Existing installs MUST run `php artisan db:seed --class=FeatureFlagSeeder` (fail-closed Pennant store) and restart queue workers with the new `--queue` list, or named-queue jobs wait forever. Worker deployments that overrode `QUEUE_NAME` keep their override. |
+| **Related** | P11-A1..A4, P11-B1..B4, P11-C1, P11-E1..E3, P11-F1, P11-F6 |
+
+---
+
+## 2026-10-16 — CSP: `'unsafe-eval'` scoped to the Pulse route
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-10-16 |
+| **Change** | `AddSecurityHeaders::policy()` gained a `bool $pulse` parameter (`$request->routeIs('pulse')`): only that route's `script-src` carries `'unsafe-eval'` beside the nonce; every other response's policy is byte-identical. `handle()` now also calls `Vite::useCspNonce($nonce)` so Livewire's `@livewireScriptConfig` prints the same nonce the policy carries. Two Pulse views overridden in `resources/views/vendor/pulse/components/`: the layout nonces the two `Pulse::js()` bundle tags (anchored `preg_replace` — a blanket replace would corrupt the `<script>` literals inside the bundles), the theme-switcher gained `@nonce`. `x-pulse` is re-routed to that override by `Blade::component('pulse::components.pulse', 'pulse')`, because the package resolves the root layout through an `anonymousComponentPath` hash namespace that never sees `resources/views/vendor/`. |
+| **Reason** | `/pulse` rendered as a 200 that never loaded: all four of its inline `<script>` elements were blocked by the nonce-only policy, and even nonced the inlined Livewire build compiles every `x-data`/`wire:*` expression with `new Function`, which needs `'unsafe-eval'` — so `#[Lazy]` cards stay on their skeletons forever. The relaxation is scoped by route name (Livewire is used nowhere else in this application) rather than weakening the policy application-wide. |
+| **Impact** | `/pulse` only; nonce stays mandatory and `'unsafe-inline'` stays absent everywhere. Enforced by `ContentSecurityPolicyTest::test_only_the_pulse_route_grants_unsafe_eval` and `::test_every_script_on_the_pulse_page_carries_the_policys_nonce` (DOM-parsed — a raw-HTML regex counts the Sfdump literals inside the inlined bundles as tags). The two overridden vendor views can drift on a Pulse upgrade; the tests catch nonce regressions, not other drift. |
+| **Related** | `docs/base/security/web-security.md`, `app/Http/Middleware/AddSecurityHeaders.php`, P11-A1 |
+
+---
+
+## 2026-10-16 — Pulse cards on a warm cache: objects out of the persistent store
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-10-16 |
+| **Change** | `config/pulse.php` now defaults `pulse.cache` to the array store — `env('PULSE_CACHE_DRIVER', 'array')` (was `env('PULSE_CACHE_DRIVER')`, i.e. `null` → the default store). Pulse's `RemembersQueries` caches `[$collection, $duration, $start]` through `CacheStoreResolver`, and `cache.serializable_classes => false` (phase-1 hardening) makes every persistent store hand a cached object back as `__PHP_Incomplete_Class`. The env var stays overridable per environment and is documented in `.env.example`, but any persistent driver reintroduces the crash. Regression test `PulseQueryCacheTest`: forces the default store to the serializing `file` driver, mounts `Livewire\Queues` cold then warm (`Livewire::withoutLazyLoading()` before each mount — the cards are `#[Lazy]` and Livewire's `flush-state` re-enables the placeholder between mounts), and fails at `Queues.php:35` without the fix. |
+| **Reason** | The CSP fix let the page's JS run for the first time, so `wire:poll` started exercising the cache-hit path inside the 5-second recall window — every card then died with "The script tried to call a method on an incomplete object" (reported at `vendor/laravel/pulse/src/Livewire/Queues.php:35`). The suite could never see it: `phpunit.xml` pins `CACHE_STORE=array`, and the array store never serializes. Pulse is the one component that caches objects, so it gets the one store where nothing serializes — the project's "cache primitives, instantiate objects outside `Cache::remember`" rule (AGENTS.md trap) stays enforced for everything else. |
+| **Impact** | `/pulse` renders on a warm cache again; `cache.serializable_classes` stays `false` — no security policy loosened. Costs: Pulse's cross-process state (Servers heartbeat throttle, `pulse:check` restart signal/locks) becomes per-process, and card queries recompute per request instead of once per 5s across all viewers. Stale `laravel:pulse:*` Redis keys expire on their own (5s TTL). |
+| **Related** | P11-A1, `tests/Feature/PulseQueryCacheTest.php`, `config/pulse.php` |
+
+---
+
+## 2026-10-16 — Phase 11 post-audit gap closure (docs, tests, one dead env var)
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-10-16 |
+| **Change** | A read-only audit of the Phase 11 branch found eight gaps, none a code defect; all eight closed. **Docs truth:** the phase header, `progress.md` row 11 + current-task paragraph, `feature-tracker.md` rows 27/28 and the MONITOR-001 note in `task-tracker.md` all still called this work uncommitted or unstarted, and recorded 2009/6907 tests — corrected against `git log` and a fresh full run (**2016 passed / 6940 assertions**, +2 cases from this closure). **One decision closed:** D-3 — superadmin *does* respect the feature flag, now pinned by `test_the_flag_off_refuses_superadmin_too` in `PulsePermissionGateTest` and `HealthPermissionGateTest` (5 cases each, was 4). **One dead config removed:** `phpunit.xml` still set `TELESCOPE_ENABLED=false` for a package deleted in `85384b4`. **New coverage records:** a `Monitoring` section in `qa-tracker.md` (10 scenarios with the test that proves each, one flagged manual), the flag-reseed deploy step in `phase-11-monitoring-observability.md` §7 + `monitoring.md`, and upgrade notes for the two project-side Pulse dependencies (the `array` cache driver and the two nonce-overridden vendor views). |
+| **Reason** | The audit's job was to say what was true, and four documents described a state that had already been left behind — "uncommitted" over nine commits, "planned" over shipped work, and a test count five runs old. D-3 had been carried as an open question whose premise (superadmin reaching a flag-off `/pulse`) was never true: `EnsureFeatureIsEnabled` consults no actor, so the answer needed a test, not a redesign. The reseed step and the Pulse upgrade notes belong to the same class — facts a maintainer needs before touching this module, previously only in the breakdown's prose. |
+| **Impact** | Docs only, plus two added test cases and one deleted dead env line: no application behaviour changes, no route, permission, flag or gate is altered. `TELESCOPE_ENABLED` was never read (no Telescope in `vendor/`), so removing it changes no test outcome. |
+| **Related** | P11-B4, P11-F1, G-1…G-8, `phase-11-monitoring-observability.md` §14, `docs/base/features/monitoring.md`, `qa-tracker.md` |
+
+---
+
+## 2026-10-16 — Vantage queue monitor installed and gated (supersedes Phase 11 D-1)
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-10-16 |
+| **Change** | Installed `storviaio/vantage ^0.1.25` and put it behind this project's two gates. `config/vantage.php` (published) sets `routes => false` and `store_payload => false`; `routes/web.php` declares the six web routes under `feature:vantage` with `can:queues.view` on the reads and `can:queues.retry` on the retry POST. `queues.view`/`queues.retry` added to `PermissionCatalog`, a `vantage` flag to `config/pennant.php` (group Monitoring), a `Queue Monitor` sidebar entry, and a `viewVantage` gate override in `AuthServiceProvider` → `queues.view`. `vantage:prune --force --keep-processing` runs daily. New `tests/Feature/Vantage/VantagePermissionGateTest` (7 cases). |
+| **Reason** | Owner decision 2026-10-16 reversed the Phase 11 D-1 deferral: the two gaps Vantage closes are real (Pulse's queue card is a throughput graph, not a live backlog count; `failed_jobs` keeps one row per job, so the retry chain is lost). D-2's objection — that Pennant cannot gate a vendor route — dissolves once the app declares the routes itself, which is the option D-1 had listed as an accepted, deferred cost. The package defaults (`viewVantage` admits any authenticated user; `store_payload` true) are its own stated need for an explicit decision. |
+| **Impact** | New `vantage_jobs` / `vantage_job_tags` tables in the base schema. Existing installs MUST run `php artisan db:seed --class=FeatureFlagSeeder` (fail-closed Pennant store) or `/vantage` 403s for everyone, superadmin included. **Follow-up closed 2026-10-17:** what this entry deferred — scoping `AddSecurityHeaders::policy()` to `vantage.*` like `pulse` — is now in place. The two CDN origins and `'unsafe-eval'` travel only with the Vantage routes, and the four script-bearing vendor views are overridden to nonce them; pinned by `ContentSecurityPolicyTest`. |
+| **Related** | ADR-022, D-1/D-2 (superseded), P11-B1..B4, `phase-11-monitoring-observability.md` §13, `tests/Feature/Vantage/VantagePermissionGateTest.php` |
+
+---
+
+## 2026-10-17 — Phase 11: the ungated health endpoint gets a ceiling and a cached check set (ADR-023)
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-10-17 |
+| **Change** | `GET /api/v1/health` now carries `throttle:health`: a new `RateLimiter::for('health')` keyed on the IP, its number from `SystemSetting::getInt('health_rate_limit_per_minute', 120)` (validated `1..600`, seeded at `120`, with a settings-page field), refusing in JSON regardless of the caller's `Accept` header via the new `jsonOnly` argument on `LoginThrottle::responseFor()`. `HealthCheckService::check()` caches its check set for 10s under `health_check:results`; a store that cannot answer is logged as `health_check.results_cache.failed` and the checks run uncached. New tests: three in `HealthCheckEndpointTest` (a stored set is served instead of the checks re-running; a completed set is stored; an unreachable store is reported rather than thrown — the class gained `RefreshDatabase`, because the limiter reads `system_settings`) and one in `ThrottleJsonResponseTest`. |
+| **Reason** | A read-only performance pass over Phase 11 (finding A1) measured this route as the only endpoint in the app with no gate of any kind: the `api` group's middleware is `[SubstituteBindings]` and there is no `RateLimiter::for('api')`, so nothing bounded the request count, while one uncached run costs seven round trips — a PDO connect, a cache write **and** a read back, a queue `size()` and three storage operations (0 queries on the harness; 3 queries + 1 write on `database`/`database`). Phase 11 §F3 decided the *permission* question deliberately and left the *cost* question open; closing it had to keep the endpoint answerable by a monitor that cannot log in, so the answer is a ceiling plus a cache, not a gate. |
+| **Impact** | The response shape is unchanged. Checks are up to 10s old while `status` and `checks` stay consistent with each other and `timestamp` remains the response time. A database that is down **and** a settings cache that is cold makes the limiter itself 500 before the checks run — the same shape every other limiter in the app already has, and still a non-2xx for the monitor. The one place that answers for a health endpoint must never be less available than the endpoint itself, which is why a failing store is reported as `cache: fail` instead of thrown. `docs/base/security/rate-limiting.md`'s table was re-derived while adding the row: it listed `bulk-action` and `user-state-actions` with no setting key and omitted `send-test-mail` and `audit-export`, and its claim that `user-state-actions` lacks the `expectsJson()` branch was stale. |
+| **Related** | ADR-023, Phase 11 §F3 and finding A1, `docs/base/security/rate-limiting.md`, `tests/Feature/CrossCutting/HealthCheckEndpointTest.php`, `tests/Feature/CrossCutting/ThrottleJsonResponseTest.php` |
+
+---
+
+## 2026-10-17 — Vantage retry answers from `failed_jobs` (ADR-022, decision 7)
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-10-17 |
+| **Change** | `AppServiceProvider::register()` now binds `Storvia\Vantage\Support\JobRestorer` to the new `App\Support\Vantage\FailedJobPayloadRestorer`. When `vantage_jobs.payload` is empty (this project's `store_payload => false`), the restorer reads the job's raw payload back from `queue.failer` — the `failed_jobs` record `queue:retry` reads — keyed on the payload uuid Vantage already stores per attempt, and hands it to the package's own `JobRestorer::restore()` unchanged, `class_exists`/`allowed_classes`/`instanceof` checks included. New `tests/Feature/Vantage/VantageRetryTest` (3 cases: restored from the framework record; refused with nothing dispatched when the record is gone; the Vantage payload still wins when it exists). ADR-022 gained decision 7, and `config/vantage.php` + `docs/base/features/monitoring.md` record that retry does not depend on `store_payload`. A manual check ships with it: `php artisan queue:probe-failure` dispatches `App\Jobs\QueueFailureProbe`, one job that always throws, so an operator can produce the `failed_jobs` + `vantage_jobs` pair on demand and press Retry to watch the chain. |
+| **Reason** | `POST /vantage/jobs/{id}/retry` was shipped, gated by `queues.retry`, rendered by the vendor's own views — and could never succeed: `PayloadExtractor::getPayload()` returns null when `store_payload` is off, so `JobRestorer::restore()` returned null and every press answered "Unable to restore job. Payload might be missing or corrupted." Nothing in the code said so, because every gate on the route passes. The payload the button needs exists one table away: `WorkCommand::logFailedJob()` writes it for exactly the final attempt Vantage marks `failed`, so the retry reuses that copy instead of switching on the column ADR-022 keeps off — which would persist export filters, model ids and mail arguments for every `queues.view` holder to read. |
+| **Impact** | Retry works without a second copy of any job payload. No route, permission, gate, flag or `config/vantage.php` value changes; `vantage_jobs.payload` stays empty. New dependency to know about: a retry now needs the failed-job record, so `queue:flush` / `queue:prune-failed` empties it while `vantage_jobs` lives on for `vantage.retention_days` (14) — those rows refuse the retry, logged as `Queue Monitor: no failed-job record for this retry`, because the vendor's button stays visible. Rows whose job class is a queued notification or mailable were already unrestorable (the vendor validates the `SendQueued*` job class while the payload holds the Notification/Mailable) — unchanged. |
+| **Related** | ADR-022, Phase 11 §13, `docs/base/features/monitoring.md`, `tests/Feature/Vantage/VantageRetryTest.php`, `app/Support/Vantage/FailedJobPayloadRestorer.php` |
+
+---
+
 ## 2026-10-14 — Phase 10: the audit export handed a spreadsheet a formula
 
 | Field | Value |
@@ -203,3 +311,14 @@ Each entry contains:
 ||| **Reason** | Resolve contradictions between documented and approved architecture decisions; ensure all components, transaction semantics, account state, rate-limit precedence, cascade rules, system-role protection, UI architecture, and observability classification are consistently documented before implementation begins. |
 ||| **Impact** | All Phase 1-17 implementation tasks; architecture compliance tests; Definition of Done verification. |
 ||| **Related** | - ADR-001 through ADR-018, DEP-001 through DEP-007, FOUND-008, CORR-001, AUDIT-001/AUDIT-003, MONITOR-001, RETAIN-001, RBAC-001/RBAC-005, SEC-001/002/003, DB-001/DB-002, CACHE-001/002, SET-001, UI-001, FEATURE, QA-LOG-*, QA-AUDIT-*, QA-SEC-*, QA-API-* |
+---
+
+## 2026-10-17 — Phase 11 security pass: the flag reaches the writes, the permission follows the flag (ADR-024)
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-10-17 |
+| **Change** | Four findings from a read-only pass over the Phase 11 surface, all one shape — a control at the edge of a module and not inside it. (1) The `pulse` and `vantage` flags stopped the dashboards and not the recording: `Pulse::filter(fn () => FeatureCatalog::isActive('pulse'))` now answers at INGEST (worker included, and no store read when there is nothing to write), and because Vantage offers no filter hook, an `Event::listen(Looping::class, …)` listener refreshes `config('vantage.enabled')` — the key its recorders re-read inside `handle()` — once per daemon iteration (`JobProcessing` is one job late: the package listens there and registered first). `PULSE_ENABLED` / `VANTAGE_ENABLED` stay as deploy-time master switches. Both gates become `flag AND permission` (`viewPulse`, `viewVantage`), so the vendor's own `Authorize` middleware cannot read an unflagged gate. (2) A flag had no authority over its permission: `PermissionCatalog::FEATURE_BY_RESOURCE` maps resource prefix → flag, `PermissionCatalog::visibleNames()` filters the role matrix and the permission index, and the new `FeatureRevokePermissionsAction` deletes both pivot tables for every held permission of a switched-off flag in two statements flat in the batch size (the bulk action runs one pass over the whole selection), inside the toggle's transaction, recording the names in the audit row's new `revoked` property. `PersistsRole::assignablePermissionIds()` keeps a grant the matrix cannot render and ignores a posted id it cannot offer. (3) The health endpoint's fallback ran uncached: `HealthCheckService::check()` now reads the configured store, then the `file` store, and only then runs the probes, writing to both best-effort — `Cache::remember()` ran its callback BEFORE attempting a store it could not write, so the ten-second ceiling vanished exactly when the cache needed reporting (ADR-023 clause 3, amended). (4) `POST /vantage/jobs/{id}/retry` gained `throttle:queue-retry` (`queue_retry_rate_limit_per_minute`, default 10/min, `1..120`, per user + IP) with `LoginThrottle::flashResponseFor()` — a redirect with a session `error` flash, because the queue monitor is a vendor layout that renders `session('error')` and has no `$errors` bag. Docs: ADR-024, `feature-flags.md` (permission↔flag rules), `monitoring.md`, `rate-limiting.md`, `roles-permissions.md`, phase 11 §15, `qa-tracker.md` (QA-MON-011..015). New tests: `PermissionFeatureMapTest` (7), `FeaturePermissionRevokeTest` (10), `PulseRecordingKillSwitchTest` (2), `VantageRecordingKillSwitchTest` (2), `HealthCheckCacheFallbackTest` (4), `QueueRetryThrottleTest` (2), plus kill-switch cases in both gate test files. Follow-up the same day: the `/features` confirmation modal for a flag that owns permissions now says the revoke is coming and that re-enabling does not grant the permissions back (`FeatureIndexAction` hands each row its `permissions`; the bulk-disable copy in `action-config.js` carries the same warning), both held to two sentences by test, and `feature-flags.md` carries the flag→permission table with the re-assign rule. |
+| **Reason** | A flag the operator can flip during an incident that keeps writing, and a permission that outlives its module with nobody able to see it to remove it, are both failures of the same control. Measured: `Pulse::ingest()` recorded an entry with the flag off, a role kept `pulse.view` after the flag went off, and with the configured cache store dead three calls ran three probe sets — the ceiling ADR-023 promises exists for exactly the case it stopped covering. |
+| **Impact** | Feature flags now govern the `pulse`/`vantage` write paths and the permission catalogue; `PermissionFeatureMapTest` fails on a resource with no flag entry; the revoke is final (re-enabling grants nothing back); `features` is the one deliberately unmapped resource. No API surface, response shape or route path changed. `queue:listen` and synchronous connections never fire `Looping` — they keep `VANTAGE_ENABLED` as their only switch. |
+| **Related** | ADR-024, ADR-022, ADR-023 (clause 3 amended), P11-B4, phase 11 §15, `docs/base/features/feature-flags.md`, `docs/base/security/rate-limiting.md`, `PermissionFeatureMapTest`, `FeaturePermissionRevokeTest`, `PulseRecordingKillSwitchTest`, `VantageRecordingKillSwitchTest`, `HealthCheckCacheFallbackTest`, `QueueRetryThrottleTest` |

@@ -111,6 +111,8 @@ QUEUE-001 (queue) → NOTIF-003 (queue email)
 FOUND-003 → CACHE-001 → CACHE-002
 FOUND-003 → NOTIF-001 (mail config) → NOTIF-002 (channels) → NOTIF-003 (queue email)
 FOUND-010 → MONITOR-002 (health check)
+FOUND-007 → MONITOR-001 (Pulse dashboard)
+QUEUE-001 → MONITOR-003 (Vantage queue monitor) → RETAIN-001 (vantage:prune)
 STOR-001 → STOR-002 (audit export storage)
 BACKUP-001 → STOR-001 (backup strategy)
 DB-001 → RETAIN-001 (retention jobs)

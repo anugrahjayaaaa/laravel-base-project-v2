@@ -134,6 +134,32 @@ one client-side behaviour no curl test reaches: the table must resolve ITSELF.
 || QA-LOG-007 | Verify queue failures are observable in logs | Security | Logging | PLANNED |
 || QA-LOG-008 | Verify authorization/security failures are appropriately logged | Security | Logging | PLANNED |
 
+### Monitoring QA
+
+Automated coverage is **closed** for the scenarios below — the "Proof" column names
+the test that pins it (Phase 11 Groups B–E). What is left is the manual pass on a
+real deployment, where the flag rows and the CSP header come from the environment
+rather than from PHPUnit.
+
+|| ID | Scenario | Category | Feature | Status |
+||----|----------|----------|---------|--------|
+|| QA-MON-001 | Verify `/pulse` needs `pulse.view` AND the `pulse` flag | Authorization | Pulse | DONE — `PulsePermissionGateTest`, 6 cases (holder 200, no permission 403, superadmin 200, flag off 403 for a holder, flag off 403 for superadmin, and the gate itself reading the flag while the module is kill-switched — added by the Phase 11 security pass, ADR-024 clause 2) |
+|| QA-MON-002 | Verify `/health` needs `health.view` AND the `health` flag | Authorization | System Health | DONE — `HealthPermissionGateTest`, same 5 cases |
+|| QA-MON-003 | Verify a dead flag closes the module for **superadmin** too | Authorization | Monitoring | DONE — `test_the_flag_off_refuses_superadmin_too` in both files (D-3, closed 2026-10-16) |
+|| QA-MON-004 | Verify `/pulse` renders under the nonce-only CSP | Functional | Pulse | DONE — `ContentSecurityPolicyTest::test_only_the_pulse_route_grants_unsafe_eval` + `::test_every_script_on_the_pulse_page_carries_the_policys_nonce` (DOM-parsed) |
+|| QA-MON-005 | Verify Pulse cards survive a warm cache | Functional | Pulse | DONE — `PulseQueryCacheTest` forces a serializing store and fails at `Queues.php:35` without the `array` default |
+|| QA-MON-006 | Verify `/health` renders with no query from Blade | Regression | System Health | DONE — `HealthUiRenderTest::test_it_renders_and_queries_nothing` (delta across a warm second render) |
+|| QA-MON-007 | Verify the sidebar shows each entry only with its permission AND its flag | Authorization | Monitoring | DONE — `HealthUiRenderTest`'s four sidebar cases; Pulse opens in a new tab with `rel="noopener"`, `/health` stays in-tab |
+|| QA-MON-008 | Verify the API health twin stays unauthenticated and shape-bounded | Security | System Health | DONE — `HealthCheckEndpointTest` (no acting user; `{status, timestamp, checks}` only — no versions, no config, no DSNs) |
+|| QA-MON-009 | Verify every job declares its queue, retry chain and a `failed()` that logs `request_id` | Regression | Queue | DONE — `JobConventionTest`, 6 cases, reflection over every class in `app/Jobs` |
+|| QA-MON-010 | Verify the flag rows exist after a deploy to an environment that predates them | Functional | Monitoring | **PARTIAL — needs a human** | Automated half done (`FeatureFlagSeeder` iterates `FeatureCatalog::slugs()`). **Manual:** on a database seeded before Phase 11, run `php artisan db:seed --class=FeatureFlagSeeder` and confirm `/health` stops returning 403 — until it runs, `/health` refuses everyone, superadmin included |
+|| QA-MON-011 | Verify the `pulse` flag stops the RECORDING, not only the page | Security | Pulse | DONE — `PulseRecordingKillSwitchTest` (2 cases: with the flag on the entry is ingested, with it off `Pulse::ingest()` drops it and `pulse_entries` stays empty) |
+|| QA-MON-012 | Verify the `vantage` flag reaches a RUNNING worker, not just the route | Security | Queue | DONE — `VantageRecordingKillSwitchTest` (2 cases: `Looping` refreshes `config('vantage.enabled')` from the flag; a synchronous job that records under an active flag writes no `vantage_jobs` row under a dead one) |
+|| QA-MON-013 | Verify switching a flag off revokes its permissions and hides them everywhere | Authorization | Feature flags | DONE — `FeaturePermissionRevokeTest` (10 cases: both pivots, the bulk action, no re-grant on re-enable, hidden from the matrix and the permission index, a hidden grant preserved through a save, a crafted grant refused) + `PermissionFeatureMapTest` (7 cases pinning the map) |
+|| QA-MON-014 | Verify the retry button has a ceiling the operator can tune | Security | Queue | DONE — `QueueRetryThrottleTest` (2 cases: the ceiling comes from `queue_retry_rate_limit_per_minute`, measured at two values either side of the seeded default) |
+|| QA-MON-015 | Verify the health endpoint keeps its ceiling while its cache store is down | Performance | System Health | DONE — `HealthCheckCacheFallbackTest` (4 cases, counting probe SETS: one per window with the configured store dead, one per request only when both stores are dead) |
+|| QA-MON-016 | Verify the flag modal warns that disabling revokes permissions and that re-enabling does not grant them back — in two sentences | Functional | Feature flags | DONE — `FeatureFlagUiRenderTest::test_the_disable_modal_says_the_permissions_are_revoked` (the count for a multi-permission flag, the name for a single-permission one, nothing for a flag that owns none, nothing on the ENABLE switch, and a 2-sentence/220-char ceiling) + `BulkActionCopyTest::test_the_disable_copy_stays_two_sentences` (same ceiling for the bulk modal) |
+
 ### Settings QA
 
 || ID | Scenario | Category | Feature | Status |

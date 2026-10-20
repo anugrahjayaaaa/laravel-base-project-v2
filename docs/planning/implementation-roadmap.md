@@ -153,81 +153,21 @@ email-verification-notice, password-change pages using AdminLTE auth layout.
 ### Phase 11: Monitoring & Observability
 - Laravel Pulse integration (`^1.8`, in `require`) — **DONE** (`85384b4`)
 - `pulse` feature flag + route enforcement — **DONE** (`b08b8b4`)
-- `pulse.view` permission + `viewPulse` gate override — **PLANNED**
-- Sidebar entry for Pulse — **PLANNED**
-- Slow-query detection on production
-- Health check endpoint
-- System health dashboard
-- Status: IN PROGRESS
+- `pulse.view` permission + `viewPulse` gate override — **DONE** (2026-10-15, P11-B1/B2)
+- Sidebar entry for Pulse — **DONE** (2026-10-15, P11-A1 — Monitoring group, both dashboards)
+- Health check API endpoint — **DONE** (`/api/v1/health`, ungated by design)
+- System health dashboard (permission `health.view` + flag `health`) — **DONE** (2026-10-15, P11-B3/C1/A2 + A3/A4 gate and render tests)
+- Queue conventions (named queues, `$tries`/`$timeout`, `failed()`) — **DONE** (2026-10-16, P11-E1..E3)
+- Slow-query detection on production — **DEFERRED by decision**: MySQL slow log covers it; the `DB::listen()` logger is added only when a case appears the slow log cannot see
+- Status: **DONE 2026-10-16** — Groups A–F closed, plus the post-audit gap closure (§14 of the breakdown); full suite 2016 passed / 6940 assertions, Pint clean. Committed on `feature/phase-11-monitoring-observability`, awaiting review and merge to `main`
 
-> Full breakdown: [phase-11-monitoring-observability.md](phase-11-monitoring-observability.md).
+> Full breakdown: [phase-11-monitoring-observability.md](phase-11-monitoring-observability.md)
+> — Groups A–F, the access-gating decision table, the slow-query diagnosis
+> ladder, the VM runbook, and the Pulse/Horizon/Vantage queue-dashboard
+> decision all live there; this section is the status summary only.
 > **Superseded scope:** this phase originally specified `laravel/telescope` with
 > `periscope` as a companion UI. Both were removed in `85384b4` in favour of
 > Laravel Pulse — see [DEP-004](../base/architecture/decision-records/DEP-004-laravel-pulse-observability.md).
-
-**Access gating (decided 2026-10-02).** `/pulse` requires **both** the `pulse`
-feature flag and the `pulse.view` permission. Two independent gates answering
-different questions: the flag is the deploy-time kill switch, the permission is
-per-role. Both failures are 403, so a caller cannot tell which fired — the same
-deliberate trade Phase 7 made for feature availability.
-
-Pulse ships its own `viewPulse` gate (`environment('local')`) at
-`vendor/laravel/pulse/src/PulseServiceProvider.php:100`. `AuthServiceProvider`
-redefines it as `$user->can('pulse.view')`; `Gate::define()` overwrites by name and
-our provider boots after Pulse's, so ours wins. `Gate::before` is untouched, so
-superadmin keeps access with no permission row.
-
-| Decision | Rationale |
-|----------|-----------|
-| `pulse.view`, not `pulse.manage` | the dashboard is read-only; a second action is a row nothing checks |
-| flag AND permission, keep both | deploy-time kill switch vs per-role authorization are not the same question |
-| `laravel/pulse` in `require` | production observability here, not a dev-only debugger (contrast DEP-006's queue driver) |
-| no `environment('local')` in the gate | the permission replaces it; local devs hold the permission like anyone else |
-| no `Pulse::auth()` call | removed in 1.8; the gate is the supported hook |
-| admin inherits the permission | `PermissionSeeder` grants `admin` the whole catalogue — no seeder edit needed |
-
-**Slow-query diagnosis ladder for a slow production server** — run in order:
-
-1. `GET /up` — not 200 means infra, not queries
-2. `top` / `free -m` — CPU, RAM, swap before blaming the database
-3. MySQL slow log — catches queries that never reach PHP (lock wait, disk I/O):
-   ```sql
-   SET GLOBAL slow_query_log = ON;
-   SET GLOBAL long_query_time = 0.3;
-   SET GLOBAL log_output = 'TABLE';
-   ```
-   ```sql
-   SELECT start_time, LEFT(sql_text, 200), time_to_lock, rows_examined, rows_sent
-   FROM mysql.slow_log ORDER BY start_time DESC LIMIT 20;
-   ```
-   `rows_examined >> rows_sent` means a missing index — most slow queries, and
-   found without any application tooling.
-4. `DB::listen()` threshold logger (Phase 11 deliverable) — the complement to
-   step 3, covers queries that do reach PHP and measures DB time only
-5. `EXPLAIN` / `EXPLAIN ANALYZE` each query surfaced by steps 3-4
-
-Pulse is deliberately **absent** from that ladder, and the reasoning that
-originally applied to Telescope still holds. Pulse records on every request while
-enabled, adding write load precisely when the server is already slow. The
-slow-query requirement — step 3 — is served by the database's own slow log, which
-needs no application tooling at all.
-
-**Runbook — toggling Pulse on the VM:**
-
-```bash
-# toggle the flag in the UI at /features (never gated), then re-cache config
-php artisan config:clear && php artisan config:cache
-sudo systemctl reload php8.3-fpm     # without this, opcache keeps the old config
-
-# inspect — requires the pulse.view permission (superadmin passes via Gate::before)
-# open /pulse
-
-# retention is Pulse's own config; unlike Telescope there is no manual prune step
-```
-
-Note: `.env` is excluded from the rsync sync, so a toggle made there persists
-across deploys. The flag itself lives in Pennant's store, not `.env` — which is
-why flipping it in the UI survives a deploy.
 
 ### Phase 12: API V1
 - Versioned API routes

@@ -6,6 +6,7 @@ use App\Auth\LoginThrottle;
 use App\Models\SystemSetting;
 use App\Models\User;
 use App\Policies\UserPolicy;
+use App\Support\FeatureCatalog;
 use App\Support\SystemRole;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Auth\Notifications\VerifyEmail;
@@ -37,6 +38,8 @@ class AuthServiceProvider extends ServiceProvider
     {
         ThrottleRequests::shouldHashKeys(false);
         $this->configureSuperAdmin();
+        $this->configurePulseGate();
+        $this->configureVantageGate();
         $this->configureRateLimiters();
         $this->configurePasswordResetNotification();
         $this->configureEmailVerification();
@@ -65,6 +68,55 @@ class AuthServiceProvider extends ServiceProvider
         Gate::before(function (User $user, string $ability): ?bool {
             return $user->hasRole(SystemRole::SUPERADMIN) ? true : null;
         });
+    }
+
+    /**
+     * Override Pulse's own `viewPulse` gate with the `pulse.view` permission.
+     *
+     * Pulse defines `viewPulse` as `environment('local')` at
+     * `vendor/laravel/pulse/src/PulseServiceProvider.php:100` via
+     * `callAfterResolving`. `Gate::define()` overwrites by name, and resolving
+     * the Gate here fires Pulse's pending callback first — so this definition
+     * is the one that stands (measured, phase-11-monitoring-observability.md F1).
+     *
+     * `environment('local')` is deliberately replaced rather than supplemented:
+     * one predicate, one reason to fail, and local devs hold the permission like
+     * anyone else. Do NOT call `Pulse::auth()` — removed in 1.8, the gate is
+     * the supported hook. `Gate::before` stays untouched, so superadmin keeps
+     * access without holding the permission row.
+     *
+     * The flag is ANDed in, so the switch answers through the gate as well as
+     * through `feature:pulse` on the route. Two readers ask one question and
+     * cannot disagree: a gate that still said yes for a switched-off module
+     * would let any `@can('viewPulse')` or the package's own `Authorize`
+     * middleware through on a module the operator turned off. And the flag is
+     * checked BEFORE the permission, because it is not a role check — the
+     * superadmin's `Gate::before` bypass reaches the permission, never this.
+     */
+    protected function configurePulseGate(): void
+    {
+        Gate::define('viewPulse', fn (User $user): bool => FeatureCatalog::isActive('pulse') && $user->can('pulse.view'));
+    }
+
+    /**
+     * Override Vantage's own `viewVantage` gate with the `queues.view` permission.
+     *
+     * Vantage defines `viewVantage` as "any authenticated user" at
+     * `vendor/storviaio/vantage/src/VantageServiceProvider.php` and reads it from
+     * its `AuthorizeVantage` middleware. The application declares the Vantage
+     * routes itself (`config/vantage.php` → `routes => false`) with
+     * `can:queues.*`, so this gate is NOT what our routes consult — it is the
+     * safety net for the package's own middleware: were `routes` ever re-enabled,
+     * the default would open the queue dashboard to every logged-in account,
+     * while this override keeps it on the permission. Same overwrite-by-name
+     * mechanism as `configurePulseGate()` (package provider boots first), and
+     * the same ANDed flag check: were `routes` re-enabled, the vendor group
+     * carries neither `feature:vantage` nor `can:queues.*`, so the gate would be
+     * the only thing standing between a switched-off module and a reader.
+     */
+    protected function configureVantageGate(): void
+    {
+        Gate::define('viewVantage', fn (User $user): bool => FeatureCatalog::isActive('vantage') && $user->can('queues.view'));
     }
 
     /**

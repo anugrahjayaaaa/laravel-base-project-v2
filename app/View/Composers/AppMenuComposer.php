@@ -253,6 +253,54 @@ class AppMenuComposer
                 ],
             ],
             [
+                // Own group, matching the `Monitoring` heading the two flags
+                // already sit under at /features — two read-only dashboards
+                // with their own permissions, both hidden by their own flag.
+                'label' => 'Monitoring',
+                'items' => [
+                    // First menu entry pointing at a vendor URL: Pulse
+                    // registers the `pulse` route itself. `Route::has` in
+                    // visible() keeps it honest if the package ever goes.
+                    [
+                        'label' => 'Pulse',
+                        'icon' => 'fas fa-heart-pulse',
+                        'route' => 'pulse',
+                        'active' => 'pulse',
+                        'permission' => 'pulse.view',
+                        'feature' => 'pulse',
+                        // Opens in a new tab: Pulse renders its OWN full-page
+                        // layout (not this app's AdminLTE shell), so an
+                        // in-tab click would replace the admin with a page
+                        // that has no sidebar to click back out of. `rel` is
+                        // set by the partial for every new-tab item.
+                        'target' => '_blank',
+                    ],
+                    [
+                        'label' => 'System Health',
+                        'icon' => 'fas fa-stethoscope',
+                        'route' => 'health.index',
+                        // `health*`, safe because no other route name starts
+                        // with `health` — the API twin is unnamed by design.
+                        'active' => 'health*',
+                        'permission' => 'health.view',
+                        'feature' => 'health',
+                    ],
+                    // Also a vendor dashboard with its own full-page layout
+                    // (Tailwind from a CDN, like Pulse), so it opens in a new
+                    // tab for the same reason. `vantage*` is safe: no other
+                    // route name starts with `vantage`.
+                    [
+                        'label' => 'Queue Monitor',
+                        'icon' => 'fas fa-list-check',
+                        'route' => 'vantage.dashboard',
+                        'active' => 'vantage*',
+                        'permission' => 'queues.view',
+                        'feature' => 'vantage',
+                        'target' => '_blank',
+                    ],
+                ],
+            ],
+            [
                 'label' => 'Labels',
                 'items' => [
                     [

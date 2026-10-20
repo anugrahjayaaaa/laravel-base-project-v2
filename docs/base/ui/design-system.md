@@ -566,7 +566,9 @@ already included in both `layouts/auth.blade.php` and `layouts/app.blade.php`).
 
 Every HTML response is served with a nonce-based CSP
 (`docs/base/security/web-security.md`): `script-src` carries a per-request nonce
-and NOTHING else — no `'unsafe-inline'`, no `'unsafe-eval'`. (The policy is
+and no `'unsafe-inline'` — the one scoped exception is `/pulse`, which adds
+`'unsafe-eval'` because the Alpine build Pulse inlines evaluates expressions
+with `new Function`. (The policy is
 attached by `AddSecurityHeaders` on the `text/html` check, so it covers the API
 docs page as much as the `web` group's pages.) An inline script
 without `@nonce`, and an inline `on*` handler of any kind, therefore does not

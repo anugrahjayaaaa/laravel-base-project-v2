@@ -41,6 +41,13 @@ cheat sheet; that guide is the contract.
   truth), never by a model observer. Use `Auditable::audit()`.
 - Jobs/events dispatch **after commit** (`dispatchAfterCommit()` /
   `DB::afterCommit()`).
+- Every job in `app/Jobs` follows `docs/base/infrastructure/queue.md` § *The
+  standard every job follows*: queue named via `App\Support\QueueName` +
+  `onQueue()` (never a `public $queue` property), explicit `$tries` /
+  `$timeout` / `$maxExceptions` / `backoff()`, and `failed()` logging event name
+  + exception + `request_id` read via `Jobs\Concerns\ReadsCorrelationId` (never
+  from the container — the worker is another process). `JobConventionTest`
+  enforces it by reflection; do not pass `request_id` as a constructor argument.
 - Use Laravel facades only (`Cache`, `Queue`, `RateLimiter`, `Lock`). Never
   Redis-specific APIs in application code.
 - UI must stay replaceable. A value the API also needs belongs in an

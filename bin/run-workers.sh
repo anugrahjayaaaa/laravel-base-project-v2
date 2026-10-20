@@ -5,7 +5,12 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
 
 PHP_BIN="${PHP_BIN:-php}"
-QUEUE_NAME="${QUEUE_NAME:-default}"
+# `default` first because queued notifications and mails ride it and are
+# user-facing; `exports` next (user-initiated, heavy); `sweeps` last
+# (scheduled, idempotent, never urgent). Jobs name their queue via
+# `App\Support\QueueName` — a worker that listens only `default` would
+# leave every named-queue job waiting forever (Phase 11 P11-E1).
+QUEUE_NAME="${QUEUE_NAME:-default,exports,sweeps}"
 QUEUE_SLEEP="${QUEUE_SLEEP:-3}"
 QUEUE_TRIES="${QUEUE_TRIES:-3}"
 QUEUE_TIMEOUT="${QUEUE_TIMEOUT:-90}"
@@ -21,7 +26,7 @@ Usage:
 
 Environment:
   PHP_BIN         PHP binary (default: php)
-  QUEUE_NAME      Queue name (default: default)
+  QUEUE_NAME      Comma-separated queue names (default: default,exports,sweeps)
   QUEUE_SLEEP     Queue sleep seconds (default: 3)
   QUEUE_TRIES     Queue retry attempts (default: 3)
   QUEUE_TIMEOUT   Queue timeout seconds (default: 90)

@@ -1,11 +1,11 @@
 # Architecture Decision Records
 
 > Key ADRs that shape the architecture. Full list with details in `[decisions.md](../../planning/decisions.md)`.
-> **Numbering convention:** Architecture ADRs use `ADR-001` through `ADR-018` (inline in `decisions.md`).
+> **Numbering convention:** Architecture ADRs use `ADR-001` through `ADR-023` (inline in `decisions.md`).
 > Dependency-selection ADRs use `DEP-001` through `DEP-007` (files in `decision-records/`).
 > This separation prevents numbering collisions. To determine the next ADR number: count existing architecture ADRs in `decisions.md` + 1 for the next architecture ADR; count files in `decision-records/` + 1 for the next dependency ADR.
 >
-> 18 architecture ADRs total (ADR-001 through ADR-018), plus 8 dependency-specific
+> 23 architecture ADRs total (ADR-001 through ADR-023), plus 7 dependency-specific
 > ADRs in `docs/base/architecture/decision-records/` (DEP-001 through DEP-007).
 
 ## ADR-001: API-first architecture
@@ -98,6 +98,31 @@
 |- `last_activity_at = NULL` (never logged in) is handled by the enabled `inactivity_lock_grace_enabled` setting and `inactivity_lock_grace_days`; when disabled, only the normal inactivity threshold applies.
 |- Unlocking an account does NOT populate `last_activity_at` — NULL is preserved until the user performs an actual application action. Unlock is not user activity.
 |- Inactivity lock revokes sessions/tokens.
+
+## ADR-019: AdminLTE as replaceable UI template
+- AdminLTE 4 is the initial/default admin UI, vendored from the official release ZIP into `public/vendor/adminlte/` (NOT via npm).
+- Presentation layer only — not a dependency of business logic, services, models or authorization.
+- Isolated behind layout templates, so the UI (Blade + AdminLTE) stays replaceable per ADR-002.
+
+## ADR-020: Telescope stays installed on production, gated off by default
+- **SUPERSEDED 2026-10-02** — the subject no longer exists: Telescope + Periscope were removed in `85384b4` in favour of Pulse (DEP-004), whose `pulse` feature flag replaces the env-var toggle this ADR distrusted.
+- Kept as the record of why production gating is taken seriously: an unset `.env` key once recorded every production request and grew `telescope_entries` without bound.
+
+## ADR-021: no automated database rollback — a bad migration is fixed forward
+- No `migrate:rollback` in the deploy path; a bad migration is repaired with a new forward migration.
+- Every migration still ships a real `down()` (keeps `migrate:fresh` and local seeding working).
+- The pre-migrate `mysqldump` is the recovery path, restored by hand — never by the pipeline.
+
+## ADR-022: Vantage queue monitor, gated like every other module (supersedes D-1)
+- Installed `storviaio/vantage ^0.1.25`; the app declares the six web routes itself (`config/vantage.php` → `routes => false`) so they carry `feature:vantage` + `can:queues.*`.
+- `queues.view` / `queues.retry` in `PermissionCatalog`; `viewVantage` gate overridden to `queues.view`; `store_payload => false`; retry reads the payload from `failed_jobs`.
+- The one follow-up this ADR left open (CSP scoping for the vendor layout) was closed 2026-10-17.
+
+## ADR-023: the ungated health endpoint gets a ceiling and a cached check set
+- `GET /api/v1/health` keeps no gate — no auth, no permission, no flag — for the reason `F3` gave: its caller is a monitor that cannot log in.
+- What `F3` did not decide is now decided: the check set is cached for 10s (`health_check:results`), and the route carries `throttle:health` at `health_rate_limit_per_minute` (120/min, validated 1..600), keyed on IP.
+- Ten seconds because a third of the shortest interval a legitimate caller polls at costs nothing in accuracy and caps the work at six executions a minute per server; 120/min because an IP is a shared unit where the per-user limiters' 3-15 is not.
+- A cache store that cannot answer is reported (`cache: fail`), never thrown — the endpoint must not hide the failure it exists to name. The refusal is always JSON, so a monitor that sends no `Accept` header cannot follow a 302 into the login page and read it as UP.
 
 ## Dependency-decision ADRs (DEP-001–DEP-007)
 

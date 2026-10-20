@@ -166,13 +166,20 @@ class LoginThrottle
      * ship half of it again.
      *
      * @param  string  $field  form field the error is attached to on the web side
+     * @param  bool  $jsonOnly  for a route with no web branch at all. `expectsJson()`
+     *                          is the caller's `Accept` header, and a route reached
+     *                          by a machine that does not set one — an uptime
+     *                          monitor polling `/api/v1/health` — would otherwise
+     *                          get the redirect below, which reads as SUCCESS to
+     *                          anything that follows it: it lands on the login
+     *                          page and returns 200.
      */
-    public function responseFor(string $field): Closure
+    public function responseFor(string $field, bool $jsonOnly = false): Closure
     {
-        return function (Request $request, array $headers) use ($field) {
+        return function (Request $request, array $headers) use ($field, $jsonOnly) {
             $retryAfter = $headers['Retry-After'] ?? 60;
 
-            if ($request->expectsJson()) {
+            if ($jsonOnly || $request->expectsJson()) {
                 return response()->json([
                     'message' => 'Too many requests. Please try again later.',
                     'code' => 'RATE_LIMITED',
@@ -183,6 +190,36 @@ class LoginThrottle
             return back()->withErrors([$field => 'Too many attempts. Please try again later.'])
                 ->withInput($request->only($field))
                 ->with('rate_limit_seconds', $retryAfter);
+        };
+    }
+
+    /**
+     * The same answer for a page that renders a session `error` flash.
+     *
+     * Not every page in the app carries the `$errors` bag. The queue monitor is
+     * a vendor layout: it renders `session('error')` and nothing else, so the
+     * field-error shape above would reload the page with no message on it —
+     * a throttle nobody can see is a button that silently stops working.
+     *
+     * The JSON branch is deliberately identical to `responseFor()`: the shape a
+     * machine reads must not depend on which page a human was looking at.
+     *
+     * @param  string  $message  what the human-facing page shows
+     */
+    public function flashResponseFor(string $message): Closure
+    {
+        return function (Request $request, array $headers) use ($message) {
+            $retryAfter = $headers['Retry-After'] ?? 60;
+
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'message' => 'Too many requests. Please try again later.',
+                    'code' => 'RATE_LIMITED',
+                    'retry_after_seconds' => $retryAfter,
+                ], 429);
+            }
+
+            return back()->with('error', $message)->with('rate_limit_seconds', $retryAfter);
         };
     }
 

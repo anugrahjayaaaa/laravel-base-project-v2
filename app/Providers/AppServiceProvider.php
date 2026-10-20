@@ -13,19 +13,25 @@ use App\Observers\UserObserver;
 use App\Services\PasswordExpiry;
 use App\Support\FeatureCatalog;
 use App\Support\MorphMap;
+use App\Support\Vantage\FailedJobPayloadRestorer;
 use App\View\Composers\AccountOptionsComposer;
 use App\View\Composers\AppMenuComposer;
 use App\View\Composers\PasswordStrengthComposer;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Eloquent\Relations\Relation;
+use Illuminate\Queue\Events\Looping;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Pagination\Paginator;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Blade;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\View\View;
 use Laravel\Pennant\Feature;
+use Laravel\Pulse\Facades\Pulse;
+use Storvia\Vantage\Support\JobRestorer;
 use Throwable;
 
 /**
@@ -42,6 +48,24 @@ class AppServiceProvider extends ServiceProvider
     {
         Paginator::useBootstrap();
         LengthAwarePaginator::useBootstrap();
+
+        // The correlation id travels with the job, carried in the payload.
+        //
+        // `GenerateRequestCorrelationId` binds `request_id` on the REQUEST;
+        // the worker that later runs the job is a different process where that
+        // binding never happened, so the container read the rest of the
+        // application uses (`app()->bound('request_id')`) answers null exactly
+        // where the correlation matters most — a failed export is queued work,
+        // not the request that asked for it. Capturing the id at PUSH time,
+        // still inside the request, is what lets `Jobs\Concerns\ReadsCorrelationId`
+        // answer it later from the payload.
+        //
+        // Null stays valid and present: a sweep dispatched by the scheduler has
+        // no request behind it, and jobs queued before this hook existed read
+        // null the same way — the key is merged at the payload's top level.
+        Queue::createPayloadUsing(static fn (): array => [
+            'request_id' => app()->bound('request_id') ? app('request_id') : null,
+        ]);
 
         // The nonce itself is per-response: `AddSecurityHeaders` shares a fresh
         // one on every request, and only that request's views are rendered
@@ -79,6 +103,18 @@ class AppServiceProvider extends ServiceProvider
 
             return "<?php echo 'nonce=\"'.\\e({$value}).'\"'; ?>";
         });
+
+        // Pulse's root layout is `<x-pulse>`, and the package resolves it through
+        // an `anonymousComponentPath` whose hash namespace points ONLY at the
+        // vendor directory — `resources/views/vendor/pulse/` overrides never reach
+        // it (unlike `x-pulse::theme-switcher`, which resolves via the `pulse`
+        // view namespace where app paths win). Registering the tag as an alias
+        // pointing at that namespace re-routes `x-pulse` to the overridden view;
+        // `Blade::component`'s view branch is the framework's own escape hatch
+        // (`componentClass()` checks `$viewFactory->exists($alias)`). Only the
+        // exact tag `x-pulse` is affected — namespaced `x-pulse::*` tags have
+        // their own lookup keys and still resolve normally.
+        Blade::component('pulse::components.pulse', 'pulse');
 
         view()->composer('layouts.partials.sidebar', AppMenuComposer::class);
         // The header dropdown carries its own Sessions link, outside $menuGroups,
@@ -203,6 +239,46 @@ class AppServiceProvider extends ServiceProvider
             Feature::define($slug, fn (): bool => false);
         }
 
+        // Both monitoring recorders follow their flag — at CALL time, not at
+        // boot. Until now the flag guarded only the dashboard route, so an
+        // operator switching Pulse off to stop the write load during an
+        // incident stopped the page and kept the writer: the package decides
+        // whether to record once, in its own `boot()`, from `PULSE_ENABLED`.
+        //
+        // `Pulse::filter()` is the package's supported extension point and it is
+        // consulted at INGEST, so the store is read when there is something to
+        // write and never on a request that writes nothing. It reaches the
+        // worker too, because ingestion happens in both processes.
+        //
+        // `PULSE_ENABLED=false` is untouched and stays the deploy-time master
+        // switch: with it off, Pulse registers no recorders at all and this
+        // filter is never asked.
+        //
+        // Not read at boot, deliberately — see `bindTokenExpirations()` and its
+        // comment. Boot runs before the `features` table exists on a fresh
+        // install, and a store read there takes the whole boot down with it.
+        Pulse::filter(fn (): bool => FeatureCatalog::isActive('pulse'));
+
+        // Vantage offers no such hook: its recorders re-read
+        // `config('vantage.enabled')` inside `handle()`, so that config key IS
+        // the call-time switch and something has to set it before the work.
+        //
+        // `Looping`, not `Queue::before` / `JobProcessing`: the package listens
+        // on `JobProcessing` and registered first (packages boot before app
+        // providers — see the boot-order section in AGENTS.md), so a listener of
+        // ours on the same event would run AFTER it and this switch would always
+        // be one job behind. `Looping` fires once per daemon iteration, before
+        // the job is fetched — a worker pays one flag read per job for that, and
+        // it is the only way to ask the question at call time.
+        //
+        // ponytail: a worker started before the flip applies it from its next
+        // loop, and `queue:listen`/a synchronous connection never fires
+        // `Looping` at all — those keep `VANTAGE_ENABLED` as their only switch.
+        // `bin/run-workers.sh` runs `queue:work`, which is the shape this covers.
+        Event::listen(Looping::class, function (): void {
+            config(['vantage.enabled' => FeatureCatalog::isActive('vantage')]);
+        });
+
         // The audit table's polymorphic columns store an ALIAS instead of
         // `App\Models\Whatever`, so renaming a model does not orphan every
         // historical row pointing at it. Permissive on purpose — see
@@ -279,6 +355,62 @@ class AppServiceProvider extends ServiceProvider
             return Limit::perHour($perHour)
                 ->by($key)
                 ->response($throttle->responseFor('format'));
+        });
+
+        // `GET /api/v1/health` is the one endpoint in the app with no gate of
+        // any kind — no auth, no permission, no feature flag — because its
+        // caller is a monitor that cannot log in (Phase 11 §F3). That decision
+        // is right and this limiter does not revisit it. What it fixes is the
+        // other half: nothing bounded the REQUEST COUNT either, so an anonymous
+        // caller could buy an unbounded number of those seven round trips.
+        //
+        // Keyed on the IP alone, because there is no user to key on. That unit
+        // is WEAK in a way the per-user limiters above are not: one address can
+        // be a whole mobile carrier's NAT or a corporate egress, so the same
+        // thousands of people share one counter. Hence 120/min (2/s) rather
+        // than the 3-15/min those use — sixty times a monitor that polls every
+        // thirty seconds, which is the slowest thing that can honestly be
+        // called a client here. With the check set cached for ten seconds
+        // (`HealthCheckService`), an allowed request is roughly one cache read,
+        // so the ceiling is about keeping the count finite, not about metering.
+        //
+        // `jsonOnly`, because this route has no web branch: a 302 to the login
+        // page reads as UP to a monitor that follows redirects.
+        RateLimiter::for('health', function ($request) use ($throttle) {
+            $key = $throttle->key('health', 'ip', $request->ip());
+
+            return Limit::perMinute(SystemSetting::getInt('health_rate_limit_per_minute', 120))
+                ->by($key)
+                ->response($throttle->responseFor('health', jsonOnly: true));
+        });
+
+        // Re-queueing a failed job. `queues.retry` answers "may this person" and
+        // not "how often", and this is the one mutating control on the queue
+        // dashboard: a permission without a ceiling leaves a compromised
+        // operator account able to re-dispatch work as fast as it can click.
+        //
+        // Keyed on user AND ip, like `audit-export`, and per MINUTE rather than
+        // per hour because the unit of work is one job rather than a whole
+        // table. Ten is well past an operator working through a failure list by
+        // hand and far below what a script needs to matter.
+        //
+        // The `audit-export` limiter next door was the precedent this follows:
+        // that one is a SystemSetting because the page quotes the number. This
+        // one is a setting for the other half of the same reason — an operator
+        // draining a caught-up backlog after an incident should be able to raise
+        // it without a deploy.
+        RateLimiter::for('queue-retry', function ($request) use ($throttle) {
+            $key = $throttle->key('queue-retry', (string) $request->user()?->id, $request->ip());
+
+            return Limit::perMinute(SystemSetting::getInt('queue_retry_rate_limit_per_minute', 10))
+                ->by($key)
+                // A flash, not a field error: the queue monitor is a vendor
+                // layout that renders `session('error')` and has no `$errors`
+                // bag, so the standard field-error response would reload the
+                // page with no message on it.
+                ->response($throttle->flashResponseFor(
+                    'Too many job retries in a row. Please wait a moment and try again.'
+                ));
         });
     }
 
@@ -446,6 +578,16 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        // Vantage's retry re-dispatch lives inside its own controller and is
+        // built from `vantage_jobs.payload`, a column `config/vantage.php`
+        // keeps empty on purpose (`store_payload => false`, ADR-022). The
+        // binding is the only hook the package leaves for that: the controller
+        // resolves `JobRestorer` from the container at call time.
         //
+        // It answers from the failed-job store the framework already keeps —
+        // the record `queue:retry` reads — rather than a second copy of every
+        // job's arguments. See `FailedJobPayloadRestorer` for the security
+        // checks it reuses and for how the two stores' retentions differ.
+        $this->app->bind(JobRestorer::class, FailedJobPayloadRestorer::class);
     }
 }

@@ -12,10 +12,17 @@
     A flag with no manager on the page renders as a badge instead of a dead
     switch — the same read-only shape pages/settings uses, where the inputs are
     removed rather than merely disabled.
+
+    The DISABLE copy has to say what the switch takes away, because it takes more
+    than the page: the toggle revokes every permission the flag owns from every
+    role and user (`FeatureRevokePermissionsAction`), and switching the flag back
+    on does not grant them again. `permissions` therefore rides in with the row,
+    resolved by `FeatureIndexAction` — the view reads variables and nothing else.
 --}}
 @props([
     // ['slug' => 'users', 'label' => 'Users', 'description' => '…', 'enabled' => true,
-    //  'toggle_url' => '/features/users/toggle?enabled=0']
+    //  'toggle_url' => '/features/users/toggle?enabled=0',
+    //  'permissions' => ['users.view', 'users.create', …]]
     //
     // toggle_url is handed in rather than built here: route() in a view is
     // controller logic in a view (Group A forbids it), and the intended new
@@ -26,7 +33,35 @@
 ])
 
 @if ($manageable)
-    @php($enabling = ! $feature['enabled'])
+    @php
+        $enabling = ! $feature['enabled'];
+
+        // Two short sentences, no more: what the switch takes away, then the way
+        // back. Nothing is taken away on the way IN, so the enable copy is a
+        // single sentence. On the way OUT the flag revokes every permission it
+        // owns and re-enabling does not hand them back, and an operator who is
+        // not told that takes a permission set off the whole install. The
+        // permission is named when the flag owns exactly one — the two
+        // single-permission modules (`pulse`, `health`) are the common case —
+        // and counted when it owns more, because a confirmation modal is not a
+        // table.
+        $revoked = $enabling ? [] : ($feature['permissions'] ?? []);
+        $permissionCount = count($revoked);
+
+        $message = $enabling
+            ? 'Enabling <b>__ITEM__</b> makes it reachable for everyone with the right permission.'
+            : 'Disabling <b>__ITEM__</b> hides it for every user, including super-admin.';
+
+        if ($permissionCount === 1) {
+            $message = 'Disabling <b>__ITEM__</b> hides it for everyone and revokes'
+                .' <code>'.$revoked[0].'</code> from all roles and users. Re-enabling does not restore'
+                .' it — assign it again.';
+        } elseif ($permissionCount > 1) {
+            $message = 'Disabling <b>__ITEM__</b> hides it for everyone and revokes its'
+                .' '.$permissionCount.' permissions from all roles and users. Re-enabling does not'
+                .' restore them — assign them again.';
+        }
+    @endphp
 
     {{-- `d-inline-flex` centres the switch inside its cell.
 
@@ -42,9 +77,7 @@
             :item-name="$feature['label']"
             :label="$enabling ? 'Enable' : 'Disable'"
             :title="($enabling ? 'Enable' : 'Disable').' Feature?'"
-            :message="$enabling
-                ? 'Enabling <b>__ITEM__</b> makes it reachable for everyone with the right permission.'
-                : 'Disabling <b>__ITEM__</b> hides it for every user, including super-admin.'"
+            :message="$message"
             :variant="$enabling ? 'success' : 'warning'"
             icon="bi bi-toggles"
             type="checkbox"

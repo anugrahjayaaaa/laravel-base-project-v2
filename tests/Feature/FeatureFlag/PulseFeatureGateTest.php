@@ -2,9 +2,14 @@
 
 namespace Tests\Feature\FeatureFlag;
 
+use App\Models\RoleLookup;
+use App\Models\User;
 use App\Support\FeatureCatalog;
+use Database\Seeders\PermissionSeeder;
+use Database\Seeders\RoleSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Pennant\Feature;
+use Spatie\Permission\PermissionRegistrar;
 use Tests\TestCase;
 
 /**
@@ -29,13 +34,32 @@ use Tests\TestCase;
  * changes nothing about that — it is an additional gate, not the only one, so
  * this pins the off state (403 from OUR middleware) and proves the middleware
  * is what produced it.
+ *
+ * The caller here is a **permission holder**, not a guest: `config/pulse.php`
+ * puts `auth` ahead of the gates, so a guest is redirected to `/login` and
+ * never reaches the flag at all — that case would pass with no flag wired.
+ * `PulsePermissionGateTest` carries the same pairing from the other side.
  */
 class PulseFeatureGateTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->seed(RoleSeeder::class);
+        $this->seed(PermissionSeeder::class);
+        $this->app->make(PermissionRegistrar::class)->forgetCachedPermissions();
+    }
+
     public function test_the_pulse_route_is_refused_with_the_flag_off(): void
     {
+        $user = User::factory()->create(['email_verified_at' => now()]);
+        $user->assignRole(RoleLookup::find('admin'));
+        $this->actingAs($user, 'web');
+
+        $this->assertTrue($user->can('pulse.view'), 'precondition: the caller holds pulse.view');
+
         Feature::deactivate('pulse');
         Feature::flushCache();
 

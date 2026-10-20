@@ -101,6 +101,24 @@ class SystemSettingSeeder extends Seeder
         SystemSetting::set('bulk_action_rate_limit_per_minute', '5');
         SystemSetting::set('send_test_mail_rate_limit_per_minute', '5');
 
+        // The health endpoint's ceiling — Phase 11 A1. The one limiter in the
+        // app whose unit is a shared IP rather than a person, so the default is
+        // 120/min (2/s) where the per-user limiters use 3-15. It is a setting
+        // for the same reason as the three above, and more so: the address in
+        // the counter can be a whole carrier's NAT, and the operator who
+        // discovers that has to be able to raise it without a deploy.
+        SystemSetting::set('health_rate_limit_per_minute', '120');
+
+        // Manual retries on a failed JOB, per user + IP — Phase 11 §13.
+        //
+        // The mutating control on the queue monitor. `queues.retry` says who may
+        // press it and nothing about how often, so without a ceiling a
+        // compromised operator account re-dispatches work as fast as it can
+        // click. Ten a minute is past an operator working a failure list by hand
+        // and far below what a script needs; an operator draining a backlog
+        // after an incident can raise it without a deploy.
+        SystemSetting::set('queue_retry_rate_limit_per_minute', '10');
+
         // Mail transport — Phase 9 Group B.
         //
         // Seeded from the .env values this app already boots with, so an install

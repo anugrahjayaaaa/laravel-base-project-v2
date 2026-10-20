@@ -1,37 +1,47 @@
 # Phase 11 — Monitoring & Observability
 
-> Date: 2026-10-02 | Branch: feature/general-fixes | Status: PLANNED (docs cleared, code not started)
-> Purpose: execution breakdown for the technical observability layer, replacing
-> the Telescope + Periscope stack with Laravel Pulse, and gating it with a
-> permission the way every other module in the admin is gated.
-> Dependency chain: flag already shipped (Phase 7, commit `b08b8b4`) → permission
-> → gate override → nav entry → tests.
-> Decisions locked 2026-10-02: **permission = `pulse.view`** (not
-> `pulse.manage`), **flag and permission both stay**, **superadmin keeps access
-> via `Gate::before`**, **admin inherits via `PermissionCatalog::all()`**.
+> Date: 2026-10-02 (breakdown) · 2026-10-15 (restructured into Groups A–F; roadmap details folded in) · 2026-10-17 (security pass, §15) | Branch: feature/phase-11-monitoring-observability | Status: **COMPLETE 2026-10-16 — Groups A–F all closed** (A1–A4, B1–B4, C1 shipped 2026-10-15; E1–E3, F1, F6 closed 2026-10-16; C2 deferred by decision, D N/A by design), plus the post-audit gap closure in §14 and the security pass in §15 (ADR-024, four findings fixed, committed 2026-10-19). Full suite **2078 passed / 7265 assertions, 0 failures** (re-measured 2026-10-17 on the §15 tree, then again after the same-day follow-up that has the flag modal state what disabling revokes; §14's own measurement was 2016/6940 on the audit-closure tree, pre-audit HEAD `f6f262b` measured 2014/6936, and F1's recorded 2009/6907 predates the three post-F1 fixes). The Pulse stack and the `pulse` flag had shipped earlier (Phase 7 + `85384b4`). Everything, §15 included, is committed on this branch; it awaits review and merge to `main`.
+> Purpose: execution breakdown for the technical observability layer — Laravel Pulse behind a permission, the system health dashboard, and the queue conventions every dashboard depends on. Replaces the Telescope + Periscope stack with Laravel Pulse and gates it the way every other module in the admin is gated.
+> Groups: **A = every view, the sidebar entry and the nav.** B onward is logic, validation, access control, audit trail.
+> Decisions locked 2026-10-02: **permission = `pulse.view`** (not `pulse.manage`), **flag and permission both stay**, **superadmin keeps access via `Gate::before`**, **admin inherits via `PermissionCatalog::all()`**.
+> Dependency chain: flag already shipped (Phase 7, `b08b8b4`) → permission → gate override → nav entry → dashboards → tests.
 
 ---
 
-## What already shipped (audit 2026-10-02)
+## 1. What exists — audited, not assumed
 
 | Fact | Where | Verified |
 |---|---|---|
-| `laravel/pulse: ^1.8` in `require` | `composer.json:12` | yes |
+| `laravel/pulse: ^1.8` in `require` | `composer.json` | yes |
 | `laravel/telescope`, `periscope` absent from vendor | — | yes, not installed |
 | `config/pulse.php` published | `config/pulse.php` | yes |
-| `pulse` feature flag declared | `config/pennant.php:76` | yes |
-| flag enforced on the route group | `config/pulse.php:137` (`feature:pulse` in `pulse.middleware`) | yes |
-| flag-off returns 403 | `tests/Feature/FeatureFlag/PulseFeatureGateTest.php` | yes, 3 tests |
+| `pulse` feature flag declared, group `Monitoring` | `config/pennant.php:83-86` | yes |
+| flag enforced on the route group | `config/pulse.php` (`feature:pulse` in `pulse.middleware`) | yes |
+| flag-off returns 403 | `tests/Feature/FeatureFlag/PulseFeatureGateTest.php` (3 tests) | yes |
 | `pulse_tables` migration | `database/migrations/2026_09_29_043034_create_pulse_tables.php` | yes |
+| `pulse.view` in `PermissionCatalog` | — | **no — absent** |
+| `viewPulse` gate override | — | **no — Pulse's `environment('local')` definition is the only one** |
+| Pulse sidebar entry | `app/View/Composers/AppMenuComposer.php` | **no — absent** |
+| `PulsePermissionGateTest` | — | **no — PLANNED (B4)** |
+| Health check API endpoint, ungated | `routes/api.php:31` → `Api\V1\HealthCheck\HealthCheckController` | yes |
+| `HealthCheckService` — db / cache / queue / storage checks | `app/Services/HealthCheck/HealthCheckService.php` | yes |
+| System health **dashboard** (web page) | — | **no — PLANNED (A2/C1)** |
+| Slow-query detection in application code | — | **no — deliberately deferred, see C2** |
+| `failed_jobs` table + `queue:failed` / `queue:retry` / `queue:flush` | Laravel default | yes |
+| `laravel/horizon` — evaluated out (Redis-only) | see §13 | yes |
+| `storviaio/vantage` — not installed, recommendation stands: not yet | see §13 | yes |
 
-So the flag half of this phase is done. What is missing is the **permission**
-half, plus the docs, which still describe a stack that was deleted in commit
-`85384b4`.
+The flag half of this phase shipped in `b08b8b4`. What was missing when this
+audit was taken is the **permission** half and the two dashboards' remaining
+tasks — **all closed 2026-10-15** (Groups A–C: the four "no — absent/PLANNED"
+rows above now exist; see §9). The queue conventions (Group E) closed
+2026-10-16, and F1 measured the whole phase green the same day.
 
-## The finding that shapes the design
+## 2. Findings that shape the design
 
-Pulse already defines the `viewPulse` gate. At
-`vendor/laravel/pulse/src/PulseServiceProvider.php:100`:
+### F1 — Pulse already defines the `viewPulse` gate, and the override must win the boot order
+
+At `vendor/laravel/pulse/src/PulseServiceProvider.php:100`:
 
 ```php
 $this->callAfterResolving(Gate::class, function (Gate $gate, Application $app) {
@@ -54,236 +64,327 @@ after  override, devops     = true      (non-superadmin, permission only)
 after  override, plain      = false
 ```
 
----
-
-## Design
-
-### 1. Permission name — `pulse.view`
-
-Not `pulse.manage`. Pulse's dashboard is read-only observability; there is
-nothing to mutate, so a second action would be a permission no `can()` call ever
-checks — exactly the "row that lies in the permissions UI and grants nothing"
-that `PermissionCatalog`'s own note at line 75 warns against.
-
-One permission, one action. `PermissionCatalog::grouped()` groups on the prefix,
-so `pulse.view` appears under a **pulse** heading in the role matrix with no
-other edit.
-
-Placement: a new `PULSE` const appended to `all()`, following the file's own
-rule — "Add each group in the same commit that adds the page it guards." This is
-that commit.
-
-```php
-/** @var array<int, string> */
-private const PULSE = [
-    'pulse.view',
-];
-```
-
-### 2. Gate definition — `AuthServiceProvider`, next to `configureSuperAdmin()`
-
-```php
-Gate::define('viewPulse', fn (User $user): bool => $user->can('pulse.view'));
-```
-
-Three properties worth stating, because each is a way this can silently break:
-
-**Registering after boot is required, and `AuthServiceProvider` is the right
-home.** Pulse uses `callAfterResolving(Gate::class, ...)`, so it defines its gate
-at resolve time. `Gate::define()` overwrites by name, so ours wins — but only if
-it runs later. Pulse's own provider boots before ours, and `AuthServiceProvider`
-already owns the neighbouring authorization concern, so the ordering is correct
-without any extra work.
-
-**`Gate::before` is untouched.** Superadmin keeps access without a permission
-row, which is the invariant `PermissionSeeder`'s docblock states: superadmin's
-access comes from the before-rule, so adding a permission never requires
-re-seeding the role and can never be stripped by a role edit.
-
-**Do not call `Pulse::auth()`.** It does not exist in 1.8 — `auth()` was removed
-in favour of the gate. Verified against vendor source.
-
-### 3. Seeder matrix — no change
-
-`PermissionSeeder::matrix()` grants `SystemRole::ADMIN => PermissionCatalog::all()`,
-so **admin inherits `pulse.view` automatically**. `user` stays empty.
-`superadmin` stays absent by design. Zero edits to `PermissionSeeder`.
-
-That means admin gains Pulse access the moment the permission is seeded, which is
-worth deciding deliberately rather than by accident:
-
-| Option | What it costs |
-|---|---|
-| **(a) admin gets it** | free, consistent with "admin holds the whole catalogue" — **chosen** |
-| (b) superadmin only, until a devops role is hand-picked | needs an explicit exclusion in `matrix()`, the first time that method holds a subset |
-
-Chose (a). Revisit if Pulse should be restricted to a smaller group than admin.
-
-### 4. Two independent gates — keep both
-
-`config/pulse.php` already carries `feature:pulse` in the `pulse` middleware
-group. After this change `/pulse` needs **flag on AND permission held**. Both
-failures are 403, so a caller cannot tell which one fired — consistent with the
-Decision-2 reasoning already recorded in `phase-7-feature-flags.md`. Do not
-collapse them into one check.
-
-The flag is the deploy-time kill switch; the permission is per-role. They answer
-different questions.
-
-### 5. Sidebar entry — added
-
-`Route::has('pulse')` is true (vendor registers it), and
-`AppMenuComposer`'s active matching uses `fnmatch($item['active'], $name)` with
-route name `pulse`, so `'active' => 'pulse'` works.
-
-```php
-[
-    'label' => 'Pulse',
-    'icon' => 'fas fa-heart-pulse',
-    'route' => 'pulse',
-    'active' => 'pulse',
-    'permission' => 'pulse.view',
-    'feature' => 'pulse',
-],
-```
-
-This is the first menu entry pointing at a vendor URL. Two sub-decisions:
-
-**URL.** `route('pulse')` resolves the current domain + path, so the composer
-builds a working `href`. But `PULSE_DOMAIN` / `PULSE_PATH` env can move it off
-`/pulse`; a subdomain would break the menu link while the flag keeps working.
-Accepted — neither env key is set in `.env.example`, and if a subdomain is ever
-needed the item moves to a literal URL then.
-
-**Active highlight.** `'pulse'` is a loose glob against every route name, and is
-safe only because no other route name contains that substring. Verified against
-`route:list`.
-
-A dashboard you cannot navigate to is the same "switch reads Inactive over a
-live page" problem Phase 7 fixed for the flag, so the entry goes in. It is
-separable from the permission — the permission works with or without the nav
-entry.
-
-### 6. Tests — one file, four cases
-
-`tests/Feature/PulsePermissionGateTest.php`:
-
-| # | Case | Proves |
-|---|---|---|
-| 1 | non-superadmin role holds `pulse.view`, flag on → `/pulse` 200 | the permission opens the gate |
-| 2 | same viewer without the permission → 403 | it is not decoration |
-| 3 | superadmin, **no permission rows at all** → 200 | `Gate::before` survives the override |
-| 4 | flag off + permission held → 403 | the two gates stay independent |
-
-Case 3 is the one that catches a mistake here. Define the gate and accidentally
-lose superadmin access, and cases 1, 2 and 4 all still pass.
-
----
-
-## Open decisions (not resolved here)
-
-**Does superadmin respect the feature flag?** Today: no, by design — Phase 7
-established no flag bypass, and it is tested. The consequence is an operator who
-sees "Pulse Dashboard — Inactive" on `/features` can still reach `/pulse` as
-superadmin. Two switches for one page, answering different questions, but the
-combination reads as confusing. Decide separately; do not bundle it with this
-work.
-
-**Keep `environment('local')` as a second condition?** e.g.
-`local || can('pulse.view')`. Would keep local development frictionless if the
-definition were ever removed. Skipped — the permission already covers local
-(whoever holds it), and two conditions is one more thing to reason about.
-
----
-
-## Docs debt — CLEARED (2026-10-02)
+### F2 — docs described a deleted stack (CLEARED 2026-10-02)
 
 The stack swap landed in `85384b4` with no docs pass: **192 references to
-Telescope/Periscope across 27 files**, all describing packages that were no
-longer installed. Swept in this same change.
+Telescope/Periscope across 27 files**. Swept in the same change — 27 files → 15,
+and every remaining mention is deliberate (a dated changelog entry, a superseded
+ADR body, or the DEP-004 Context section explaining why Telescope was dropped).
+A dated narrative is not a stale fact; stale instructions are. **No re-sweep is
+outstanding.**
 
-**Result: 27 files → 15, and every remaining mention is deliberate.**
+### F3 — the health endpoint is live and ungated, and that is correct
 
-### Structural rewrites
+`GET /api/v1/health` answers with `{status, timestamp, checks}` where each check
+is `ok`/`fail` — no versions, no config, no DSNs. It stays **unauthenticated**
+because its caller is an uptime monitor that cannot log in; the response shape
+is the ceiling on what it may ever expose. The *web* dashboard over the same
+service is a different matter: it renders who-can-see-what inside the admin, so
+it takes the full permission + flag treatment (B3).
 
-| File | Change |
-|---|---|
-| [DEP-004](../base/architecture/decision-records/DEP-004-laravel-pulse-observability.md) | **new** — Laravel Pulse, carrying the reversal reasoning. Holds the number the withdrawn Telescope record had released |
-| `decision-records/DEP-004-…-telescope-…md` | **deleted.** Its 84-line body was config keys, a provider name and a route for packages no longer installed; keeping even a stub left a file titled "Telescope" documenting an absence |
-| `architecture-decisions.md` | DEP list back to `001–007`; ADR-008/013 bodies corrected |
-| `decisions.md` | ADR-008 body corrected; **ADR-020 marked superseded** (its subject no longer exists) |
-| `base/features/monitoring.md` | rewritten for Pulse; Periscope section deleted, not replaced |
-| `base/infrastructure/observability.md` | rewritten; Periscope section deleted |
-| `base/dependencies/overview.md` | two sections (Telescope, Periscope) collapsed into one Pulse section; table row, TOC, section lists |
-| `planning/implementation-roadmap.md` | Phase 11 scope amended (below); Phase 1/2 package lists |
-| `planning/phase-11-…md` | this file |
+> **Follow-up closed 2026-10-17** (ADR-023; finding A1 of the Phase 11 read-only
+> performance pass). "Ungated" answered the *permission* question and left the
+> *cost* question open: the route sits in the `api` group, whose middleware is
+> `[SubstituteBindings]`, so nothing bounded the request count — and one uncached
+> run is a PDO connect, a cache write **and** a read back, a queue `size()` and
+> three storage operations. It is still ungated. It now also caches the check set
+> for 10s (`health_check:results`) and carries `throttle:health` at
+> `health_rate_limit_per_minute` (120/min, keyed on IP, validated 1..600). The
+> refusal is JSON unconditionally, so a monitor that sends no `Accept` header is
+> not redirected to the login page where it would read as UP.
 
-### Mechanical corrections (17 files)
+### F4 — the API could read settings but not notifications (CLOSED 2026-10-13)
 
-`dependency-matrix.md`, `dependency-governance.md`, `dependency-rules.md`,
-`logging.md`, `audit-trail.md`, `application-components.md`, DEP-003,
-`troubleshooting.md`, `retention.md`, `ai-execution-guide.md`,
-`dependency-map.md`, `feature-matrix.md`, `data-protection.md`,
-`feature-tracker.md`, `progress.md`, `task-tracker.md`.
+A route audit found the inversion: the API could read a user's notification
+*settings* and could not read a single *notification*. Closed in
+`Api\V1\Notification\NotificationInboxController` (ungated on both channels for
+the reason the web inbox is ungated — a notification belongs to the person it
+was sent to, answered by the token). `App\Support\SafeUrl` was extracted so the
+same-origin check on `notification.data['url']` has one home instead of two.
+Detail in §12.
 
-### Remaining mentions, and why each stays
-
-| File | Why |
-|---|---|
-| `DEP-004` (Pulse) | its Context section explains why Telescope was dropped — that reasoning has nowhere else to live |
-| `changelog.md` | dated history of what was written when; not rewritten |
-| `decisions.md` (ADR-020 body) | superseded record, kept as narrative |
-| `phase-6-rbac.md` | "Telescope-free manual count" as a performance method — historical |
-| `phase-7-feature-flags.md`, `task-tracker.md`, `progress.md`, `feature-tracker.md`, `implementation-roadmap.md`, `monitoring.md`, `observability.md`, `overview.md` | cite the commit that removed them, or the absent package |
-
-Rule applied: **a dated narrative is not a stale fact; stale instructions are,
-and a stub about an absent package is neither.** `changelog.md` keeps its history
-— it records when things changed, which is what a changelog is for. The Telescope
-DEP did not qualify on either count: 84 lines of config keys, a provider name and
-a route for packages absent from `vendor/`, which reads as setup instructions. A
-33-line stub was not enough, because a file titled "Telescope" exists only to say
-"we no longer use Telescope" — and DEP-004 already says that. Deleted, the number
-reused for the Pulse decision, and the reasoning that justified the swap moved
-into that record's Context section where it is actually needed.
-
-### Prod gating, restated for Pulse
+## 3. Access control — decided here, applied in Groups A and B
 
 | Decision | Rationale |
 |---|---|
-| `pulse` stays a feature flag | deploy-time kill switch; one switch per page, permission handles roles |
-| `laravel/pulse` in `require`, not `require-dev` | Pulse is production observability here, not a dev-only debugger |
-| No `environment('local')` in the gate | the permission replaces it; local devs hold the permission like anyone else |
-| No `Pulse::auth()` call | removed in 1.8; the gate is the supported hook |
+| `pulse.view`, not `pulse.manage` | the dashboard is read-only; a second action is a row nothing checks — the exact "row that lies in the permissions UI" `PermissionCatalog`'s own note warns against |
+| flag **AND** permission, keep both | deploy-time kill switch vs per-role authorization answer different questions. Both failures 403, so a caller cannot tell which fired — the same deliberate trade Phase 7 made |
+| `Gate::define('viewPulse', ...)` in `AuthServiceProvider` | Pulse uses `callAfterResolving`, so it defines its gate at resolve time; `Gate::define()` overwrites by name and our provider boots after Pulse's. `AuthServiceProvider` already owns the neighbouring authorization concern |
+| `Gate::before` untouched | superadmin's access comes from the before-rule, so adding the permission never requires re-seeding and can never be stripped by a role edit |
+| no `Pulse::auth()` call | removed in 1.8; the gate is the supported hook. Verified against vendor source |
+| no `environment('local')` in the gate | the permission replaces it; local devs hold the permission like anyone else. One predicate, one reason to fail |
+| admin inherits the permission | `PermissionSeeder::matrix()` grants `SystemRole::ADMIN => PermissionCatalog::all()` — zero seeder edits. Deliberate (option a): consistent with "admin holds the whole catalogue"; revisit if Pulse should be narrower than admin |
 
----
+## 4. Group A — Views, UI & Navigation
 
-## Task Tracker Reconciliation
+Everything a person sees: the two dashboard entries in the sidebar and the
+system health page.
+
+> **Ordering constraint.** A1 names `pulse.view` and A3 names `health.view`,
+> both created in Group B. Land B1 with A or the sidebar render-gate test fails
+> on a missing catalogue entry — the correct failure, and still a failure.
+> A and B are the first shippable unit; nothing in A is reachable until B lands.
+
+| ID | Task | Depends on | Est. | Notes |
+|----|------|-----------|------|-------|
+| P11-A1 | **Pulse sidebar entry** — add to `AppMenuComposer::groups()`: label `Pulse`, icon `fas fa-heart-pulse`, route `pulse`, active `pulse`, `permission => pulse.view`, `feature => pulse` | B1 | tiny | First menu entry pointing at a vendor URL. `Route::has('pulse')` is true (vendor registers it). Active matching is `fnmatch`, safe because no other route name contains `pulse` — verified against `route:list`. A dashboard you cannot navigate to is the "switch reads Inactive over a live page" problem Phase 7 fixed |
+| P11-A2 | **System health page** — `resources/views/pages/health/index.blade.php`: one card per check (database, cache, queue, storage), each rendering ok/fail from the shared service, plus a page-level badge | C1 | medium | Follow `pages/users/index.blade.php` skeleton. **No query in Blade** (`ui-architecture.md` rule 1) — the controller passes the checks array. No write affordance of any kind: this page reads a status, it does not run anything |
+| P11-A3 | **Health sidebar entry** — label `System Health`, icon `fas fa-stethoscope`, route `health.index`, active `health*`, `permission => health.view`, `feature => health` | B3 | tiny | Same shape as A1. `health*` glob is safe: no other route name starts with `health` |
+| P11-A4 | **Render gate** — `tests/Feature/Health/HealthUiRenderTest.php` | A1–A3, B4 | medium | Copy `SettingsUiRenderTest`: renders with **0 queries from Blade** (delta across a warm second render), forbidden classes absent (`bg-white`, `bg-light`, bare `card-body`), every feedback div `d-block` + `aria-describedby`, sidebar entries visible only with the permission AND only when the flag is on |
+
+### A-specific traps this codebase has already paid for
+
+- **Tooltip / info icons are `fs-7`, never `fs-6`** — `fs-6` is body size and is
+  what made the settings page render icons as large as their labels.
+- **`Route::has()` first.** `AppMenuComposer::visible()` drops an item whose
+  route is missing — an inert entry before the route lands is correct by design.
+- **No `<style>` blocks in Blade.** Theme-adaptive CSS lives in
+  `public/vendor/theme.css`; a Bootstrap 5.3 native class (`bg-body`,
+  `text-body-secondary`) is the alternative that adapts for free.
+
+## 5. Groups B onward
+
+### Group B — Access Control & Routing
+
+The gate ships WITH what it guards: the permission and the flag land in the same
+change as the routes and pages that check them.
+
+| ID | Task | Depends on | Est. | Notes |
+|----|------|-----------|------|-------|
+| P11-B1 | **`pulse.view` in `PermissionCatalog`** — new `private const PULSE = ['pulse.view']`, appended to `all()` | — | tiny | `grouped()` groups on the prefix, so it appears under a **pulse** heading in the role matrix with no other edit. Follow the file's own rule: added in the same commit as the page it guards |
+| P11-B2 | **`viewPulse` gate override** — `Gate::define('viewPulse', fn (User $user): bool => $user->can('pulse.view'))` in `AuthServiceProvider`, next to `configureSuperAdmin()`. The flag is ANDed in since §15 (`FeatureCatalog::isActive('pulse') && $user->can('pulse.view')`) | B1 | tiny | The F1 boot-order argument in full: overwrite-by-name + later provider boot = ours wins. Do **not** call `Pulse::auth()` (gone in 1.8). Do **not** touch `Gate::before` |
+| P11-B3 | **`health.view` + `health` flag + route** — `private const HEALTH = ['health.view']` in `PermissionCatalog`; `'health'` entry in `config/pennant.php` (group `Monitoring`); `GET /health` web route named `health.index` under `middleware(['can:health.view', 'feature:health'])` inside the authenticated group; the Pennant `database` store is fail-closed, so the `FeatureFlagSeeder` must write the row or the route 403s forever | — | small | Three places, or it is not gated: pennant config, route middleware, sidebar key (A3). The seeder row is the trap — a declared flag is not an active flag. The API `/api/v1/health` route is **ungated (F3)** — since ADR-023 it also carries `throttle:health` and caches its check set, which caps cost without adding a gate |
+| P11-B4 | **Gating tests** — `tests/Feature/PulsePermissionGateTest.php`: (1) role holding `pulse.view` + flag on → `/pulse` 200; (2) without the permission → 403; (3) superadmin, **no permission rows at all** → 200; (4) flag off + permission held → 403. Mirror the same four for `/health` | B1–B3 | medium | Case 3 is the one that catches a mistake here: define the gate and accidentally lose `Gate::before`, and 1, 2 and 4 all still pass. Case 4 pins the two gates as independent. This file is also what P10-B5 in `phase-10-audit-trail.md` says to copy — landing it unblocks that reference |
+
+**Superadmin and the flag — CLOSED 2026-10-16 (owner decision).** Superadmin
+respects the feature flag. `Gate::before` answers the PERMISSION question;
+`EnsureFeatureIsEnabled` has no actor check at all
+(`app/Http/Middleware/EnsureFeatureIsEnabled.php:35`), so a flag-off module 403s
+for superadmin exactly as it does for a permission holder. Measured, not
+assumed: `test_the_flag_off_refuses_superadmin_too` in both gate test files.
+An earlier note in this section claimed superadmin still reached `/pulse` with
+the flag off — that was wrong then and is pinned now.
+
+### Group C — Read Logic & Dashboards
+
+| ID | Task | Depends on | Est. | Notes |
+|----|------|-----------|------|-------|
+| P11-C1 | **`Web\V1\HealthController@index`** — thin: inject `HealthCheckService`, call `check()`, pass `$checks` + `isHealthy()` to the view | B3 | small | The service already exists and already logs failures with context (`health_check.*.failed`). **No FormRequest** — a GET with no input has nothing to validate; do not scaffold an empty one (conventions §4e). No audit call: a read writes nothing |
+| P11-C2 | **Slow-query threshold logger — DEFERRED by decision, recorded so it is not "fixed" later** | — | — | The MySQL slow log covers this at the DB layer and needs no application code (`SET GLOBAL slow_query_log`, `long_query_time`, `log_output='TABLE'` — see §7). Add a PHP-side `DB::listen()` threshold logger **only when a real case appears that the slow log cannot see**. Pulse is deliberately absent from the slow-query ladder: it records on every request while enabled, adding write load precisely when the server is already slow |
+
+### Group D — Audit Trail
+
+**N/A by design, stated so the empty group is not read as forgotten.** Both
+dashboards are read-only: no mutation means no `Auditable::audit()` row. The one
+audit event this phase touches — `feature.toggled` when the operator flips
+`pulse`/`health` at `/features` — is already written by the features module
+(Phase 7) and needs no new call site. Do not add an observer to "log page
+views"; that is a different product.
+
+### Group E — Queue Conventions (P10-E14, cross-referenced)
+
+All three are upstream of every dashboard, cost nothing now, and are what makes
+Pulse (or Horizon or Vantage, if ever) useful on day one. Retrofitted onto forty
+jobs, queue naming is expensive; a wrong dashboard choice is not.
+
+| ID | Task | Depends on | Est. | Notes |
+|----|------|-----------|------|-------|
+| P11-E1 | **Named queues behind constants** — every job currently goes to `default` | — | small | One constant per queue name; jobs declare `$queue`. The dashboard's per-queue view is only as good as this naming |
+| P11-E2 | **Every job declares `$tries`, `$timeout`, `$backoff`, `$maxExceptions`** | — | small | A retry chain is only meaningful because these are declared. `GenerateAuditExport` already does (`$tries = 3`) — copy that shape |
+| P11-E3 | **Every job has `failed()` and logs with `request_id`** | — | small | `docs/base/infrastructure/queue.md` already mandates it; today it is a per-job habit, not a trait. Extract the trait if the duplication is real, not before |
+
+### Group F — Verification, Benchmarks & Docs
+
+| ID | Task | Depends on | Est. | Notes |
+|----|------|-----------|------|-------|
+| P11-F1 | **Full suite green** — `php artisan test` + `vendor/bin/pint --test` | A–E | medium | Full run, never a filtered slice. Record the new number in `progress.md` |
+| P11-F2 | **Docs: Telescope DEP deleted, `DEP-004` reused for the Pulse decision** | — | tiny | **DONE** — the 84-line Telescope body was config keys for absent packages; deleted, number reused for Pulse, reversal reasoning moved into DEP-004's Context |
+| P11-F3 | **Docs: `monitoring.md`, `observability.md` rewritten** | — | tiny | **DONE** |
+| P11-F4 | **Docs: roadmap Phase 11 scope amended** | — | tiny | **DONE 2026-10-15** — the gating decision, the slow-query ladder and the VM runbook moved out of `implementation-roadmap.md` into §3/§7 here, so the detail has one home |
+| P11-F5 | **Docs: mechanical sweep of remaining 17 files** | — | tiny | **DONE** — `dependency-matrix.md`, `dependency-governance.md`, `dependency-rules.md`, `logging.md`, `audit-trail.md`, `application-components.md`, DEP-003, `troubleshooting.md`, `retention.md`, `ai-execution-guide.md`, `dependency-map.md`, `feature-matrix.md`, `data-protection.md`, `feature-tracker.md`, `progress.md`, `task-tracker.md` |
+| P11-F6 | **Docs: this file registered in `docs/planning/README.md`; `changelog.md` entry for the restructure** | F4 | tiny | The README row already exists; the changelog entry records the roadmap→breakdown move (rule 12: planning changed) |
+
+## 6. Decisions taken — and the one that needed Jaya
+
+**D-1 — Pulse only, layered (Jaya, 2026-10-12). [SUPERSEDED 2026-10-16 by [ADR-022](decisions.md) — Vantage was installed and gated; the body below is kept as the record of the deferral it reversed.]** Horizon is Redis-only and this
+project's `.env` runs `redis` while `.env.example` defaults to `database` — a
+base template must survive that fork, so Horizon is evaluated out. Vantage was
+checked in *its source*, not its README, and carries four problems: its
+`viewVantage` gate admits **any authenticated user**, `store_payload` defaults to
+`true` (full job payloads carrying export filters and model ids), its config has
+**no middleware key** and its provider calls `loadRoutesFrom()` bare — there is
+no hook for `feature:vantage` — and it is a 264-star, single-maintainer package
+that already changed owners. Layered answer:
+
+| Layer | Mechanism |
+|---|---|
+| Kill tracking entirely | `VANTAGE_ENABLED` env — zero cost, and what the switch is for |
+| Who may read a dashboard | `Gate::define('viewVantage')` → the `vantage` flag AND a `queues.view` permission (§15), plus the test |
+| Route-level kill switch | only by declaring the routes ourselves (`VANTAGE_ROUTES=false`) — accepted cost, deferred |
+
+Revisit when backlog depth or UI retry is needed **routinely** rather than during
+an incident. If it is, six decisions go in first: `queues.view` + `queues.retry`
+in `PermissionCatalog`, the gate and its test, the `store_payload` decision, the
+route strategy, `vantage:prune` on the scheduler, and ADR +
+`dependency-map.md` + `changelog.md`. (`queues.view`/`queues.retry` are worth
+adding to the catalogue even before any package arrives — an unused permission
+costs one line in a constant list, and `.retry` is separate from `.view` for the
+reason `notifications.send_test` is separate from `notifications.manage`:
+permission answers *who*, not *how often*.)
+
+**D-2 — Pennant does not fit a vendor route, and faking it is worse.** The
+obvious `config(['vantage.enabled' => false])` in `AppServiceProvider::boot()`
+half-works, which is the dangerous part: the event listeners re-read the key
+inside `handle()` so tracking stops, but `loadRoutesFrom()`, the commands and
+the package's own gate have already run — **package providers boot before app
+providers**. `/vantage/*` would keep serving, and the only control left standing
+would be our own gate. An app provider CAN overwrite `Gate::define()`
+deterministically (the manifest is spliced at index 1 — package first, ours
+second, always), but that still needs a test that removes the definition and
+watches the gate turn green.
+
+**D-3 — Closed 2026-10-16 (owner decision): yes, superadmin respects the flag.**
+The flag is a kill switch, not a role — `Gate::before` answers `can:`, and
+`EnsureFeatureIsEnabled` does not consult the actor, so an off module refuses
+superadmin too. The two switches answer different questions and the combination
+is intended: the operator can look at `/features` (never gated), see
+"Pulse Dashboard — Inactive", and know nobody is reaching `/pulse` at all.
+Pinned by the fifth case in both gate test files, so a
+future "superadmin bypass" cannot be added silently.
+
+## 7. Operational runbooks (moved from `implementation-roadmap.md`)
+
+### Slow-query diagnosis ladder — run in order
+
+1. `GET /up` — not 200 means infra, not queries
+2. `top` / `free -m` — CPU, RAM, swap before blaming the database
+3. MySQL slow log — catches queries that never reach PHP (lock wait, disk I/O):
+   ```sql
+   SET GLOBAL slow_query_log = ON;
+   SET GLOBAL long_query_time = 0.3;
+   SET GLOBAL log_output = 'TABLE';
+   ```
+   ```sql
+   SELECT start_time, LEFT(sql_text, 200), time_to_lock, rows_examined, rows_sent
+   FROM mysql.slow_log ORDER BY start_time DESC LIMIT 20;
+   ```
+   `rows_examined >> rows_sent` means a missing index — most slow queries, and
+   found without any application tooling.
+4. `DB::listen()` threshold logger — **deferred by decision**, see C2. The
+   complement to step 3: covers queries that do reach PHP and measures DB time
+   only
+5. `EXPLAIN` / `EXPLAIN ANALYZE` each query surfaced by steps 3–4
+
+Pulse is deliberately **absent** from that ladder. The reasoning that originally
+applied to Telescope still holds: Pulse records on every request while enabled,
+adding write load precisely when the server is already slow. The slow-query
+requirement — step 3 — is served by the database's own slow log.
+
+### Toggling Pulse on the VM
+
+```bash
+# toggle the flag in the UI at /features (never gated), then re-cache config
+php artisan config:clear && php artisan config:cache
+sudo systemctl reload php8.3-fpm     # without this, opcache keeps the old config
+
+# inspect — requires the pulse.view permission (superadmin passes via Gate::before)
+# open /pulse
+
+# retention is Pulse's own config; unlike Telescope there is no manual prune step
+```
+
+Note: `.env` is excluded from the rsync sync, so a toggle made there persists
+across deploys. The flag itself lives in Pennant's store, not `.env` — which is
+why flipping it in the UI survives a deploy.
+
+### Deploying to an environment that predates the flags
+
+A declared flag is not an active flag: the Pennant `database` store is
+fail-closed, so a slug with no `features` row reads FALSE and its route 403s for
+everyone, superadmin included. An environment seeded before Phase 11 therefore
+has no `health` row and `/health` refuses every request until the seeder runs.
+
+```bash
+php artisan db:seed --class=FeatureFlagSeeder   # fills blanks only; never
+                                               # overwrites an operator's choice
+```
+
+`FeatureFlagSeeder` iterates `FeatureCatalog::slugs()`, so it needs no edit when
+a flag is added — but it does need to be RUN. `pulse` already had a row from
+Phase 7 in most environments; `health` is the new one.
+
+## 8. Execution order
+
+1. **B1 + B2** (permission and gate — inseparable, one commit)
+2. **B3** (health permission + flag + route + the seeder row — the fail-closed trap)
+3. **B4** (gating tests — fail loudly if B1–B3 are wrong; also unblocks the P10-B5 copy-reference)
+4. **A1 + A3 + C1** (nav entries + the health controller; A stays inert until B lands — correct)
+5. **A2** (health page)
+6. **E1–E3** (queue conventions — independent, can interleave)
+7. **A4, F1, F6** (render gate, full suite, changelog)
+
+## 9. Tracker reconciliation
 
 | ID | Task | Group | Status |
 |---|---|---|---|
-| MON-P11-01 | Add `PULSE` const to `PermissionCatalog`, append to `all()` | permission | PLANNED |
-| MON-P11-02 | Define `viewPulse` in `AuthServiceProvider` | gate | PLANNED |
-| MON-P11-03 | Sidebar entry in `AppMenuComposer::groups()` | nav | PLANNED |
-| MON-P11-04 | `PulsePermissionGateTest` — 4 cases | test | PLANNED |
-| MON-P11-05 | Docs: Telescope DEP deleted, `DEP-004` reused for the Pulse decision | docs | **DONE** |
-| MON-P11-06 | Docs: `monitoring.md`, `observability.md` rewritten | docs | **DONE** |
-| MON-P11-07 | Docs: roadmap Phase 11 scope amended | docs | **DONE** |
-| MON-P11-08 | Docs: mechanical sweep of remaining 17 files | docs | **DONE** |
+| P11-B1 | `PULSE` const → `pulse.view` in `PermissionCatalog` | B | **DONE 2026-10-15** (was MON-P11-01) |
+| P11-B2 | `viewPulse` override in `AuthServiceProvider` | B | **DONE 2026-10-15** (was MON-P11-02) |
+| P11-A1 | Pulse sidebar entry in `AppMenuComposer::groups()` | A | **DONE 2026-10-15** (was MON-P11-03) — Monitoring group, both dashboards together |
+| P11-B4 | `PulsePermissionGateTest` + health gate tests — 10 cases (5 per route; the 5th, added 2026-10-16, pins D-3) | B | **DONE 2026-10-15** (was MON-P11-04) — split per route: `tests/Feature/PulsePermissionGateTest.php` (5) + `tests/Feature/Health/HealthPermissionGateTest.php` (5) |
+| P11-F2 | Docs: Telescope DEP deleted, `DEP-004` reused | F | **DONE** (was MON-P11-05) |
+| P11-F3 | Docs: `monitoring.md`, `observability.md` rewritten | F | **DONE** (was MON-P11-06) |
+| P11-F4 | Docs: roadmap scope moved into this file | F | **DONE 2026-10-15** (was MON-P11-07) |
+| P11-F5 | Docs: mechanical sweep of 17 files | F | **DONE** (was MON-P11-08) |
+| P11-E1..E3 | Queue conventions | E | **DONE 2026-10-16** — `QueueName` (named `exports`/`sweeps`, set via `onQueue()` in the constructor: a `public $queue` property is a class-load fatal against the `Queueable` trait that `php -l` misses), `$maxExceptions` on the export job, dispatch-time `request_id` in every payload (`Queue::createPayloadUsing` + `Jobs\Concerns\ReadsCorrelationId` in every `failed()`), `bin/run-workers.sh` listens `default,exports,sweeps`, `JobConventionTest` pins it all. Originally renumbered from the "MON-P11-05" that collided with the docs task of the same number; the ID `phase-10-audit-trail.md` § P10-E13/E14 points at |
+| P11-B3 | `health.view` + `health` flag + route + seeder row | B | **DONE 2026-10-15** (new) — `FeatureFlagSeeder` needs no edit: it iterates `FeatureCatalog::slugs()`, which reads `config/pennant.php` |
+| P11-C1 | `HealthController@index` | C | **DONE 2026-10-15** (new) |
+| P11-C2 | Slow-query logger | C | **DEFERRED by decision** (new, recorded) |
+| P11-A2, A3, A4 | Health page, sidebar entry, render gate | A | **DONE 2026-10-15** (new) — A4's "every feedback div d-block + aria-describedby" step is N/A: the page has no form fields (stated in the test's docblock) |
+| P11-D1 | Audit trail | D | **N/A by design** — read-only dashboards |
+| P11-F1, F6 | Full suite, changelog entry | F | F1 **re-measured green 2026-10-16: 2016 passed / 6940 assertions, 0 failures** on the audit-closure tree (pre-audit HEAD `f6f262b`: 2014/6936) — supersedes the 2009/6907 run, which predated the three post-F1 fixes (CSP nonce, Pulse cache store, new-tab entry) and the D-3 case. Baseline before Phase 11: 1959. F6 **DONE** — README row (`docs/planning/README.md`) plus the changelog entry "Phase 11 Groups A–C and E shipped" (2026-10-16) |
+| P11-G1 | **Vantage queue monitor installed + gated** (supersedes D-1) | — | **DONE 2026-10-16** — `storviaio/vantage ^0.1.25`; `config/vantage.php` published with `routes => false` + `store_payload => false`; the six web routes declared in `routes/web.php` under `feature:vantage` with `can:queues.view` (reads) / `can:queues.retry` (retry); `queues.view`+`queues.retry` in `PermissionCatalog`; `viewVantage` gate override; `vantage` flag; Monitoring sidebar entry; `vantage:prune` daily; `tests/Feature/Vantage/VantagePermissionGateTest` (7 cases). See ADR-022. |
 
-MON-P11-05 through 08 are already done and independent of the code tasks — the
-docs describe the target state, and the code now matches them.
+F2–F5 were already done and independent of the code tasks — the docs describe
+the target state, and Groups A–C are what make the code match them.
 
----
+## 10. Security notes
 
-## Execution Order
+- Pulse's dashboard exposes queue depth, failed jobs, exception traces, cache
+  stats and slow-request detail. Technical information: it stays behind both
+  gates, and `pulse.view` must not be handed to a non-technical role.
+- The health dashboard exposes the same class of information at lower
+  granularity (ok/fail per component). It takes the same two gates for
+  consistency, not because its leak is worse.
+- `GET /api/v1/health` stays unauthenticated **and stays at `{status,
+  timestamp, checks}`** — the moment it gains versions or config it becomes a
+  reconnaissance endpoint, and its caller (an uptime probe) needs none of that.
+  ADR-023 added a rate ceiling and a 10s check cache *behind* it; it added no
+  field to the response.
+- Pulse ignores its own routes in the ignore list (`config/pulse.php`) so
+  monitoring the monitor is not a feedback loop.
+- Application code must never depend on Pulse. It is a passive observer.
+- Recording is bounded by Pulse's own retention; the `pulse_*` tables are
+  ignored by the sensitive-data scrubber in `config/pulse.php`.
+- A second dashboard (Vantage) would have the same exposure and none of the same
+  gating — its own gate admits every authenticated user and `store_payload`
+  keeps full job payloads. If it is ever installed, `queues.view` and
+  `store_payload=false` are both decisions, and neither may be left at its
+  default (§13).
 
-1. MON-P11-01 + 02 (permission and gate — inseparable, one commit)
-2. MON-P11-04 (tests — fails loudly if 01/02 are wrong)
-3. MON-P11-03 (nav)
+## 11. Deliberate simplifications
 
----
+- **One permission per dashboard, not two.** `pulse.manage` / `health.manage`
+  would be rows nothing checks.
+- **No `DB::listen()` threshold logger** (C2). The MySQL slow log covers it at
+  the DB layer and needs no application code. Add the PHP-side logger only when
+  a real case appears that the slow log cannot see.
+- **No `PULSE_DOMAIN`.** A subdomain would decouple the nav href from the flag
+  for no present benefit. Neither env key is set in `.env.example`; if a
+  subdomain is ever needed the menu item moves to a literal URL then.
+- **No environment condition in the gate.** One predicate, one reason to fail.
+- **No observer on the health checks.** Reads do not write audit rows (Group D).
 
-## Phase 11 also owns the notification inbox's API surface (added 2026-10-13)
+## 12. Phase 11 also owns the notification inbox's API surface (added 2026-10-13)
 
 A route audit comparing the two channel tables found the inversion worth
 writing down: **the API could read a user's notification settings and could not
@@ -291,18 +392,18 @@ read a single notification.** Which channels are switched on, without any way to
 see what they produced.
 
 Closed in `Api\V1\Notification\NotificationInboxController`, ungated on both
-channels and for the same reason the web inbox is ungated — a notification belongs
-to the person it was sent to, "whose inbox is this" is answered by the token, and
-there is no permission name to check. `NotificationInboxAction` is shared, so
-marking read invalidates the cached count AND the cached recent list exactly as
-the web path does; clearing only the count was the worst version of that bug and
-is still the thing to watch for here.
+channels and for the same reason the web inbox is ungated — a notification
+belongs to the person it was sent to, "whose inbox is this" is answered by the
+token, and there is no permission name to check. `NotificationInboxAction` is
+shared, so marking read invalidates the cached count AND the cached recent list
+exactly as the web path does; clearing only the count was the worst version of
+that bug and is still the thing to watch for here.
 
 `App\Support\SafeUrl` was extracted in the same change. The same-origin check on
 `notification.data['url']` had been a private method on `NotificationInboxAction`
 guarding the web view, and the API channel put the same question in a second
-place — and a second copy of a security check is the copy that gets forgotten when
-one of them is edited. Both call `SafeUrl::actionFor()` now, and
+place — and a second copy of a security check is the copy that gets forgotten
+when one of them is edited. Both call `SafeUrl::actionFor()` now, and
 `NotificationPentestTest` probes it over a token with `javascript:`,
 `//evil.example`, an absolute URL and a slashless relative path.
 
@@ -312,24 +413,39 @@ route's 120. A 30-second poll spends 2 of those.
 
 Written up in `phase-12-api-v1.md` §2.
 
----
-
-## Phase 11 owns BOTH dashboards — Pulse and Vantage (added 2026-10-12)
+## 13. Phase 11 owns BOTH dashboards — Pulse and Vantage (added 2026-10-12)
 
 Phase 11 shipped Pulse. The queue-monitoring decision that followed lands here,
 not in Phase 10 — `phase-10-audit-trail.md` §11 P10-E13 raised it and filed it
-cross-phase, and P10-E14 (the queue conventions) with it. Both are summarised
-below so the full argument is in one place; the evidence trail is in §11 there.
+cross-phase, and P10-E14 (the queue conventions) with it. Both are summarised in
+Group E and §13 above so the full argument is in one place; the evidence trail
+is in §11 there.
+
+> **UPDATE 2026-10-16 — Vantage is INSTALLED. D-1 is superseded by [ADR-022](decisions.md).**
+> The owner reversed the deferral. `storviaio/vantage ^0.1.25` is in `require`
+> and gated like Pulse: `config/vantage.php` sets `routes => false` (the app
+> declares the six web routes in `routes/web.php` so they carry `feature:vantage`
+> + `can:queues.view`/`can:queues.retry`), `store_payload` is forced `false`, a
+> `viewVantage` gate override maps to `queues.view`, `queues.view`/`queues.retry`
+> are in `PermissionCatalog`, a `vantage` flag sits under Monitoring, and
+> `vantage:prune` runs daily. Pinned by
+> `tests/Feature/Vantage/VantagePermissionGateTest` (7 cases). **Follow-up closed
+> 2026-10-17:** `AddSecurityHeaders::policy()` is now scoped to `vantage.*` as it
+> already is to `pulse` — the two CDN origins (`cdn.tailwindcss.com`,
+> `cdn.jsdelivr.net`) and `'unsafe-eval'` travel only with the Vantage routes, and
+> the four script-bearing vendor views (`dashboard`, `jobs`, `tags`, `layout`) are
+> overridden under `resources/views/vendor/vantage/` to nonce them. Pinned by
+> `ContentSecurityPolicyTest`.
 
 ### What exists today
 
 | | Status |
 |---|---|
 | `laravel/pulse ^1.8` | installed. `Recorders\Queues` and `Recorders\SlowJobs` enabled (`config/pulse.php`), `livewire:pulse.queues` + `pulse.slow-jobs` on the default dashboard. Driver-agnostic — it records from Laravel's queue events, so `database` and `redis` behave identically |
-| `feature:pulse` + `pulse.view` | shipped (MON-P11-01..04) |
+| `feature:pulse` + `pulse.view` | flag shipped (Phase 7), permission + gate override + gate tests shipped (P11-B1..B4, 2026-10-15) |
 | `failed_jobs` table | migrated. `queue:failed` / `queue:retry` / `queue:flush` |
 | `laravel/horizon` | **not installed, and evaluated out.** Redis-only — no configuration runs it over the `jobs` table. `.env` runs `redis` while `.env.example` defaults to `database`, and a base project template has to survive that fork |
-| `storviaio/vantage` | **not installed. This is Phase 11's item, and the recommendation stands: not yet** |
+| `storviaio/vantage` | **INSTALLED `^0.1.25` 2026-10-16** — D-1 superseded by ADR-022; gated with `feature:vantage` + `queues.view`/`queues.retry` (see the update note above) |
 
 ### The gap Vantage would close
 
@@ -338,7 +454,7 @@ Two, and they are real:
 1. **Live backlog depth.** Pulse's queues card is a throughput-and-failures graph
    over time, not a "N jobs waiting right now" gauge. On the database driver that
    number currently costs a hand-written `select count(*) from jobs`.
-2. **The retry chain.** With `GenerateAuditExport::$tries = 3` (§11 P10-E12),
+2. **The retry chain.** With `GenerateAuditExport::$tries = 3`,
    `failed_jobs` keeps ONE row per job and overwrites it per attempt, so the
    stack trace that survives is the one that did **not** explain the first two.
    Vantage stores every attempt separately.
@@ -357,81 +473,53 @@ Two, and they are real:
 - A fourth source of truth beside Pulse, `failed_jobs` and the log; plus a
   migration in the base schema and a `vantage:prune` command to own.
 
-### Pennant does not fit a vendor route
+The layered decision is D-1 in §6; the Pennant-does-not-fit analysis is D-2.
 
-The obvious move — `config(['vantage.enabled' => false])` inside
-`AppServiceProvider::boot()` — was evaluated and rejected. It half-works, which
-is the dangerous part: the event listeners re-read the key inside `handle()` so
-tracking does stop, but `loadRoutesFrom()`, the four commands and the package's
-own `Gate::define('viewVantage')` have already run, because **package providers
-boot before app providers**. `/vantage/*` would keep serving and the only control
-left standing would be our own gate. Worse, `Feature::inactive()` in `boot()` is
-a Pennant store query on every request — the exact thing
-`AppServiceProvider::bindTokenExpirations()`'s comment forbids, with the
-database store fail-closed behind `FeatureFlagSeeder`.
+## 14. Post-audit gap closure (2026-10-16)
 
-An app provider CAN overwrite `Gate::define('viewVantage')`, deterministically —
-`Application::registerConfiguredProviders()` splices the package manifest at
-index 1, so the package boots first and ours second, always. That is a property
-of Laravel 13 and it still needs a test that removes the definition and watches
-the gate turn green, the way the `User::can()` `canMemo` trap needed one.
+A read-only audit of this branch found eight gaps. None was a code defect, and
+all eight are closed; the one that was an open question (G-5) is answered, not
+changed — the shipped behaviour is identical.
 
-### Decision (Jaya, 2026-10-12): Pulse only, layered
+| ID | Gap found | Closed by |
+|---|---|---|
+| G-1 | Four places still described the work as uncommitted or unstarted: this file's header, `progress.md` (row 11 and the current-task paragraph), `feature-tracker.md` row 28, and the MON-P11 note in `task-tracker.md` | all four rewritten against `git log` |
+| G-2 | Recorded suite number was stale — 2009/6907 documented, 2016/6940 measured after the closure (2014/6936 at pre-audit HEAD) | this file's header and §9, plus `progress.md` row 11 |
+| G-3 | `phpunit.xml` still carried `TELESCOPE_ENABLED=false` for a package removed in `85384b4` — the one survivor of F5's sweep | the line is deleted |
+| G-4 | `qa-tracker.md` had no QA scenarios for Monitoring at all (no Pulse, no health, no queue) | a `Monitoring` section added under the file's own ID scheme |
+| G-5 | D-3 (does superadmin respect the flag?) was open, and the Group B note claimed superadmin still reached `/pulse` with the flag off — which the middleware never did | closed as "yes it respects it", measured by `test_the_flag_off_refuses_superadmin_too` in both gate test files |
+| G-6 | The deploy step for an environment that predates the flags was undocumented — `/health` 403s forever without it | §7, "Deploying to an environment that predates the flags" |
+| G-7 | `PULSE_CACHE_DRIVER` carried no warning that a persistent driver reintroduces the `__PHP_Incomplete_Class` crash | comment in `.env.example` + a note in `docs/base/features/monitoring.md` |
+| G-8 | The two overridden vendor Pulse views can drift on a Pulse upgrade; the tests catch nonce regressions only | upgrade note in `docs/base/features/monitoring.md` |
 
-| Layer | Mechanism |
-|---|---|
-| Kill tracking entirely | `VANTAGE_ENABLED` env — zero cost, and what the switch is for |
-| Who may read a dashboard | `Gate::define('viewVantage')` → a `queues.view` permission, plus the test |
-| Route-level kill switch | only by declaring the routes ourselves (`VANTAGE_ROUTES=false`) — accepted cost, deferred |
+G-9 (no API surface for either dashboard) is not a gap and is recorded as
+deliberate in §12: `ChannelParityTest` declares both as one-sided capabilities
+with their reason, so a future reader cannot mistake the absence for an oversight.
 
-Revisit Vantage when backlog depth or UI retry becomes something an operator
-needs **routinely** rather than during an incident. If it does, six decisions go
-in first: `queues.view` + `queues.retry` in `PermissionCatalog`, the gate and its
-test, the `store_payload` decision, the route strategy, `vantage:prune` on the
-scheduler, and ADR + `dependency-map.md` + `changelog.md`.
+## 15. Security pass over the Phase 11 surface (2026-10-17) — ADR-024
 
-`queues.view` and `queues.retry` are worth adding to `PermissionCatalog` even
-before any package arrives — Pulse needs the same permission, and an unused
-permission costs one line in a constant list. `queues.retry` is separate from
-`queues.view` for the reason `notifications.send_test` is separate from
-`notifications.manage`: permission answers *who*, not *how often*.
+A read-only security pass over this phase's surface — the two dashboards, the
+health endpoint, the queue conventions — found four defects. All four are fixed
+here; the decisions behind them are ADR-024, and the permission half is
+documented in `docs/base/features/feature-flags.md`. The pass was static: no
+running-app probing, and nothing outside the Phase 11 surface was in scope.
 
-### MON-P11-05 — queue conventions (P10-E14, cross-referenced)
+| # | Finding | Fix | Evidence |
+|---|---|---|---|
+| 1 | The flags gated the dashboards, not the recording. Switching Pulse off stopped the page and kept the writer; `viewPulse`/`viewVantage` were route details and the vendor's `viewVantage` default admits any authenticated user | `Pulse::filter()` consulted at ingest; an `Event::listen(Looping::class, …)` listener refreshes `config('vantage.enabled')` per daemon iteration; both gates are now `flag AND permission` | `PulseRecordingKillSwitchTest`, `VantageRecordingKillSwitchTest`, the kill-switch cases in both gate test files |
+| 2 | A flag had no authority over its permission: a grant outlived the flag, the matrix kept offering it, and the permission index advertised it | `FeatureRevokePermissionsAction` (both pivots, two statements, flat in the batch size) called inside the toggle's transaction; `PermissionCatalog::visibleNames()` filters the matrix and the index; `PersistsRole` keeps a grant it cannot render and ignores a hidden id it is handed | `FeaturePermissionRevokeTest` (10 cases), `PermissionFeatureMapTest` (7), `FeatureFlagPerformanceTest` |
+| 3 | The health endpoint's cache fallback ran all seven round trips per request — the ceiling ADR-023 promised vanished exactly when the cache needed reporting | `check()` reads the configured store, then the `file` store, and only then runs the probes; the write is best effort to both. ADR-023 clause 3 amended | `HealthCheckCacheFallbackTest` (4 cases), `HealthCheckEndpointTest` |
+| 4 | `queues.retry` answered "may this person", not "how often" — the one mutating control on the dashboard had no ceiling | `throttle:queue-retry` + `RateLimiter::for('queue-retry')`, `queue_retry_rate_limit_per_minute` (10/min, `1..120`), keyed on user id + IP, answered with a flash the vendor layout can actually render | `QueueRetryThrottleTest` (2 cases), `SystemSettingKeyConsistencyTest` |
 
-All three are upstream of every dashboard above, cost nothing, and are what makes
-Horizon, Vantage or Pulse useful on day one. Retrofitted onto forty jobs, queue
-naming is expensive; a wrong dashboard choice is not.
+Finding 2 also changed what the operator is told: the `/features` confirmation
+modal for a flag that owns permissions states that disabling revokes them — and
+that re-enabling does not grant them back, so they have to be re-assigned.
+`feature-flags.md` carries the flag→permission table with the same rule, and
+`FeatureIndexAction` hands each row its `permissions` so the copy cannot drift
+from the map.
 
-1. **Named queues behind constants.** Every job goes to `default` today.
-2. **Every job declares `$tries`, `$timeout`, `$backoff`, `$maxExceptions`.**
-   Vantage's retry chain is only meaningful because these are declared.
-3. **Every job has `failed()` and logs with `request_id`.** `queue.md:79` already
-   mandates it; today it is a per-job habit, not a trait.
+Two things the pass deliberately did **not** change: `Gate::before` still gives
+superadmin its permission bypass (the flag stops them at
+`EnsureFeatureIsEnabled` instead, D-3), and neither dashboard gained an API
+surface (§12).
 
----
-
-## Security Notes
-
-- Pulse's dashboard exposes queue depth, failed jobs, exception traces, cache
-  stats and slow-request detail. It is technical information and must stay
-  behind both gates; `pulse.view` must not be handed to a non-technical role.
-- Pulse ignores its own routes in the ignore list (`config/pulse.php:226,243`)
-  so monitoring the monitor is not a feedback loop.
-- Application code must never depend on Pulse. It is a passive observer.
-- Recording is bounded by Pulse's own retention; the `pulse_*` tables are
-  ignored by the sensitive-data scrubber at `config/pulse.php:216`.
-- A SECOND dashboard has the same exposure and none of the same gating. Vantage's
-  own gate admits every authenticated user and its `store_payload` default keeps
-  full job payloads — which in this project carry export filters, model ids and
-  mail arguments. If it is ever installed, `queues.view` and `store_payload=false`
-  are both decisions, and neither may be left at its default.
-
-## Deliberate Simplifications
-
-- **One permission, not two.** `pulse.manage` would be a row nothing checks.
-- **No `DB::listen()` logger yet.** The MySQL slow log covers it at the DB layer
-  and needs no application code. Add the PHP-side threshold logger only when a
-  real case appears that the slow log cannot see.
-- **No `PULSE_DOMAIN`.** A subdomain would decouple the nav href from the flag
-  for no present benefit.
-- **No environment condition in the gate.** One predicate, one reason to fail.

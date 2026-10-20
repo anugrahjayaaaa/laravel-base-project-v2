@@ -107,7 +107,14 @@ return [
     |
     */
 
-    'cache' => env('PULSE_CACHE_DRIVER'),
+    // Default 'array': RemembersQueries caches Collection payloads, and
+    // cache.serializable_classes=false (phase-1 hardening) turns every object
+    // read back from a serializing store (redis, file, database…) into
+    // __PHP_Incomplete_Class — the cards crash on a warm cache. A persistent
+    // driver can still be chosen per environment, but it reintroduces that
+    // bug. Cross-process state (Servers heartbeat throttle, pulse:check
+    // signals) is per-process on 'array'.
+    'cache' => env('PULSE_CACHE_DRIVER', 'array'),
 
     /*
     |--------------------------------------------------------------------------
@@ -122,6 +129,15 @@ return [
 
     'middleware' => [
         'web',
+
+        // Authentication before authorization, like every route in the admin
+        // group. Pulse is the one module whose routes this project does not
+        // declare, so without this line its dashboard was the one admin surface
+        // that answered a guest with the 403 meant for a signed-in caller
+        // without the permission — `/vantage` redirects to `/login`, `/pulse`
+        // did not. The 403 below stays for authenticated callers only.
+        'auth:web,sanctum',
+
         Authorize::class,
 
         // The `pulse` feature flag, enforced on the vendor route group.
@@ -214,7 +230,6 @@ return [
             'max_query_length' => env('PULSE_SLOW_QUERIES_MAX_QUERY_LENGTH'),
             'ignore' => [
                 '/(["`])pulse_[\w]+?\1/', // Pulse tables...
-                '/(["`])telescope_[\w]+?\1/', // Telescope tables...
             ],
         ],
 
@@ -224,7 +239,6 @@ return [
             'threshold' => env('PULSE_SLOW_REQUESTS_THRESHOLD', 1000),
             'ignore' => [
                 '#^/'.env('PULSE_PATH', 'pulse').'$#', // Pulse dashboard...
-                '#^/telescope#', // Telescope dashboard...
             ],
         ],
 
@@ -241,7 +255,6 @@ return [
             'sample_rate' => env('PULSE_USER_REQUESTS_SAMPLE_RATE', 1),
             'ignore' => [
                 '#^/'.env('PULSE_PATH', 'pulse').'$#', // Pulse dashboard...
-                '#^/telescope#', // Telescope dashboard...
             ],
         ],
     ],

@@ -3,10 +3,16 @@
 
     Contract with FeatureIndexAction (no queries, no route() here):
       $featureGroups  ['Users' => [['slug','label','description','enabled',
+                                   'permissions',
                                    'toggle_url'], …], …]
       $totalFeatures  int
       $enabledCount   int
       $disabledCount  int
+
+    `permissions` is the set the flag owns, so the toggle's confirmation modal can
+    say what disabling it revokes. Handed over rather than looked up here: a view
+    that reads the catalogue is a view doing logic, and the count and the names in
+    the modal both come from it.
 
     `toggle_url` is the toggle URL carrying the INTENDED new state
     (`?enabled=0` when the flag is currently on). Building it here would be

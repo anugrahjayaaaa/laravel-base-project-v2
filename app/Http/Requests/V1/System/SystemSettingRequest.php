@@ -119,6 +119,19 @@ class SystemSettingRequest extends BaseFormRequest
             'user_state_actions_rate_limit_per_minute' => ['integer', 'min:1', 'max:120'],
             'bulk_action_rate_limit_per_minute' => ['integer', 'min:1', 'max:120'],
             'send_test_mail_rate_limit_per_minute' => ['integer', 'min:1', 'max:120'],
+
+            // Phase 11 A1. The bound is 600 rather than 120 for the reason the
+            // ceiling above is not 15: this counter is an IP address, and an IP
+            // address can be every mobile subscriber of one carrier. A ceiling
+            // that cannot be raised past the point where a legitimate shared
+            // address trips it is a denial of service against the monitors that
+            // are the only intended callers.
+            'health_rate_limit_per_minute' => ['integer', 'min:1', 'max:600'],
+
+            // Phase 11 §13. Per user + IP, so the bound is the per-minute one
+            // rather than the health route's 600: this key can only be one
+            // account on one address, which is not a whole carrier.
+            'queue_retry_rate_limit_per_minute' => ['integer', 'min:1', 'max:120'],
         ];
     }
 

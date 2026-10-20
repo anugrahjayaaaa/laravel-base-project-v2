@@ -27,8 +27,13 @@ Route::prefix('v1')->group(function () {
 
     // ---------------------------------------------------------------------------
     // System health
+    //
+    // Ungated on purpose — the caller is a monitor that cannot log in — so the
+    // ceiling on it is a rate limit rather than a permission, and the check set
+    // behind it is cached. Both live in the limiter and the service; see
+    // `RateLimiter::for('health')` and `HealthCheckService`.
     // ---------------------------------------------------------------------------
-    Route::get('/health', HealthCheckController::class);
+    Route::get('/health', HealthCheckController::class)->middleware('throttle:health');
 
     // ---------------------------------------------------------------------------
     // Public auth routes — no authentication required

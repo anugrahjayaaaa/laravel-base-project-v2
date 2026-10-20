@@ -85,6 +85,16 @@ return [
             'group' => 'Monitoring',
             'description' => 'Queue, cache, exception and slow-request metrics.',
         ],
+        'health' => [
+            'label' => 'System Health',
+            'group' => 'Monitoring',
+            'description' => 'Live ok/fail status of database, cache, queue and storage.',
+        ],
+        'vantage' => [
+            'label' => 'Queue Monitor (Vantage)',
+            'group' => 'Monitoring',
+            'description' => 'Per-attempt job history, failure detail, retry chains and live queue depth.',
+        ],
     ],
 
     /*

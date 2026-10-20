@@ -367,6 +367,18 @@ matrix, and the tests all read it — no permission list is hand-typed anywhere,
 including in Blade. The prefix is derived, never listed, so a permission cannot
 land under the wrong heading.
 
+It also owns which **feature flag** a permission belongs to:
+`FEATURE_BY_RESOURCE` maps a resource prefix to a flag slug, and
+`visibleNames()` / `namesForInactiveFeatures()` split the catalogue by whether
+that flag is on (one store read for the whole catalogue, not one per
+permission). Both the role matrix and the permission index render
+`visibleNames()`; the toggle revokes what is not in it. `features` is the one
+resource deliberately left unmapped, because the page that re-enables a flag
+cannot be behind a flag. **Switching a flag off revokes its permissions and
+re-enabling it does not grant them back** — an admin re-assigns them here
+afterwards. The rules, the flag→permission table and the consequences are in
+[feature-flags.md](feature-flags.md#which-flags-own-permissions).
+
 ### Re-seeding is idempotent, and prunes
 
 `PermissionSeeder` flushes the permission cache three times: before seeding

@@ -13,6 +13,7 @@
 | RBAC | Spatie Permission | `spatie/laravel-permission` | Required | P0 | Through Gate/Policy layer |
 | Audit Trail | Spatie Activitylog | `spatie/laravel-activitylog` | Required | P0 | Through Audit abstraction |
 | Technical Observability | Laravel Pulse | `laravel/pulse` | Required | P1 | Restricted (technical users only) |
+| Queue Monitoring | Vantage | `storviaio/vantage` | Required | P1 | Restricted (`queues.view` read / `queues.retry` retry) |
 | Feature Flags | Laravel Pennant | `laravel/pennant` | Required | P1 | Through Feature facade |
 | API Documentation | Scramble | `dedoc/scramble` | Planned | P1 | Dev-only, documentation generation |
 | Queue (default) | Laravel Queue | Native | Core | P0 | Through Queue facade |
@@ -42,6 +43,7 @@
 | `spatie/laravel-permission` | `^6.0` | Laravel 13 + PHP 8.3 compatible |
 | `spatie/laravel-activitylog` | `^4.8` | Laravel 13 + PHP 8.3 compatible (**not v5**, requires PHP 8.4+) |
 | `laravel/pulse` | `^1.8` | Runtime metrics dashboard (Laravel 13 compatible) |
+| `storviaio/vantage` | `^0.1.25` | Queue monitor dashboard; the app declares its routes (Laravel 13 compatible) |
 || `laravel/pennant` | `^1.26` | Laravel 13 compatible (feature flags) |
 || `dedoc/scramble` | `^0.13` | Laravel 13 compatible (latest stable; ^2.0 not yet released) |
 | `spatie/laravel-backup` | `^10.0` | Laravel 13 compatible |

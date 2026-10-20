@@ -24,6 +24,7 @@ class FeatureToggleAction
 {
     public function __construct(
         private readonly NotificationAdminEventAction $notifyAction,
+        private readonly FeatureRevokePermissionsAction $revokePermissionsAction,
     ) {
     }
 
@@ -49,7 +50,7 @@ class FeatureToggleAction
      * @param  string  $slug    A declared flag. Anything else is refused.
      * @param  bool    $enabled The state being asked for.
      * @param  User|null $causer Who to attribute the audit record to
-     * @return array{slug: string, label: string, from: bool, to: bool}
+     * @return array{slug: string, label: string, from: bool, to: bool, revoked: array<int, string>}
      *
      * @throws \Symfony\Component\HttpKernel\Exception\NotFoundHttpException When the slug is not declared
      */
@@ -80,10 +81,20 @@ class FeatureToggleAction
         // was being served as off.
         $from = FeatureCatalog::isActive($slug);
 
-        DB::transaction(function () use ($slug, $enabled, $causer, $from, $stored): void {
+        // Filled inside the transaction and read after it, so the caller can
+        // say what the switch took away. Empty on an enable: see
+        // FeatureRevokePermissionsAction for why the revoke does not reverse.
+        $revoked = [];
+
+        DB::transaction(function () use ($slug, $enabled, $causer, $from, $stored, &$revoked): void {
             $enabled
                 ? Feature::activate($slug)
                 : Feature::deactivate($slug);
+
+            // Inside the transaction with the flag write: a module that is off
+            // while its permissions are still distributed is the half-state the
+            // revoke exists to prevent, and a rollback must not leave it either.
+            $revoked = $enabled ? [] : $this->revokePermissionsAction->run($slug);
 
             // Inside the transaction (DEP-003): an audit row that survives a
             // rollback records a change that never happened.
@@ -102,6 +113,10 @@ class FeatureToggleAction
                 'feature' => $slug,
                 'from' => $from,
                 'to' => $enabled,
+                // Which access this switch took away, by name. The flag row says
+                // the module is off; this is the half an auditor cannot
+                // reconstruct afterwards, because the grants are gone.
+                'revoked' => $revoked,
             ]);
         });
 
@@ -120,6 +135,7 @@ class FeatureToggleAction
             'label' => $flag['label'],
             'from' => $from,
             'to' => $enabled,
+            'revoked' => $revoked,
         ];
     }
 }

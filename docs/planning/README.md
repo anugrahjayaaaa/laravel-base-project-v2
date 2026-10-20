@@ -22,7 +22,7 @@ Planning system for the Laravel Base Project v2.
 | [phase-6-rbac.md](./phase-6-rbac.md) | Phase 6 — RBAC & Authorization: execution breakdown |
 | [phase-7-feature-flags.md](./phase-7-feature-flags.md) | Phase 7 — Feature Availability: execution breakdown |
 | [phase-10-audit-trail.md](./phase-10-audit-trail.md) | Phase 10 — Audit Trail: viewer UI, read layer, access control, async export |
-| [phase-11-monitoring-observability.md](./phase-11-monitoring-observability.md) | Phase 11 — Monitoring & Observability: Pulse integration, `pulse.view` permission, the Pulse/Vantage decision, the inbox API surface |
+| [phase-11-monitoring-observability.md](./phase-11-monitoring-observability.md) | Phase 11 — Monitoring & Observability: Groups A–F breakdown — Pulse + system health dashboards, `pulse.view` / `health.view` permissions, queue conventions, the Pulse/Vantage decision, the inbox API surface |
 | [phase-12-api-v1.md](./phase-12-api-v1.md) | Phase 12 — API V1: the web/API capability gap audit, and the two gaps it closed |
 
 ## Quick Links

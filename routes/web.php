@@ -5,6 +5,7 @@ use App\Http\Controllers\Web\V1\AuditExportController;
 use App\Http\Controllers\Web\V1\Auth\AuthController;
 use App\Http\Controllers\Web\V1\DashboardController;
 use App\Http\Controllers\Web\V1\FeatureController;
+use App\Http\Controllers\Web\V1\HealthController;
 use App\Http\Controllers\Web\V1\NotificationController;
 use App\Http\Controllers\Web\V1\NotificationInboxController;
 use App\Http\Controllers\Web\V1\PermissionController;
@@ -15,6 +16,7 @@ use App\Http\Controllers\Web\V1\UserStateController;
 use App\Http\Controllers\Web\V1\UserController;
 use App\Models\User;
 use Illuminate\Support\Facades\Route;
+use Storvia\Vantage\Http\Controllers\QueueMonitorController;
 
 // ---------------------------------------------------------------------------
 // Public routes — no authentication required
@@ -366,5 +368,72 @@ Route::middleware(['auth:web,sanctum', 'verified', 'password.change.required', '
         Route::get('/activity-logs/exports/recent', [AuditExportController::class, 'recent'])
             ->name('activity-logs.exports.recent')
             ->middleware(['can:audit.view', 'throttle:120,1']);
+    });
+
+    // -----------------------------------------------------------------------
+    // System health dashboard — Phase 11 Groups B and C.
+    //
+    // Two gates, both required, both failing as 403 so a caller cannot tell
+    // which fired: `feature:health` is the deploy-time kill switch and
+    // `health.view` is the per-role authorization. Same deliberate shape as
+    // `/pulse` and the audit viewer (Phase 7 / Phase 10 / Phase 11 §3).
+    //
+    // READ-ONLY: a GET that renders ok/fail per service, with no POST beside
+    // it. The page reads a status, it does not run anything.
+    //
+    // The API twin stays ungated — `GET /api/v1/health` answers an uptime
+    // monitor that cannot log in, and its response shape is the ceiling on what
+    // it may ever expose (phase-11 F3). Since ADR-023 it is bounded by a rate
+    // limit and a cached check set instead of by a permission. This web
+    // dashboard is a different matter: it renders who-can-see-what inside the
+    // admin, so it takes the full permission + flag treatment.
+    // -----------------------------------------------------------------------
+    Route::middleware('feature:health')->group(function () {
+        Route::get('/health', [HealthController::class, 'index'])
+            ->name('health.index')
+            ->can('health.view');
+    });
+
+    // -----------------------------------------------------------------------
+    // Queue monitor (Vantage) — Phase 11 §13.
+    //
+    // Declared HERE, not by the package: `config/vantage.php` sets
+    // `routes => false`, because the vendor's `loadRoutesFrom()` is bare — it
+    // offers no middleware hook — so its own group cannot carry
+    // `feature:vantage` or a permission. Declaring the group is the only way
+    // this dashboard gets the same two gates every other module has.
+    //
+    // Split by act, like the audit viewer: `queues.view` reads the queue,
+    // `queues.retry` re-queues a job. Retry is the only mutating route, and it
+    // is the only place `queues.retry` is checked — one row, one reader.
+    //
+    // Route NAMES must stay the vendor's (`vantage.*`): the package's own Blade
+    // views build every link with `route('vantage.jobs.show')` and friends, so a
+    // rename here breaks the dashboard's internal navigation.
+    // -----------------------------------------------------------------------
+    Route::middleware('feature:vantage')->group(function () {
+        Route::get('/vantage', [QueueMonitorController::class, 'index'])
+            ->name('vantage.dashboard')
+            ->can('queues.view');
+        Route::get('/vantage/jobs', [QueueMonitorController::class, 'jobs'])
+            ->name('vantage.jobs')
+            ->can('queues.view');
+        Route::get('/vantage/jobs/{id}', [QueueMonitorController::class, 'show'])
+            ->name('vantage.jobs.show')
+            ->can('queues.view');
+        Route::get('/vantage/tags', [QueueMonitorController::class, 'tags'])
+            ->name('vantage.tags')
+            ->can('queues.view');
+        Route::get('/vantage/failed', [QueueMonitorController::class, 'failed'])
+            ->name('vantage.failed')
+            ->can('queues.view');
+        Route::post('/vantage/jobs/{id}/retry', [QueueMonitorController::class, 'retry'])
+            ->name('vantage.jobs.retry')
+            ->can('queues.retry')
+            // `queues.retry` answers "may this person", not "how often". Same
+            // pairing as the audit-export retry button: a permission without a
+            // ceiling lets a compromised operator account re-dispatch work as
+            // fast as it can click.
+            ->middleware('throttle:queue-retry');
     });
 });

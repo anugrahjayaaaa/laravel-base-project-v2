@@ -22,7 +22,9 @@ use Symfony\Component\HttpFoundation\Response;
  * left to whoever adds it: `script-src` carries a nonce and NOTHING else — no
  * `'unsafe-inline'`, no `'unsafe-eval'` — so an injected `<script>` tag, an
  * injected inline handler or a `javascript:` URL does not run. That is the XSS
- * primitive, and closing it is the reason this middleware exists.
+ * primitive, and closing it is the reason this middleware exists. The two
+ * documented exceptions are the vendor dashboards, `/pulse` and `/vantage`, which
+ * add `'unsafe-eval'` scoped to their own route names; see `policy()`.
  *
  * ## Why the nonce and not a hash list
  *
@@ -99,6 +101,18 @@ class AddSecurityHeaders
     ];
 
     /**
+     * Origins only the Vantage dashboard loads. Its vendor layout pulls Tailwind's
+     * Play CDN (which compiles utility classes at run time) and Chart.js from a
+     * second CDN; neither is used anywhere else, so neither is in the global
+     * allowlist. `cdn.tailwindcss.com` also needs `'unsafe-eval'` — the Play CDN
+     * builds CSS with `new Function`, so without it the page renders unstyled.
+     */
+    private const VANTAGE_SCRIPT_ORIGINS = [
+        'https://cdn.tailwindcss.com',
+        'https://cdn.jsdelivr.net',
+    ];
+
+    /**
      * Every device feature this application has a use for: none of them.
      *
      * Written as an allowlist of denials rather than left unset, because an
@@ -115,6 +129,10 @@ class AddSecurityHeaders
         // never renders a view and still gets a nonce — harmless, and the
         // alternative is threading the value through the response instead.
         View::share('cspNonce', $nonce);
+
+        // `@livewireScriptConfig` (Pulse's layout) asks Vite for the nonce, not
+        // the shared view variable — same per-request value, so both read one source.
+        Vite::useCspNonce($nonce);
 
         $response = $next($request);
 
@@ -134,7 +152,7 @@ class AddSecurityHeaders
         // therefore before a StreamedResponse starts sending. A header set
         // after output has begun is what corrupts a stream.
         if (str_contains((string) $response->headers->get('Content-Type'), 'text/html')) {
-            $response->headers->set('Content-Security-Policy', $this->policy($nonce));
+            $response->headers->set('Content-Security-Policy', $this->policy($nonce, $request->routeIs('pulse'), $request->routeIs('vantage.*')));
         }
 
         return $response;
@@ -147,8 +165,23 @@ class AddSecurityHeaders
      * and nowhere else; `img-src` allows `data:` because the notification and
      * channel screens render inline SVG and data URIs. `frame-ancestors 'none'`
      * replaces `X-Frame-Options`, which this policy subsumes.
+     *
+     * `$pulse` adds `'unsafe-eval'` and nothing else. Pulse inlines Livewire's
+     * normal build, whose Alpine evaluates every `x-data`/`wire:*` expression
+     * with `new Function` — CSP blocks that without `'unsafe-eval'`, so every
+     * `#[Lazy]` card would stay on its skeleton forever. The nonce still governs:
+     * an injected `<script>` tag cannot run. Scoped to the route by name, so a
+     * path change cannot silently widen it.
+     *
+     * `$vantage` is the second such allowance, for the same reason in a different
+     * package: Tailwind's Play CDN compiles classes with `new Function`, and the
+     * dashboard pulls Chart.js from `cdn.jsdelivr.net`. Both the origins and the
+     * eval are scoped to `vantage.*` by route name. Vantage's own layouts carry
+     * inline `<script>` blocks, so the app overrides those views to nonce them
+     * (`resources/views/vendor/vantage/`) — the nonce, not `'unsafe-inline'`,
+     * stays the thing that lets a script run.
      */
-    private function policy(string $nonce): string
+    private function policy(string $nonce, bool $pulse, bool $vantage): string
     {
         $assets = implode(' ', self::ASSET_ORIGINS);
 
@@ -163,13 +196,21 @@ class AddSecurityHeaders
         // `ws://host`: the scheme has to be named or the socket never opens.
         $devConnect = $dev === null ? '' : ' '.$dev.' '.preg_replace('#^http#', 'ws', $dev);
 
+        $vantageScripts = $vantage ? ' '.implode(' ', self::VANTAGE_SCRIPT_ORIGINS) : '';
+        // Lucide ships with a `//# sourceMappingURL`; fetching the map is a
+        // `connect-src` request. Cosmetic (DevTools only) but it is the difference
+        // between a clean console and one that looks half-broken.
+        $vantageConnect = $vantage ? ' https://unpkg.com' : '';
+
+        $eval = ($pulse || $vantage) ? " 'unsafe-eval'" : '';
+
         return implode('; ', [
             "default-src 'self'",
-            "script-src 'self' 'nonce-{$nonce}' {$assets}{$devAssets}",
+            "script-src 'self' 'nonce-{$nonce}'{$eval} {$assets}{$vantageScripts}{$devAssets}",
             "style-src 'self' 'unsafe-inline' {$assets}{$devAssets}",
             "img-src 'self' data: {$assets}{$devAssets}",
             "font-src 'self' data: {$assets}{$devAssets}",
-            "connect-src 'self'{$devConnect}",
+            "connect-src 'self'{$vantageConnect}{$devConnect}",
             "object-src 'none'",
             "base-uri 'self'",
             "form-action 'self'",

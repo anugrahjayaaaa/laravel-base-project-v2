@@ -20,23 +20,51 @@ stale. Re-derive it rather than editing by hand when a limiter changes.
 | `reset-password` | `password_reset_rate_limit` (3) | per minute | identifier + IP | 302 + errors (web) / 429 JSON |
 | `resend-verification` | `email_verification_rate_limit` (5) | per hour | user id, else email | 302 + errors (web) / 429 JSON |
 | `email-verification` | `email_verification_rate_limit` (5) | per hour | identifier | 302 + errors (web) / 429 JSON |
-| `bulk-action` | — | per minute | user | 302 + errors |
-| `user-state-actions` | — | per minute | user | 302 + errors |
+| `user-state-actions` | `user_state_actions_rate_limit_per_minute` (15) | per minute | user id, else IP | 302 + errors (web) / 429 JSON |
+| `bulk-action` | `bulk_action_rate_limit_per_minute` (5) | per minute | user id, else IP | 302 + errors (web) / 429 JSON |
+| `send-test-mail` | `send_test_mail_rate_limit_per_minute` (5) | per minute | user id + IP + recipient | 302 + errors (web) / 429 JSON |
+| `audit-export` | `audit_export_rate_limit_per_hour` (5) | per hour | user id + IP | 302 + errors (web) / 429 JSON |
+| `queue-retry` | `queue_retry_rate_limit_per_minute` (10) | per minute | user id + IP | 302 + flash `error` (web) / 429 JSON |
+| `health` | `health_rate_limit_per_minute` (120) | per minute | IP | 429 JSON only |
 
 `email-verification` and `resend-verification` deliberately share one setting
 key: they are the same action, reachable by two routes.
+
+Every limiter answers through the shared builder
+(`App\Auth\LoginThrottle::responseFor()`), so every one branches on
+`$request->expectsJson()`: an API client gets 429 JSON, a browser gets a
+redirect with a field error.
+
+`queue-retry` is the one exception to the field error:
+`LoginThrottle::flashResponseFor()` sends a flash under `error` instead, because
+the queue monitor is a vendor layout that renders `session('error')` and carries
+no `$errors` bag — the standard shape would reload the page with no message on
+it, i.e. a button that silently stops working. Its JSON branch is identical to
+every other limiter's; the shape a machine reads cannot depend on which page a
+human happened to be looking at.
+
+`health` is the one exception, and for a reason none of the others have: its
+route (`GET /api/v1/health`) has no web branch at all, so the shape is not a
+question about the caller — it is always JSON. A machine that sends no
+`Accept` header (an uptime monitor) would otherwise have been handed the
+`back()` redirect, which a monitor that follows redirects reads as a 200 login
+page and therefore as UP — the one answer a health check must not give while
+it is refusing to answer.
 
 `register` is keyed on IP alone because there is no identifier to key on — the
 account does not exist yet. The form's unique-email error tells an attacker
 which addresses are registered, so the limit is what caps how fast they can
 collect that.
 
+`health` is keyed on IP for the same structural reason, and there that unit is
+weaker: one address can be a carrier's NAT or a corporate egress shared by
+thousands of people. That is why its default is 120/min where the per-user
+limiters use 3-15, and why its validated ceiling reaches 600 rather than 120.
+
 **Every limiter reachable from the API must branch on
-`$request->expectsJson()`.** A limiter that only returns `back()->withErrors()`
-hands an API client an HTML 302, which most clients do not treat as a failure.
-`email-verification`, `bulk-action` and `user-state-actions` do not have the
-branch — they are web-only today, so it is not a live bug, but it becomes one
-the moment either is exposed.
+`$request->expectsJson()`** — or pass `jsonOnly` if it has no web branch.
+A limiter that only returns `back()->withErrors()` hands an API client an HTML
+302, which most clients do not treat as a failure.
 
 ## Roadmap
 
@@ -47,9 +75,10 @@ written as fact is what made the previous version of this file wrong.
   pattern of abuse, instead of a flat per-IP ceiling.
 - **Captcha on public sign-up** — the only effective answer to a botnet, which
   a per-IP limit cannot touch.
-- **Per-route budgets for the general API** — authenticated and guest API
-  routes currently rely on the framework's own throttling rather than explicit
-  per-endpoint limits.
+- **Per-route budgets for the general API** — authenticated API routes still
+  rely on the framework's own throttling rather than explicit per-endpoint
+  limits. `GET /api/v1/health` is the first guest API route to carry one
+  (ADR-023).
 - **Redis counters** — the current keying is per-node if the cache backend is
   local; Redis removes that caveat.
 
@@ -89,3 +118,4 @@ processing.
 ## ADR references
 
 - ADR-003 — database queue with Redis compatibility
+- ADR-023 — a rate ceiling and a cached check set on the ungated health endpoint

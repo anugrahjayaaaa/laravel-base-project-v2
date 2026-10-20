@@ -281,6 +281,85 @@ CEO can still see it" is a state nobody asked for.
 - Permission to manage features: `features.manage`.
 - Permission to view features: `features.view`.
 
+### A permission follows its module's flag
+
+`PermissionCatalog::FEATURE_BY_RESOURCE` maps a **resource prefix** to the flag
+that owns it (`audit.*` → `activity_logs`, `queues.*` → `vantage`). It is the one
+answer to "whose permission is this", and three things consume it:
+
+| When a flag goes off | What happens | Where |
+|---|---|---|
+| The grant | removed from every role and every direct user grant, inside the toggle's transaction, and named in the audit row's `revoked` property | `FeatureRevokePermissionsAction`, called by `FeatureToggleAction` / `FeatureBulkToggleAction` |
+| The offer | hidden from the role matrix and the permission index | `PermissionCatalog::visibleNames()` |
+| The write path | a grant the matrix cannot render is kept as it is; a posted id the matrix cannot offer is ignored | `PersistsRole::assignablePermissionIds()` |
+
+Four consequences that are decisions, not details:
+
+- **The revoke is final.** Switching the flag back on re-grants nothing.
+  Restoring would need the previous holdings stored somewhere, and the state the
+  operator asked for — "this module is off, nobody holds its permissions" —
+  would silently undo itself. Re-granting is a deliberate act through the role
+  matrix.
+- **Hiding without revoking would be a data-loss bug.** A flag switched off in
+  `config/pennant.php` (the deploy-time kill switch) never runs a toggle, so the
+  grant is still in the database while the checkbox is gone: the matrix cannot
+  show it and nobody can remove it through the UI.
+- **`features` is the one resource with no flag**, and `translations` / `sessions`
+  own no permissions at all. The page that re-enables a flag cannot itself be
+  behind a flag, and its `features.view` / `features.manage` permissions are
+  therefore unconditional. `PermissionFeatureMapTest` asserts the unmapped set is
+  exactly `PermissionCatalog::UNMAPPED_RESOURCES` and that every mapped flag is
+  declared, so a new resource with no flag has to be recorded on purpose.
+- **The write path filters rather than refuses.** There is no checkbox an operator
+  could have ticked to send a hidden id, so the only caller that can is one that
+  never saw the matrix — the role is created without that permission instead of
+  answering 422.
+
+The flags on **both** monitoring dashboards are also ANDed into their gates
+(`viewPulse`, `viewVantage`), so a `@can()` reads the same answer the route
+middleware does. See ADR-024.
+
+### Which flags own permissions
+
+| Flag | Permissions it owns — revoked from every role and user when the flag goes off |
+|---|---|
+| `users` | `users.view`, `users.create`, `users.update`, `users.delete`, `users.force_delete`, `users.restore`, `users.activate`, `users.deactivate`, `users.lock`, `users.unlock`, `users.assign_roles` |
+| `roles` | `roles.view`, `roles.create`, `roles.update`, `roles.delete`, `roles.force_delete`, `roles.restore`, `roles.assign_permissions` |
+| `permissions` | `permissions.view` |
+| `settings` | `settings.view`, `settings.manage` |
+| `notifications` | `notifications.view`, `notifications.manage`, `notifications.send_test` |
+| `activity_logs` | `audit.view`, `audit.export` — resource `audit`, flag `activity_logs` |
+| `pulse` | `pulse.view` |
+| `health` | `health.view` |
+| `vantage` | `queues.view`, `queues.retry` — resource `queues`, flag `vantage` |
+| *no flag* | `features.view`, `features.manage` — the resource is deliberately unmapped, so no switch can revoke them |
+| `translations`, `sessions` | none — these flags own no permissions |
+
+`PermissionFeatureMapTest` keeps the map behind this table honest: it fails when a
+resource is missing an entry, when a mapped flag is not declared, and when the
+unmapped set drifts from `PermissionCatalog::UNMAPPED_RESOURCES`.
+
+**Disabling a flag is not just hiding a page, and the UI says so.** The
+confirmation modal for a flag that owns permissions states that disabling hides
+the module for everyone and revokes those permissions from all roles and users,
+and that re-enabling does not restore them — so they have to be assigned again.
+It names the permission when the flag owns exactly one (`pulse`, `health`) and
+counts them when it owns more; a flag that owns none keeps the plain
+hide-for-everyone copy. The bulk-disable modal carries the same warning for the
+whole selection. Both are held to **two sentences** by test
+(`FeatureFlagUiRenderTest`, `BulkActionCopyTest`): a confirmation modal is read
+in one glance, and a paragraph hides the consequence it exists to state.
+`FeatureIndexAction` hands each row its `permissions` for that copy, so the wording
+cannot drift from the map above.
+
+**Re-enabling a flag is only half of restoring a module.** The permissions stay
+revoked, so an admin re-assigns them afterwards — through the role matrix, or as a
+direct grant on the user — before anyone holds them again. Until then the module
+is reachable only through `Gate::before`, i.e. by `superadmin`, whose bypass needs
+no permission row. That is the deliberate cost of the revoke being final: the
+alternative — remembering the previous holdings and replaying them — would undo
+the state the operator asked for.
+
 ## Settings Integration
 
 Self-registration is a **SystemSetting, not a flag**:
