@@ -289,20 +289,97 @@ undocumented (P12-E2).
 > Depends on: A (the schema needs somewhere to live). Blocks: C, D.
 > Most of this exists; the tasks are gap-closing, not construction.
 
-Status: **PLANNED**.
+Status: **REVIEW**.
 
 | ID | Task | Pri | Depends On | Status |
 |----|------|-----|-----------|--------|
-| P12-B1 | **Base controller — keep one.** `App\Http\Controllers\Controller::respond()` is the base (D-2). No `Api/V1/BaseApiController` is created. Verify every API controller that returns a bare array uses `respond()` or a Resource, and record the decision in `docs/base/api/response-contract.md` so the next reader does not add a second base | P0 | — | PLANNED |
-| P12-B2 | **Resource schema pass.** Every `Resources/Api/V1/**::toArray()` gets an explicit `@return array{…}` shape covering conditional keys (e.g. `UserResource` omits relations when not loaded). Add the three missing transformers if a controller still returns an ad-hoc array: `SessionResource`, `SystemSettingResource`, `FeatureResource`. No new abstraction over `JsonResource` — it already does the job | P0 | P12-A4 | PLANNED |
-| P12-B3 | **Error envelope — close the documented-but-unreachable codes.** `docs/base/api/error-contract.md` lists `CONFLICT` (409) and `SERVICE_UNAVAILABLE` (503); the handler emits `LAST_SUPERADMIN` (409) and never 503. It also emits `HTTP_ERROR` for every generic 4xx. Reconcile doc against code, and add `meta.request_id` / `meta.timestamp` to handler-generated errors so an error and its neighbouring success share one shape (422 already does; the `renderable()` block does not) | P0 | — | PLANNED |
-| P12-B4 | **The `APP_DEBUG` hole.** The entire API error envelope is inside `! config('app.debug')`. In debug the API answers with Laravel's default HTML/JSON, so the contract is untested by default and a debug-enabled deployment leaks the framework shape. Decide explicitly: keep the branch (and make every contract test set `app.debug = false`), or emit the envelope unconditionally and let debug only add detail. Record the choice in `error-contract.md` | P0 | P12-B3 | PLANNED |
-| P12-B5 | **Pagination contract.** `AnonymousResourceCollection` wrapping is default; confirm the pagination envelope (`data`, `meta`, `links`) is what `docs/base/api/response-contract.md` claims, and that `withQueryString()` survives on every index. | P1 | P12-B2 | PLANNED |
-| P12-B6 | **Documentation step** — every resource above carries its schema, and `scramble:analyze` reports no uninferable route in the `v1` surface | P0 | P12-B1..B5 | PLANNED |
+| P12-B1 | **Base controller — keep one.** `App\Http\Controllers\Controller::respond()` is the base (D-2). No `Api/V1/BaseApiController` is created. Verify every API controller that returns a bare array uses `respond()` or a Resource, and record the decision in `docs/base/api/response-contract.md` so the next reader does not add a second base | P0 | — | DONE |
+| P12-B2 | **Resource schema pass.** Every `Resources/Api/V1/**::toArray()` gets an explicit `@return array{…}` shape covering conditional keys (e.g. `UserResource` omits relations when not loaded). Add the three missing transformers if a controller still returns an ad-hoc array: `SessionResource`, `SystemSettingResource`, `FeatureResource`. No new abstraction over `JsonResource` — it already does the job | P0 | P12-A4 | DONE |
+| P12-B3 | **Error envelope — close the documented-but-unreachable codes.** `docs/base/api/error-contract.md` lists `CONFLICT` (409) and `SERVICE_UNAVAILABLE` (503); the handler emits `LAST_SUPERADMIN` (409) and never 503. It also emits `HTTP_ERROR` for every generic 4xx. Reconcile doc against code, and add `meta.request_id` / `meta.timestamp` to handler-generated errors so an error and its neighbouring success share one shape (422 already does; the `renderable()` block does not) | P0 | — | DONE |
+| P12-B4 | **The `APP_DEBUG` hole.** The entire API error envelope is inside `! config('app.debug')`. In debug the API answers with Laravel's default HTML/JSON, so the contract is untested by default and a debug-enabled deployment leaks the framework shape. Decide explicitly: keep the branch (and make every contract test set `app.debug = false`), or emit the envelope unconditionally and let debug only add detail. Record the choice in `error-contract.md` | P0 | P12-B3 | DONE |
+| P12-B5 | **Pagination contract.** `AnonymousResourceCollection` wrapping is default; confirm the pagination envelope (`data`, `meta`, `links`) is what `docs/base/api/response-contract.md` claims, and that `withQueryString()` survives on every index. | P1 | P12-B2 | DONE |
+| P12-B6 | **Documentation step** — every resource above carries its schema, and `scramble:analyze` reports no uninferable route in the `v1` surface | P0 | P12-B1..B5 | DONE |
 
 **Gate B:** `GET /docs/api.json` shows typed schemas for every resource, every
 documented status code has a reachable emitter, and no API controller returns a
 bare `array`.
+
+### Measured (2026-10-20)
+
+**B1 — one base controller, four duplicates found.** Twenty-two API controllers
+were read. `UserStateController` carried a private `success()` that hand-built
+`data.message` + `meta` byte for byte identical to `respond()`; it is gone.
+`UserController::store`, `PasswordChangeController`, `PasswordResetController`
+and `PasswordForgotController` each hand-built the same envelope and now call
+`respond()`. The decision and its reasoning live in `response-contract.md` §
+*One base controller*.
+
+**B2 — eight resources now declare their shape.** The seven existing resources
+carried `@return array<string, mixed>`, which documents nothing; each now names
+every key and marks conditional keys optional (`users_count?: int`,
+`download_url?: string`, `action?: array{...}`). `SessionResource` was the one
+real gap: `SessionController` mapped tokens to arrays inline, which is
+serialisation living in a controller. The other two named in the task are **not
+created**, deliberately: `SystemSettingController` answers with
+`SystemSetting::getAll()`, a key→value map, and `FeatureController` answers with
+an action result; a transformer over a map or over scalars would be a passthrough
+with nothing to own. Both shapes are documented instead (`response-contract.md` §
+*Responses that are not envelopes*). Regression test:
+`tests/Feature/Api/V1/SessionApiTest` pins the token payload and the two keys
+that must never appear (`token`, `hash`).
+
+**B3 — the reconciliation found a live defect, not just a stale table.** Two
+documented codes were unreachable: `NotFoundHttpException` and
+`ThrottleRequestsException` both extend `HttpException`, and the blanket
+`HttpException && 4xx` branch sat above them — so every route-level 404 and every
+framework-level 429 answered `HTTP_ERROR`. Specific branches now come first.
+`meta` is on every handler error, and on the two errors emitted ahead of the
+`api/*` block (the `LAST_SUPERADMIN` 409 and the CSRF 419), through
+`App\Support\ApiError` — one definition, also used by `Controller::respond()`
+and by `FormatsApiErrors` for the 422 a form request throws, so the three
+paths cannot drift.
+Doc side: `CONFLICT` removed (nothing emits it; `LAST_SUPERADMIN` is the only
+409), and 503 re-attributed to the health probe, which answers with its own
+unwrapped `{status, timestamp, checks}` body rather than the error envelope.
+
+**B4 — unconditional, and debug only adds a key.** The branch is removed. The
+contract is now the same in every environment; `app.debug` adds
+`debug.exception` / `debug.message` and nothing else. Traces stay in the log
+(`report()` still runs). Rationale: a body whose keys depend on an env var is
+not a contract — a client cannot branch on a payload a deploy can rewrite.
+`tests/Feature/CrossCutting/ApiErrorEnvelopeTest` asserts the key sets are
+identical with debug off and on (minus `debug`).
+
+**B5 — the doc was wrong, not the code.** There is no `Link` header and no
+top-level `meta.pagination`. A collection is `data.<plural>` as a plain array
+with `data.pagination = {current_page, last_page, per_page, total}` beside it;
+the resources are not nested paginator objects, so there is one place to read a
+page count. Defaults are 10 (users, roles, audit) and 30 (inbox). The inbox is
+the one list with no pagination block — it returns `unread_count` beside the
+rows, and a polling client uses `unread-count` + `latest_id` instead.
+`withQueryString()` has nothing to append: paging links are not emitted at all.
+Contract rewritten to the measured shapes, including the real query-parameter
+names (`search`/`sort`/`direction`/`per_page`, not `filter[field]`).
+
+**B6 — `scramble:analyze`: 2 warnings → 1, and the health schema was a lie.**
+`UserResource` was uninferable (no `@property-read`); fixed, and the generated
+component now names every field. `HealthCheckResource` still warns: it wraps an
+array, not a model, so there is no model type to infer and naming a fictional one
+would be worse than the warning. The exported document caught something the
+warning did not: `/v1/health` had `schema: {type: string}`, because the controller
+returns a prepared `JsonResponse` the generator cannot follow. Both statuses are
+now declared on the action with `#[Response]` (200 and 503, the same unwrapped
+`{status, timestamp, checks}` shape), so the route is typed and the probe's
+failure mode is documented. Remaining warning is resource-level inference only,
+not an uninferable route.
+
+**Accepted deviations:** no `SystemSettingResource`, no
+`FeatureResource` (reason above). Controller refusals that answer through
+`respond($message, 4xx)` — the auth family — still carry `data.message` and no
+`code`; they are pinned that way by existing tests and P12-C1 owns migrating each
+endpoint when it writes that endpoint's code vocabulary. Recorded in
+`error-contract.md` § *Known shape gap*.
+
 
 ---
 
