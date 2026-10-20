@@ -18,7 +18,7 @@ class UserAdminResendVerificationAction
      * @param  User       $user
      * @param  string     $ip
      * @param  User|null  $causer  Who to attribute the audit record to
-     * @return array
+     * @return array{user?: User, error?: array{message: string, status: int, error_code: string}}
      */
     public function run(User $user, string $ip, ?User $causer = null): array
     {
@@ -28,11 +28,25 @@ class UserAdminResendVerificationAction
         // `admin` is deliberately allowed: reissuing a link is the whole point
         // of that mode.
         if (SystemSetting::getString('email_verification_mode', 'public') === 'disabled') {
-            return ['error' => ['message' => 'Verification emails are disabled.', 'status' => 403]];
+            return [
+                'error' =>
+                [
+                    'message' => 'Verification emails are disabled.',
+                    'status' => 403,
+                    'error_code' => 'FORBIDDEN'
+                ]
+            ];
         }
 
         if ($user->hasVerifiedEmail()) {
-            return ['error' => ['message' => 'Email already verified.', 'status' => 422]];
+            return [
+                'error' =>
+                [
+                    'message' => 'Email already verified.',
+                    'status' => 422,
+                    'error_code' => 'EMAIL_ALREADY_VERIFIED'
+                ]
+            ];
         }
 
         $key = $this->key($user->email, $ip);
@@ -41,7 +55,14 @@ class UserAdminResendVerificationAction
         if (RateLimiter::tooManyAttempts($key, $maxAttempts)) {
             $seconds = RateLimiter::availableIn($key);
 
-            return ['error' => ['message' => "Too many requests. Try again in " . (int) ceil($seconds / 60) . " minute(s).", 'status' => 429]];
+            return [
+                'error' =>
+                [
+                    'message' => "Too many requests. Try again in " . (int) ceil($seconds / 60) . " minute(s).",
+                    'status' => 429,
+                    'error_code' => 'RATE_LIMITED'
+                ]
+            ];
         }
 
         $user->sendEmailVerificationNotification();

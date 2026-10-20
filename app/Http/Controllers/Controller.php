@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Support\ApiError;
 use Illuminate\Http\JsonResponse;
+use LogicException;
 
 /**
  * Base controller with the two JSON envelope helpers.
@@ -35,6 +36,10 @@ abstract class Controller
         int $status = 200,
         array $data = []
     ): JsonResponse {
+        if ($status >= 400) {
+            throw new LogicException('respond() is a success helper; use respondError() for refusals.');
+        }
+
         return response()->json([
             'data' => $data ?: ['message' => $message],
             'meta' => ApiError::meta(),
@@ -46,9 +51,8 @@ abstract class Controller
      *
      * Use this, not `respond($message, 4xx)`, for anything a client is meant to
      * branch on: `respond()` puts the message under `data`, which is the success
-     * envelope and carries no `code`. The two co-exist today because the auth
-     * controllers' refusals are pinned by tests that read `data.message`; Group C
-     * is where each endpoint's code vocabulary is decided and those move.
+     * envelope and carries no `code`. `respond()` refuses a 4xx status outright
+     * so a refusal cannot drift back into the success envelope.
      *
      * @param  array<string, mixed>  $extra  Additional top-level keys.
      */

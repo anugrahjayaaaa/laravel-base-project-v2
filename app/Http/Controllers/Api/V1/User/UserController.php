@@ -22,6 +22,7 @@ use App\Http\Requests\V1\User\UpdateUserRequest;
 use App\Http\Requests\V1\User\UserQueryRequest;
 use App\Http\Resources\Api\V1\User\UserResource;
 use App\Support\ApiError;
+use Dedoc\Scramble\Attributes\QueryParameter;
 use Dedoc\Scramble\Attributes\Response;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -254,13 +255,19 @@ class UserController extends Controller
     /**
      * Verify and complete an email change.
      *
+     * The token travels as `?token=`, the same address shape the web twin and
+     * `ChangeEmailVerificationNotification` use — the path carries the user only,
+     * so a signed link works on either channel.
+     *
      * @param  Request  $request
      * @param  User  $user
      * @return JsonResponse
      */
+    #[QueryParameter(name: 'token', type: 'string', required: false, description: 'Email-change token from the signed link.')]
+    #[Response(status: 403, type: ApiError::DOC_TYPE)]
     public function verifyEmailChange(Request $request, User $user): JsonResponse
     {
-        $token = $request->route('token');
+        $token = $request->query('token');
 
         if (! $token) {
             return $this->respondError('Missing verification token.', 'INVALID_TOKEN', 400);
@@ -278,19 +285,31 @@ class UserController extends Controller
     /**
      * Resend verification email to a user.
      *
+     * The action decides the status and the code (403 disabled, 422 already
+     * verified, 429 throttled, 500 transport failure); the codes are annotated
+     * because they arrive as variables and inference cannot see them.
+     *
      * @param  Request  $request
      * @param  User  $user
      * @return JsonResponse
      */
+    #[Response(status: 422, type: ApiError::DOC_TYPE)]
+    #[Response(status: 429, type: ApiError::DOC_TYPE)]
+    #[Response(status: 500, type: ApiError::DOC_TYPE)]
     public function resendVerification(Request $request, User $user): JsonResponse
     {
         $result = $this->resendVerificationAction->run($user, $request->ip(), $request->user());
 
         if (isset($result['error'])) {
-            // The action already decided the status (403 disabled, 422 already
-            // verified, 429 throttled). Hardcoding 400 here threw all of that
-            // away and told the client its request was malformed.
-            return $this->respond($result['error']['message'], $result['error']['status'] ?? 400);
+            // The action already decided the status AND the code (403 disabled,
+            // 422 already verified, 429 throttled, 500 transport failure).
+            // Answering through respond() put that under data.message with no
+            // code, which is the shape the error contract no longer allows.
+            return $this->respondError(
+                $result['error']['message'],
+                $result['error']['error_code'] ?? 'HTTP_ERROR',
+                $result['error']['status'] ?? 400,
+            );
         }
 
         return $this->respond('Verification email successfully sent.', 200);
