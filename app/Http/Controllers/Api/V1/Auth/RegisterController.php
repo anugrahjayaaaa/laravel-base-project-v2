@@ -30,7 +30,7 @@ class RegisterController extends Controller
         // at all. An API client gets the same answer so it cannot probe for the
         // existence of a feature the operator turned off.
         if (! SystemSetting::getBool('registration_enabled', false)) {
-            return $this->respond('Not found.', 404);
+            return $this->respondError('Not found.', 'NOT_FOUND', 404);
         }
 
         $data = $request->validated();

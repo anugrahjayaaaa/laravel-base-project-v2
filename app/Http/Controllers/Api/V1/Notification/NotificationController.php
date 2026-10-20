@@ -113,7 +113,9 @@ class NotificationController extends Controller
      * A transport failure is a 502, not a 500: the request was understood and
      * authorized, and the thing that failed is downstream of this application —
      * the mail server. The body carries the same actionable sentence the web page
-     * shows; the exception itself went to the log.
+     * shows, under the documented error envelope (`BAD_GATEWAY`), so a client can
+     * branch on the code instead of parsing the sentence; the exception itself
+     * went to the log.
      */
     public function sendTestMail(
         SendTestMailRequest $request,
@@ -122,7 +124,7 @@ class NotificationController extends Controller
         $result = $action->run($request->validated('email'), causer: $request->user());
 
         if (! $result['ok']) {
-            return $this->respond($result['message'], 502);
+            return $this->respondError($result['message'], 'BAD_GATEWAY', 502);
         }
 
         return $this->respond($result['message'], 200);

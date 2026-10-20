@@ -18,7 +18,7 @@ class AuthResendVerificationAction
      *
      * @param  string  $email
      * @param  string  $ip
-     * @return array
+     * @return array{success?: bool, error?: array{message: string, status: int, error_code: string}}
      */
     public function run(string $email, string $ip): array
     {
@@ -29,7 +29,14 @@ class AuthResendVerificationAction
         }
 
         if ($user->hasVerifiedEmail()) {
-            return ['error' => ['message' => 'Email already verified.', 'status' => 422]];
+            return [
+                'error' =>
+                [
+                    'message' => 'Email already verified.',
+                    'status' => 422,
+                    'error_code' => 'EMAIL_ALREADY_VERIFIED'
+                ]
+            ];
         }
 
         $key = $this->key($email, $ip);
@@ -38,7 +45,14 @@ class AuthResendVerificationAction
         if (RateLimiter::tooManyAttempts($key, $maxAttempts)) {
             $seconds = RateLimiter::availableIn($key);
 
-            return ['error' => ['message' => "Too many requests. Try again in " . (int) ceil($seconds / 60) . " minute(s).", 'status' => 429]];
+            return [
+                'error' =>
+                [
+                    'message' => "Too many requests. Try again in " . (int) ceil($seconds / 60) . " minute(s).",
+                    'status' => 429,
+                    'error_code' => 'RATE_LIMITED'
+                ]
+            ];
         }
 
         try {
@@ -54,7 +68,8 @@ class AuthResendVerificationAction
             return [
                 'error' => [
                     'message' => 'Failed to send verification email. Please try again later.',
-                    'status' => 500
+                    'status' => 500,
+                    'error_code' => 'SERVER_ERROR',
                 ]
             ];
         }

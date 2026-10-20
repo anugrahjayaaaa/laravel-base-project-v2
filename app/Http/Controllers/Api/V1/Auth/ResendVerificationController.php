@@ -25,7 +25,7 @@ class ResendVerificationController extends Controller
         $mode = SystemSetting::getString('email_verification_mode', 'public');
 
         if ($mode === 'admin' || $mode === 'disabled') {
-            return $this->respond('Feature disabled.', 403);
+            return $this->respondError('Feature disabled.', 'FORBIDDEN', 403);
         }
 
         $email = $request->validated('email');
@@ -33,7 +33,11 @@ class ResendVerificationController extends Controller
         $result = $action->run($email, $request->ip());
 
         if (isset($result['error'])) {
-            return $this->respond($result['error']['message'], $result['error']['status']);
+            return $this->respondError(
+                $result['error']['message'],
+                $result['error']['error_code'] ?? 'HTTP_ERROR',
+                $result['error']['status'],
+            );
         }
 
         // No audit call here. AuthResendVerificationAction writes
