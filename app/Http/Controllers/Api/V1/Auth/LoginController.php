@@ -7,6 +7,8 @@ use App\Actions\V1\Auth\AuthLoginCompletedAction;
 use App\Auth\LoginThrottle;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\V1\Auth\LoginRequest;
+use App\Support\ApiError;
+use Dedoc\Scramble\Attributes\Response;
 use Illuminate\Http\JsonResponse;
 
 /**
@@ -17,12 +19,16 @@ class LoginController extends Controller
     /**
      * Authenticate user and return access token.
      *
+     * 401 is bad credentials, decided by the action and carried as a variable,
+     * so it is annotated rather than inferred.
+     *
      * @param  LoginRequest  $request
      * @param  LoginThrottle  $throttle
      * @param  AuthAuthenticateAction  $action
      * @param  AuthLoginCompletedAction  $loginCompletedAction
      * @return JsonResponse
      */
+    #[Response(status: 401, type: ApiError::DOC_TYPE)]
     public function __invoke(
         LoginRequest $request,
         LoginThrottle $throttle,

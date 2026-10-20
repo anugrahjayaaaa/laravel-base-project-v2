@@ -6,6 +6,8 @@ use App\Actions\V1\Auth\AuthResendVerificationAction;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\V1\Auth\ResendVerificationRequest;
 use App\Models\SystemSetting;
+use App\Support\ApiError;
+use Dedoc\Scramble\Attributes\Response;
 use Illuminate\Http\JsonResponse;
 
 /**
@@ -16,10 +18,15 @@ class ResendVerificationController extends Controller
     /**
      * Resend a verification email to the user.
      *
+     * 429 and 500 come from the action's own throttle and transport failure, so
+     * inference cannot see them.
+     *
      * @param  ResendVerificationRequest  $request
      * @param  AuthResendVerificationAction  $action
      * @return JsonResponse
      */
+    #[Response(status: 429, type: ApiError::DOC_TYPE)]
+    #[Response(status: 500, type: ApiError::DOC_TYPE)]
     public function __invoke(ResendVerificationRequest $request, AuthResendVerificationAction $action): JsonResponse
     {
         $mode = SystemSetting::getString('email_verification_mode', 'public');

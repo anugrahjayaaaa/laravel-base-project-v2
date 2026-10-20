@@ -10,6 +10,7 @@ use App\Http\Requests\V1\Notification\SendTestMailRequest;
 use App\Http\Requests\V1\Notification\UpdateMailSettingsRequest;
 use App\Http\Requests\V1\Notification\UpdateNotificationChannelsRequest;
 use App\Models\SystemSetting;
+use Dedoc\Scramble\Attributes\Response;
 use Illuminate\Http\JsonResponse;
 
 /**
@@ -46,7 +47,12 @@ class NotificationController extends Controller
 
     /**
      * Read the mail transport and the channel switches.
+     *
+     * Typed explicitly: `settings` and `channels` are built as maps in this
+     * method, and inference flattened both to `string` — a schema that lies
+     * about two of the four keys.
      */
+    #[Response(status: 200, type: 'array{data: array{settings: array<string, string>, has_password: bool, channels: array<string, bool>, mailers: array<int, string>}, meta: array{request_id: string, timestamp: string}}')]
     public function index(): JsonResponse
     {
         $stored = SystemSetting::getAll();

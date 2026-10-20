@@ -5,7 +5,9 @@ namespace App\Http\Controllers\Api\V1\Notification;
 use App\Actions\V1\Notification\NotificationInboxAction;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\Api\V1\Notification\NotificationResource;
+use App\Support\ApiError;
 use App\Support\UnreadNotificationCount;
+use Dedoc\Scramble\Attributes\Response;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -46,7 +48,12 @@ class NotificationInboxController extends Controller
 
     /**
      * The viewer's own notifications, newest first.
+     *
+     * The route carries no permission, but it does sit behind
+     * `feature:notifications`, which refuses with 403 — a gate inference cannot
+     * see.
      */
+    #[Response(status: 403, type: ApiError::DOC_TYPE)]
     public function index(Request $request): JsonResponse
     {
         $inbox = $this->inboxAction->inbox($request->user());
@@ -64,6 +71,7 @@ class NotificationInboxController extends Controller
      * half: nothing new arrived means the count moved but no row did — the same
      * shape the web poll's endpoint returns, and for the same reason.
      */
+    #[Response(status: 403, type: ApiError::DOC_TYPE)]
     public function unreadCount(Request $request): JsonResponse
     {
         return $this->respond('', 200, [
@@ -75,6 +83,7 @@ class NotificationInboxController extends Controller
     /**
      * Mark one read.
      */
+    #[Response(status: 403, type: ApiError::DOC_TYPE)]
     public function markAsRead(Request $request, string $id, NotificationInboxAction $action): JsonResponse
     {
         $marked = $action->markAsRead($request->user(), $id);
@@ -93,6 +102,7 @@ class NotificationInboxController extends Controller
     /**
      * Mark every unread notification read.
      */
+    #[Response(status: 403, type: ApiError::DOC_TYPE)]
     public function markAllAsRead(Request $request, NotificationInboxAction $action): JsonResponse
     {
         $count = $action->markAllAsRead($request->user());
