@@ -1,6 +1,6 @@
 <?php
 
-use Dedoc\Scramble\Http\Middleware\RestrictedDocsAccess;
+use App\Http\Middleware\RestrictApiDocsAccess;
 
 return [
     /*
@@ -44,17 +44,22 @@ return [
     'info' => [
         /*
          * API version.
+         *
+         * `v1` rather than a package default: the document describes the
+         * versioned surface under `/api/v1`, and a spec claiming `0.0.1` is a
+         * version no client can ask for and no route reports.
          */
-        'version' => env('API_VERSION', '0.0.1'),
+        'version' => env('API_VERSION', 'v1'),
 
         /*
          * Description rendered on the home page of the API documentation (`/docs/api`).
          */
-        'description' => '',
+        'description' => 'Versioned JSON API. Authenticate with a Sanctum bearer token (`Authorization: Bearer <token>`). '
+            .'Every mutation runs through the same Action as the web channel and is written to the audit trail.',
     ],
 
     'ui' => [
-        'title' => null,
+        'title' => env('APP_NAME', 'Laravel Base Project').' API',
     ],
 
     /*
@@ -77,7 +82,11 @@ return [
             'hideTryIt' => false,
             'hideSchemas' => false,
             'logo' => '',
-            'tryItCredentialsPolicy' => 'include',
+            // `same-origin`, not the default `include`: the try-it panel lets a
+            // reader type a host, and `include` would attach this origin's
+            // cookies to it. A docs page behind a permission should not hand
+            // the browser's session to whatever is typed in the address bar.
+            'tryItCredentialsPolicy' => 'same-origin',
             'layout' => 'responsive',
             'router' => 'hash',
         ],
@@ -148,9 +157,13 @@ return [
      */
     'flatten_deep_query_parameters' => true,
 
+    // The app's own guard, not Scramble's `RestrictedDocsAccess`: that one is
+    // `environment('local') || Gate::allows('viewApiDocs')`, and the first half
+    // would ignore the `api_docs_public` setting in local development. See
+    // App\Http\Middleware\RestrictApiDocsAccess.
     'middleware' => [
         'web',
-        RestrictedDocsAccess::class,
+        RestrictApiDocsAccess::class,
     ],
 
     'extensions' => [],
