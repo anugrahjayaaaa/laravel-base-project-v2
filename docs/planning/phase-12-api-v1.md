@@ -130,7 +130,7 @@ implementer "fixes" into a bug.
 | # | Item | Status (2026-10-20) |
 |---|------|---------------------|
 | P12-1 | A test that diffs the two route tables by capability | **DONE** — `tests/Feature/Api/ChannelParityTest.php`. A route missing from the map fails the test; a one-sided capability must carry `why` |
-| P12-2 | The other three rate limiters (`user-state-actions`, `bulk-action`, `send-test-mail`) are still literals | **OPEN** — Group D |
+| P12-2 | The other three rate limiters (`user-state-actions`, `bulk-action`, `send-test-mail`) are still literals | **DONE** — already read through `SystemSetting::getInt()` in `AppServiceProvider` (lines ~292–322) and are seeded; this table was stale |
 | P12-3 | Audit the API for **response** parity, not route parity | **OPEN** — Group D |
 | P12-4 | `Api\V1\NotificationController.php` and the new `Notification/` sub-namespace coexist | **OPEN** — Group C |
 
@@ -245,16 +245,24 @@ Two mechanical helpers this phase adds so the standard is not remembered by hand
 > Depends on: nothing. Blocks: every other group (the documentation step needs a
 > working document and a way to regenerate it).
 
-Status: **PLANNED**. Nothing here is written yet except the package itself.
+Status: **DONE** — implemented and committed 2026-10-20 on
+`feature/p12-a-api-docs`, split into seven commits by layer (authorization,
+Scramble config, settings, sidebar, tests, docs). `--filter=ApiDocsUiRenderTest`:
+10 passed / 31 assertions (9 docs tests + the arch scan, which matches the same
+filter); `tests/Feature/Settings` + `FeatureFlag` green, `Notification` 261
+passed, `Role` + `PermissionFeatureMapTest` 266 passed after the catalogue grew
+by one, `tests/Arch` 433 passed, full suite **2091 passed / 7314 assertions**
+(406s).
 
 | ID | Task | Pri | Depends On | Status |
 |----|------|-----|-----------|--------|
-| P12-A1 | **Confirm package placement.** Verify `dedoc/scramble` in `require-dev` is deliberate, and record the consequence: with `--no-dev` the `/docs/api` routes do not exist. If docs must be reachable in staging or production, promote to `require` + changelog + ADR-025 (per D-4). Output: one paragraph in `docs/base/api/documentation.md` saying where docs exist and where they do not | P0 | — | PLANNED |
-| P12-A2 | **Tune `config/scramble.php`.** `info.version` defaults to `0.0.1` while the API is v1 — drive it from `API_VERSION=v1` (`.env.example` included). Set `info.description`, `ui.title` (`Laravel Base Project API`), and `renderer` (`elements`). Leave `export_path = api.json` | P0 | — | PLANNED |
-| P12-A3 | **Gate `viewApiDocs`.** `RestrictedDocsAccess` calls `Gate::allows('viewApiDocs')` outside `local`, and no such gate exists — so today `/docs/api` is 403 for everyone in staging. Define it against a real permission: add `api_docs.view` to `PermissionCatalog`, seed it (superadmin inherits via `Gate::before`; `admin` gets it from the catalogue), and define the gate in `AuthServiceProvider` beside `configureSuperAdmin()` | P0 | — | PLANNED |
-| P12-A4 | **`ApiDocsUiRenderTest`.** `/docs/api` renders 200 for a holder of `api_docs.view`; 403 for an authenticated non-holder; 403 for a guest; `/docs/api.json` returns 200 with a parseable body carrying `openapi`, `info.version`, and every `api.v1.*` path. Test env is `testing`, not `local`, so the gate branch is the one under test — assert that explicitly, or the suite passes because the bypass fired | P0 | P12-A3 | PLANNED |
-| P12-A5 | **Try-it credentials policy.** `ui.renderers.elements.tryItCredentialsPolicy` is `include`. A docs page behind a permission should not instruct the browser to send cookies to a host chosen in the UI. Set `same-origin`, and keep `dev_tools.enabled` tied to `APP_DEBUG` (already is) | P1 | P12-A2 | PLANNED |
-| P12-A6 | **Reconcile `docs/base/api/documentation.md`.** It advertises `/api/docs/v1/`; Scramble serves `/docs/api` + `/docs/api.json`. Rewrite the versioning note, the auth note (bearer token lives in Group D), and the dev-only paragraph from A1. Code is the truth; the doc follows it | P0 | P12-A2 | PLANNED |
+| P12-A1 | **Confirm package placement.** Verify `dedoc/scramble` in `require-dev` is deliberate, and record the consequence: with `--no-dev` the `/docs/api` routes do not exist. If docs must be reachable in staging or production, promote to `require` + changelog + ADR-025 (per D-4). Output: one paragraph in `docs/base/api/documentation.md` saying where docs exist and where they do not | P0 | — | DONE — dev-only kept, consequence written up in `documentation.md` §Availability |
+| P12-A2 | **Tune `config/scramble.php`.** `info.version` defaults to `0.0.1` while the API is v1 — drive it from `API_VERSION=v1` (`.env.example` included). Set `info.description`, `ui.title` (`Laravel Base Project API`), and `renderer` (`elements`). Leave `export_path = api.json` | P0 | — | DONE — version `env('API_VERSION', 'v1')`, title follows `APP_NAME`, description names the bearer token and the audit rule |
+| P12-A3 | **Gate `viewApiDocs`.** `RestrictedDocsAccess` calls `Gate::allows('viewApiDocs')` outside `local`, and no such gate exists — so today `/docs/api` is 403 for everyone in staging. Define it against a real permission: add `api_docs.view` to `PermissionCatalog`, seed it (superadmin inherits via `Gate::before`; `admin` gets it from the catalogue), and define the gate in `AuthServiceProvider` beside `configureSuperAdmin()` | P0 | — | DONE — `api_docs.view` in `PermissionCatalog` (listed in `UNMAPPED_RESOURCES` — no flag owns a document about every module), `AuthServiceProvider::configureApiDocsGate()` takes `?User` so a guest does not 500. The gate also reads `api_docs_public`, so the route and the sidebar consult one answer |
+| P12-A4 | **`ApiDocsUiRenderTest`.** `/docs/api` renders 200 for a holder of `api_docs.view`; 403 for an authenticated non-holder; `/docs/api.json` returns 200 with a parseable body carrying `openapi`, `info.version`, and every `api.v1.*` path. Refusal shape follows A7: a guest gets the login page on the UI and `401` on the document | P0 | P12-A3 | DONE — `tests/Feature/Api/ApiDocsUiRenderTest.php`, 9 tests; the non-holder case asserts `app()->environment() !== 'local'` first |
+| P12-A5 | **Try-it credentials policy.** `ui.renderers.elements.tryItCredentialsPolicy` is `include`. A docs page behind a permission should not instruct the browser to send cookies to a host chosen in the UI. Set `same-origin`, and keep `dev_tools.enabled` tied to `APP_DEBUG` (already is) | P1 | P12-A2 | DONE — `same-origin` |
+| P12-A6 | **Reconcile `docs/base/api/documentation.md`.** It advertises `/api/docs/v1/`; Scramble serves `/docs/api` + `/docs/api.json`. Rewrite the versioning note, the auth note (bearer token lives in Group D), and the dev-only paragraph from A1. Code is the truth; the doc follows it | P0 | P12-A2 | DONE — rewritten; the bearer `securitySchemes` gap is called out as P12-D5 rather than described as done |
+| P12-A7 | **Operator-controlled visibility.** Requested by the owner 2026-10-20 after A1..A6: a docs page that is always private is not usable for a demo, and one that is always public is a disclosure. Add a `api_docs_public` system setting (off by default, seeded, on `/settings`, validated and whitelisted so it actually persists), put it inside the `viewApiDocs` gate rather than in the middleware so the route and the sidebar ask one question, replace `RestrictedDocsAccess` in `config/scramble.php` with `RestrictApiDocsAccess` (the vendor middleware's `environment('local')` half would override the setting), and add the *API Documentation* sidebar entry gated on the same ability | P0 | P12-A3 | DONE — guest → login redirect on the UI, `401` on `/docs/api.json`, `403` for a signed-in non-holder; menu follows public mode |
 
 **Accepted deviations in this group:**
 
@@ -266,6 +274,13 @@ Status: **PLANNED**. Nothing here is written yet except the package itself.
 
 **Gate A:** `/docs/api` opens for a permitted user, refuses everyone else, and
 `GET /docs/api.json` lists every registered `api.v1.*` route.
+
+**Measured (2026-10-20):** the gate is real — admin 200, plain user 403, guest
+403, superadmin 200 through `Gate::before`; the document publishes
+`info.version = v1` and its `paths` include `/v1/users`. Two things the gate
+does *not* yet do, and both belong to later groups: the document has no
+`securitySchemes` block (P12-D5) and no test fails when an endpoint is
+undocumented (P12-E2).
 
 ---
 
@@ -327,7 +342,7 @@ Status: **PLANNED**.
 | P12-D1 | **Sanctum abilities.** `AuthLoginCompletedAction` calls `createToken('auth-token')` with no abilities, so every token is `['*']`. Decide once: keep `*` and document why (a first-party token has the user's whole authority), or define a named ability set in one place and apply `abilities:` per route. A decision with no code change is an acceptable outcome, but it must be written down — `docs/base/api/api-architecture.md` | P0 | P12-C1 | PLANNED |
 | P12-D2 | **`can:` coverage sweep.** Close the routes that carry no route-level gate: `users.request-email-change`, `users.cancel-email-change`, `email.verify-change`, `features.bulk-action`, `users.bulk-action`, `roles.bulk-action`. The bulk three are authorised by `AuthorizesBulkAction` inside the FormRequest — verify it, and add a route-level gate only where the permission is fixed rather than action-dependent (adding `can:` to a bulk route would pin one permission for six actions) | P0 | P12-C2..C7 | PLANNED |
 | P12-D3 | **Feature-flag enforcement — 403, per D-1.** Verify every module route carries `feature:*` on both channels, and that `EnsureFeatureIsEnabled` never consults the actor. Extend `FeatureFlagMiddlewareTest` only if a route is added in C | P0 | P12-C5 | PLANNED |
-| P12-D4 | **Rate-limiting ladder, documented then measured.** Produce the table: which limiter guards which route, at what rate, keyed by what (user id vs IP). There is no `api` limiter; the protected group uses `user-state-actions` at 15/min. Adding `throttle:api` is allowed only if it is **not looser** than what it accompanies, and the docblock must say which one actually refuses. Also close P12-2 (three literal numbers still in observers) | P0 | P12-D2 | PLANNED |
+| P12-D4 | **Rate-limiting ladder, documented then measured.** Produce the table: which limiter guards which route, at what rate, keyed by what (user id vs IP). There is no `api` limiter; the protected group uses `user-state-actions` at 15/min. Adding `throttle:api` is allowed only if it is **not looser** than what it accompanies, and the docblock must say which one actually refuses. P12-2 is already closed (the three numbers read `SystemSetting`); the ladder doc is what remains | P0 | P12-D2 | PLANNED |
 | P12-D5 | **Bearer security scheme in the document.** `security_strategy` is `null`, so `/docs/api.json` publishes no `securitySchemes` and no route is marked `security: []` or bearer. Enable `MiddlewareAuthSecurityStrategy` for `auth:sanctum` (per the commented block in `config/scramble.php`) and assert the scheme exists | P0 | P12-A4 | PLANNED |
 | P12-D6 | **Audit trail HTTP context.** `Auditable::auditContext()` already resolves `source = api` from `$request->is('api/*')`. Prove it end to end: an API mutation writes one row inside the transaction with `source=api`, the real `ip`, `user_agent`, and `request_id`; the same Action over web writes `source=web`. No controller-level `audit()` | P0 | P12-C8 | PLANNED |
 | P12-D7 | **Response parity (P12-3).** For each capability on both channels, assert the same facts come back — the route-parity test cannot see this. Start with users and roles; declare the differing-by-design fields rather than silently normalising them | P1 | P12-C8 | PLANNED |
@@ -392,7 +407,7 @@ vendor/bin/pint --test
 
 | Group | Tasks | Gate |
 |---|---|---|
-| A — Docs interface | P12-A1..A6 | `/docs/api` gated, spec live |
+| A — Docs interface | P12-A1..A7 | `/docs/api` gated, public/private switch, spec live |
 | B — Infrastructure | P12-B1..B6 | typed schemas, one error envelope |
 | C — Routes | P12-C1..C8 | parity map complete, every route documented |
 | D — Security | P12-D1..D7 | 403/403/429, audit context, bearer scheme |
