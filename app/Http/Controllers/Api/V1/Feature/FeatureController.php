@@ -3,36 +3,79 @@
 namespace App\Http\Controllers\Api\V1\Feature;
 
 use App\Actions\V1\Feature\FeatureBulkToggleAction;
+use App\Actions\V1\Feature\FeatureIndexAction;
 use App\Actions\V1\Feature\FeatureToggleAction;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\V1\Feature\BulkFeatureRequest;
+use Dedoc\Scramble\Attributes\Response;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
 /**
- * API feature flag controller: toggle one flag, or set several at once.
+ * API feature flag controller: read the catalogue, toggle one flag, or set
+ * several at once.
  *
  * The web counterpart returns redirects and a flash message; the actions and the
  * gates behind them are the same, so both channels share BulkFeatureRequest and
  * the FeatureToggleAction / FeatureBulkToggleAction pair. Only the response
  * shape differs.
  *
- * There is deliberately no `index`. A caller that may toggle a flag can be told
- * which flags exist and what state they are in; the catalogue is eight slugs
- * of config, so a listing adds a surface without adding information a toggling
- * client does not already have.
+ * `index` exists because the write side without it is read-blind: a client could
+ * change a flag it could not enumerate, and the only way to learn a flag's state
+ * was to toggle it — a mutation plus an audit row as a read. The list is the same
+ * resolved catalogue the web page reads, projected to the fields a client can act
+ * on (see `index()` for what is deliberately dropped).
  */
 class FeatureController extends Controller
 {
     /**
+     * @param  FeatureIndexAction  $indexAction
      * @param  FeatureToggleAction  $toggleAction
      * @param  FeatureBulkToggleAction  $bulkToggleAction
      */
     public function __construct(
+        private readonly FeatureIndexAction $indexAction,
         private readonly FeatureToggleAction $toggleAction,
         private readonly FeatureBulkToggleAction $bulkToggleAction,
     ) {
+    }
+
+    /**
+     * The flag catalogue with its current state.
+     *
+     * Projected from `FeatureIndexAction`, not returned whole: that action also
+     * carries a web `toggle_url`, the viewer's `manageable` bit and the
+     * permission names a flag owns. The first is a link a JSON client must not
+     * follow (it POSTs a browser form and needs session + CSRF), the second is
+     * a UI affordance, and the third is management copy. Toggling over the API
+     * is `POST /features/{feature}/toggle`.
+     *
+     * `pending` is not decoration: it marks a flag whose module has no routes
+     * yet, so a client does not report "disabled" for a switch that controls
+     * nothing.
+     *
+     * @param  Request  $request
+     * @return JsonResponse
+     */
+    #[Response(status: 200, type: 'array{data: array{features: array<int, array{slug: string, label: string, group: string, description: string, enabled: bool, pending: string|null}>}, meta: array{request_id: string, timestamp: string}}')]
+    public function index(Request $request): JsonResponse
+    {
+        $catalogue = $this->indexAction->run($request->user());
+
+        $features = array_map(
+            fn (array $row): array => [
+                'slug' => $row['slug'],
+                'label' => $row['label'],
+                'group' => $row['group'],
+                'description' => $row['description'],
+                'enabled' => $row['enabled'],
+                'pending' => $row['pending'],
+            ],
+            array_merge(...array_values($catalogue['featureGroups'])),
+        );
+
+        return $this->respond('', 200, ['features' => $features]);
     }
 
     /**

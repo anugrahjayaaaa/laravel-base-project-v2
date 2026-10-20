@@ -73,7 +73,7 @@ class ChannelParityTest extends TestCase
         'user restore' => ['web' => ['users.restore'], 'api' => ['users.restore']],
         'user force delete' => ['web' => ['users.force-delete'], 'api' => ['users.force-delete']],
         'user lock' => ['web' => ['users.lock'], 'api' => ['users.lock']],
-        'user unlock' => ['web' => ['users.unlock'], 'api' => ['users.unlock', 'auth.unlock']],
+        'user unlock' => ['web' => ['users.unlock'], 'api' => ['users.unlock']],
         'user activate' => ['web' => ['users.activate'], 'api' => ['users.activate']],
         'user deactivate' => ['web' => ['users.deactivate'], 'api' => ['users.deactivate']],
         'user bulk action' => ['web' => ['users.bulk-action'], 'api' => ['users.bulk-action']],
@@ -102,11 +102,7 @@ class ChannelParityTest extends TestCase
         'permission list' => ['web' => ['permissions.index'], 'api' => ['permissions.index']],
 
         // ---- Feature flags ----
-        'feature list' => [
-            'only' => 'web',
-            'web' => ['features.index'],
-            'why' => 'No API read endpoint for the flag list. Both ACTIONS on it — toggle and bulk-action — are on both channels, which is the part that carries risk. Declared here so the gap is visible rather than forgotten.',
-        ],
+        'feature list' => ['web' => ['features.index'], 'api' => ['features.index']],
         'feature toggle' => ['web' => ['features.toggle'], 'api' => ['features.toggle']],
         'feature bulk action' => ['web' => ['features.bulk-action'], 'api' => ['features.bulk-action']],
 

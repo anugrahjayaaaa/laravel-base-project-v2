@@ -44,18 +44,6 @@ Route::prefix('v1')->group(function () {
         Route::post('/password/forgot', PasswordForgotController::class)->name('api.v1.auth.password.forgot')->middleware('throttle:forgot-password');
         Route::post('/password/reset', PasswordResetController::class)->name('api.v1.auth.password.reset')->middleware('throttle:reset-password');
         Route::get('/email/verify/{id}/{hash}', VerifyEmailController::class)->name('verification.verify.api')->middleware('signed');
-
-        // Backwards-compat: the unlock endpoint as it was addressed before it
-        // moved under `/users/{user}`. The redirect is kept; what changed is
-        // that it is DOCUMENTED as a redirect and not silently sitting in the
-        // route table looking like the current address.
-        //
-        // It stays a closure, and that is a known cost rather than an oversight:
-        // Scramble cannot introspect a closure, so this endpoint does not appear
-        // in the generated API documentation at all — which is correct, because
-        // a client reading the docs should use `POST /api/v1/users/{user}/unlock`.
-        Route::post('/unlock', fn () => to_route('api.v1.users.unlock', ['user' => request()->route('user')]))
-            ->name('api.v1.auth.unlock');
     });
 
     // ---------------------------------------------------------------------------
@@ -298,11 +286,14 @@ Route::prefix('v1')->group(function () {
         // the routes of the modules being controlled, and putting it here would
         // mean the endpoints that re-enable a flag disappear with it, leaving
         // no way back. Same reasoning as the web group, and the reason the
-        // feature middleware is absent from these two lines.
+        // feature middleware is absent from these three lines.
         //
         // No `->can()` on bulk-action: the permission depends on which action
         // was requested, so BulkFeatureRequest decides. One `features.manage`
-        // gate covers both directions.
+        // gate covers both directions. The read is `features.view`, the same
+        // split the web page uses.
+        Route::get('/features', [FeatureController::class, 'index'])
+            ->name('api.v1.features.index')->can('features.view');
         Route::post('/features/bulk-action', [FeatureController::class, 'bulkAction'])
             ->name('api.v1.features.bulk-action')->middleware('throttle:bulk-action');
         Route::post('/features/{feature}/toggle', [FeatureController::class, 'toggle'])->name('api.v1.features.toggle')->can('features.manage');
