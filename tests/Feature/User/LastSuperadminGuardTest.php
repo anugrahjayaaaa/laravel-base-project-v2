@@ -279,6 +279,10 @@ class LastSuperadminGuardTest extends TestCase
 
         $this->assertSame(409, $response->status());
         $this->assertSame('LAST_SUPERADMIN', $response->json('code'));
+        // The 409 is emitted ahead of the api/* block, so it used to be the one
+        // error without correlation meta — the caller could not tie the refusal
+        // to the request id in the log.
+        $this->assertNotNull($response->json('meta.request_id'));
         $this->assertTrue($superadmin->fresh()->is_active);
     }
 
