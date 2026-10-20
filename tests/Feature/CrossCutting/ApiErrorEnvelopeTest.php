@@ -2,9 +2,19 @@
 
 namespace Tests\Feature\CrossCutting;
 
+use App\Exceptions\LastSuperadminException;
+use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Auth\AuthenticationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Exceptions\ThrottleRequestsException;
+use Illuminate\Routing\Exceptions\InvalidSignatureException;
+use Illuminate\Support\Facades\Route;
+use Illuminate\Validation\ValidationException;
+use PHPUnit\Framework\Attributes\DataProvider;
+use RuntimeException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Tests\TestCase;
+use Throwable;
 
 /**
  * The error envelope is the contract, and `APP_DEBUG` does not change it.
@@ -90,5 +100,69 @@ class ApiErrorEnvelopeTest extends TestCase
                 'errors',
                 'meta' => ['request_id', 'timestamp'],
             ]);
+    }
+
+    /**
+     * One case per code the handler documents.
+     *
+     * The exceptions are raised from a throw-away route rather than through
+     * each real endpoint: this pins the mapping in `bootstrap/app.php` (class →
+     * status → code), which is the part every endpoint shares. Endpoint-level
+     * tests already prove the same codes are reachable in context.
+     *
+     * @return array<string, array{int, string, bool}>
+     */
+    public static function contractStatuses(): array
+    {
+        return [
+            '400' => [400, 'INVALID_TOKEN', false],
+            '401' => [401, 'UNAUTHENTICATED', false],
+            '403' => [403, 'FORBIDDEN', false],
+            '404' => [404, 'NOT_FOUND', false],
+            '409' => [409, 'LAST_SUPERADMIN', false],
+            '422' => [422, 'VALIDATION_ERROR', true],
+            '429' => [429, 'RATE_LIMITED', false],
+            '500' => [500, 'SERVER_ERROR', false],
+        ];
+    }
+
+    #[DataProvider('contractStatuses')]
+    public function test_every_contract_status_is_emitted_in_the_shared_envelope(
+        int $status,
+        string $code,
+        bool $hasErrors,
+    ): void {
+        config(['app.debug' => false]);
+
+        Route::get("/api/v1/contract/{$status}", fn () => throw $this->exceptionFor($status));
+
+        $response = $this->getJson("/api/v1/contract/{$status}");
+
+        $response->assertStatus($status)
+            ->assertHeader('content-type', 'application/json')
+            ->assertJsonPath('code', $code);
+
+        $body = $response->json();
+
+        $this->assertIsString($body['message']);
+        $this->assertSame($hasErrors, array_key_exists('errors', $body));
+        $this->assertIsString($body['meta']['request_id']);
+        $this->assertNotSame('', $body['meta']['request_id']);
+        $this->assertIsString($body['meta']['timestamp']);
+        $this->assertArrayNotHasKey('debug', $body, 'debug detail must not leak when APP_DEBUG is off.');
+    }
+
+    private function exceptionFor(int $status): Throwable
+    {
+        return match ($status) {
+            400 => new InvalidSignatureException(),
+            401 => new AuthenticationException(),
+            403 => new AuthorizationException('Forbidden.'),
+            404 => new NotFoundHttpException(),
+            409 => new LastSuperadminException(),
+            422 => ValidationException::withMessages(['field' => ['Invalid.']]),
+            429 => new ThrottleRequestsException(),
+            500 => new RuntimeException('boom'),
+        };
     }
 }
