@@ -250,6 +250,20 @@ class AppMenuComposer
                         'active' => 'features.*',
                         'permission' => 'features.view',
                     ],
+                    // Scramble generates this page itself, with its own
+                    // full-page layout — hence `target`, same as Pulse. The
+                    // route only exists while the dev-only package is installed
+                    // (`Route::has` drops the item otherwise), and `viewApiDocs`
+                    // is the same gate the route consults: public mode shows it
+                    // to everyone, private mode to `api_docs.view` holders.
+                    [
+                        'label' => 'API Documentation',
+                        'icon' => 'fas fa-book',
+                        'route' => 'scramble.docs.ui',
+                        'active' => 'scramble.docs.ui',
+                        'permission' => 'viewApiDocs',
+                        'target' => '_blank',
+                    ],
                 ],
             ],
             [
