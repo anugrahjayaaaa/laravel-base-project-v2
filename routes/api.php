@@ -291,14 +291,17 @@ Route::prefix('v1')->group(function () {
         // no way back. Same reasoning as the web group, and the reason the
         // feature middleware is absent from these three lines.
         //
-        // No `->can()` on bulk-action: the permission depends on which action
-        // was requested, so BulkFeatureRequest decides. One `features.manage`
-        // gate covers both directions. The read is `features.view`, the same
-        // split the web page uses.
+        // Unlike the users and roles bulk routes, this one CAN carry a route
+        // gate: every flag action is the same `features.manage` permission
+        // (turning a module off is not a lesser privilege than turning it on),
+        // so nothing is action-dependent here. `BulkFeatureRequest` repeats the
+        // check for the same reason every other FormRequest authorizes its own
+        // payload — the route is not the only caller a future refactor may add.
+        // The read is `features.view`, the same split the web page uses.
         Route::get('/features', [FeatureController::class, 'index'])
             ->name('api.v1.features.index')->can('features.view');
         Route::post('/features/bulk-action', [FeatureController::class, 'bulkAction'])
-            ->name('api.v1.features.bulk-action')->middleware('throttle:bulk-action');
+            ->name('api.v1.features.bulk-action')->can('features.manage')->middleware('throttle:bulk-action');
         Route::post('/features/{feature}/toggle', [FeatureController::class, 'toggle'])->name('api.v1.features.toggle')->can('features.manage');
     });
 
