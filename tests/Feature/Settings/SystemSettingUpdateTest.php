@@ -382,9 +382,10 @@ class SystemSettingUpdateTest extends TestCase
         $admin = User::factory()->create();
         $admin->assignRole(RoleLookup::find('admin'));
 
-        $this->actingAs($admin, 'web')
-            ->post(route('settings.update'), ['password_min_length' => 14])
-            ->assertRedirect();
+        $webResponse = $this->actingAs($admin, 'web')
+            ->post(route('settings.update'), ['password_min_length' => 14]);
+
+        $webResponse->assertRedirect();
 
         $fromWeb = DB::table('activity_log')
             ->where('event', 'system_setting.updated')
@@ -394,9 +395,10 @@ class SystemSettingUpdateTest extends TestCase
         $this->assertNotNull($fromWeb);
         $this->assertSame('web', $this->auditSource($fromWeb), 'a web settings save was not recorded as web');
 
-        $this->actingAs($admin, 'sanctum')
-            ->putJson(route('api.v1.settings.update'), ['password_min_length' => 16])
-            ->assertOk();
+        $apiResponse = $this->actingAs($admin, 'sanctum')
+            ->putJson(route('api.v1.settings.update'), ['password_min_length' => 16]);
+
+        $apiResponse->assertOk();
 
         $fromApi = DB::table('activity_log')
             ->where('event', 'system_setting.updated')
@@ -406,12 +408,25 @@ class SystemSettingUpdateTest extends TestCase
         $this->assertSame('api', $this->auditSource($fromApi), 'an API settings save was not recorded as api');
 
         // Both must also carry the rest of the context; a partial merge would
-        // drop these silently.
-        foreach ([$fromWeb, $fromApi] as $row) {
+        // drop these silently. `request_id` is the one that ties the row to the
+        // response the caller received: the same id is echoed in the header (and
+        // in `meta.request_id` on an error), so an operator holding one body can
+        // find its audit row. Without it, the log and the response trace cannot
+        // be made to agree.
+        foreach ([[$fromWeb, $webResponse], [$fromApi, $apiResponse]] as [$row, $response]) {
             $properties = $this->auditProperties($row);
 
             $this->assertArrayHasKey('ip', $properties, 'no ip recorded');
             $this->assertArrayHasKey('user_agent', $properties, 'no user agent recorded');
+
+            $requestId = $response->headers->get('X-Request-ID');
+
+            $this->assertNotNull($requestId, 'the response carries no correlation id');
+            $this->assertSame(
+                $requestId,
+                $properties['request_id'] ?? null,
+                'the audit row and the response disagree about the request id'
+            );
         }
     }
 
