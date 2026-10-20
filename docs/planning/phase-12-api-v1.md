@@ -281,10 +281,9 @@ by one, `tests/Arch` 433 passed, full suite **2091 passed / 7314 assertions**
 
 **Measured (2026-10-20):** the gate is real — admin 200, plain user 403, guest
 403, superadmin 200 through `Gate::before`; the document publishes
-`info.version = v1` and its `paths` include `/v1/users`. Two things the gate
-does *not* yet do, and both belong to later groups: the document has no
-`securitySchemes` block (P12-D5) and no test fails when an endpoint is
-undocumented (P12-E2).
+`info.version = v1`, its `paths` include `/v1/users`, and since P12-D5 it names
+the bearer `securitySchemes` entry. One thing the gate does *not* yet do, and it
+belongs to Group E: no test fails when an endpoint is undocumented (P12-E2).
 
 ---
 
@@ -544,7 +543,7 @@ Status: **PLANNED**.
 | P12-D2 | **`can:` coverage sweep.** Close the routes that carry no route-level gate: `users.request-email-change`, `users.cancel-email-change`, `email.verify-change`, `features.bulk-action`, `users.bulk-action`, `roles.bulk-action`. The bulk three are authorised by `AuthorizesBulkAction` inside the FormRequest — verify it, and add a route-level gate only where the permission is fixed rather than action-dependent (adding `can:` to a bulk route would pin one permission for six actions) | P0 | P12-C2..C7 | PLANNED |
 | P12-D3 | **Feature-flag enforcement — 403, per D-1.** Verify every module route carries `feature:*` on both channels, and that `EnsureFeatureIsEnabled` never consults the actor. Extend `FeatureFlagMiddlewareTest` only if a route is added in C | P0 | P12-C5 | PLANNED |
 | P12-D4 | **Rate-limiting ladder, documented then measured.** Produce the table: which limiter guards which route, at what rate, keyed by what (user id vs IP). There is no `api` limiter; the protected group uses `user-state-actions` at 15/min. Adding `throttle:api` is allowed only if it is **not looser** than what it accompanies, and the docblock must say which one actually refuses. P12-2 is already closed (the three numbers read `SystemSetting`); the ladder doc is what remains | P0 | P12-D2 | PLANNED |
-| P12-D5 | **Bearer security scheme in the document.** `security_strategy` is `null`, so `/docs/api.json` publishes no `securitySchemes` and no route is marked `security: []` or bearer. Enable `MiddlewareAuthSecurityStrategy` for `auth:sanctum` (per the commented block in `config/scramble.php`) and assert the scheme exists | P0 | P12-A4 | PLANNED |
+| P12-D5 | **Bearer security scheme in the document.** `security_strategy` is `null`, so `/docs/api.json` publishes no `securitySchemes` and no route is marked `security: []` or bearer. Enable `MiddlewareAuthSecurityStrategy` for `auth:sanctum` (per the commented block in `config/scramble.php`) and assert the scheme exists | P0 | P12-A4 | DONE — one line in `config/scramble.php`; the vendor strategy reads `auth:*` off the routes, so `/docs/api` renders the Authorize box and the public routes (login, register, health, verify link) are marked `security: []` instead of asking for a token they ignore. Pinned in `ApiDocsUiRenderTest` |
 | P12-D6 | **Audit trail HTTP context.** `Auditable::auditContext()` already resolves `source = api` from `$request->is('api/*')`. Prove it end to end: an API mutation writes one row inside the transaction with `source=api`, the real `ip`, `user_agent`, and `request_id`; the same Action over web writes `source=web`. No controller-level `audit()` | P0 | P12-C8 | PLANNED |
 | P12-D7 | **Response parity (P12-3).** For each capability on both channels, assert the same facts come back — the route-parity test cannot see this. Start with users and roles; declare the differing-by-design fields rather than silently normalising them | P1 | P12-C8 | PLANNED |
 

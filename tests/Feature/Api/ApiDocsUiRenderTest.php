@@ -59,7 +59,7 @@ class ApiDocsUiRenderTest extends TestCase
             ->assertHeader('content-type', 'application/json');
     }
 
-    public function test_the_spec_publishes_the_v1_version_and_the_api_paths(): void
+    public function test_the_spec_publishes_the_version_paths_and_bearer_scheme(): void
     {
         $admin = User::factory()->create();
         $admin->assignRole(SystemRole::ADMIN);
@@ -78,6 +78,13 @@ class ApiDocsUiRenderTest extends TestCase
         // documented `api` prefix, so a v1 path is `/v1/users` served from
         // `/api/v1/users`.
         $this->assertArrayHasKey('/v1/users', $spec['paths']);
+
+        // The Authorize box in `/docs/api` renders only when the document names
+        // a scheme; Scramble derives it from the `auth:*` middleware, and a route
+        // without it is marked public rather than asking for a token it ignores.
+        $this->assertSame('bearer', $spec['components']['securitySchemes']['http']['scheme']);
+        $this->assertSame([['http' => []]], $spec['security']);
+        $this->assertSame([], $spec['paths']['/v1/auth/login']['post']['security']);
     }
 
     public function test_a_superadmin_passes_without_holding_the_permission_row(): void

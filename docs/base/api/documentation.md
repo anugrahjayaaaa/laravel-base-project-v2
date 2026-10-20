@@ -97,11 +97,12 @@ Authorization: Bearer <token>
 Tokens are issued by `POST /api/v1/auth/login` and revoked by
 `POST /api/v1/auth/logout` (this device) and `POST /api/v1/auth/logout-all`.
 
-**Known gap, Phase 12 P12-D5:** the document does not yet publish a
-`securitySchemes` block. `config/scramble.php` sets `security_strategy => null`,
-so `/docs/api.json` describes the routes but not the bearer scheme. The
-`MiddlewareAuthSecurityStrategy` block in that file is the switch, and it stays
-off until the change has a test.
+**Bearer scheme:** `config/scramble.php` enables
+`MiddlewareAuthSecurityStrategy`, which reads the route middleware rather than a
+hand-kept list. Every route behind `auth` / `auth:*` inherits the bearer scheme
+published in `components.securitySchemes`, so `/docs/api` renders the Authorize
+box; a route without it is marked `security: []` (public) instead of asking for
+a token it ignores. `ApiDocsUiRenderTest` pins both halves.
 
 ## Versioning
 
