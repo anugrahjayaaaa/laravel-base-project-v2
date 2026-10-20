@@ -39,6 +39,7 @@ class SystemSettingController extends Controller
         'allow_username_change',
         'allow_email_change',
         'registration_enabled',
+        'api_docs_public',
     ];
 
     /**

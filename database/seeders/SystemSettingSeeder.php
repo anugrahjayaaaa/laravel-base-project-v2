@@ -72,6 +72,14 @@ class SystemSettingSeeder extends Seeder
         SystemSetting::set('registration_default_role', 'user');
         SystemSetting::set('registration_rate_limit_per_minute', '3');
 
+        // API documentation visibility — Phase 12 Group A.
+        //
+        // Off by default. The document names every endpoint, field and status
+        // code, so publishing it is a disclosure decision an operator makes on
+        // purpose rather than a default a fresh install inherits. Off means the
+        // reader has to be signed in and hold `api_docs.view`.
+        SystemSetting::set('api_docs_public', 'false');
+
         // Audit trail export ceiling — Phase 10, §11 P10-E9.
         //
         // Five per HOUR, per user + IP. The number is the same one the route

@@ -81,6 +81,11 @@ class SystemSettingRequest extends BaseFormRequest
             // Self-registration
             'registration_enabled' => ['boolean'],
             'registration_rate_limit_per_minute' => ['integer', 'min:1', 'max:30'],
+
+            // API documentation visibility (Phase 12 Group A). A boolean, so an
+            // API client can publish or unpublish the docs without a deploy.
+            'api_docs_public' => ['boolean'],
+
             // Empty means "no role"; otherwise it must name a role this viewer
             // is allowed to pick. That set is the very one the dropdown is built
             // from, so the form cannot offer a choice the rules then refuse, or
@@ -155,6 +160,7 @@ class SystemSettingRequest extends BaseFormRequest
                 'allow_username_change',
                 'allow_email_change',
                 'registration_enabled',
+                'api_docs_public',
             ] as $key
         ) {
             if ($this->has($key)) {

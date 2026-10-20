@@ -114,6 +114,12 @@ class SystemSettingsUpdateAction
             'registration_default_role' => $data['registration_default_role'] ?? 'user',
             'registration_rate_limit_per_minute' => (string) ($data['registration_rate_limit_per_minute'] ?? 3),
 
+            // API documentation visibility (Phase 12 Group A). Off when absent,
+            // matching the form's unchecked-checkbox behaviour and the seeder's
+            // default: an operator who never touches this must not publish the
+            // endpoint map by accident.
+            'api_docs_public' => ($data['api_docs_public'] ?? false) ? 'true' : 'false',
+
             // Audit trail export ceiling (Phase 10, §11 P10-E9). Per HOUR, not per
             // minute — the limiter reads this same key, and the audit page's Export
             // tooltip quotes it, so this row is the single source for both.

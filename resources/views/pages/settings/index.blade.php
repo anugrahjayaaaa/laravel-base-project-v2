@@ -740,7 +740,29 @@
                     </div>
                 </div>
 
-                {{-- Card 6: Sticky Save Actions Card --}}
+                {{-- Card 6: API Documentation --}}
+                <div class="card border-0 shadow-sm mb-4" id="section-api-docs">
+                    <div class="card-header bg-transparent border-bottom py-3">
+                        <h5 class="card-title mb-0 fw-semibold">API Documentation</h5>
+                    </div>
+                    <div class="card-body p-4">
+                        <div class="form-check form-switch mb-3">
+                            <input type="hidden" name="api_docs_public" value="0">
+                            <input class="form-check-input" type="checkbox" name="api_docs_public" id="api_docs_public"
+                                @checked($settings['api_docs_public'] ?? false)>
+                            <label class="form-check-label" for="api_docs_public">
+                                Publish API Documentation Publicly
+                                <i class="bi bi-info-circle text-muted fs-7 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="When off, /docs/api requires a signed-in user holding the api_docs.view permission. When on, anyone who can reach the URL may read the specification without signing in."></i>
+                            </label>
+                        </div>
+                        <p class="text-muted small mb-0">
+                            Off by default: the generated document names every endpoint, field and status code.
+                            Only the OpenAPI page is affected — the API endpoints themselves keep their own authorization.
+                        </p>
+                    </div>
+                </div>
+
+                {{-- Card 7: Sticky Save Actions Card --}}
                 <div class="card border-0 shadow-sm mb-4 sticky-top" style="top: 80px;">
                     <div class="card-header bg-transparent border-bottom py-3">
                         <h5 class="card-title mb-0 fw-semibold">Save Settings</h5>
