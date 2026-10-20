@@ -316,6 +316,21 @@ class RbacApiTest extends TestCase
         $this->assertIsArray($row['roles']);
     }
 
+    public function test_an_unknown_sort_column_is_rejected(): void
+    {
+        // response-contract.md: an unknown sort is a 422, not a silent fallback.
+        $this->getJson(route('api.v1.roles.index', ['sort' => 'password']))
+            ->assertStatus(422)
+            ->assertJsonPath('code', 'VALIDATION_ERROR');
+
+        $this->getJson(route('api.v1.permissions.index', ['sort' => 'password']))
+            ->assertStatus(422)
+            ->assertJsonPath('code', 'VALIDATION_ERROR');
+
+        $this->getJson(route('api.v1.roles.index', ['sort' => 'created_at']))->assertOk();
+        $this->getJson(route('api.v1.permissions.index', ['sort' => 'name']))->assertOk();
+    }
+
     public function test_the_catalogue_has_no_write_endpoints(): void
     {
         // P6-C7: the catalogue is defined in code. Asserting the absence keeps

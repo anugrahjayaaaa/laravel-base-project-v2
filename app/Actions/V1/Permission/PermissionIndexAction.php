@@ -43,7 +43,7 @@ class PermissionIndexAction
      *
      * @var array<int, string>
      */
-    private const SORTABLE = ['name'];
+    public const SORTABLE = ['name'];
 
     /**
      * The catalogue, filtered, sorted and paginated.

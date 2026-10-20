@@ -27,7 +27,7 @@ class RoleIndexAction
      *
      * @var array<int, string>
      */
-    private const SORTABLE = ['name', 'created_at'];
+    public const SORTABLE = ['name', 'created_at'];
 
     /**
      * Paginated roles on the resolved guard.
