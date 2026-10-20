@@ -130,6 +130,25 @@ class PermissionCatalog
     ];
 
     /**
+     * API documentation — the Scramble UI at `/docs/api`.
+     *
+     * `.view` only, and no `.manage`: the document is generated from the routes,
+     * so there is nothing to edit. A second action would be a row no `can()` call
+     * ever checks.
+     *
+     * Read it as a disclosure permission, not a convenience one: the document
+     * names every endpoint, every field and every status code, which is the map
+     * an attacker would otherwise have to build. That is why it is a permission
+     * rather than "any authenticated user" — the same reasoning that put
+     * `audit.view` above the user list.
+     *
+     * @var array<int, string>
+     */
+    private const API_DOCS = [
+        'api_docs.view',
+    ];
+
+    /**
      * Queue monitoring (Vantage) — Phase 11 §13.
      *
      * Two permissions, not one, on the `audit.view`/`audit.export` rule: reading
@@ -201,6 +220,12 @@ class PermissionCatalog
     private const UNMAPPED_RESOURCES = [
         // See FEATURE_BY_RESOURCE: the toggle page cannot be behind a toggle.
         'features',
+        // The document describes every module, so it cannot hang off one of
+        // them: switching `users` off must not take away the page that says
+        // which endpoints exist. There is no `api_docs` flag to map it to, and
+        // inventing one would make the docs disappear with the module whose
+        // documentation was being read.
+        'api_docs',
     ];
 
     /**
@@ -221,6 +246,7 @@ class PermissionCatalog
             ...self::PULSE,
             ...self::HEALTH,
             ...self::QUEUES,
+            ...self::API_DOCS,
         ];
     }
 

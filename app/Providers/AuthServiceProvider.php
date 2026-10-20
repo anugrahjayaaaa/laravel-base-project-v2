@@ -40,6 +40,7 @@ class AuthServiceProvider extends ServiceProvider
         $this->configureSuperAdmin();
         $this->configurePulseGate();
         $this->configureVantageGate();
+        $this->configureApiDocsGate();
         $this->configureRateLimiters();
         $this->configurePasswordResetNotification();
         $this->configureEmailVerification();
@@ -117,6 +118,33 @@ class AuthServiceProvider extends ServiceProvider
     protected function configureVantageGate(): void
     {
         Gate::define('viewVantage', fn (User $user): bool => FeatureCatalog::isActive('vantage') && $user->can('queues.view'));
+    }
+
+    /**
+     * Override the gate both the docs route and the sidebar consult.
+     *
+     * Scramble's middleware consults `viewApiDocs`, and until this existed
+     * nothing defined it — so `/docs/api` was 403 for everyone outside `local`,
+     * superadmin included. A gate defined against a missing ability fails
+     * closed, which reads as "disabled" rather than "unfinished".
+     *
+     * Two ways to pass, and the operator decides which: `api_docs_public` (a
+     * system setting, off by default) or the `api_docs.view` permission. The
+     * public flag lives HERE rather than in the middleware so that the sidebar —
+     * which asks `can('viewApiDocs')` — and the route cannot disagree about
+     * whether the document is visible.
+     *
+     * Nullable user on purpose: in public mode a guest is allowed, and the docs
+     * route carries no `auth` middleware. Without `?User` the callback would be
+     * a `TypeError` and the guest would get a 500.
+     *
+     * `Gate::before` is untouched, so superadmin passes without holding a
+     * `role_has_permissions` row — same shape as the Pulse and Vantage gates.
+     */
+    protected function configureApiDocsGate(): void
+    {
+        Gate::define('viewApiDocs', fn (?User $user): bool => SystemSetting::getBool('api_docs_public', false)
+            || ($user?->can('api_docs.view') ?? false));
     }
 
     /**

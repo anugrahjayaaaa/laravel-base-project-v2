@@ -77,8 +77,10 @@ class PermissionIndexActionTest extends TestCase
         $this->assertContains('roles.view', $byResource);
 
         // A bare verb still finds rows — people type the fragment, not the
-        // dotted name they see in the table.
-        $byVerb = $this->action->run(search: 'view')['permissions']->pluck('name');
+        // dotted name they see in the table. Whole catalogue, because `view`
+        // matches eleven names and the row under test fell onto page 2 when
+        // `api_docs.view` was added.
+        $byVerb = $this->action->run(search: 'view', perPage: 100)['permissions']->pluck('name');
         $this->assertContains('users.view', $byVerb);
     }
 
