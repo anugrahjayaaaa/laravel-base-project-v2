@@ -24,8 +24,12 @@ class RoleResource extends JsonResource
     /**
      * Transform the role into an API response array.
      *
+     * `users_count` / `permissions_count` are absent, not zero, when the caller
+     * did not ask for counts (`whenCounted`) — a zero would be a claim about the
+     * role that this response never verified.
+     *
      * @param  Request  $request
-     * @return array<string, mixed>
+     * @return array{id: int, name: string, is_system: bool, users_count?: int, permissions_count?: int, permissions: array<int, string>|null, created_at: string|null, updated_at: string|null, deleted_at: string|null}
      */
     public function toArray(Request $request): array
     {

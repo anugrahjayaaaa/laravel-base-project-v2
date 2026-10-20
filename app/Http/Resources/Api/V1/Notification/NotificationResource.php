@@ -30,7 +30,7 @@ class NotificationResource extends JsonResource
 {
     /**
      * @param  Request  $request
-     * @return array<string, mixed>
+     * @return array{id: string, type: string, subject: string|null, lines: array<int, string>, action?: array{url: string, label: string}, read_at: string|null, created_at: string|null}
      */
     public function toArray(Request $request): array
     {

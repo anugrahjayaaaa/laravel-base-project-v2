@@ -2,8 +2,20 @@
 
 namespace App\Http\Resources\Api\V1\HealthCheck;
 
+use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
+/**
+ * The health probe, for API clients.
+ *
+ * Wraps an array of check => 'ok'|'fail', not a model — the probe has no row
+ * behind it. `$wrap = null` keeps the shape flat, which is what a health
+ * endpoint is for: a monitor reads the top-level `status`.
+ *
+ * The documented schema is declared on `HealthCheckController` instead: this
+ * class has no model for the generator to infer, and a `@property-read` naming
+ * a fictional one would only silence a warning.
+ */
 class HealthCheckResource extends JsonResource
 {
     /**
@@ -14,8 +26,8 @@ class HealthCheckResource extends JsonResource
     /**
      * Transform the resource into an array.
      *
-     * @param  \Illuminate\Http\Request  $request
-     * @return array<string, mixed>
+     * @param  Request  $request
+     * @return array{status: 'ok'|'fail', timestamp: string, checks: array<string, string>}
      */
     public function toArray($request): array
     {

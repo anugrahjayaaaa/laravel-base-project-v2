@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Actions\V1\Auth\AuthListSessionsAction;
 use App\Http\Controllers\Controller;
+use App\Http\Resources\Api\V1\Session\SessionResource;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
 
@@ -27,16 +28,8 @@ class SessionController extends Controller
      */
     public function index(): JsonResponse
     {
-        $tokens = $this->listSessionsAction->run(Auth::user())->map(function ($token) {
-            return [
-                'id' => $token->id,
-                'name' => $token->name,
-                'abilities' => $token->abilities,
-                'last_used_at' => $token->last_used_at?->toIso8601String(),
-                'created_at' => $token->created_at->toIso8601String(),
-            ];
-        });
+        $tokens = $this->listSessionsAction->run(Auth::user());
 
-        return $this->respond('', 200, ['sessions' => $tokens]);
+        return $this->respond('', 200, ['sessions' => SessionResource::collection($tokens)]);
     }
 }
