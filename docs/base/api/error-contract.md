@@ -34,8 +34,9 @@ Built in `App\Support\ApiError`, which the exception handler
 | 400 | Bad Request | verification token missing/unsigned (`INVALID_TOKEN`) |
 | 401 | Unauthenticated | `AuthenticationException` (`UNAUTHENTICATED`) |
 | 403 | Forbidden | authorization failure, feature-gate refusal, bad signature (`FORBIDDEN`, `INVALID_SIGNATURE`) |
-| 404 | Not Found | unknown route or missing model (`NOT_FOUND`) |
-| 409 | Conflict | `LastSuperadminException` (`LAST_SUPERADMIN`) |
+| 404 | Not Found | unknown route or bound model (`NOT_FOUND`); a resource the Action could not find (`HTTP_ERROR`, see below) |
+| 409 | Conflict | `LastSuperadminException` (`LAST_SUPERADMIN`); audit-export retry refusals (`HTTP_ERROR`, see below) |
+| 410 | Gone | audit export file past its retention window (`HTTP_ERROR`, see below) |
 | 419 | CSRF mismatch | `TokenMismatchException` (`CSRF_TOKEN_MISMATCH`) |
 | 422 | Validation failed | `ValidationException` (`VALIDATION_ERROR`) |
 | 429 | Rate limited | `ThrottleRequestsException` (`RATE_LIMITED`), and the auth lockout path |
@@ -43,9 +44,24 @@ Built in `App\Support\ApiError`, which the exception handler
 | 502 | Bad gateway | send-test-mail only, when the mail transport refuses the message (`BAD_GATEWAY`) |
 | 503 | Service unavailable | `HealthCheckController` when a probe fails — **not** an error envelope, see below |
 
-There is no generic **`CONFLICT`** code: `LAST_SUPERADMIN` is the only 409, and a
-documented code with no emitter is a promise the API does not keep. Add the row
-when the emitter lands, not before.
+**409 is not only `LAST_SUPERADMIN`.** `POST /activity-logs/exports/{export}/retry`
+answers 409 for three refusals a client cannot separate from the status — not in a
+failed state, retry budget spent, row changed under the claim — and they arrive
+through `abort(409)` inside `AuditExportRequestAction`, so the generic branch
+codes them `HTTP_ERROR`. The message distinguishes them. A dedicated code is a
+contract change, not a rename; add the rows when an emitter for one lands.
+
+**410 is the audit export's expired-file answer.** `AuditExportDownloadAction`
+aborts with 410 once the retention window closed and the file was deleted; the
+generic branch codes it `HTTP_ERROR`. A client that gets 404 looks for a typo;
+410 is the status it can act on, which is why the two are not merged.
+
+**A 404 comes from two layers and they do not share a code.** A missing route or
+a bound model that does not exist is `NOT_FOUND`; `abort(404)` inside an Action
+(exports, notification inbox) is `HTTP_ERROR`, because only the framework's own
+`NotFoundHttpException` and `ModelNotFoundException` are mapped. Status is the
+same, so a status-based client is unaffected; a client branching on `code` sees
+two answers and must read the message.
 
 **503 is the exception to this document.** The health probe answers 503 with its
 own body — `{status, timestamp, checks}` from `HealthCheckResource`, unwrapped,
@@ -61,7 +77,7 @@ fine.
 | UNAUTHENTICATED | 401 | No or invalid token |
 | UNVERIFIED_EMAIL | 403 | Credentials correct, address not verified; adds `email` + `verified: false` |
 | FORBIDDEN | 403 | Authenticated, not permitted |
-| HTTP_ERROR | 4xx | Any other `abort(4xx)` — the status is the framework's, the code is shared |
+| HTTP_ERROR | 4xx | Any other `abort(4xx)`, including 404/409/410 raised inside an Action — the status is the framework's, the code is shared |
 | NOT_FOUND | 404 | Route or bound model does not exist |
 | LAST_SUPERADMIN | 409 | The operation would leave the system with no superadmin |
 | RESET_TOKEN_INVALID | 400 | Password reset token expired, used, or unknown |
@@ -69,7 +85,7 @@ fine.
 | INVALID_SIGNATURE | 403 | Signed URL presented with a bad signature |
 | INVALID_TOKEN | 400 | Verification URL arrived without a token at all |
 | RATE_LIMITED | 429 | A named limiter refused the request, or the auth lockout path |
-| EMAIL_ALREADY_VERIFIED | 422 | Resend-verification asked for an address that is already verified |
+| EMAIL_ALREADY_VERIFIED | 422 | Resend-verification or the verification link submitted for an address already verified |
 | BAD_GATEWAY | 502 | Send-test-mail: the mail transport refused the message |
 | SERVER_ERROR | 500 | Unhandled exception |
 
@@ -119,7 +135,11 @@ on `respondError()`:
 | `POST /auth/email/resend` (already verified) | 422 | `EMAIL_ALREADY_VERIFIED` |
 | `POST /auth/email/resend` (throttled) | 429 | `RATE_LIMITED` |
 | `POST /auth/email/resend` (transport failed) | 500 | `SERVER_ERROR` |
-| `GET /email/verify-change/{user}/{token?}` | 400 | `INVALID_TOKEN` |
+| `GET /email/verify/{id}/{hash}` (already verified) | 422 | `EMAIL_ALREADY_VERIFIED` |
+| `POST /users/{user}/resend-verification` (mode off) | 403 | `FORBIDDEN` |
+| `POST /users/{user}/resend-verification` (already verified) | 422 | `EMAIL_ALREADY_VERIFIED` |
+| `POST /users/{user}/resend-verification` (throttled / transport failed) | 429 / 500 | `RATE_LIMITED` / `SERVER_ERROR` |
+| `GET /email/verify-change/{user}` (missing token) | 400 | `INVALID_TOKEN` |
 | `POST /notifications/test-mail` (relay down) | 502 | `BAD_GATEWAY` |
 
 Two of them do **not** invent a code: `register` keeps answering 404 so a
@@ -130,9 +150,10 @@ not have to lie as well. The resend action carries its own `error_code` next to
 code, and the web controller (which ignores the key) is unaffected.
 
 Nothing in the API answers a 4xx or 5xx through `respond()` any more. A new
-refusal uses `respondError()`; `respond()` is a success helper. Exceptions were
-already on this document — the gap was only in controllers that answered a
-refusal directly, and it is now closed.
+refusal uses `respondError()`; `respond()` is a success helper and now throws a
+`LogicException` on a 4xx status, so the convention is an invariant rather than
+a habit. Exceptions were already on this document — the gap was only in
+controllers that answered a refusal directly, and it is now closed.
 
 ## 422: how it gets this shape
 

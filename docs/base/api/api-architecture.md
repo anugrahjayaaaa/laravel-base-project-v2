@@ -162,7 +162,7 @@ non-conformance*, and the one review row is a reading, not a check.
 | Check | Command | Expected |
 |---|---|---|
 | No inline validation | `grep -rn '\$request->validate(' app/Http/Controllers/Api/V1` | no output |
-| No 4xx through the success helper | `grep -rnE 'respond\(.*, ?[45][0-9][0-9]' app/Http/Controllers/Api/V1` | no output |
+| No 4xx through the success helper | `grep -rnE 'respond\(.*, ?[45][0-9][0-9]' app/Http/Controllers/Api/V1` | no output; a non-literal status cannot slip through either — `respond()` throws on a 4xx |
 | No hand-built JSON | `grep -rn 'response()->json' app/Http/Controllers/Api/V1` | no output |
 | No inline FQCN | `vendor/bin/phpunit tests/Arch/NoInlineFqnTest.php` | pass |
 | Every capability on both channels | `php artisan test --filter ChannelParityTest` | pass |
@@ -180,8 +180,6 @@ findings:
   extracted, so changing the shape means editing four places.
 - `FeatureController::toggle` still calls `$request->validate()` instead of a
   FormRequest.
-- `respond()` accepts a 4xx status; only convention keeps it out of use. A guard
-  in the helper would make the convention an invariant.
 
 ## API Documentation
 

@@ -380,8 +380,10 @@ not an uninferable route.
 **Accepted deviations:** no `SystemSettingResource`, no
 `FeatureResource` (reason above). Controller refusals that answered through
 `respond($message, 4xx)` — the auth family — carried `data.message` and no
-`code` at the time; **P12-C1 migrated all six** to `respondError()` with a code
-each, and `error-contract.md` § *Controller refusals* records the vocabulary.
+`code` at the time; **P12-C1 migrated six** to `respondError()` with a code
+each, and the conformance audit later the same day found two more (verify-email,
+admin resend) that moved with the rest — see the changelog entry of 2026-10-20.
+`error-contract.md` § *Controller refusals* records the vocabulary.
 
 
 ---
@@ -422,8 +424,10 @@ where the id comes from. `ChannelParityTest`'s `user unlock` capability now maps
 one route on each channel.
 
 The refusal vocabulary (the gap `error-contract.md` deferred to this group) is
-closed: six call sites moved from `respond($msg, 4xx)` to `respondError()`, and
-`data.message` is gone from every error body. Login: 401 `UNAUTHENTICATED`, 403
+closed: six call sites moved from `respond($msg, 4xx)` to `respondError()` in
+this group, and the conformance audit closed the last two (verify-email, admin
+resend); `respond()` now throws on a 4xx, so `data.message` never appears in an
+error body again. Login: 401 `UNAUTHENTICATED`, 403
 `FORBIDDEN`, 429 `RATE_LIMITED` + `retry_after_seconds`. Register: 404
 `NOT_FOUND` (the camouflage message stays; the code does not lie too). Resend:
 403 `FORBIDDEN`, 422 `EMAIL_ALREADY_VERIFIED`, 429 `RATE_LIMITED`, 500
@@ -447,8 +451,10 @@ endpoint's docblock says.
 **C3 — one controller was outside the validation rule.** `permissions.index`
 read `$request->query()` directly while every sibling used a FormRequest, so its
 allowlist was invisible to the document and an unknown `sort` fell back silently
-instead of answering 422. It now takes the existing `PermissionQueryRequest`; the
-generated operation gained the four parameters and a 422. Role uniqueness and
+instead of answering 422. It now takes the shared `PermissionQueryRequest`, and
+the conformance pass added the `in:` rule over `PermissionIndexAction::SORTABLE`
+(the web index refuses an unknown column too); the generated operation gained the
+four parameters and a 422. Role uniqueness and
 system-role refusals were already 422 through `RoleUpdateAction`'s
 `ValidationException` — nothing to add, and no 409 exists on that route
 (`RoleAssignAction`, the only other `LastSuperadminException` emitter, is not
