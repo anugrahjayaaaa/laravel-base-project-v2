@@ -43,7 +43,7 @@ Route::prefix('v1')->group(function () {
         Route::post('/register', RegisterController::class)->name('api.v1.auth.register')->middleware('throttle:register');
         Route::post('/password/forgot', PasswordForgotController::class)->name('api.v1.auth.password.forgot')->middleware('throttle:forgot-password');
         Route::post('/password/reset', PasswordResetController::class)->name('api.v1.auth.password.reset')->middleware('throttle:reset-password');
-        Route::get('/email/verify/{id}/{hash}', VerifyEmailController::class)->name('verification.verify.api')->middleware('signed');
+        Route::get('/email/verify/{id}/{hash}', VerifyEmailController::class)->name('api.v1.auth.email.verify')->middleware('signed');
     });
 
     // ---------------------------------------------------------------------------
@@ -218,10 +218,13 @@ Route::prefix('v1')->group(function () {
                 ->name('api.v1.users.show')->can('users.view');
             Route::post('/users', [UserController::class, 'store'])
                 ->name('api.v1.users.store')->can('users.create');
-            // PUT + PATCH in ONE route object: two routes sharing a name breaks
-            // route:cache ("Another route has already been assigned name").
-            Route::match(['put', 'patch'], '/users/{user}', [UserController::class, 'update'])
+            // Two route objects with distinct names: Scramble documents one
+            // method per route object, so a single `match()` left PATCH absent
+            // from the spec. Sharing a name breaks route:cache.
+            Route::put('/users/{user}', [UserController::class, 'update'])
                 ->name('api.v1.users.update')->can('users.update');
+            Route::patch('/users/{user}', [UserController::class, 'update'])
+                ->name('api.v1.users.patch')->can('users.update');
             Route::delete('/users/{user}', [UserController::class, 'destroy'])
                 ->name('api.v1.users.destroy')->can('users.delete');
             Route::delete('/users/{user}/force', [UserController::class, 'forceDelete'])->name('api.v1.users.force-delete')->can('users.force_delete');
@@ -230,7 +233,7 @@ Route::prefix('v1')->group(function () {
             // Email change flow
             Route::post('/users/{user}/request-email-change', [UserController::class, 'requestEmailChange'])->name('api.v1.users.request-email-change');
             Route::post('/users/{user}/cancel-email-change', [UserController::class, 'cancelEmailChange'])->name('api.v1.users.cancel-email-change');
-            Route::get('/email/verify-change/{user}/{token?}', [UserController::class, 'verifyEmailChange'])->name('api.v1.email.verify-change')->middleware(['signed', 'throttle:email-verification']);
+            Route::get('/email/verify-change/{user}', [UserController::class, 'verifyEmailChange'])->name('api.v1.email.verify-change')->middleware(['signed', 'throttle:email-verification']);
             Route::post('/users/{user}/resend-verification', [UserController::class, 'resendVerification'])->name('api.v1.users.resend-verification')->middleware('throttle:resend-verification')->can('users.update');
             // Same reasoning as the web bulk route: the permission depends on the
             // requested action, so AuthorizesBulkAction decides. See routes/web.php.

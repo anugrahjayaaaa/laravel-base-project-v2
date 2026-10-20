@@ -68,7 +68,7 @@ class ChannelParityTest extends TestCase
         'user list' => ['web' => ['users.index'], 'api' => ['users.index']],
         'user read' => ['web' => ['users.show'], 'api' => ['users.show']],
         'user create' => ['web' => ['users.create', 'users.store'], 'api' => ['users.store']],
-        'user update' => ['web' => ['users.edit', 'users.update'], 'api' => ['users.update']],
+        'user update' => ['web' => ['users.edit', 'users.update'], 'api' => ['users.update', 'users.patch']],
         'user delete' => ['web' => ['users.destroy'], 'api' => ['users.destroy']],
         'user restore' => ['web' => ['users.restore'], 'api' => ['users.restore']],
         'user force delete' => ['web' => ['users.force-delete'], 'api' => ['users.force-delete']],
@@ -148,7 +148,7 @@ class ChannelParityTest extends TestCase
         'auth password reset' => ['web' => ['password.reset', 'password.update'], 'api' => ['auth.password.reset']],
         'auth email verification' => [
             'web' => ['verification.notice', 'verification.resend', 'verification.verify'],
-            'api' => ['auth.email.resend'],
+            'api' => ['auth.email.resend', 'auth.email.verify'],
         ],
         'password expired' => [
             'only' => 'web',
