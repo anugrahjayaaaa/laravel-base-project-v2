@@ -82,9 +82,20 @@ Every documented endpoint must include:
 - Examples
 
 Status codes are part of the contract, not decoration. An endpoint states every
-code it can return — **200, 201, 400, 401, 403, 404, 409, 422, 429, 500** (the
-reachable subset, but 401/403/422/500 are always reachable). The envelope for
-each is `docs/base/api/error-contract.md`.
+code it can return — **200, 201, 400, 401, 403, 404, 409, 422, 429, 500** — but
+the subset is decided by reachability, not by a blanket rule:
+
+| Code | Documented when |
+|---|---|
+| 401 | The route carries `auth:sanctum` |
+| 403 | The route carries a `can:` gate (or a FormRequest that authorizes) |
+| 422 | The action takes a FormRequest (or validates input inline) |
+| 500 | Always reachable through the handler fallback; covered per status in `ApiErrorEnvelopeTest` |
+
+The public auth routes, the health probe and input-less reads cannot answer all
+four, and `ApiDocumentationTest` asserts only what each route can actually
+return. The envelope for every documented error is
+`docs/base/api/error-contract.md`.
 
 ## Authentication
 
@@ -117,8 +128,25 @@ is a second document (`Scramble::registerApi()`), not a second URL on this one.
 ```bash
 php artisan scramble:analyze          # routes Scramble could not infer
 php artisan scramble:export           # writes api.json from config
+php artisan test --filter=ApiDocumentationTest
 php artisan test --filter=ApiDocsUiRenderTest
 ```
 
 `ApiDocsUiRenderTest` pins the gate: an admin opens the UI and the document, a
 plain user and a guest are refused, and the published version is `v1`.
+
+`ApiDocumentationTest` is the drift gate. It reads `/docs/api.json` and asserts:
+
+- every route named `api.v1.*` appears as a path + method (Scramble strips the
+  documented `api` prefix, so `api/v1/users` is `/v1/users`);
+- every `auth:sanctum` operation documents 401;
+- every `can:` operation documents 403;
+- every operation taking a FormRequest documents 422;
+- the bearer scheme and global `security` are declared;
+- no operation documents a status outside the contract table.
+
+It catches a route that exists but is **absent** from the document. A route
+deleted from `routes/api.php` cannot turn it red: the document is generated per
+request, so it stops listing the route too. A checked-in spec would be the only
+way to gate the other direction, and that is a second source of truth this
+project rejected (see § Approach).

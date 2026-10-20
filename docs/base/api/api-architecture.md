@@ -202,6 +202,12 @@ findings:
   extracted, so changing the shape means editing four places.
 - `FeatureController::toggle` still calls `$request->validate()` instead of a
   FormRequest.
+- Three middleware 403s answer `{message, code}` without `meta`:
+  `CheckAccountState` (`ACCOUNT_DISABLED`) and `EnsurePasswordChangeRequired`
+  (`ACCOUNT_LOCKED_INACTIVITY`, `PASSWORD_CHANGE_REQUIRED`). Status and code are
+  right; the correlation block is missing. Recorded under P12-E4 and in
+  `error-contract.md` § *Known deviations*; the fix is a separate change because
+  it rewrites the body of a refusal every authenticated route can emit.
 
 ## API Documentation
 

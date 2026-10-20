@@ -227,7 +227,7 @@ For **every** endpoint created or changed:
 | 3 | `@return` array shape on every `Resource::toArray()` — conditional keys declared, not inferred | `Resources/Api/V1/**` |
 | 4 | Every query parameter documented: name, type, required, default, allowlisted values | FormRequest + `@queryParam` / inferred from `$request->validated()` |
 | 5 | Request body from the FormRequest rules — no endpoint may validate inline | FormRequest |
-| 6 | Every status code the endpoint can return is present, with the envelope from `docs/base/api/error-contract.md`: **200, 201, 400, 401, 403, 404, 409, 422, 429, 500** (only the reachable subset, but the four always-present ones are 401/403/422/500) | controller docblock |
+| 6 | Every status code the endpoint can return is present, with the envelope from `docs/base/api/error-contract.md`: **200, 201, 400, 401, 403, 404, 409, 422, 429, 500**. The subset is decided by reachability: 401 on `auth:sanctum`, 403 on `can:`, 422 when the action takes a FormRequest, 500 from the handler fallback. Public auth, health and input-less reads cannot carry all four — see P12-E2's measured note | controller docblock |
 | 7 | Authorization requirement stated (`can:*`, `feature:*`) | route + `@authenticated` / description |
 | 8 | `Authorization: Bearer` shown for every `auth:sanctum` route | `config/scramble.php` `security_strategy` (P12-D5) |
 | 9 | `GET /docs/api.json` contains the route, and a test asserts it | `ApiDocumentationTest` (Group E) |
@@ -282,8 +282,8 @@ by one, `tests/Arch` 433 passed, full suite **2091 passed / 7314 assertions**
 **Measured (2026-10-20):** the gate is real — admin 200, plain user 403, guest
 403, superadmin 200 through `Gate::before`; the document publishes
 `info.version = v1`, its `paths` include `/v1/users`, and since P12-D5 it names
-the bearer `securitySchemes` entry. One thing the gate does *not* yet do, and it
-belongs to Group E: no test fails when an endpoint is undocumented (P12-E2).
+the bearer `securitySchemes` entry. The missing half — a test that fails when an
+endpoint is undocumented — was P12-E2 and now ships as `ApiDocumentationTest`.
 
 ---
 
@@ -622,19 +622,38 @@ per-module tests cover the remaining modules' shapes.
 
 > Depends on: A–D.
 
-Status: **PLANNED**.
+Status: **REVIEW** — implemented 2026-10-20 on `feature/phase-12-api-v1`.
 
 | ID | Task | Pri | Depends On | Status |
 |----|------|-----|-----------|--------|
-| P12-E1 | **Per-module feature tests** under `tests/Feature/Api/V1/`: `Role/RoleApiTest`, `Permission/PermissionApiTest`, `Settings/SettingsApiTest`, `Feature/FeatureApiTest`. Each covers the happy path, the 422 shape, and the 403 for a sibling permission (not an empty one — a route written `can('roles.view')` where `roles.update` was meant passes every zero-permission test) | P0 | P12-D2 | PLANNED |
-| P12-E2 | **`ApiDocumentationTest`** — the drift gate. Reads `/docs/api.json` and asserts: every route named `api.v1.*` appears as a path+method; every documented operation carries its 401/403/422/500 responses; the bearer scheme is declared. This is what makes the documentation step enforceable instead of aspirational | P0 | P12-D5 | PLANNED |
-| P12-E3 | **`ApiDocsUiRenderTest`** — from A4, kept here as the regression owner once the gate lands | P0 | P12-A3 | PLANNED |
-| P12-E4 | **Error-contract coverage** — one test per emitted code (400, 401, 403, 404, 409, 422, 429, 500), asserting the envelope and `meta.request_id`. Includes the `app.debug = false` branch from B4 | P0 | P12-B3, B4 | PLANNED |
-| P12-E5 | **Full verification** — `php artisan test` green (baseline 2078 passed / 7265 assertions), `vendor/bin/pint --test` clean on every touched file, `php artisan scramble:analyze` clean, `GET /docs/api.json` parses. Docs reconciled: this file, `task-tracker.md`, `progress.md`, `docs/base/api/{documentation,error-contract,response-contract}.md` | P0 | P12-E1..E4 | PLANNED |
+| P12-E1 | **Per-module feature tests** under `tests/Feature/Api/V1/`: `Role/RoleApiTest`, `Permission/PermissionApiTest`, `Settings/SettingsApiTest`, `Feature/FeatureApiTest`. Each covers the happy path, the 422 shape, and the 403 for a sibling permission (not an empty one — a route written `can('roles.view')` where `roles.update` was meant passes every zero-permission test) | P0 | P12-D2 | DONE — four files, 16 tests. The sibling case runs in both directions where the module has two permissions (roles view/create, settings view/manage, features view/manage); the permission catalogue holds the whole catalogue minus `permissions.view`. Deep behaviour stays in the existing domain files (`RbacApiTest`, `SystemSettingUpdateTest`, `FeatureFlagApiTest`); these files own the gate |
+| P12-E2 | **`ApiDocumentationTest`** — the drift gate. Reads `/docs/api.json` and asserts: every route named `api.v1.*` appears as a path+method; every documented operation carries its 401/403/422/500 responses; the bearer scheme is declared. This is what makes the documentation step enforceable instead of aspirational | P0 | P12-D5 | DONE — `tests/Feature/Api/ApiDocumentationTest.php`, 6 tests: route→path+method, 401 on `auth:sanctum`, 403 on `can:`, 422 on FormRequest actions, bearer scheme + global `security`, and no status outside the contract. The "all four on every operation" wording was corrected to reachability (see Measured) |
+| P12-E3 | **`ApiDocsUiRenderTest`** — from A4, kept here as the regression owner once the gate lands | P0 | P12-A3 | DONE — shipped with A4; unchanged. It remains the access/UI owner (gate, public mode, sidebar); E2 owns the document content |
+| P12-E4 | **Error-contract coverage** — one test per emitted code (400, 401, 403, 404, 409, 422, 429, 500), asserting the envelope and `meta.request_id`. Includes the `app.debug = false` branch from B4 | P0 | P12-B3, B4 | DONE — a data-provider matrix in `tests/Feature/CrossCutting/ApiErrorEnvelopeTest.php` raises each handler-mapped exception from a throw-away route and asserts status, code, `meta.request_id`, `errors` only on 422, and no `debug` with `APP_DEBUG=false`. Endpoint-level reachability stays with the existing tests (`LastSuperadminGuardTest` 409, `ThrottleJsonResponseTest` 429) |
+| P12-E5 | **Full verification** — `php artisan test` green (baseline 2078 passed / 7265 assertions), `vendor/bin/pint --test` clean on every touched file, `php artisan scramble:analyze` clean, `GET /docs/api.json` parses. Docs reconciled: this file, `task-tracker.md`, `progress.md`, `docs/base/api/{documentation,error-contract,response-contract}.md` | P0 | P12-E1..E4 | DONE — full suite and lint measured below; `scramble:analyze` reports only the known `HealthCheckResource` warning |
 
-**Gate E:** the suite is green, and deleting a route from `routes/api.php` without
-touching the docs turns `ApiDocumentationTest` red — verified by doing exactly
-that once, then reverting.
+**Gate E:** the suite is green, and a route that exists under `/api/v1` but is
+absent from `/docs/api.json` turns `ApiDocumentationTest` red.
+
+The earlier wording — "deleting a route turns the test red" — cannot hold: the
+document is generated per request, so a deleted route disappears from both
+sides. The gate protects the direction that can actually drift, an added route
+Scramble could not infer. A checked-in spec would gate deletions too, and that
+is the second source of truth Group A rejected.
+
+**Measured (2026-10-20):** 30 new tests (E1 16, E2 6, E4 8), all green alongside
+the existing domain files; full suite **2148 passed / 7574 assertions** (360s),
+`vendor/bin/pint --test` clean, `php artisan scramble:analyze` only the known
+`HealthCheckResource` warning. The response-code rule was measured against the
+generated document before it was written: 401/403/422 are inferred from the
+middleware and FormRequest, 500 only where annotated, so a blanket
+four-codes-per-operation assertion would have been false for health, the public
+auth routes and input-less reads. E4 did find one real deviation while covering
+403: three middleware refusals (`ACCOUNT_DISABLED`,
+`ACCOUNT_LOCKED_INACTIVITY`, `PASSWORD_CHANGE_REQUIRED`) answer without the
+`meta` block. It is recorded in `docs/base/api/error-contract.md` § *Known
+deviations* and left for its own change — a test task does not get to rewrite a
+refusal every authenticated route can emit.
 
 ---
 

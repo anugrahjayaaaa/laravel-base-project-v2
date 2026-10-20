@@ -311,7 +311,7 @@ Detail: `docs/planning/phase-9-notifications-mail.md`.
 | P12-B | Base responses & resources — one base controller (accepted), resource schemas, error envelope reconciliation | 12 | P0 | P12-A | REVIEW |
 | P12-C | Routes & controllers — verify + annotate every module, close the absent `GET /features` | 12 | P0 | P12-A, P12-B | REVIEW |
 | P12-D | Security — token abilities decision, `can:` sweep, rate-limit ladder, bearer scheme, audit context | 12 | P0 | P12-C | REVIEW — D1..D7 implemented 2026-10-20; detail and measurements in `docs/planning/phase-12-api-v1.md` § Group D |
-| P12-E | Tests — per-module API tests, `ApiDocumentationTest` drift gate, full verification | 12 | P0 | P12-D | PLANNED |
+| P12-E | Tests — per-module API tests, `ApiDocumentationTest` drift gate, full verification | 12 | P0 | P12-D | REVIEW — four per-module API files (16 tests, both directions of each sibling gate), `ApiDocumentationTest` (6 tests: route→path+method, 401/403/422 by reachability, bearer, contract-only statuses), 8-code envelope matrix in `ApiErrorEnvelopeTest`; `ApiDocsUiRenderTest` retained from A4. Full suite **2148 passed / 7574 assertions**, Pint clean, `scramble:analyze` only the known `HealthCheckResource` warning. E4 recorded three middleware 403s that omit `meta` in `error-contract.md` § Known deviations rather than fixing them inline |
 
 **Deviations from the brief, recorded rather than applied:** flags return **403**
 (not 404 — Phase 7 decision, pinned by `FeatureFlagMiddlewareTest`); no second

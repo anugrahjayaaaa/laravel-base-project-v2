@@ -77,6 +77,9 @@ fine.
 | UNAUTHENTICATED | 401 | No or invalid token |
 | UNVERIFIED_EMAIL | 403 | Credentials correct, address not verified; adds `email` + `verified: false` |
 | FORBIDDEN | 403 | Authenticated, not permitted |
+| ACCOUNT_DISABLED | 403 | `CheckAccountState`: inactive, locked or deleted account |
+| ACCOUNT_LOCKED_INACTIVITY | 403 | `EnsurePasswordChangeRequired`: the inactivity lock fired |
+| PASSWORD_CHANGE_REQUIRED | 403 | `EnsurePasswordChangeRequired`: a password change is due |
 | HTTP_ERROR | 4xx | Any other `abort(4xx)`, including 404/409/410 raised inside an Action — the status is the framework's, the code is shared |
 | NOT_FOUND | 404 | Route or bound model does not exist |
 | LAST_SUPERADMIN | 409 | The operation would leave the system with no superadmin |
@@ -184,7 +187,23 @@ Enforced by:
 - `tests/Feature/Api/V1/ValidationErrorContractTest` — the body above, on the
   User and Role endpoints
 - `tests/Feature/CrossCutting/ApiErrorEnvelopeTest` — `meta` present, debug adds
-  a key without changing the shape
+  a key without changing the shape, and one case per contract code (400, 401,
+  403, 404, 409, 422, 429, 500) through the handler mapping
+
+## Known deviations (P12-E4)
+
+Three middleware refusals answer 403 in a **partial** body: `{message, code}`
+with no `meta`. They are `CheckAccountState` (`ACCOUNT_DISABLED`) and
+`EnsurePasswordChangeRequired` (`ACCOUNT_LOCKED_INACTIVITY`,
+`PASSWORD_CHANGE_REQUIRED`). The status and code are correct, so a client can
+act on them; the correlation block is missing, which breaks the "`meta` is
+always present" rule above.
+
+Recorded here rather than fixed inside a test task. The fix is small — route
+both through `ApiError::make()` — but it changes the body of a refusal every
+auth-gated route can emit, so it belongs in its own change with its own tests.
+Until then, `ApiErrorEnvelopeTest` pins the handler path, which is what every
+other emitter uses.
 
 ## Security Considerations
 
