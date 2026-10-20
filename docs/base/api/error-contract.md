@@ -40,7 +40,7 @@ Built in `App\Support\ApiError`, which the exception handler
 | 422 | Validation failed | `ValidationException` (`VALIDATION_ERROR`) |
 | 429 | Rate limited | `ThrottleRequestsException` (`RATE_LIMITED`), and the auth lockout path |
 | 500 | Server error | the handler's fallback (`SERVER_ERROR`) |
-| 502 | Bad gateway | send-test-mail only, when the mail transport refuses the message — success-envelope shape, see the known gap |
+| 502 | Bad gateway | send-test-mail only, when the mail transport refuses the message (`BAD_GATEWAY`) |
 | 503 | Service unavailable | `HealthCheckController` when a probe fails — **not** an error envelope, see below |
 
 There is no generic **`CONFLICT`** code: `LAST_SUPERADMIN` is the only 409, and a
@@ -68,7 +68,9 @@ fine.
 | CSRF_TOKEN_MISMATCH | 419 | CSRF token missing or stale |
 | INVALID_SIGNATURE | 403 | Signed URL presented with a bad signature |
 | INVALID_TOKEN | 400 | Verification URL arrived without a token at all |
-| RATE_LIMITED | 429 | A named limiter refused the request |
+| RATE_LIMITED | 429 | A named limiter refused the request, or the auth lockout path |
+| EMAIL_ALREADY_VERIFIED | 422 | Resend-verification asked for an address that is already verified |
+| BAD_GATEWAY | 502 | Send-test-mail: the mail transport refused the message |
 | SERVER_ERROR | 500 | Unhandled exception |
 
 ## Order matters: specific before generic
@@ -100,27 +102,37 @@ Traces stay in the log (`report()` still runs); a client that branches on `code`
 works in every environment. `ApiErrorEnvelopeTest` asserts the key set is
 identical with debug on and off, minus `debug`.
 
-## Known shape gap: refusals produced by a controller
+## Controller refusals: the gap is closed
 
-A handful of endpoints answer a refusal through `respond($message, 4xx|502)`,
-which is the *success* envelope with an error status: the message lands in
-`data.message` and there is no `code`. The sites, all measured:
+Until Group C, a handful of endpoints answered a refusal through
+`respond($message, 4xx)`, which is the *success* envelope with an error status:
+the message landed in `data.message` and there was no `code`. Every site is now
+on `respondError()`:
 
-| Endpoint | Status | Why it is success-shaped |
-|----------|--------|--------------------------|
-| `POST /auth/login` (locked/inactive) | 403 | pinned by `LoginControllerTest`, which reads `data.message` |
-| `POST /auth/login` (lockout) | 429 | additionally carries `retry_after_seconds` beside the message |
-| `POST /auth/register` (registration off) | 404 | same 404 the web route gives |
-| `POST /auth/email/resend` (mail disabled / already verified / throttled) | 403 / 422 / 429 | the resend action's own refusals |
-| `GET /email/verify-change/{user}/{token?}` | 400 | verification-link refusal (missing or expired token) |
-| `POST /notifications/test-mail` (relay down) | 502 | the sentence the web page shows, reused |
+| Endpoint | Status | Code |
+|----------|--------|------|
+| `POST /auth/login` (bad credentials) | 401 | `UNAUTHENTICATED` |
+| `POST /auth/login` (locked/inactive) | 403 | `FORBIDDEN` |
+| `POST /auth/login` (lockout) | 429 | `RATE_LIMITED` + `retry_after_seconds` |
+| `POST /auth/register` (registration off) | 404 | `NOT_FOUND` |
+| `POST /auth/email/resend` (mode off) | 403 | `FORBIDDEN` |
+| `POST /auth/email/resend` (already verified) | 422 | `EMAIL_ALREADY_VERIFIED` |
+| `POST /auth/email/resend` (throttled) | 429 | `RATE_LIMITED` |
+| `POST /auth/email/resend` (transport failed) | 500 | `SERVER_ERROR` |
+| `GET /email/verify-change/{user}/{token?}` | 400 | `INVALID_TOKEN` |
+| `POST /notifications/test-mail` (relay down) | 502 | `BAD_GATEWAY` |
 
-They are pinned that way by tests, so changing them is a client-visible decision
-per endpoint rather than a sweep. Group C (P12-C1, P12-C6) owns it: each
-endpoint's code vocabulary is decided while its documentation is written.
+Two of them do **not** invent a code: `register` keeps answering 404 so a
+disabled feature cannot be probed for, and it uses the same `NOT_FOUND` an
+unknown route gives — the message ("Not found.") is the camouflage, the code does
+not have to lie as well. The resend action carries its own `error_code` next to
+`message`/`status`, so the controller does not translate a status number into a
+code, and the web controller (which ignores the key) is unaffected.
 
-Everything raised as an exception already follows this document; the gap is only
-in controllers that return a refusal directly.
+Nothing in the API answers a 4xx or 5xx through `respond()` any more. A new
+refusal uses `respondError()`; `respond()` is a success helper. Exceptions were
+already on this document — the gap was only in controllers that answered a
+refusal directly, and it is now closed.
 
 ## 422: how it gets this shape
 

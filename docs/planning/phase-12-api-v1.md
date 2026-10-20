@@ -43,7 +43,7 @@ Result at the time: 31 capability pairs matched, and these did not.
 | 1 | Audit trail — no API at all | 🔴 | **Closed** |
 | 2 | Notification inbox — no API at all | 🔴 | **Closed** |
 | 3 | `roles.show` — API only | 🟢 | Documented, not a gap |
-| 4 | `api.v1.auth.unlock` — closure shim | 🟡 | Documented |
+| 4 | `api.v1.auth.unlock` — closure shim | 🟡 | **Closed** — removed in P12-C1 |
 | 5 | Verb mismatches on four capabilities | — | **Was not a gap** |
 
 ### 1. Audit trail — CLOSED
@@ -100,14 +100,18 @@ API's `show`. Adding `routes.show` would be a second page rendering a second
 copy of the same facts. Recorded here so the next audit does not file it again
 as an open gap.
 
-### 4. `api.v1.auth.unlock` — a redirect, on purpose
+### 4. `api.v1.auth.unlock` — CLOSED, the shim is removed
 
-`routes/api.php` keeps a closure that redirects to
-`api.v1.users.unlock`, for clients addressing the endpoint from before it moved
-under `/users/{user}`. Scramble cannot introspect a closure, so it is absent from
-the generated docs — which is correct: a client reading the docs should use the
-current address. The cost is now written down rather than looking like an
-oversight.
+**Closed in P12-C1.** The shim forwarded `request()->route('user')` on a route
+with no `{user}`, so URL generation threw and the endpoint answered 500 to every
+caller — measured with a probe test before the fix. It also did not do what its
+comment claimed: Scramble listed it as a 200 with no body, so "absent from the
+generated docs" was never true.
+
+The compatibility target never shipped, and the id it needed is in the current
+address (`POST /api/v1/users/{user}/unlock`), so the redirect was removed rather
+than repaired. `tests/Feature/Api/V1/Auth/UnlockShimTest` pins the absence so it
+cannot return without a decision about where the id comes from.
 
 ### 5. Verb mismatches — not a gap, and worth not "fixing"
 
@@ -374,11 +378,10 @@ failure mode is documented. Remaining warning is resource-level inference only,
 not an uninferable route.
 
 **Accepted deviations:** no `SystemSettingResource`, no
-`FeatureResource` (reason above). Controller refusals that answer through
-`respond($message, 4xx)` — the auth family — still carry `data.message` and no
-`code`; they are pinned that way by existing tests and P12-C1 owns migrating each
-endpoint when it writes that endpoint's code vocabulary. Recorded in
-`error-contract.md` § *Known shape gap*.
+`FeatureResource` (reason above). Controller refusals that answered through
+`respond($message, 4xx)` — the auth family — carried `data.message` and no
+`code` at the time; **P12-C1 migrated all six** to `respondError()` with a code
+each, and `error-contract.md` § *Controller refusals* records the vocabulary.
 
 
 ---
@@ -386,25 +389,140 @@ endpoint when it writes that endpoint's code vocabulary. Recorded in
 ## Group C — API V1 routes & controller implementation
 
 > Depends on: A, B. Blocks: D, E.
-> Measured state: nearly all endpoints ship. This group is **verification +
-> annotation + the endpoints that are genuinely absent**.
 
-Status: **PLANNED**.
+Status: **REVIEW**.
 
 | ID | Task | Pri | Depends On | Status |
 |----|------|-----|-----------|--------|
-| P12-C1 | **Auth** — verify `login`, `logout`, `logout-all`, `register`, password forgot/reset/change, `email/resend`, `verify/{id}/{hash}` against the web twin; annotate. **Suspected defect to confirm first:** `POST /api/v1/auth/unlock` is `fn () => to_route('api.v1.users.unlock', ['user' => request()->route('user')])` — that route has no `{user}`, so the parameter resolves `null` and URL generation should throw. Write the failing test before deciding the fix; do not fix blind | P0 | P12-B6 | PLANNED |
-| P12-C2 | **Users** — verify `index/show/store/update/destroy/restore/force-delete`, four state toggles, email-change pair, `resend-verification`, `bulk-action`. Annotate query parameters (`UserQueryRequest` allowlist) and the 409 from `LastSuperadminException` | P0 | P12-B6 | PLANNED |
-| P12-C3 | **Roles & permissions** — verify CRUD + restore/force + bulk, and `permissions.index`. Annotate the guard-scoped uniqueness 422 and the system-role refusals | P0 | P12-B6 | PLANNED |
-| P12-C4 | **Settings** — verify `GET/PUT /settings`; annotate the partial-key semantics (`update` replaces only submitted keys) and the `mail_password` filtering (P9-X1: secrets never leave the endpoint) | P0 | P12-B6 | PLANNED |
-| P12-C5 | **`GET /api/v1/features` — the one absent endpoint.** `ChannelParityTest` declares `feature list` as a one-sided capability with a `why`. Either implement the read under `feature`-free routing + `features.view` (the list must not be gated on the flag it reports), or keep the declared gap. Implementing it means updating `ChannelParityTest` in the same commit — the map and the routes are one unit | P1 | P12-B2 | PLANNED |
-| P12-C6 | **Notifications** — verify the settings pair, channels, test-mail, and the four inbox routes; annotate the inbox scoping ("the token answers whose inbox"). Fold `Api\V1\NotificationController` into the `Notification/` sub-namespace (P12-4) — a move, not a rewrite | P2 | P12-B6 | PLANNED |
-| P12-C7 | **Audit trail** — already shipped; annotate the export lifecycle (202 on create, the poll, the download, the retry) and the `whereNumber` constraint that keeps `/exports` out of `{activity}` | P1 | P12-B6 | PLANNED |
-| P12-C8 | **Action-First mutations.** Confirm every API mutation goes through the same Action as web and that the `DB::transaction` is inside the Action, not the controller. No controller may open a transaction around an Action that already owns one | P0 | P12-C1..C7 | PLANNED |
+| P12-C1 | **Auth** — verify `login`, `logout`, `logout-all`, `register`, password forgot/reset/change, `email/resend`, `verify/{id}/{hash}` against the web twin; annotate. **Suspected defect to confirm first:** `POST /api/v1/auth/unlock` is `fn () => to_route('api.v1.users.unlock', ['user' => request()->route('user')])` — that route has no `{user}`, so the parameter resolves `null` and URL generation should throw. Write the failing test before deciding the fix; do not fix blind | P0 | P12-B6 | DONE |
+| P12-C2 | **Users** — verify `index/show/store/update/destroy/restore/force-delete`, four state toggles, email-change pair, `resend-verification`, `bulk-action`. Annotate query parameters (`UserQueryRequest` allowlist) and the 409 from `LastSuperadminException` | P0 | P12-B6 | DONE |
+| P12-C3 | **Roles & permissions** — verify CRUD + restore/force + bulk, and `permissions.index`. Annotate the guard-scoped uniqueness 422 and the system-role refusals | P0 | P12-B6 | DONE |
+| P12-C4 | **Settings** — verify `GET/PUT /settings`; annotate the partial-key semantics (`update` replaces only submitted keys) and the `mail_password` filtering (P9-X1: secrets never leave the endpoint) | P0 | P12-B6 | DONE |
+| P12-C5 | **`GET /api/v1/features` — the one absent endpoint.** `ChannelParityTest` declares `feature list` as a one-sided capability with a `why`. Either implement the read under `feature`-free routing + `features.view` (the list must not be gated on the flag it reports), or keep the declared gap. Implementing it means updating `ChannelParityTest` in the same commit — the map and the routes are one unit | P1 | P12-B2 | DONE |
+| P12-C6 | **Notifications** — verify the settings pair, channels, test-mail, and the four inbox routes; annotate the inbox scoping ("the token answers whose inbox"). Fold `Api\V1\NotificationController` into the `Notification/` sub-namespace (P12-4) — a move, not a rewrite | P2 | P12-B6 | DONE |
+| P12-C7 | **Audit trail** — already shipped; annotate the export lifecycle (202 on create, the poll, the download, the retry) and the `whereNumber` constraint that keeps `/exports` out of `{activity}` | P1 | P12-B6 | DONE |
+| P12-C8 | **Action-First mutations.** Confirm every API mutation goes through the same Action as web and that the `DB::transaction` is inside the Action, not the controller. No controller may open a transaction around an Action that already owns one | P0 | P12-C1..C7 | DONE |
 
 **Gate C:** every capability in `ChannelParityTest` is either on both channels or
 carries a `why`; `scramble:analyze` is clean for `v1`; `/docs/api.json` documents
 every route added or touched.
+
+### Measured (2026-10-20)
+
+**C1 — the suspected defect was real, and worse than "should throw".** A probe
+test answered `500 SERVER_ERROR` on `POST /api/v1/auth/unlock`: the closure read
+`request()->route('user')` on a route with no `{user}`, so URL generation threw
+every time. Two things beside it were also false: the route comment claimed
+Scramble cannot see a closure (the document listed the route as a 200 with no
+body), and a redirect is not a compat layer when the id it needs lives in the
+address it is redirecting to. Since v1 never shipped, the shim was **removed**
+rather than repaired; `tests/Feature/Api/V1/Auth/UnlockShimTest` asserts the 404
+envelope and the absent route name, so re-adding one starts with a decision about
+where the id comes from. `ChannelParityTest`'s `user unlock` capability now maps
+one route on each channel.
+
+The refusal vocabulary (the gap `error-contract.md` deferred to this group) is
+closed: six call sites moved from `respond($msg, 4xx)` to `respondError()`, and
+`data.message` is gone from every error body. Login: 401 `UNAUTHENTICATED`, 403
+`FORBIDDEN`, 429 `RATE_LIMITED` + `retry_after_seconds`. Register: 404
+`NOT_FOUND` (the camouflage message stays; the code does not lie too). Resend:
+403 `FORBIDDEN`, 422 `EMAIL_ALREADY_VERIFIED`, 429 `RATE_LIMITED`, 500
+`SERVER_ERROR` — carried as `error_code` on the action's own payload, so the
+controller does not translate a status number. Verify-change: 400 `INVALID_TOKEN`
+(missing and expired share it). Test-mail: 502 `BAD_GATEWAY`. The three resend
+codes are new rows in the contract; each has an emitter.
+
+**C2 — the query allowlist was already in the document; the 409 was not.**
+Scramble infers `search`/`sort`/`direction`/`per_page` from `UserQueryRequest`,
+so no per-parameter annotation was needed. `#[Response(409, …)]` now sits on
+`DELETE /users/{user}`, `POST /users/{user}/deactivate` and
+`POST /users/bulk-action` — the three reachable emitters of
+`LastSuperadminException`. Force-delete deliberately carries none: it only
+accepts an already-trashed row and `UserForceDeleteAction` documents why it has no
+guard. One behaviour worth writing down because the status cannot express it:
+`BulkActionProcessor` owns one transaction around the loop, so a 409 aborts and
+rolls back the whole batch — nothing is applied, and that is now what the
+endpoint's docblock says.
+
+**C3 — one controller was outside the validation rule.** `permissions.index`
+read `$request->query()` directly while every sibling used a FormRequest, so its
+allowlist was invisible to the document and an unknown `sort` fell back silently
+instead of answering 422. It now takes the existing `PermissionQueryRequest`; the
+generated operation gained the four parameters and a 422. Role uniqueness and
+system-role refusals were already 422 through `RoleUpdateAction`'s
+`ValidationException` — nothing to add, and no 409 exists on that route
+(`RoleAssignAction`, the only other `LastSuperadminException` emitter, is not
+reachable from the API surface).
+
+**C4 — documented at the endpoint, because the shape is unusual on purpose.**
+`GET /settings` answers a flat key→value map (no list, no transformer — B2's
+decision) and `mail_password` is **absent** rather than null, via
+`SystemSetting::getAll()`'s `SECRET_KEYS`. `PUT /settings` is partial: omitted
+keys survive, and only the web form reads "missing" as "reset". Both statements
+now sit on the methods they describe.
+
+**C5 — the absent read is now shipped, and the gap analysis is why it is shaped
+the way it is.** First pass kept the gap: `FeatureIndexAction` is a *view* model
+(builds `toggle_url` from the **web** route name, adds a viewer-scoped
+`manageable`, carries per-flag `permissions`), so returning it whole would hand a
+JSON client a link it cannot POST to (session + CSRF). Decided to close it
+anyway, because "may toggle but cannot enumerate" is a real asymmetry — the only
+way to learn a flag's state was to toggle it, i.e. a mutation plus an audit row
+used as a read.
+
+The endpoint reuses the resolution rather than duplicating it: `GET
+/api/v1/features`, `can:features.view`, no `feature:*` middleware (same rule as
+the two write routes — the management surface must survive every flag), serving
+`FeatureIndexAction`'s rows **projected** to `slug`, `label`, `group`,
+`description`, `enabled`, `pending`. The projection is the contract:
+`FeatureFlagApiTest` pins the six keys so the page model cannot leak back in.
+`pending` travels because a flag whose module has no routes yet is not
+"disabled" — the distinction the web page already made.
+
+No new resolver class and no `FeatureResource`: the action already owns the
+single `activeMap()` read and the 30s snapshot, and a transformer over an action
+result would be a passthrough (B2's rule). State coherence is pinned rather than
+assumed: `test_the_catalogue_reflects_a_state_change_made_through_the_api`
+toggles through the API and then reads, so a writer that stopped flushing
+`SNAPSHOT_KEY` fails instead of serving a 30-second-old answer. `features.view`
+alone can read (200) and cannot toggle (403); a viewer holding everything *but*
+`features.view` is refused — the sibling-gate trap E1 describes.
+
+`ChannelParityTest`'s `feature list` is now two-sided; the `why` is gone.
+
+**C6 — the namespace move was already done; the scoping was already documented.**
+Both notification controllers live in `Api\V1\Notification\` and the class
+docblock already argues why the inbox carries no permission ("whose inbox is
+this" is answered by the token). The only change here is the test-mail 502
+joining the error envelope.
+
+**C7 — the export lifecycle's statuses were half-documented.** Create and retry
+were typed 202 and the download 200, but the refusals were missing. Download now
+declares 404 (no such export **or** file gone) and 410 (retention window closed —
+permanent, hence a different code). Retry declares 404 and 409, where the 409
+covers three refusals a client cannot separate from the status (not failed,
+budget spent, row changed under the claim) and the body carries which. The
+`whereNumber('activity')` constraint that keeps `/exports` out of `{activity}` is
+load-bearing and was already explained beside the route.
+
+**C8 — verified structurally, not by reading.** Zero `DB::transaction`,
+`beginTransaction`, or Eloquent mutation calls (`create`/`update`/`delete`/
+`save`/`restore`/`forceDelete`) in `app/Http/Controllers/Api/V1`. All 45 Action
+classes imported by an API controller are also imported by a web controller,
+i.e. every API mutation runs the same Action as its web twin; the transaction
+lives inside the Action. No new test — this is a shape the two greps can re-check
+in seconds, and E1's per-module tests will exercise the paths.
+
+**Not done here, on purpose.** Per-route 429 documentation belongs to the D4
+ladder (which limiter refuses, at what rate, keyed by what), and the
+401/403/422/500-per-operation assertion is E2's. C documented what it added or
+touched: the removed route, the new `/v1/features` read, the three 409s, the
+four audit export codes, the permission query allowlist, and the
+settings/semantics docblocks. `Gate C` itself is met: `ChannelParityTest` is
+green with no remaining one-sided capability in the feature module,
+`scramble:analyze` reports its one known `HealthCheckResource` warning
+(documented since B6), and the regenerated document contains no
+`/v1/auth/unlock` and does contain `/v1/features`.
 
 ---
 

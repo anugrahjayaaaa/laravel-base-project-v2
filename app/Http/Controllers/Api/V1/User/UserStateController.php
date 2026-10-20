@@ -7,6 +7,8 @@ use App\Actions\V1\User\UserDeactivateAction;
 use App\Actions\V1\User\UserLockAction;
 use App\Actions\V1\User\UserUnlockAction;
 use App\Http\Controllers\Controller;
+use App\Support\ApiError;
+use Dedoc\Scramble\Attributes\Response;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use App\Models\User;
@@ -47,10 +49,14 @@ class UserStateController extends Controller
     /**
      * Deactivate a user.
      *
+     * 409 `LAST_SUPERADMIN` when this row is the last active superadmin;
+     * `UserDeactivateAction` raises it inside its transaction.
+     *
      * @param  Request  $request
      * @param  User  $user
      * @return JsonResponse
      */
+    #[Response(status: 409, type: ApiError::DOC_TYPE)]
     public function deactivate(Request $request, User $user): JsonResponse
     {
         $this->deactivateAction->run($user, $request->user());

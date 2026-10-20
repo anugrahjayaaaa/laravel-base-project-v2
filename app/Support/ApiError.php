@@ -22,6 +22,15 @@ use Illuminate\Http\JsonResponse;
 final class ApiError
 {
     /**
+     * The documented error body as a PHPDoc type.
+     *
+     * Lives here so an endpoint that declares a response with `#[Response]` names
+     * the same shape the handler emits instead of retyping it, and so a change to
+     * the envelope has one place to start.
+     */
+    public const DOC_TYPE = 'array{message: string, code: string, meta: array{request_id: string, timestamp: string}}';
+
+    /**
      * The keys every response carries for correlation.
      *
      * `request_id` is bound by `GenerateRequestCorrelationId`, which is global

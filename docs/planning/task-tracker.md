@@ -309,7 +309,7 @@ Detail: `docs/planning/phase-9-notifications-mail.md`.
 |----|------|-------|----------|-----------|--------|
 | P12-A | Scramble docs interface — package placement, config, `viewApiDocs` gate, public/private switch, sidebar entry, UI render test | 12 | P0 | — | DONE — all seven tasks implemented and committed 2026-10-20 on `feature/p12-a-api-docs` |
 | P12-B | Base responses & resources — one base controller (accepted), resource schemas, error envelope reconciliation | 12 | P0 | P12-A | REVIEW |
-| P12-C | Routes & controllers — verify + annotate every module, close the absent `GET /features` | 12 | P0 | P12-A, P12-B | PLANNED |
+| P12-C | Routes & controllers — verify + annotate every module, close the absent `GET /features` | 12 | P0 | P12-A, P12-B | REVIEW |
 | P12-D | Security — token abilities decision, `can:` sweep, rate-limit ladder, bearer scheme, audit context | 12 | P0 | P12-C | PLANNED |
 | P12-E | Tests — per-module API tests, `ApiDocumentationTest` drift gate, full verification | 12 | P0 | P12-D | PLANNED |
 

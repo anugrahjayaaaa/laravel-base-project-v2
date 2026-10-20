@@ -35,6 +35,11 @@ cheat sheet; that guide is the contract.
   never in a controller constructor.
 - Validation: dedicated FormRequest calling `$request->validated()`. Never
   inline `$request->validate()`.
+- **API endpoint work — build, change, or audit — follows
+  `docs/base/api/api-architecture.md` § *API Conventions*.** That checklist is
+  the standard; its § *Auditing conformance* is the pre-merge gate, and its
+  exceptions table is decisions, not defects. Never restate the shape — link
+  `response-contract.md` / `error-contract.md`.
 - Controllers are thin — delegate to Actions/Services. Business logic never
   lives in a view or a controller.
 - Audits are written **inside the transaction** by the Action layer (source of

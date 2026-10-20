@@ -1,5 +1,9 @@
 # API Response Contract
 
+Adding or reviewing an endpoint? Start at
+[`api-architecture.md`](./api-architecture.md) § *API Conventions* — the
+eight-part checklist and the audit commands. This file is the shape it points to.
+
 ## Envelope
 
 Every successful response on `api/*` is built by `Controller::respond()` and
@@ -86,15 +90,18 @@ Facts a client can rely on:
 - **No `Link` header.** Paging is in the body, so a client that inspects only
   JSON is not second-class.
 - `page` is the framework default; `per_page` is validated per endpoint with a
-  floor of 5 and a ceiling of 100. Defaults: 10 for users, roles and audit,
-  30 for the notification inbox.
+  floor of 5 and a ceiling of 100. Defaults: 10 for users, roles, permissions
+  and the audit trail, 30 for the notification inbox.
 - Collections are **not** nested paginator objects. The resources are plain
   arrays and the totals sit beside them, so there is one place to read a page
   count, not two disagreeing ones.
-- The notification inbox is the one list without a `pagination` block: it
+- The notification inbox is one of three lists without a `pagination` block: it
   returns the page's rows plus `unread_count`, and a client that needs to know
   whether anything changed polls `GET /api/v1/notifications/unread-count`
-  (`unread_count` + `latest_id`) rather than walking pages.
+  (`unread_count` + `latest_id`) rather than walking pages. The other two are
+  `GET /api/v1/sessions` (a user's own devices, bounded and small) and
+  `GET /api/v1/features` (a fixed catalogue of config). A new list paginates
+  unless it can state the same kind of bound.
 
 ## Responses that are not envelopes
 
@@ -118,7 +125,9 @@ arrays, and never unvalidated `$request->query()` reads.
 |----------|-----------|
 | `GET /api/v1/users` | `search`, `status`, `sort`, `direction`, `per_page` |
 | `GET /api/v1/roles` | `search`, `sort`, `direction`, `per_page`, `trashed` |
-| `GET /api/v1/audit` | `search`, `event`, `source`, `causer_id`, `subject_type`, `date_from`, `date_to`, `sort`, `direction`, `per_page` |
+| `GET /api/v1/permissions` | `search`, `sort`, `direction`, `per_page` |
+| `GET /api/v1/activity-logs` | `search`, `event`, `source`, `causer_id`, `subject_type`, `date_from`, `date_to`, `sort`, `direction`, `per_page` |
+| `GET /api/v1/features` | none — the catalogue is fixed and returned whole |
 
 Sorting is always two keys: `sort` (a whitelisted column) plus `direction`
 (`asc`|`desc`). An unknown `sort` is a 422, not a silent fallback — a client that

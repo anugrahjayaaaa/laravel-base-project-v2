@@ -21,6 +21,8 @@ use App\Http\Requests\V1\User\EmailChangeRequest;
 use App\Http\Requests\V1\User\UpdateUserRequest;
 use App\Http\Requests\V1\User\UserQueryRequest;
 use App\Http\Resources\Api\V1\User\UserResource;
+use App\Support\ApiError;
+use Dedoc\Scramble\Attributes\Response;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use App\Models\User;
@@ -136,9 +138,15 @@ class UserController extends Controller
     /**
      * Execute bulk user actions (delete, restore, lock, unlock, activate, deactivate).
      *
+     * 409 `LAST_SUPERADMIN` aborts the whole batch: `BulkActionProcessor` owns one
+     * transaction around the loop, so a refused item applies nothing. The request
+     * was well-formed and the answer is not a validation failure — it is the
+     * system refusing to reach zero superadmins.
+     *
      * @param  BulkUserRequest  $request
      * @return JsonResponse
      */
+    #[Response(status: 409, type: ApiError::DOC_TYPE)]
     public function bulkAction(BulkUserRequest $request): JsonResponse
     {
         $result = $this->processor->run(
@@ -158,10 +166,15 @@ class UserController extends Controller
     /**
      * Soft-delete a user (moves to trash).
      *
+     * 409 `LAST_SUPERADMIN` when this row is the last active superadmin — the
+     * refusal exists so the system never reaches zero, and it is raised by
+     * `UserDeleteAction` inside its transaction, not here.
+     *
      * @param  Request  $request
      * @param  User  $user
      * @return JsonResponse
      */
+    #[Response(status: 409, type: ApiError::DOC_TYPE)]
     public function destroy(Request $request, User $user): JsonResponse
     {
         // No audit call here: UserDeleteAction writes `user.deleted` inside its
@@ -250,13 +263,13 @@ class UserController extends Controller
         $token = $request->route('token');
 
         if (! $token) {
-            return $this->respond('Missing verification token.', 400);
+            return $this->respondError('Missing verification token.', 'INVALID_TOKEN', 400);
         }
 
         $verified = $this->verifyEmailChangeAction->run($user, $token, $request->user());
 
         if (! $verified) {
-            return $this->respond('Invalid or expired verification link.', 400);
+            return $this->respondError('Invalid or expired verification link.', 'INVALID_TOKEN', 400);
         }
 
         return $this->respond('Email changed successfully. Please login with your new email.', 200);

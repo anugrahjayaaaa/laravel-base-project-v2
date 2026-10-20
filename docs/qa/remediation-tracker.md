@@ -196,11 +196,13 @@ forms; `POST /api/v1/users` and `PUT /api/v1/users/{user}` already cover them.
 The auth URL sets differ (`forgot-password` vs `auth/password/forgot`) but the
 capability is identical on both channels.
 
-Two real gaps remain, both deliberate and both out of scope at the time of
-writing:
+Two real gaps remained at that point, both deliberate:
 
-- **No API `index` for feature flags.** The catalogue is eight slugs of config
-  and a caller cleared to toggle a flag can name the one it wants.
+- ~~**No API `index` for feature flags.**~~ **Closed in P12-C5** —
+  `GET /api/v1/features` (`features.view`) serves the resolved catalogue,
+  projected to the six fields a client can act on. The old reasoning held only
+  while the catalogue could be hardcoded by the caller; a write side that cannot
+  enumerate its own resources is read-blind.
 - **No API `roles/bulk-action`.** User bulk exists on both channels; roles bulk
   is web-only.
 

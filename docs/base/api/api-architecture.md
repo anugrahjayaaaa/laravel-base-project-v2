@@ -72,12 +72,18 @@ API response conventions must be consistent and easy for FE/mobile developers to
 ```json
 {
   "message": "The given data was invalid.",
+  "code": "VALIDATION_ERROR",
   "errors": {
     "email": ["The email field is required."]
   },
-  "code": "VALIDATION_ERROR"
+  "meta": { "request_id": "uuid", "timestamp": "2026-10-20T00:00:00+00:00" }
 }
 ```
+
+`meta` is always present and `errors` only on 422 — the full shape, the code
+vocabulary and the emitters live in `error-contract.md`. Do not hand-build this
+body: `Controller::respondError()` and the exception handler both call
+`App\Support\ApiError`.
 
 HTTP semantics:
 - 401: Unauthenticated
@@ -85,11 +91,104 @@ HTTP semantics:
 - 404: Resource does not exist. A feature switched off returns **403**, not 404 — the route exists, the module is unavailable. See [Feature Availability](../features/feature-flags.md)
 - Don't expose: stack traces, secrets, internal credentials, infrastructure details.
 
+### Why this shape, not Laravel's default
+
+The framework's skeleton gives `{"data": …}` for a resource, `{"data", "links",
+"meta"}` for a paginated collection, and `{"message", "errors"}` for a 422. This
+project deliberately differs on three counts: `meta` on **every** response (so
+the correlation id is in the body, not only in a header a client may not log), a
+machine `code` on **every** error, and pagination inside `data` so a JSON client
+is not second-class to one reading `Link` headers.
+
+The cost is stated once: a developer who knows Laravel will guess the framework
+shape and be wrong, because none of this is discoverable from the framework
+itself. That is why this file and `response-contract.md` exist, and why both are
+normative rather than descriptive.
+
+Do **not** "modernise" any of it to the framework default as a cleanup. It is a
+contract change for every client and every test — a version, not a refactor
+(`versioning.md`).
+
+## API Conventions — the checklist
+
+`api/*` is built from the same eight parts on every endpoint. This list is
+normative: an endpoint that skips a line is a defect, and a whole-project audit
+starts here rather than from `route:list`.
+
+| # | Part | Where | Rule |
+|---|------|-------|------|
+| 1 | Route | `routes/api.php` | Inside `Route::prefix('v1')`, named `api.v1.<resource>.<action>`. `feature:<module>` for a gated module, `can:<module>.<ability>` for the act. Authorization lives on the route, never in a controller constructor. |
+| 2 | FormRequest | `app/Http/Requests/V1/<Module>/` | `authorize()` when the permission depends on the payload, `rules()` for the allowlist. Controller reads `validated()` only — no `$request->validate()`, no `$request->query()`. |
+| 3 | Controller | `app/Http/Controllers/Api/V1/<Module>/` | Extends `App\Http\Controllers\Controller`. Orchestration only: no query building, no DB writes, no audit row. |
+| 4 | Action | `app/Actions/V1/<Module>/` | Business logic, and the audit row inside the same transaction. Shared with the web channel — an API-only Action is either a parity gap or a duplicated rule. |
+| 5 | Resource | `app/Http/Resources/Api/V1/<Module>/` | Serialization only, with an explicit `@return array{...}` so the generated schema is the shape the code produces. |
+| 6 | Response | `Controller::respond()` / `respondError()` | Envelope for success, error body for failure. Never `response()->json()`, never a 4xx status through `respond()`. |
+| 7 | Documentation | Scramble | Inference covers routes, FormRequests and Resources. Add `#[Response(status:, type:)]` only where it cannot reach: a hand-built array, or a status produced by `abort()` inside an Action. Every documented status needs an emitter in code. |
+| 8 | Test | `tests/Feature/...` | Success shape, refusal from the *sibling* permission (not only from no permission at all), 422, and the invariant the endpoint exists for. |
+
+### Shapes — one source each
+
+Do not restate these in an endpoint docblock; link instead.
+
+- Success `{data, meta}`, named resource keys, `data.pagination` for a paginated
+  list → `response-contract.md`
+- Error `{message, code, meta}`; `code` is the machine contract →
+  `error-contract.md`
+- Additive keys are non-breaking, removals are a new version → `versioning.md`
+
+### Deliberate exceptions
+
+An audit that flags these is wrong, not thorough. Each is a decision, with the
+reason recorded beside the route.
+
+| Endpoint / shape | Exception | Why |
+|---|---|---|
+| `GET /api/v1/health` | bare body; controller does not extend the base | the caller is a monitor that cannot log in, and the one meaningful key is `status` |
+| `GET` / `PUT` `/api/v1/settings` | `data` is the key→value map, no wrapper | a form re-renders from the response |
+| `/notifications/inbox*`, `/profile`, `/sessions`, `/auth/password/change` | no `can:` | self-scoped — "whose record is this" is answered by the token |
+| `/users/{user}/cancel-email-change` | `abort_unless` in the controller | the rule is "own account **or** `users.update`"; `can:` cannot express OR |
+| `*/bulk-action` (users, roles, features) | no `can:` on the route | the permission depends on the requested action; the FormRequest decides |
+| `GET /api/v1/activity-logs/{activity}` | `whereNumber` | `/activity-logs/exports` is one segment shorter and would otherwise be swallowed by `{activity}` |
+| `GET /api/v1/features` | list without a `pagination` block | a fixed catalogue of config, not a page of records |
+
+Lists that do not paginate, and why: `response-contract.md` § Collection.
+
+## Auditing conformance
+
+Run this before declaring an API change done. Each row must match its Expected
+column — the greps print nothing but the items listed under *Known
+non-conformance*, and the one review row is a reading, not a check.
+
+| Check | Command | Expected |
+|---|---|---|
+| No inline validation | `grep -rn '\$request->validate(' app/Http/Controllers/Api/V1` | no output |
+| No 4xx through the success helper | `grep -rnE 'respond\(.*, ?[45][0-9][0-9]' app/Http/Controllers/Api/V1` | no output |
+| No hand-built JSON | `grep -rn 'response()->json' app/Http/Controllers/Api/V1` | no output |
+| No inline FQCN | `vendor/bin/phpunit tests/Arch/NoInlineFqnTest.php` | pass |
+| Every capability on both channels | `php artisan test --filter ChannelParityTest` | pass |
+| Every documented status has an emitter | review the `#[Response]` set against the code's `abort()` / exception paths — no command proves it yet (E2 adds the per-operation assertions) | every annotated status is reachable |
+| No unresolvable schema | `php artisan scramble:analyze` | only the known `HealthCheckResource` warning |
+| The spec regenerates | `php artisan scramble:export` | contains the new path |
+
+### Known non-conformance
+
+Real, open, and recorded here so an audit does not rediscover them as new
+findings:
+
+- The `pagination` block is written out four times — `UserController`,
+  `RoleController`, `PermissionController`, `AuditController`. No helper has been
+  extracted, so changing the shape means editing four places.
+- `FeatureController::toggle` still calls `$request->validate()` instead of a
+  FormRequest.
+- `respond()` accepts a 4xx status; only convention keeps it out of use. A guard
+  in the helper would make the convention an invariant.
+
 ## API Documentation
 
 Use Scramble for API documentation generation. Scramble auto-generates
-documentation from Laravel routes, Form Requests, and API Resources —
-annotation-free.
+documentation from Laravel routes, Form Requests, and API Resources, so most
+endpoints need no annotation at all; `#[Response]` appears only where inference
+cannot reach (see item 7 above).
 
 Documentation must include:
 - Authentication
