@@ -121,7 +121,8 @@ class ApiDocsUiRenderTest extends TestCase
         // form tells a client nothing it can act on.
         $this->get('/docs/api.json')
             ->assertUnauthorized()
-            ->assertJsonPath('code', 'UNAUTHENTICATED');
+            ->assertJsonPath('code', 'UNAUTHENTICATED')
+            ->assertJsonStructure(['message', 'code', 'meta' => ['request_id', 'timestamp']]);
     }
 
     public function test_public_mode_opens_both_surfaces_without_a_session(): void

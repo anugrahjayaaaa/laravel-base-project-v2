@@ -13,6 +13,16 @@ class CheckAccountStateMiddlewareTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        // This test calls the middleware directly, so the global correlation
+        // middleware never runs. The refusal is built by ApiError, which reads
+        // the id it would have bound.
+        app()->instance('request_id', 'test-request-id');
+    }
+
     public function test_allows_active_user(): void
     {
         $user = User::factory()->create(['is_active' => true, 'is_locked' => false]);
@@ -31,6 +41,11 @@ class CheckAccountStateMiddlewareTest extends TestCase
 
         $response = $middleware->handle($request, fn ($req) => response()->json(['ok' => true]));
         $this->assertEquals(403, $response->getStatusCode());
+
+        $body = json_decode($response->getContent(), true);
+        $this->assertSame('ACCOUNT_DISABLED', $body['code']);
+        $this->assertSame('test-request-id', $body['meta']['request_id']);
+        $this->assertArrayHasKey('timestamp', $body['meta']);
     }
 
     public function test_blocks_locked_user(): void

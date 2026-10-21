@@ -56,6 +56,10 @@ class ThrottleJsonResponseTest extends TestCase
         $this->assertSame('RATE_LIMITED', $body['code'] ?? null);
         $this->assertArrayHasKey('retry_after_seconds', $body);
         $this->assertGreaterThan(0, $body['retry_after_seconds']);
+        // The limiter's own callback answer, not the handler's, so this is the
+        // assertion that proves ApiError is the builder on this path too.
+        $this->assertArrayHasKey('request_id', $body['meta'] ?? []);
+        $this->assertArrayHasKey('timestamp', $body['meta'] ?? []);
     }
 
     private function apiUser(): User

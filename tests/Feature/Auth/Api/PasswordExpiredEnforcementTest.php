@@ -117,6 +117,7 @@ class PasswordExpiredEnforcementTest extends TestCase
             'message' => 'Password change required before accessing this resource.',
             'code' => 'PASSWORD_CHANGE_REQUIRED',
         ]);
+        $response->assertJsonStructure(['message', 'code', 'meta' => ['request_id', 'timestamp']]);
     }
 
     public function test_authenticated_must_change_password_blocked_from_protected_endpoint(): void
@@ -133,6 +134,7 @@ class PasswordExpiredEnforcementTest extends TestCase
             'message' => 'Password change required before accessing this resource.',
             'code' => 'PASSWORD_CHANGE_REQUIRED',
         ]);
+        $response->assertJsonStructure(['message', 'code', 'meta' => ['request_id', 'timestamp']]);
     }
 
     // ── Change-password endpoint must remain accessible when password expired ──
@@ -263,6 +265,6 @@ class PasswordExpiredEnforcementTest extends TestCase
         $response = $this->postJson("/api/v1/users/{$target->id}/unlock");
 
         $response->assertStatus(403);
-        $response->assertJsonStructure(['message', 'code']);
+        $response->assertJsonStructure(['message', 'code', 'meta' => ['request_id', 'timestamp']]);
     }
 }
