@@ -167,7 +167,7 @@ reason recorded beside the route.
 | `/notifications/inbox*`, `/profile`, `/sessions`, `/auth/password/change` | no `can:` | self-scoped — "whose record is this" is answered by the token |
 | `/users/{user}/request-email-change` | no `can:`; `EmailChangeRequest::authorize()` | the rule is "own account **or** `users.update`", the same OR `cancel-email-change` needs; a single `can:` would lock a user out of changing their own email |
 | `/users/{user}/cancel-email-change` | `abort_unless` in the controller | the rule is "own account **or** `users.update`"; `can:` cannot express OR |
-| `GET /email/verify-change/{user}` | `signed` + the token check in the Action | the caller is whoever holds the emailed link; there is no sign-in to authorize, and a permission would make the link unusable |
+| `GET /email/verify-change/{user}` | `signed` + the token check in the Action | the link is the credential: the signature proves it was issued for this change and the token proves it belongs to this pending row. The route sits in the authenticated group, so the holder must be signed in, but no permission applies — requiring one would make the emailed link unusable for the user it was sent to |
 | `*/bulk-action` (users, roles) | no `can:` on the route | the permission depends on the requested action; the FormRequest decides |
 | `/features/bulk-action` | `can:features.manage` **and** `BulkFeatureRequest::authorize()` | every flag action is the same permission, so unlike users/roles it can be pinned on the route; the FormRequest repeats it for the payload |
 | `GET /api/v1/activity-logs/{activity}` | `whereNumber` | `/activity-logs/exports` is one segment shorter and would otherwise be swallowed by `{activity}` |
@@ -183,7 +183,8 @@ non-conformance*, and the one review row is a reading, not a check.
 
 | Check | Command | Expected |
 |---|---|---|
-| No inline validation | `grep -rn '\$request->validate(' app/Http/Controllers/Api/V1` | no output |
+| No inline validation | `grep -rn '\$request->validate(' app/Http/Controllers` | no output |
+| No raw query reads | `grep -rn '\$request->query(' app/Http/Controllers` | no output; a query parameter belongs in a FormRequest so it is validated and documented |
 | No 4xx through the success helper | `grep -rnE 'respond\(.*, ?[45][0-9][0-9]' app/Http/Controllers/Api/V1` | no output; a non-literal status cannot slip through either — `respond()` throws on a 4xx |
 | No hand-built JSON | `grep -rn 'response()->json' app/Http/Controllers/Api/V1` | no output |
 | No inline FQCN | `vendor/bin/phpunit tests/Arch/NoInlineFqnTest.php` | pass |
@@ -200,14 +201,6 @@ findings:
 - The `pagination` block is written out four times — `UserController`,
   `RoleController`, `PermissionController`, `AuditController`. No helper has been
   extracted, so changing the shape means editing four places.
-- `FeatureController::toggle` still calls `$request->validate()` instead of a
-  FormRequest.
-- Three middleware 403s answer `{message, code}` without `meta`:
-  `CheckAccountState` (`ACCOUNT_DISABLED`) and `EnsurePasswordChangeRequired`
-  (`ACCOUNT_LOCKED_INACTIVITY`, `PASSWORD_CHANGE_REQUIRED`). Status and code are
-  right; the correlation block is missing. Recorded under P12-E4 and in
-  `error-contract.md` § *Known deviations*; the fix is a separate change because
-  it rewrites the body of a refusal every authenticated route can emit.
 
 ## API Documentation
 

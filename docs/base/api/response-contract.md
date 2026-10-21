@@ -95,13 +95,15 @@ Facts a client can rely on:
 - Collections are **not** nested paginator objects. The resources are plain
   arrays and the totals sit beside them, so there is one place to read a page
   count, not two disagreeing ones.
-- The notification inbox is one of three lists without a `pagination` block: it
+- The notification inbox is one of four lists without a `pagination` block: it
   returns the page's rows plus `unread_count`, and a client that needs to know
-  whether anything changed polls `GET /api/v1/notifications/unread-count`
-  (`unread_count` + `latest_id`) rather than walking pages. The other two are
-  `GET /api/v1/sessions` (a user's own devices, bounded and small) and
-  `GET /api/v1/features` (a fixed catalogue of config). A new list paginates
-  unless it can state the same kind of bound.
+  whether anything changed polls
+  `GET /api/v1/notifications/inbox/unread-count` (`unread_count` + `latest_id`)
+  rather than walking pages. The other three are `GET /api/v1/sessions` (a
+  user's own devices, bounded and small), `GET /api/v1/features` (a fixed
+  catalogue of config), and `GET /api/v1/activity-logs/exports` (the caller's
+  own five most recent exports — `recentFor()` caps it at 5). A new list
+  paginates unless it can state the same kind of bound.
 
 ## Responses that are not envelopes
 

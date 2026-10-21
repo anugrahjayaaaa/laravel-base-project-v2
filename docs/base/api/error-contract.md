@@ -39,7 +39,7 @@ Built in `App\Support\ApiError`, which the exception handler
 | 410 | Gone | audit export file past its retention window (`HTTP_ERROR`, see below) |
 | 419 | CSRF mismatch | `TokenMismatchException` (`CSRF_TOKEN_MISMATCH`) |
 | 422 | Validation failed | `ValidationException` (`VALIDATION_ERROR`) |
-| 429 | Rate limited | `ThrottleRequestsException` (`RATE_LIMITED`), and the auth lockout path |
+| 429 | Rate limited | `ThrottleRequests` (the limiter's `->response()` closure, built by `ApiError`), and the `LoginThrottle` lockout path |
 | 500 | Server error | the handler's fallback (`SERVER_ERROR`) |
 | 502 | Bad gateway | send-test-mail only, when the mail transport refuses the message (`BAD_GATEWAY`) |
 | 503 | Service unavailable | `HealthCheckController` when a probe fails — **not** an error envelope, see below |
@@ -190,20 +190,26 @@ Enforced by:
   a key without changing the shape, and one case per contract code (400, 401,
   403, 404, 409, 422, 429, 500) through the handler mapping
 
-## Known deviations (P12-E4)
+## Every emitter builds through `ApiError`
 
-Three middleware refusals answer 403 in a **partial** body: `{message, code}`
-with no `meta`. They are `CheckAccountState` (`ACCOUNT_DISABLED`) and
-`EnsurePasswordChangeRequired` (`ACCOUNT_LOCKED_INACTIVITY`,
-`PASSWORD_CHANGE_REQUIRED`). The status and code are correct, so a client can
-act on them; the correlation block is missing, which breaks the "`meta` is
-always present" rule above.
+`meta` is only guaranteed if there is exactly one builder. Refusals that are not
+exceptions are the ones that drift, because nothing forces them through the
+handler:
 
-Recorded here rather than fixed inside a test task. The fix is small — route
-both through `ApiError::make()` — but it changes the body of a refusal every
-auth-gated route can emit, so it belongs in its own change with its own tests.
-Until then, `ApiErrorEnvelopeTest` pins the handler path, which is what every
-other emitter uses.
+| Emitter | Refusal | Test |
+|---------|---------|------|
+| `ThrottleRequests` (the limiter's own `->response()` closure) | 429 `RATE_LIMITED` | `tests/Feature/CrossCutting/ThrottleJsonResponseTest` |
+| `LoginThrottle` | 429 `RATE_LIMITED` + `retry_after_seconds` | `docs/base/auth/authentication.md` cases |
+| `CheckAccountState` | 403 `ACCOUNT_DISABLED` | `tests/Feature/Api/V1/User/CheckAccountStateMiddlewareTest` |
+| `EnsurePasswordChangeRequired` | 403 `ACCOUNT_LOCKED_INACTIVITY`, `PASSWORD_CHANGE_REQUIRED` | `tests/Feature/Auth/Api/PasswordExpiredEnforcementTest` |
+| `RestrictApiDocsAccess` | 401 `UNAUTHENTICATED`, 403 `FORBIDDEN` | `tests/Feature/Api/ApiDocsUiRenderTest` |
+
+The limiter row is the one that hid longest: `ThrottleRequests` wraps the
+limiter's closure in `HttpResponseException`, and `bootstrap/app.php` returns
+`null` for that class so the closure's body *is* the response. That bypasses the
+handler, and the body used to be hand-built. `ApiErrorEnvelopeTest`'s 429 case
+throws from a throw-away route and therefore exercises the handler, not this
+path — it passed the whole time the real limiter answered without `meta`.
 
 ## Security Considerations
 

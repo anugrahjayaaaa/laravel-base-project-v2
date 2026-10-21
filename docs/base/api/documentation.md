@@ -90,7 +90,17 @@ the subset is decided by reachability, not by a blanket rule:
 | 401 | The route carries `auth:sanctum` |
 | 403 | The route carries a `can:` gate (or a FormRequest that authorizes) |
 | 422 | The action takes a FormRequest (or validates input inline) |
+| 429 | Any route behind a `throttle:` limiter — which is every route in the authenticated group, via `throttle:user-state-actions` |
 | 500 | Always reachable through the handler fallback; covered per status in `ApiErrorEnvelopeTest` |
+
+429 is the one status not repeated per operation. Annotating fifty routes with
+the same refusal would pad the document without telling a client anything it
+cannot read once: the body is always `RATE_LIMITED`, and the wait arrives in the
+`Retry-After` header (the auth lockout path additionally returns
+`retry_after_seconds` in the body). Only limiters that are endpoint-specific —
+login, resend-verification, the audit export pair — carry their own annotation.
+`ApiDocumentationTest` therefore does not require a 429 on every throttled
+route, and `docs/base/api/error-contract.md` is the authority for the body.
 
 The public auth routes, the health probe and input-less reads cannot answer all
 four, and `ApiDocumentationTest` asserts only what each route can actually

@@ -56,7 +56,9 @@ return [
          * Description rendered on the home page of the API documentation (`/docs/api`).
          */
         'description' => 'Versioned JSON API. Authenticate with a Sanctum bearer token (`Authorization: Bearer <token>`). '
-            .'Every mutation runs through the same Action as the web channel and is written to the audit trail.',
+            .'Every mutation runs through the same Action as the web channel and is written to the audit trail. '
+            .'Errors share one envelope, `{message, code, meta}` — see the error contract. '
+            .'Every route is rate limited: a refused request answers 429 `RATE_LIMITED` with the wait in the `Retry-After` header.',
     ],
 
     'ui' => [
