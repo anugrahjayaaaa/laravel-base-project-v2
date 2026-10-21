@@ -20,6 +20,7 @@ use App\Http\Requests\V1\User\CreateUserRequest;
 use App\Http\Requests\V1\User\EmailChangeRequest;
 use App\Http\Requests\V1\User\UpdateUserRequest;
 use App\Http\Requests\V1\User\UserQueryRequest;
+use App\Http\Requests\V1\User\VerifyEmailChangeRequest;
 use App\Http\Resources\Api\V1\User\UserResource;
 use App\Support\ApiError;
 use Dedoc\Scramble\Attributes\QueryParameter;
@@ -259,15 +260,18 @@ class UserController extends Controller
      * `ChangeEmailVerificationNotification` use — the path carries the user only,
      * so a signed link works on either channel.
      *
-     * @param  Request  $request
+     * The token is validated by `VerifyEmailChangeRequest`; a missing one is the
+     * documented 400 below, not a 422, so its rule is `nullable`.
+     *
+     * @param  VerifyEmailChangeRequest  $request
      * @param  User  $user
      * @return JsonResponse
      */
     #[QueryParameter(name: 'token', type: 'string', required: false, description: 'Email-change token from the signed link.')]
     #[Response(status: 403, type: ApiError::DOC_TYPE)]
-    public function verifyEmailChange(Request $request, User $user): JsonResponse
+    public function verifyEmailChange(VerifyEmailChangeRequest $request, User $user): JsonResponse
     {
-        $token = $request->query('token');
+        $token = $request->validated('token');
 
         if (! $token) {
             return $this->respondError('Missing verification token.', 'INVALID_TOKEN', 400);

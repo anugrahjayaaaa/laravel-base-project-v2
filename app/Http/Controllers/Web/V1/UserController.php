@@ -22,6 +22,7 @@ use App\Http\Requests\V1\User\CreateUserRequest;
 use App\Http\Requests\V1\User\EmailChangeRequest;
 use App\Http\Requests\V1\User\UpdateUserRequest;
 use App\Http\Requests\V1\User\UserQueryRequest;
+use App\Http\Requests\V1\User\VerifyEmailChangeRequest;
 use App\Models\SystemSetting;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -273,13 +274,17 @@ class UserController extends Controller
     /**
      * Verify and complete an email change.
      *
-     * @param  Request  $request
+     * The token is validated by `VerifyEmailChangeRequest`; a missing one is a
+     * documented 400, not a 422, so the rule is `nullable` and the refusal below
+     * owns that answer.
+     *
+     * @param  VerifyEmailChangeRequest  $request
      * @param  User  $user
      * @return RedirectResponse
      */
-    public function verifyEmailChange(Request $request, User $user)
+    public function verifyEmailChange(VerifyEmailChangeRequest $request, User $user)
     {
-        $token = $request->query('token') ?? $request->route('token');
+        $token = $request->validated('token');
 
         if (! $token) {
             return $this->verifyRedirect('Missing verification token.', false);

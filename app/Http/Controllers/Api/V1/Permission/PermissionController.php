@@ -25,9 +25,9 @@ class PermissionController extends Controller
     /**
      * List the permission catalogue with the roles holding each permission.
      *
-     * Query parameters are validated by `PermissionQueryRequest` — an unvalidated
-     * `$request->query()` read could not document its own allowlist, and an
-     * unknown `sort` fell back silently instead of answering 422.
+     * Query parameters are validated by `PermissionQueryRequest` — a raw query
+     * read could not document its own allowlist, and an unknown `sort` fell back
+     * silently instead of answering 422.
      */
     public function index(PermissionQueryRequest $request): JsonResponse
     {

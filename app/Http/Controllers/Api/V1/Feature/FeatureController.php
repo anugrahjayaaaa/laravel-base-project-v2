@@ -7,10 +7,10 @@ use App\Actions\V1\Feature\FeatureIndexAction;
 use App\Actions\V1\Feature\FeatureToggleAction;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\V1\Feature\BulkFeatureRequest;
+use App\Http\Requests\V1\Feature\ToggleFeatureRequest;
 use Dedoc\Scramble\Attributes\Response;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 
 /**
  * API feature flag controller: read the catalogue, toggle one flag, or set
@@ -81,18 +81,14 @@ class FeatureController extends Controller
     /**
      * Turn one flag on or off.
      *
-     * The rules match the web controller's inline validation deliberately. The
-     * slug is not validated here: the route parameter is a plain string, and
-     * FeatureToggleAction resolves it through FeatureCatalog and 404s on an
-     * undeclared name, which is the same answer the web channel gives.
+     * Validation and authorization live in `ToggleFeatureRequest`, shared with
+     * the web channel. The slug is not validated there: the route parameter is a
+     * plain string, and `FeatureToggleAction` resolves it through
+     * `FeatureCatalog` and 404s on an undeclared name on both channels.
      */
-    public function toggle(Request $request, string $feature): JsonResponse
+    public function toggle(ToggleFeatureRequest $request, string $feature): JsonResponse
     {
-        $validated = $request->validate([
-            'enabled' => ['required', 'boolean', Rule::in(['0', '1', '0.0', '1.0', 0, 1, false, true])],
-        ]);
-
-        $result = $this->toggleAction->run($feature, (bool) $validated['enabled'], $request->user());
+        $result = $this->toggleAction->run($feature, (bool) $request->validated('enabled'), $request->user());
 
         return $this->respond(sprintf(
             '%s is now %s.',
