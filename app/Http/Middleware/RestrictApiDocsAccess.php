@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Support\ApiError;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -36,13 +37,14 @@ class RestrictApiDocsAccess
 
         if ($request->user() === null) {
             if ($request->is('docs/api.json') || $request->expectsJson()) {
-                return response()->json([
-                    'message' => 'Unauthenticated.',
-                    'code' => 'UNAUTHENTICATED',
-                ], 401);
+                return ApiError::make('Unauthenticated.', 'UNAUTHENTICATED', 401);
             }
 
             return redirect()->guest(route('login'));
+        }
+
+        if ($request->is('docs/api.json') || $request->expectsJson()) {
+            return ApiError::make('This action is unauthorized.', 'FORBIDDEN', 403);
         }
 
         abort(403);
