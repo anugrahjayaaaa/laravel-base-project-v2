@@ -151,6 +151,17 @@ class ApiDocumentationTest extends TestCase
         $this->assertSame([['http' => []]], $this->spec['security'] ?? null);
     }
 
+    /**
+     * Health is deliberately unnamed, so the route→path loop above cannot see it.
+     */
+    public function test_the_unnamed_health_route_is_documented_with_both_statuses(): void
+    {
+        $responses = $this->spec['paths']['/v1/health']['get']['responses'] ?? [];
+
+        $this->assertArrayHasKey('200', $responses);
+        $this->assertArrayHasKey('503', $responses);
+    }
+
     public function test_the_document_emits_no_status_outside_the_contract(): void
     {
         $allowed = ['200', '201', '202', '400', '401', '403', '404', '409', '410', '422', '429', '500', '502', '503'];
