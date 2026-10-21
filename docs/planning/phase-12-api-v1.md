@@ -1,6 +1,6 @@
 # Phase 12 — API V1
 
-> Date: 2026-10-20 | Status: **PLANNED (breakdown)** | Branch: `feature/phase-12-api-v1`
+> Date: 2026-10-20 | Status: **DONE** (owner-closed 2026-10-21) | Branch: `feature/phase-12-api-v1`
 > Part I is the capability audit of 2026-10-13, kept as written because it is the
 > record of what the route-table comparison found and `ChannelParityTest`
 > references it. Part II is the execution breakdown that closes the remaining
@@ -135,8 +135,8 @@ implementer "fixes" into a bug.
 |---|------|---------------------|
 | P12-1 | A test that diffs the two route tables by capability | **DONE** — `tests/Feature/Api/ChannelParityTest.php`. A route missing from the map fails the test; a one-sided capability must carry `why` |
 | P12-2 | The other three rate limiters (`user-state-actions`, `bulk-action`, `send-test-mail`) are still literals | **DONE** — already read through `SystemSetting::getInt()` in `AppServiceProvider` (lines ~292–322) and are seeded; this table was stale |
-| P12-3 | Audit the API for **response** parity, not route parity | **OPEN** — Group D |
-| P12-4 | `Api\V1\NotificationController.php` and the new `Notification/` sub-namespace coexist | **OPEN** — Group C |
+| P12-3 | Audit the API for **response** parity, not route parity | **DONE** — `tests/Feature/Api/ResponseParityTest.php` (P12-D7) |
+| P12-4 | `Api\V1\NotificationController.php` and the new `Notification/` sub-namespace coexist | **DONE** — folded into `Notification/` by P12-C6 |
 
 ## The lesson, stated once
 
@@ -292,7 +292,7 @@ endpoint is undocumented — was P12-E2 and now ships as `ApiDocumentationTest`.
 > Depends on: A (the schema needs somewhere to live). Blocks: C, D.
 > Most of this exists; the tasks are gap-closing, not construction.
 
-Status: **REVIEW**.
+Status: **DONE**.
 
 | ID | Task | Pri | Depends On | Status |
 |----|------|-----|-----------|--------|
@@ -391,7 +391,7 @@ admin resend) that moved with the rest — see the changelog entry of 2026-10-20
 
 > Depends on: A, B. Blocks: D, E.
 
-Status: **REVIEW**.
+Status: **DONE**.
 
 | ID | Task | Pri | Depends On | Status |
 |----|------|-----|-----------|--------|
@@ -535,7 +535,7 @@ green with no remaining one-sided capability in the feature module,
 
 > Depends on: C. Blocks: E.
 
-Status: **REVIEW**.
+Status: **DONE**.
 
 | ID | Task | Pri | Depends On | Status |
 |----|------|-----|-----------|--------|
@@ -622,7 +622,7 @@ per-module tests cover the remaining modules' shapes.
 
 > Depends on: A–D.
 
-Status: **REVIEW** — implemented 2026-10-20 on `feature/phase-12-api-v1`.
+Status: **DONE** — implemented 2026-10-20, owner-closed 2026-10-21 on `feature/phase-12-api-v1`.
 
 | ID | Task | Pri | Depends On | Status |
 |----|------|-----|-----------|--------|
@@ -648,12 +648,30 @@ the existing domain files; full suite **2148 passed / 7574 assertions** (360s),
 generated document before it was written: 401/403/422 are inferred from the
 middleware and FormRequest, 500 only where annotated, so a blanket
 four-codes-per-operation assertion would have been false for health, the public
-auth routes and input-less reads. E4 did find one real deviation while covering
-403: three middleware refusals (`ACCOUNT_DISABLED`,
-`ACCOUNT_LOCKED_INACTIVITY`, `PASSWORD_CHANGE_REQUIRED`) answer without the
-`meta` block. It is recorded in `docs/base/api/error-contract.md` § *Known
-deviations* and left for its own change — a test task does not get to rewrite a
-refusal every authenticated route can emit.
+auth routes and input-less reads.
+
+E4 did find one real deviation while covering 403: three middleware refusals
+(`ACCOUNT_DISABLED`, `ACCOUNT_LOCKED_INACTIVITY`, `PASSWORD_CHANGE_REQUIRED`)
+answered without the `meta` block. Recorded at the time and fixed in the
+post-review pass below.
+
+## Post-review fixes (2026-10-21)
+
+The owner-declared close of Groups B–E came with an audit of the four groups.
+Finding → fix:
+
+| Finding | Fix |
+|---|---|
+| `FeatureController::toggle` validated inline on **both** channels, and the web docblock argued for that | `App\Http\Requests\V1\Feature\ToggleFeatureRequest`, used by both controllers; the docblock now says why it exists |
+| The email-change token was read with `$request->query()` on both channels | `App\Http\Requests\V1\User\VerifyEmailChangeRequest`; the rule is `nullable` so a missing token stays the documented 400, not a 422 |
+| Three middleware 403s and the docs 401/403 answered `{message, code}` with no `meta` | all five now build through `ApiError::make()` |
+| The auth lockout 429 (`LoginThrottle`) bypassed `ApiError` | both JSON branches build through it; `ThrottleJsonResponseTest` asserts `meta` on the limiter's own answer |
+| 429 was annotated on 3 of ~50 throttled operations | recorded as a documentation rule instead of 50 identical attributes — `documentation.md` § status table says every throttled route can answer it, and the generated description states the shape and `Retry-After` |
+| `ChannelParityTest` reported **56 capabilities / 8 one-sided / 0 undeclared** | unchanged — the two size numbers describe different maps (capabilities vs. route pairs), not drift |
+| `GET /v1/health` was invisible to `ApiDocumentationTest` (unnamed route) | the test now asserts its 200/503 pair explicitly |
+| Docs drift: wrong unread-count path, three-vs-four unpaginated lists, verify-change exception reason, stale tracker statuses | reconciled in `error-contract.md`, `response-contract.md`, `api-architecture.md`, `task-tracker.md`, `progress.md`, `qa-tracker.md`, `feature-tracker.md` |
+
+**Measured after the fixes (2026-10-21):** full suite **2157 passed / 7628 assertions** (358s), `vendor/bin/pint --test` clean, `scramble:analyze` only the known `HealthCheckResource` warning. The generated document holds 47 paths, `/v1/health` now visible with 200+503, and 429 on the three operations where the limiter is endpoint-specific.
 
 ---
 
