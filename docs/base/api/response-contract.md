@@ -90,20 +90,21 @@ Facts a client can rely on:
 - **No `Link` header.** Paging is in the body, so a client that inspects only
   JSON is not second-class.
 - `page` is the framework default; `per_page` is validated per endpoint with a
-  floor of 5 and a ceiling of 100. Defaults: 10 for users, roles, permissions
-  and the audit trail, 30 for the notification inbox.
+  floor of 5 and a ceiling of 100. Defaults: 10 for users, roles, permissions,
+  the audit trail and the notification inbox. The inbox takes no `per_page` at
+  all: it is fixed at 10, because an inbox has no client-chosen page size.
 - Collections are **not** nested paginator objects. The resources are plain
   arrays and the totals sit beside them, so there is one place to read a page
   count, not two disagreeing ones.
-- The notification inbox is one of four lists without a `pagination` block: it
-  returns the page's rows plus `unread_count`, and a client that needs to know
-  whether anything changed polls
-  `GET /api/v1/notifications/inbox/unread-count` (`unread_count` + `latest_id`)
-  rather than walking pages. The other three are `GET /api/v1/sessions` (a
-  user's own devices, bounded and small), `GET /api/v1/features` (a fixed
-  catalogue of config), and `GET /api/v1/activity-logs/exports` (the caller's
-  own five most recent exports — `recentFor()` caps it at 5). A new list
-  paginates unless it can state the same kind of bound.
+- The notification inbox paginates like every other list and also carries
+  `unread_count` on the same response. A client that only needs change
+  detection polls `GET /api/v1/notifications/inbox/unread-count`
+  (`unread_count` + `latest_id`) rather than walking pages.
+- Three lists carry no `pagination` block: `GET /api/v1/sessions` (a user's own
+  devices, bounded and small), `GET /api/v1/features` (a fixed catalogue of
+  config), and `GET /api/v1/activity-logs/exports` (the caller's own five most
+  recent exports — `recentFor()` caps it at 5). A new list paginates unless it
+  can state the same kind of bound.
 
 ## Responses that are not envelopes
 

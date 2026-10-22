@@ -198,9 +198,9 @@ non-conformance*, and the one review row is a reading, not a check.
 Real, open, and recorded here so an audit does not rediscover them as new
 findings:
 
-- The `pagination` block is written out four times — `UserController`,
-  `RoleController`, `PermissionController`, `AuditController`. No helper has been
-  extracted, so changing the shape means editing four places.
+- None currently open. (The `pagination` block used to be written out four
+  times; `Controller::paginationFor()` is now the one copy, and the inbox uses
+  it too.)
 
 ## API Documentation
 
