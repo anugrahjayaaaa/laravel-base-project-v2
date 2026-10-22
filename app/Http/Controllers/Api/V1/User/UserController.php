@@ -118,10 +118,16 @@ class UserController extends Controller
     /**
      * Update an existing user.
      *
+     * 409 `LAST_SUPERADMIN` when the payload's `status` would deactivate the
+     * last active superadmin. `UserUpdateAction` delegates the column to
+     * `UserDeactivateAction`, so this route carries the same refusal as
+     * `POST /users/{user}/deactivate` rather than writing `is_active` itself.
+     *
      * @param  UpdateUserRequest  $request
      * @param  User  $user
      * @return JsonResponse
      */
+    #[Response(status: 409, type: ApiError::DOC_TYPE)]
     public function update(UpdateUserRequest $request, User $user): JsonResponse
     {
         $this->updateAction->run($user, $request->validated(), $request->user());

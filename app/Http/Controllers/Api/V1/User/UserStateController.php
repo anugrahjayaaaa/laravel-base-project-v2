@@ -67,10 +67,15 @@ class UserStateController extends Controller
     /**
      * Lock a user account.
      *
+     * 409 `LAST_SUPERADMIN` when this row is the last active superadmin; a
+     * locked superadmin cannot log in either, so `UserLockAction` asks the
+     * same question `deactivate` and `delete` do.
+     *
      * @param  Request  $request
      * @param  User  $user
      * @return JsonResponse
      */
+    #[Response(status: 409, type: ApiError::DOC_TYPE)]
     public function lock(Request $request, User $user): JsonResponse
     {
         $this->lockAction->run($user, $request->user());

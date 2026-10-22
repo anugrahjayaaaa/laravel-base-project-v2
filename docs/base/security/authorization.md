@@ -75,22 +75,29 @@ answers *authority*; these answer *consequence*.
 
 ### The last superadmin cannot be removed by any route
 
-A superadmin can disappear four ways, and only the first was originally
+A superadmin can disappear six ways, and only the first was originally
 guarded. `LastSuperadmin::guard()` now runs wherever an account's ability to
 log in actually changes:
 
 | Path | Guarded by |
 |------|-----------|
 | Role stripped via `PUT /users/{id}` | `RoleAssignAction::guardLastSuperadmin()` |
+| `PUT /users/{id}` with `status=inactive` | `UserUpdateAction` delegates the column to `UserDeactivateAction` |
 | `POST /users/{id}/deactivate` | `UserDeactivateAction` → `LastSuperadmin::guard()` |
+| `POST /users/{id}/lock` | `UserLockAction` → `LastSuperadmin::guard()` |
 | `DELETE /users/{id}` | `UserDeleteAction` → `LastSuperadmin::guard()` |
-| `POST /users/bulk-action` (`deactivate`) | routes through `UserDeactivateAction`, so it inherits the guard |
+| `POST /users/bulk-action` (`deactivate`, `lock`) | routes through the state actions, so it inherits the guard |
 
 This was a live hole, not a hypothetical: a caller holding `users.deactivate` +
 `users.delete` + `users.force_delete` — and not being a superadmin — could take
 the only superadmin to zero. The bulk path was a second door, because it ran a
 raw `UPDATE` that bypassed `UserDeactivateAction` entirely, so the guard the row
-button enforced was absent from the dropdown one screen above.
+button enforced was absent from the dropdown one screen above. The edit form was
+a third: `UserUpdateAction` wrote `is_active` itself, so a caller holding only
+`users.update` walked past every guard the state actions own. That column now
+has one writer — `status` in an update payload is delegated, which also means a
+deactivation through the form revokes sessions/tokens and notifies like the
+dedicated route.
 
 `UserForceDeleteAction` deliberately has **no** such guard: it only accepts an
 already-trashed user, and `UserDeleteAction` already refuses to create that

@@ -440,7 +440,11 @@ Scramble infers `search`/`sort`/`direction`/`per_page` from `UserQueryRequest`,
 so no per-parameter annotation was needed. `#[Response(409, …)]` now sits on
 `DELETE /users/{user}`, `POST /users/{user}/deactivate` and
 `POST /users/bulk-action` — the three reachable emitters of
-`LastSuperadminException`. Force-delete deliberately carries none: it only
+`LastSuperadminException` at the time. Two more were reachable only after a
+pentest finding closed them: `PUT /users/{user}` (its `status` column used to be
+a second writer of `is_active`, skipping the guard) and `POST /users/{user}/lock`
+(no guard at all), both now annotated and listed in
+`docs/base/security/authorization.md`. Force-delete deliberately carries none: it only
 accepts an already-trashed row and `UserForceDeleteAction` documents why it has no
 guard. One behaviour worth writing down because the status cannot express it:
 `BulkActionProcessor` owns one transaction around the loop, so a 409 aborts and
