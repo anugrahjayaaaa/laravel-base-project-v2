@@ -266,7 +266,7 @@ jobs:
           APP_PATH="$1"
           cd "$APP_PATH"
 
-          mkdir -p storage/framework/cache/data storage/framework/sessions storage/framework/views bootstrap/cache
+          mkdir -p storage/app storage/framework/cache/data storage/framework/sessions storage/framework/views bootstrap/cache
           # supervisor writes to storage/logs/*.log and the backup below lands in
           # storage/db-backups. storage/ is excluded from rsync, so on a fresh VM
           # these directories simply do not exist and supervisor goes FATAL on a
@@ -309,6 +309,18 @@ jobs:
           php artisan config:cache
           php artisan route:cache
           php artisan view:cache
+
+          # The API document is exported once here and served from the file by
+          # `App\Support\OpenApi\ExportedDocument`: measured ~4 s on this line
+          # instead of ~700 ms on every visit to /docs/api. `scramble:cache` is
+          # NOT used — it caches the analysis, and the cost is building the spec,
+          # so it measured the same with and without. The environment is part of
+          # the file name because the binding reads it per environment; a missing
+          # file is safe (the route falls back to live generation), but a failed
+          # export fails the deploy rather than shipping docs for other routes.
+          spec_env="$(sed -n 's/^APP_ENV=//p' .env | head -n1 | tr -d '"' | tr -d "'")"
+          php artisan scramble:export --path="storage/app/openapi.${spec_env:-production}.json" --no-interaction
+
           php artisan queue:restart
 
           # Opcache keeps serving the previous release's compiled views/blade

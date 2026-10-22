@@ -13,10 +13,13 @@ use App\Observers\UserObserver;
 use App\Services\PasswordExpiry;
 use App\Support\FeatureCatalog;
 use App\Support\MorphMap;
+use App\Support\OpenApi\ExportedDocument;
 use App\Support\Vantage\FailedJobPayloadRestorer;
 use App\View\Composers\AccountOptionsComposer;
 use App\View\Composers\AppMenuComposer;
 use App\View\Composers\PasswordStrengthComposer;
+use Dedoc\Scramble\CacheableGenerator;
+use Dedoc\Scramble\Generator;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Queue\Events\Looping;
@@ -589,5 +592,16 @@ class AppServiceProvider extends ServiceProvider
         // job's arguments. See `FailedJobPayloadRestorer` for the security
         // checks it reuses and for how the two stores' retentions differ.
         $this->app->bind(JobRestorer::class, FailedJobPayloadRestorer::class);
+
+        // The API document is exported once per deploy (`scramble:export`) and
+        // served from that file, instead of rebuilt on every visit. The
+        // package's own `scramble:cache` was measured to save nothing: it
+        // caches the analysis, and the ~700 ms is `spec()` building the array
+        // from it. See `ExportedDocument` for the fallback when the file is
+        // absent or broken.
+        $this->app->bind(CacheableGenerator::class, fn ($app) => new ExportedDocument(
+            $app->make(Generator::class),
+            ExportedDocument::path(),
+        ));
     }
 }

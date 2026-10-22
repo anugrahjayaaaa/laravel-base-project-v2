@@ -89,6 +89,14 @@ restore() {
     "$PHP_BIN" artisan config:cache
     "$PHP_BIN" artisan route:cache
     "$PHP_BIN" artisan view:cache
+
+    # The exported OpenAPI document describes the release that just failed, and
+    # the restored tree may not have those routes. Removing it makes /docs/api
+    # fall back to live generation — a slow page beats a spec for endpoints that
+    # no longer exist. `-f`: a release older than ADR-025 has no such file.
+    spec_env="$(sed -n 's/^APP_ENV=//p' .env | head -n1 | tr -d '"' | tr -d "'")"
+    rm -f "storage/app/openapi.${spec_env:-production}.json"
+
     "$PHP_BIN" artisan queue:restart
 
     # storage/ is never in a snapshot, so recreate what the workers need.
