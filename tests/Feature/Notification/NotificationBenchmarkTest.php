@@ -277,7 +277,7 @@ class NotificationBenchmarkTest extends TestCase
         // Both channels of one page render: the paginated rows and the count the
         // header already showed. Pagination is the only reason this number does
         // not grow with the inbox.
-        $this->record('inbox: 30 rows of 2,120', $this->measure(function () use ($action, $user) {
+        $this->record('inbox: 10 rows of 2,120', $this->measure(function () use ($action, $user) {
             $action->inbox($user);
         }));
 
