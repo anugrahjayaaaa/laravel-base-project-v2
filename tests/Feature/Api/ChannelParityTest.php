@@ -117,6 +117,11 @@ class ChannelParityTest extends TestCase
         // ---- Sessions ----
         'session list' => ['web' => ['sessions'], 'api' => ['sessions']],
         'session logout all' => ['web' => ['sessions.logout-all'], 'api' => ['auth.logout-all']],
+        'session revoke' => [
+            'only' => 'api',
+            'api' => ['sessions.destroy'],
+            'why' => 'The web sessions page lists devices and offers "log out everywhere"; a per-device revoke is an affordance for the client holding that device, and the fact it produces (one row gone from a list) is not a page a browser flow needs.',
+        ],
 
         // ---- Notifications ----
         'notification list' => ['web' => ['notifications.index'], 'api' => ['notifications.index']],

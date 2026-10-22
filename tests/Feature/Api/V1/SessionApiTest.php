@@ -56,4 +56,57 @@ class SessionApiTest extends TestCase
         $this->assertNull($session['last_used_at']);
         $this->assertNotNull($session['created_at']);
     }
+
+    public function test_it_revokes_the_callers_own_session(): void
+    {
+        $user = User::factory()->create();
+        $laptop = $user->createToken('laptop')->accessToken;
+        $user->createToken('phone');
+
+        Sanctum::actingAs($user, ['*']);
+
+        $this->deleteJson(route('api.v1.sessions.destroy', $laptop->getKey()))->assertOk();
+
+        $this->assertSame(['phone'], $user->tokens()->pluck('name')->all());
+    }
+
+    /**
+     * An id on another account answers 404, not 403: "you may not" would
+     * confirm the token exists, which the caller has no business learning.
+     */
+    public function test_it_cannot_revoke_another_users_session(): void
+    {
+        $user = User::factory()->create();
+        $strangerToken = User::factory()->create()->createToken('not-yours')->accessToken;
+
+        Sanctum::actingAs($user, ['*']);
+
+        $this->deleteJson(route('api.v1.sessions.destroy', $strangerToken->getKey()))->assertNotFound();
+
+        $this->assertNotNull($strangerToken->fresh(), 'the stranger token was revoked anyway');
+    }
+
+    /**
+     * The point of revocation: the token stops working. `Sanctum::actingAs`
+     * would hide that, because it authenticates without consulting the token.
+     */
+    public function test_a_revoked_token_stops_authenticating(): void
+    {
+        $user = User::factory()->create(['email_verified_at' => now(), 'is_active' => true]);
+        $keep = $user->createToken('laptop');
+        $kill = $user->createToken('phone');
+
+        $this->withHeader('Authorization', 'Bearer '.$keep->plainTextToken)
+            ->deleteJson(route('api.v1.sessions.destroy', $kill->accessToken->getKey()))
+            ->assertOk();
+
+        // A resolved guard lives for the whole test process and hands back the
+        // user it already found; forget it or the second request never reads
+        // the token that was just deleted.
+        $this->app['auth']->forgetGuards();
+
+        $this->withHeader('Authorization', 'Bearer '.$kill->plainTextToken)
+            ->getJson(route('api.v1.profile.show'))
+            ->assertUnauthorized();
+    }
 }

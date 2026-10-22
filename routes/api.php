@@ -73,6 +73,10 @@ Route::prefix('v1')->group(function () {
         Route::middleware('feature:sessions')->group(function () {
             Route::controller(SessionController::class)->group(function () {
                 Route::get('/sessions', 'index')->name('api.v1.sessions');
+                // Revoking one session is self-service, so it carries no `can:`.
+                // The scope is the caller's own token query: an id belonging to
+                // someone else answers 404, not 403.
+                Route::delete('/sessions/{session}', 'destroy')->name('api.v1.sessions.destroy');
             });
         });
 
