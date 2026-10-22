@@ -59,7 +59,8 @@ class NotificationInboxController extends Controller
         $inbox = $this->inboxAction->inbox($request->user());
 
         return $this->respond('', 200, [
-            'notifications' => NotificationResource::collection($inbox['notifications']),
+            'notifications' => NotificationResource::collection($inbox['notifications']->items()),
+            'pagination' => $this->paginationFor($inbox['notifications']),
             'unread_count' => UnreadNotificationCount::for($request->user()),
         ]);
     }
