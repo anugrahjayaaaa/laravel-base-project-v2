@@ -66,6 +66,42 @@ Revisit only if machine or delegated tokens with a subset of a user's authority
 are introduced. `SessionResource` publishes `abilities` so a client can see what
 it holds; today it is always `["*"]`.
 
+## Token lifetime
+
+A token here is a session, so it expires like one. The enforced value lives in
+settings as a number plus a unit — `api_token_expire_value` and
+`api_token_expire_unit` (`minutes` | `hours` | `days`), default **1 day** — and
+`AppServiceProvider::bindExpirations()` pushes it onto
+`config('sanctum.expiration')` at boot and again after every settings save.
+
+`config/sanctum.php` carries `null`, not an env read: a config file is evaluated
+before providers, the database and the cache exist, so the stored row cannot be
+read there. The binding at boot is the only writer, which also means
+`config:cache` cannot freeze a stale lifetime — boot rebinds on every process.
+`SystemSettingSeeder` owns the row, so an existing install re-runs
+`php artisan db:seed --class=SystemSettingSeeder` to get it (idempotent, and it
+busts the settings cache).
+
+Two reasons it is not `null`, which is what it used to be:
+
+- **A copied token outlives the device.** Token revocation exists for password
+  change, lock and deactivation, and none of those fire when a token is simply
+  read off a disk or a log. A lifetime is the only bound that does not need
+  someone to notice first.
+- **`null` is not "no policy", it is "never checked".** Sanctum compares
+  `created_at` against this value on every request, so a stored lifetime also
+  applies to tokens issued before it was lowered. It is a ceiling, not a
+  promise written at issue time.
+
+`sanctum:prune-expired` reads the same config, so the pruner cannot delete a
+token the guard still accepts, or keep one it no longer does.
+
+`DELETE /api/v1/sessions/{session}` revokes one token. It is self-scoped like
+`GET /api/v1/sessions`: the lookup is `$request->user()->tokens()->findOrFail()`,
+so an id belonging to another account is **404**, not 403 — "you may not" would
+confirm that the id exists. Revoking the token that authenticates the call is
+allowed; the answer is still 200, and the next request is unauthenticated.
+
 ## API Resources
 
 Laravel API Resources are the serialization contract.
@@ -164,7 +200,7 @@ reason recorded beside the route.
 |---|---|---|
 | `GET /api/v1/health` | bare body; controller does not extend the base | the caller is a monitor that cannot log in, and the one meaningful key is `status` |
 | `GET` / `PUT` `/api/v1/settings` | `data` is the key→value map, no wrapper | a form re-renders from the response |
-| `/notifications/inbox*`, `/profile`, `/sessions`, `/auth/password/change` | no `can:` | self-scoped — "whose record is this" is answered by the token |
+| `/notifications/inbox*`, `/profile`, `/sessions*`, `/auth/password/change` | no `can:` | self-scoped — "whose record is this" is answered by the token |
 | `/users/{user}/request-email-change` | no `can:`; `EmailChangeRequest::authorize()` | the rule is "own account **or** `users.update`", the same OR `cancel-email-change` needs; a single `can:` would lock a user out of changing their own email |
 | `/users/{user}/cancel-email-change` | `abort_unless` in the controller | the rule is "own account **or** `users.update`"; `can:` cannot express OR |
 | `GET /email/verify-change/{user}` | `signed` + the token check in the Action | the link is the credential: the signature proves it was issued for this change and the token proves it belongs to this pending row. The route sits in the authenticated group, so the holder must be signed in, but no permission applies — requiring one would make the emailed link unusable for the user it was sent to |
