@@ -319,7 +319,8 @@ Detail: `docs/planning/phase-9-notifications-mail.md`.
 **Deviations from the brief, recorded rather than applied:** flags return **403**
 (not 404 — Phase 7 decision, pinned by `FeatureFlagMiddlewareTest`); no second
 `Api\V1\BaseApiController` (`App\Http\Controllers\Controller::respond()` is that
-class); Scramble stays dev-only unless ADR-025 promotes it. See the phase doc
+class); Scramble was dev-only in this phase and ADR-025 has since promoted it to
+`require` and moved the document to a deploy-time export. See the phase doc
 § *Decisions that override the brief* (D-1..D-6).
 
 ## Full Task List (JSON for AI parsing)

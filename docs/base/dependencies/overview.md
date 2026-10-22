@@ -787,9 +787,11 @@ documentation and produces an interactive documentation UI.
 
 ### Application-Level Abstraction
 
-Documentation-only package. Application code does not depend on Scramble at
-runtime in production. Scramble is a dev dependency used for documentation
-generation.
+Documentation-only package. Application code does not call it: production
+installs it only because the docs routes live in it, and `app/` touches Scramble
+in exactly two places — the docs gate and the `ExportedDocument` binding that
+serves the file exported at deploy (ADR-025). The document is built once per
+release, not per request.
 
 ---
 

@@ -21,15 +21,25 @@ The document covers the routes under `/api` — this project's versioned surface
 
 ## Availability and access
 
-Scramble is a **dev dependency** (`require-dev`). Under
-`composer install --no-dev` the package is absent and the two routes do not
-exist at all — there is no documentation surface in that deployment, rather than
-a documentation surface nobody can open. This is the DEP-007 decision;
-promoting it to `require` is a dependency change and needs a changelog entry and
-an ADR first.
+The routes exist in every deployment: `dedoc/scramble` is a `require`
+dependency since ADR-025. It was `require-dev` (DEP-007) until a measurement
+made the cost of that arrangement concrete — `composer install --no-dev`
+removed both routes, so the `api_docs_public` setting and the `api_docs.view`
+permission promised a surface the operator could switch on and never get.
 
-Where the package is installed, one gate decides who may read the docs, and the
-operator chooses which side of it applies:
+**Built once per release, not per request.** The deploy runs
+`php artisan scramble:export`, writing `storage/app/openapi.<APP_ENV>.json`, and
+`App\Support\OpenApi\ExportedDocument` serves that file to both routes.
+Measured on the 47-path document: **~700 ms per request when generated live,
+~13 ms from the file**. `scramble:cache` is not used — measured at no benefit,
+because it caches Scramble's analysis while the cost is `spec()` building the
+document from it. A failed export fails the deploy; a missing or unreadable file
+falls back to live generation; `bin/deploy-rollback.sh` deletes the file when it
+restores an older release. The environment is part of the file name so a
+development export cannot be served here or read by the tests.
+
+One gate decides who may read the docs, and the operator chooses which side of
+it applies:
 
 | `api_docs_public` (system setting) | Who can open `/docs/api` |
 |---|---|
@@ -63,8 +73,9 @@ without the permission gets `403`.
 
 The sidebar entry *API Documentation* reads the same gate, so the link and the
 route cannot disagree: public mode shows it to everyone, private mode to
-permission holders only. With `--no-dev` the route does not exist and the entry
-drops (the menu composer checks `Route::has`).
+permission holders only. The menu composer still checks `Route::has`, because a
+project that removes the package (and the binding with it) should lose the entry
+rather than link to a 404.
 
 ## What the document must contain
 
