@@ -286,6 +286,104 @@ class LastSuperadminGuardTest extends TestCase
         $this->assertTrue($superadmin->fresh()->is_active);
     }
 
+    /**
+     * The edit form writes `status`, and it used to write `is_active` itself —
+     * a second writer of the same column, missing every guard the state actions
+     * own. `users.update` alone was enough to walk the only superadmin out.
+     *
+     * The two channels answer differently on purpose: a browser gets the
+     * exception's redirect + flash, the API gets 409. Neither may apply it.
+     */
+    public function test_the_edit_form_cannot_deactivate_the_last_superadmin(): void
+    {
+        $superadmin = $this->superadmin();
+        $operator = $this->operatorWhoMayEditUsers();
+        User::factory()->create(['email_verified_at' => now(), 'is_active' => true]);
+
+        $this->actingAs($operator, 'web');
+
+        $this->put(route('users.update', $superadmin), [
+            'name' => $superadmin->name,
+            'status' => 'inactive',
+        ])->assertRedirect();
+
+        $this->assertNotNull(session('error'), 'the refusal did not carry the error flash');
+        $this->assertTrue(
+            $superadmin->fresh()->is_active,
+            'the edit form deactivated the last superadmin'
+        );
+    }
+
+    public function test_the_api_update_cannot_deactivate_the_last_superadmin(): void
+    {
+        $superadmin = $this->superadmin();
+        $operator = $this->operatorWhoMayEditUsers();
+        User::factory()->create(['email_verified_at' => now(), 'is_active' => true]);
+
+        $token = $operator->createToken('probe')->plainTextToken;
+
+        $response = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->putJson(route('api.v1.users.update', $superadmin), [
+                'name' => $superadmin->name,
+                'status' => 'inactive',
+            ]);
+
+        $this->assertSame(409, $response->status());
+        $this->assertSame('LAST_SUPERADMIN', $response->json('code'));
+        $this->assertTrue($superadmin->fresh()->is_active);
+    }
+
+    /**
+     * Locking is the third column that makes a superadmin unable to log in, and
+     * it had no guard at all.
+     */
+    public function test_the_last_superadmin_cannot_be_locked(): void
+    {
+        $superadmin = $this->superadmin();
+        $operator = $this->operatorWhoMayEditUsers();
+        User::factory()->create(['email_verified_at' => now(), 'is_active' => true]);
+
+        $this->actingAs($operator, 'web');
+
+        $this->post(route('users.lock', $superadmin))->assertRedirect();
+
+        $this->assertNotNull(session('error'), 'the refusal did not carry the error flash');
+        $this->assertFalse($superadmin->fresh()->is_locked, 'the last superadmin was locked');
+    }
+
+    /**
+     * A caller who may edit and lock accounts, but holds no `users.deactivate`
+     * — so a test that passes because the route gate refused would fail here.
+     */
+    private function operatorWhoMayEditUsers(): User
+    {
+        $role = AppRole::create([
+            'name' => 'Editor '.uniqid(),
+            'guard_name' => RoleLookup::guard(),
+        ]);
+
+        $role->givePermissionTo(
+            Permission::whereIn('name', ['users.view', 'users.update', 'users.lock'])
+                ->where('guard_name', RoleLookup::guard())
+                ->get()
+        );
+
+        $user = User::factory()->create([
+            'email_verified_at' => now(),
+            'is_active' => true,
+            'is_locked' => false,
+        ]);
+        $user->assignRole($role);
+
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
+
+        $this->assertTrue($user->fresh()->can('users.update'), 'fixture: no users.update');
+        $this->assertTrue($user->fresh()->can('users.lock'), 'fixture: no users.lock');
+        $this->assertFalse($user->fresh()->hasRole(SystemRole::SUPERADMIN), 'fixture: operator is a superadmin');
+
+        return $user->fresh();
+    }
+
     // -----------------------------------------------------------------
     // P6-E5 — the confirmation flag
     // -----------------------------------------------------------------
