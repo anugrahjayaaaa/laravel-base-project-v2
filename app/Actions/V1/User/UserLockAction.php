@@ -4,6 +4,7 @@ namespace App\Actions\V1\User;
 
 use App\Actions\V1\Notification\NotificationAccountStateAction;
 use App\Models\User;
+use App\Support\LastSuperadmin;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
@@ -84,5 +85,9 @@ class UserLockAction
 
             throw new ValidationException($validator);
         }
+
+        // The same lockout `deactivate` and `delete` already refuse, reached by
+        // a third column: a locked superadmin cannot log in either.
+        LastSuperadmin::guard($user, __('locked'));
     }
 }

@@ -19,6 +19,8 @@ class UserUpdateAction
     public function __construct(
         private readonly RoleAssignAction $assignRolesAction,
         private readonly NotificationAdminEventAction $notifyAction,
+        private readonly UserActivateAction $activateAction,
+        private readonly UserDeactivateAction $deactivateAction,
     ) {
     }
 
@@ -51,12 +53,11 @@ class UserUpdateAction
                 'is_active' => $user->is_active,
             ];
 
-            $user->update([
-                'name' => strip_tags($data['name'] ?? $user->name),
-                'is_active' => isset($data['status'])
-                    ? $data['status'] === UserStatusEnum::ACTIVE->value
-                    : $user->is_active,
-            ]);
+            $user->update(['name' => strip_tags($data['name'] ?? $user->name)]);
+
+            if (isset($data['status'])) {
+                $this->syncActiveState($user, $data['status'] === UserStatusEnum::ACTIVE->value, $causer ?? $user);
+            }
 
             if (isset($data['username']) && $data['username'] !== $user->username) {
                 $user->update([
@@ -158,6 +159,28 @@ class UserUpdateAction
         }
 
         return $updated;
+    }
+
+    /**
+     * Apply `status` through the action that owns `is_active`.
+     *
+     * Writing the column here as well made this a SECOND writer of a state
+     * column whose invariants — not the last superadmin, not yourself, not a
+     * locked account — live in `UserActivateAction` / `UserDeactivateAction`.
+     * A payload carrying `status=inactive` therefore skipped every one of them
+     * and deactivated the last superadmin through the edit form.
+     */
+    private function syncActiveState(User $user, bool $active, User $causer): void
+    {
+        if ($active === (bool) $user->is_active) {
+            return;
+        }
+
+        if ($active) {
+            $this->activateAction->run($user, $causer);
+        } else {
+            $this->deactivateAction->run($user, $causer);
+        }
     }
 
     /**
