@@ -255,7 +255,7 @@ class SystemSettingUpdateTest extends TestCase
     {
         $this->seed(SystemSettingSeeder::class);
         SystemSetting::bustCache();
-        AppServiceProvider::bindTokenExpirations();
+        AppServiceProvider::bindExpirations();
 
         $admin = User::factory()->create();
         $admin->assignRole(RoleLookup::find('admin'));
@@ -309,7 +309,7 @@ class SystemSettingUpdateTest extends TestCase
     public function test_changing_the_verification_link_validity_updates_the_signed_url(): void
     {
         $this->seed(SystemSettingSeeder::class);
-        AppServiceProvider::bindTokenExpirations();
+        AppServiceProvider::bindExpirations();
 
         $admin = User::factory()->create();
         $admin->assignRole(RoleLookup::find('admin'));

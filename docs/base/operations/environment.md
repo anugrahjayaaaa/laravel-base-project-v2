@@ -34,7 +34,6 @@ BROADCAST_DRIVER=log
 CACHE_STORE=file
 QUEUE_CONNECTION=database
 SESSION_DRIVER=database
-SESSION_LIFETIME=120
 
 # Mail (defaults to log for local)
 MAIL_MAILER=log
@@ -74,6 +73,11 @@ CACHE_STORE=redis     # when available
 QUEUE_CONNECTION=redis # when available
 SESSION_DRIVER=redis   # when available
 ```
+
+Session and token lifetimes are not env values: `session.lifetime` and
+`sanctum.expiration` are bound from the `web_session_expire_*` and
+`api_token_expire_*` system settings at boot
+(`AppServiceProvider::bindExpirations()`), and edited on the settings page.
 
 ## Configuration Files
 

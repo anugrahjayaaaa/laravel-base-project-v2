@@ -103,6 +103,17 @@ class SystemSettingsUpdateAction
             // Password reset token (Laravel broker)
             'password_reset_expire_minutes' => (string) ($data['password_reset_expire_minutes'] ?? 15),
 
+            // API token lifetime (Phase 12 finding #3). The pair means the web
+            // form posts both fields; an API client that omits them gets one day,
+            // matching the seeder and `tokenLifetimeMinutes()`'s own fallback.
+            'api_token_expire_value' => (string) ($data['api_token_expire_value'] ?? 1),
+            'api_token_expire_unit' => $data['api_token_expire_unit'] ?? 'days',
+
+            // Idle browser-session lifetime, same pair and same defaults as the
+            // seeder and the migration that backfilled them.
+            'web_session_expire_value' => (string) ($data['web_session_expire_value'] ?? 120),
+            'web_session_expire_unit' => $data['web_session_expire_unit'] ?? 'minutes',
+
             // Username / email change settings
             'allow_username_change' => ($data['allow_username_change'] ?? false) ? 'true' : 'false',
             'username_change_cooldown_days' => (string) ($data['username_change_cooldown_days'] ?? 30),
@@ -177,7 +188,7 @@ class SystemSettingsUpdateAction
         // After the transaction, not inside: binding a config from values a
         // rollback then discards would leave the process enforcing a lifetime
         // the database never accepted.
-        AppServiceProvider::bindTokenExpirations();
+        AppServiceProvider::bindExpirations();
 
         // Every `settings.manage` holder. The message names how many keys changed,
         // never their values: a settings notification quoting the new value hands a

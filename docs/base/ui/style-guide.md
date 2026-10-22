@@ -91,6 +91,15 @@
 - Standard Bootstrap 5 form controls.
 - Input height: default (not AdminLTE's fixed overrides).
 - Labels: standard Bootstrap `.form-label`.
+- Durations are a number input plus a unit in the `input-group` addon, and the
+  addon keeps its muted chip (`input-group-text bg-body-tertiary`). When the
+  unit is editable the chip is a
+  `<select class="form-select bg-body-tertiary flex-grow-0 w-auto">` — default
+  size, like every `input-group-text` beside it — so it content-sizes to the
+  widest option instead of stretching into a second full-width input.
+- Unit labels are the short form used everywhere else on the page: `min`, `hr`,
+  `days`. The option *value* stays the stored vocabulary (`minutes`, `hours`,
+  `days`) so the API contract and the settings row do not change with a label.
 
 ## 10. Search / Filter
 

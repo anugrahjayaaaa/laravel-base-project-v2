@@ -48,6 +48,12 @@ return [
     | considered expired. This will override any values set in the token's
     | "expires_at" attribute, but first-party sessions are not affected.
     |
+    | The enforced value lives in system settings (`api_token_expire_value` +
+    | `api_token_expire_unit`) and is pushed here by
+    | `AppServiceProvider::bindExpirations()` at boot. It cannot be read in this
+    | file: config is evaluated before providers, the database and the cache
+    | exist. `null` is only what a process sees before that binding.
+    |
     */
 
     'expiration' => null,

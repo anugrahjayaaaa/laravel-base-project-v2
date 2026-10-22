@@ -60,6 +60,21 @@ class SystemSettingSeeder extends Seeder
         // Password reset token (Laravel broker)
         SystemSetting::set('password_reset_expire_minutes', '15');
 
+        // API token lifetime — one day. Stored as a number plus a unit so the
+        // settings page can offer minutes, hours or days; `AppServiceProvider`
+        // converts the pair to the minutes Sanctum counts in. One day is the
+        // default because the token is a session: long enough for a mobile app
+        // to stay signed in between uses, short enough that a token copied out
+        // of a device stops working on its own.
+        SystemSetting::set('api_token_expire_value', '1');
+        SystemSetting::set('api_token_expire_unit', 'days');
+
+        // Idle browser-session lifetime — two hours, matching the default in
+        // `config/session.php`. Same value-plus-unit shape as the API token so
+        // both are edited the same way and bound by the same provider method.
+        SystemSetting::set('web_session_expire_value', '120');
+        SystemSetting::set('web_session_expire_unit', 'minutes');
+
         // Username / email change settings
         SystemSetting::set('allow_username_change', 'true');
         SystemSetting::set('username_change_cooldown_days', '30');

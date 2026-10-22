@@ -8,7 +8,7 @@
 
 **Diagnosis**:
 1. Check `APP_KEY` is set (`php artisan key:generate`).
-2. Check `SESSION_DRIVER` and `SESSION_LIFETIME` in config.
+2. Check `SESSION_DRIVER` in config and the `web_session_expire_*` system setting.
 3. Verify user `is_active` and not `is_locked`.
 4. Check failed login attempts table (`failed_login_attempts`).
 5. Verify password hash — check bcrypt argon2 config.

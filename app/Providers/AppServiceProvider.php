@@ -52,6 +52,17 @@ class AppServiceProvider extends ServiceProvider
         Paginator::useBootstrap();
         LengthAwarePaginator::useBootstrap();
 
+        // Every process enforces the stored token lifetimes, not only the one
+        // that saved them: `config/auth.php` and `config/sanctum.php` read env
+        // values, and a settings row nothing binds is a field that saves 200 and
+        // changes nothing. Boot is the one moment early enough to cover the HTTP
+        // request, the queue worker and `sanctum:prune-expired` alike.
+        //
+        // Cheap: `SystemSetting::loadSettings()` is one cache read for the whole
+        // map, and the try/catch inside is what makes it safe during `migrate`
+        // and `config:cache`, where the table does not exist yet.
+        self::bindExpirations();
+
         // The correlation id travels with the job, carried in the payload.
         //
         // `GenerateRequestCorrelationId` binds `request_id` on the REQUEST;
@@ -257,7 +268,7 @@ class AppServiceProvider extends ServiceProvider
         // switch: with it off, Pulse registers no recorders at all and this
         // filter is never asked.
         //
-        // Not read at boot, deliberately — see `bindTokenExpirations()` and its
+        // Not read at boot, deliberately — see `bindExpirations()` and its
         // comment. Boot runs before the `features` table exists on a fresh
         // install, and a store read there takes the whole boot down with it.
         Pulse::filter(fn (): bool => FeatureCatalog::isActive('pulse'));
@@ -345,7 +356,7 @@ class AppServiceProvider extends ServiceProvider
         //
         // Read per request inside the closure, never at boot: boot runs before the
         // table exists on a fresh install, and this project has already been bitten
-        // by that (`bindTokenExpirations()` and its comment).
+        // by that (`bindExpirations()` and its comment).
         //
         // The refusal rides on `format` because that is the one field this POST
         // carries — `responseFor()` flashes the field's value back so the filters
@@ -418,37 +429,34 @@ class AppServiceProvider extends ServiceProvider
     }
 
     /**
-     * Push the stored token lifetimes onto the runtime config.
+     * Push the stored expire times onto the runtime config.
      *
-     * `config/auth.php` reads `env('PASSWORD_RESET_EXPIRE_MINUTES')`, which no
-     * admin can change from the UI. Storing the value in `system_settings` while
-     * the broker kept using the .env meant the field looked live, returned 200 on
-     * save, and changed nothing — the worst way for a settings field to fail.
+     * `config/auth.php`, `config/sanctum.php` and `config/session.php` read env
+     * values, which no admin can change from the UI. Storing the value in
+     * `system_settings` while the consumer kept reading the .env meant the field
+     * looked live, returned 200 on save, and changed nothing — the worst way for
+     * a settings field to fail.
      *
-     * ## Why this is NOT called from boot()
+     * ## Called from boot(), and again after every settings save
      *
-     * Boot runs before the settings table exists on a fresh install, and before
-     * `RefreshDatabase` migrates in tests. Reading there is not a matter of
-     * catching an exception — the query failure takes the whole boot down with
-     * it. Every other `SystemSetting::getInt()` in these providers sits inside a
-     * throttle closure that runs per request, never at boot, and that is the
-     * reason they are safe.
+     * Boot is what makes the stored value real for a process that did not write
+     * it: a fresh PHP-FPM request, a worker, `sanctum:prune-expired`. The
+     * try/catch below is what makes that safe — boot also runs during `migrate`
+     * and `config:cache`, before the table exists, and the failure has to mean
+     * "no settings yet", not a dead boot.
      *
-     * So binding happens at the one moment that matters: a settings save.
-     * `SystemSettingsUpdateAction` calls this right after its transaction
-     * commits, so an admin who changes the lifetime sees it enforced in the same
-     * process that wrote it, with no restart and no deploy.
+     * The save-time call stays because a config value already read is not
+     * re-read: the process handling the save keeps the old value until it exits.
+     * `SystemSettingsUpdateAction` calls this after its transaction commits, so
+     * the admin who saved sees it enforced without a restart or a deploy.
      *
-     * A process that only ever reads — a worker draining a queue of password
-     * resets, a console command — keeps whatever the last write bound, or
-     * `config/auth.php`'s default if that process never saw one. That is the
-     * `ponytail` ceiling, and it is named here rather than hidden: a long-lived
-     * worker started before a settings change enforces the old lifetime until it
-     * is restarted. Resolving these per call rather than from config removes the
-     * ceiling at the cost of a query per reset link; it is not worth paying for a
-     * value that changes perhaps monthly.
+     * A long-lived worker started before a settings change keeps the lifetime it
+     * bound until it is restarted. Resolving these per call rather than from
+     * config would remove that ceiling at the cost of a query per reset link and
+     * per authenticated request; a value that changes perhaps monthly is not
+     * worth it.
      */
-    public static function bindTokenExpirations(): void
+    public static function bindExpirations(): void
     {
         // The try/catch is not defensive noise: boot runs during `migrate` and
         // `config:cache`, before the table necessarily exists.
@@ -456,6 +464,18 @@ class AppServiceProvider extends ServiceProvider
             config()->set([
                 'auth.passwords.users.expire' => SystemSetting::getInt('password_reset_expire_minutes', 15),
                 'auth.verification.expire' => SystemSetting::getInt('email_verification_expire_minutes', 60),
+                'sanctum.expiration' => self::lifetimeMinutes(
+                    'api_token_expire_value',
+                    'api_token_expire_unit',
+                    '1',
+                    'days',
+                ),
+                'session.lifetime' => self::lifetimeMinutes(
+                    'web_session_expire_value',
+                    'web_session_expire_unit',
+                    '120',
+                    'minutes',
+                ),
             ]);
         } catch (Throwable $e) {
             // No settings table yet — leave the config defaults in place.
@@ -463,18 +483,50 @@ class AppServiceProvider extends ServiceProvider
     }
 
     /**
+     * A stored lifetime as minutes: a value plus the unit it was entered in.
+     *
+     * The stored pair is the only authority. `config/sanctum.php` and
+     * `config/session.php` carry plain defaults because config is evaluated
+     * before the database and the cache exist — this method is what puts the
+     * row in their place, and the settings page is what edits it.
+     *
+     * Stored as a pair (`minutes`, `hours`, `days`) because the sane answers
+     * span three magnitudes — five minutes for a script, ninety days for a phone
+     * that is rarely opened — and forcing every operator to convert 129600 by
+     * hand is how a lifetime ends up mistyped. Every consumer here counts in
+     * minutes: the Sanctum guard, the session middleware and the cookie it
+     * writes. Sanctum compares `created_at` against it on every request, so it
+     * is a ceiling that also applies to tokens already issued, not a promise
+     * written at issue time.
+     */
+    private static function lifetimeMinutes(
+        string $valueKey,
+        string $unitKey,
+        string $defaultValue,
+        string $defaultUnit,
+    ): int {
+        $multiplier = match (SystemSetting::getString($unitKey, $defaultUnit)) {
+            'minutes' => 1,
+            'hours' => 60,
+            default => 1440,
+        };
+
+        return max(1, SystemSetting::getInt($valueKey, (int) $defaultValue)) * $multiplier;
+    }
+
+    /**
      * Push the stored mail transport onto the runtime config.
      *
      * `config/mail.php` reads `env('MAIL_HOST')` and friends, which no admin can
      * change from the UI. Storing the value in `system_settings` while the
-     * transport kept using the .env is the same failure `bindTokenExpirations()`
+     * transport kept using the .env is the same failure `bindExpirations()`
      * documents for token lifetimes: the field looks live, the save returns 200,
      * and nothing changes.
      *
      * `.env` is the fallback for every read, so an install that never saved a
      * row behaves exactly as it did before this existed.
      *
-     * ## Called at the same moment as bindTokenExpirations(), for the same reason
+     * ## Called at the same moment as bindExpirations(), for the same reason
      *
      * Not from boot(): boot runs before the settings table exists on a fresh
      * install and before `RefreshDatabase` migrates in tests, and the query
@@ -492,7 +544,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public static function bindMailConfig(): void
     {
-        // The try/catch matches bindTokenExpirations(): `config:cache` and a
+        // The try/catch matches bindExpirations(): `config:cache` and a
         // console command can reach this before the table does.
         try {
             $smtp = 'mail.mailers.smtp';
@@ -536,7 +588,7 @@ class AppServiceProvider extends ServiceProvider
             // Logged, not swallowed. A silent catch here makes a broken binding
             // indistinguishable from a transport nobody configured: the admin saves
             // a host, the page reloads showing the old one, and nothing says why.
-            // `bindTokenExpirations()` may swallow because its failure means "no
+            // `bindExpirations()` may swallow because its failure means "no
             // table yet", which is expected during migrate. This one would be a real
             // bug, so it has to be visible.
             Log::warning('Could not bind the stored mail configuration', [

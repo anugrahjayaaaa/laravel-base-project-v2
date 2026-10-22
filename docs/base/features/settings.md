@@ -23,6 +23,8 @@ has ever read.
 allow_email_change
 allow_username_change
 api_docs_public
+api_token_expire_unit
+api_token_expire_value
 audit_export_max_manual_retries
 audit_export_rate_limit_per_hour
 bulk_action_rate_limit_per_minute
@@ -65,6 +67,8 @@ registration_rate_limit_per_minute
 send_test_mail_rate_limit_per_minute
 user_state_actions_rate_limit_per_minute
 username_change_cooldown_days
+web_session_expire_unit
+web_session_expire_value
 ```
 
 ## Groups
@@ -81,6 +85,8 @@ has no category column.
 | Identity / account rules | `allow_username_change`, `username_change_cooldown_days`, `allow_email_change`, `email_change_cooldown_days` |
 | Self-registration | `registration_enabled`, `registration_default_role`, `registration_rate_limit_per_minute` |
 | API documentation | `api_docs_public` |
+| API token lifetime | `api_token_expire_value`, `api_token_expire_unit` |
+| Web session lifetime | `web_session_expire_value`, `web_session_expire_unit` |
 
 ## Two-Layer Configuration
 
@@ -141,6 +147,20 @@ of truth. `P8-E1a` proves every numeric bound rejects a value outside it.
 | `registration_rate_limit_per_minute` | integer, min:1, max:30 |
 | `registration_default_role` | nullable, string, must be a role `RoleLookup::visibleTo($user)` returns |
 | `api_docs_public` | boolean |
+| `api_token_expire_value` | integer, min:1, max:3650 |
+| `api_token_expire_unit` | in:minutes,hours,days |
+| `web_session_expire_value` | integer, min:1, max:3650 |
+| `web_session_expire_unit` | in:minutes,hours,days |
+
+Both lifetime pairs are a number plus its unit, stored separately because the
+sane answers span minutes to days. `AppServiceProvider::bindExpirations()`
+converts each pair to the minutes its consumer counts in — `sanctum.expiration`
+for the bearer token, `session.lifetime` for the idle browser session — and does
+it at boot as well as after a save; the config files carry plain defaults
+because a config file is evaluated before the database and cache exist. The
+setting row is the only authority: `SystemSettingSeeder` owns it, so an existing
+install picks it up by re-running
+`php artisan db:seed --class=SystemSettingSeeder`.
 
 `registration_default_role` is scoped to the viewer rather than merely checked
 for existence. An earlier `Rule::exists('roles','name')` let a non-superadmin

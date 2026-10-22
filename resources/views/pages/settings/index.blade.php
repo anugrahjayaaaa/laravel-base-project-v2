@@ -361,6 +361,59 @@
                                 <h6 class="text-body-secondary text-uppercase small fw-semibold mb-0 mt-1">Authentication</h6>
                             </div>
                             <div class="col-md-6">
+                                <label for="api_token_expire_value" class="form-label">
+                                    API Token Lifetime
+                                    <i class="bi bi-info-circle text-muted fs-7 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="How long a Sanctum bearer token stays valid after login. Existing tokens are cut off too, so shortening this applies immediately."></i>
+                                </label>
+                                <div class="input-group">
+                                    <input type="number" name="api_token_expire_value" id="api_token_expire_value"
+                                           class="form-control form-control-sm @error('api_token_expire_value') is-invalid @enderror" @error('api_token_expire_value') aria-invalid="true" aria-describedby="api_token_expire_value_error" @enderror
+                                           value="{{ old('api_token_expire_value', $settings['api_token_expire_value'] ?? 1) }}" min="1" max="3650">
+                                    {{-- Default size, not `-sm`: every unit chip on
+                                         this page is a default-size
+                                         `input-group-text`, so a `-sm` select made
+                                         this one field ~7px shorter than its
+                                         neighbours. --}}
+                                    <select class="form-select bg-body-tertiary flex-grow-0 w-auto @error('api_token_expire_unit') is-invalid @enderror"
+                                            name="api_token_expire_unit" id="api_token_expire_unit" aria-label="API token lifetime unit">
+                                        @foreach (['minutes' => 'min', 'hours' => 'hr', 'days' => 'days'] as $unit => $unitLabel)
+                                            <option value="{{ $unit }}" @selected(old('api_token_expire_unit', $settings['api_token_expire_unit'] ?? 'days') === $unit)>{{ $unitLabel }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                                @error('api_token_expire_value')
+                                    <div class="invalid-feedback d-block" id="api_token_expire_value_error">{{ $message }}</div>
+                                @enderror
+                                @error('api_token_expire_unit')
+                                    <div class="invalid-feedback d-block" id="api_token_expire_unit_error">{{ $message }}</div>
+                                @enderror
+                            </div>
+
+                            <div class="col-md-6">
+                                <label for="web_session_expire_value" class="form-label">
+                                    Web Session Lifetime
+                                    <i class="bi bi-info-circle text-muted fs-7 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="How long a browser session may sit idle before the user is signed out. Applies to sessions that make a request after the change."></i>
+                                </label>
+                                <div class="input-group">
+                                    <input type="number" name="web_session_expire_value" id="web_session_expire_value"
+                                           class="form-control form-control-sm @error('web_session_expire_value') is-invalid @enderror" @error('web_session_expire_value') aria-invalid="true" aria-describedby="web_session_expire_value_error" @enderror
+                                           value="{{ old('web_session_expire_value', $settings['web_session_expire_value'] ?? 120) }}" min="1" max="3650">
+                                    <select class="form-select bg-body-tertiary flex-grow-0 w-auto @error('web_session_expire_unit') is-invalid @enderror"
+                                            name="web_session_expire_unit" id="web_session_expire_unit" aria-label="Web session lifetime unit">
+                                        @foreach (['minutes' => 'min', 'hours' => 'hr', 'days' => 'days'] as $unit => $unitLabel)
+                                            <option value="{{ $unit }}" @selected(old('web_session_expire_unit', $settings['web_session_expire_unit'] ?? 'minutes') === $unit)>{{ $unitLabel }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                                @error('web_session_expire_value')
+                                    <div class="invalid-feedback d-block" id="web_session_expire_value_error">{{ $message }}</div>
+                                @enderror
+                                @error('web_session_expire_unit')
+                                    <div class="invalid-feedback d-block" id="web_session_expire_unit_error">{{ $message }}</div>
+                                @enderror
+                            </div>
+
+                            <div class="col-md-6">
                                 <label for="password_forgot_rate_limit" class="form-label">
                                     Forgot Password Limit
                                     <i class="bi bi-info-circle text-muted fs-7 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Maximum forgot-password requests allowed per minute for a single email and IP pair."></i>
