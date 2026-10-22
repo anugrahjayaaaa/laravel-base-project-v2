@@ -43,12 +43,7 @@ class PermissionController extends Controller
 
         return $this->respond('', 200, [
             'permissions' => PermissionResource::collection($permissions),
-            'pagination' => [
-                'current_page' => $permissions->currentPage(),
-                'last_page' => $permissions->lastPage(),
-                'per_page' => $permissions->perPage(),
-                'total' => $permissions->total(),
-            ],
+            'pagination' => $this->paginationFor($permissions),
         ]);
     }
 }

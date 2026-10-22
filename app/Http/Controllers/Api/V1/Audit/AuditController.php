@@ -63,12 +63,7 @@ class AuditController extends Controller
 
         return $this->respond('', 200, [
             'activities' => ActivityResource::collection($activities),
-            'pagination' => [
-                'current_page' => $activities->currentPage(),
-                'last_page' => $activities->lastPage(),
-                'per_page' => $activities->perPage(),
-                'total' => $activities->total(),
-            ],
+            'pagination' => $this->paginationFor($activities),
         ]);
     }
 

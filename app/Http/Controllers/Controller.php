@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Support\ApiError;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Http\JsonResponse;
 use LogicException;
 
@@ -63,5 +64,24 @@ abstract class Controller
         array $extra = []
     ): JsonResponse {
         return ApiError::make($message, $code, $status, $extra);
+    }
+
+    /**
+     * The four pagination keys `docs/base/api/response-contract.md` documents,
+     * read from the paginator rather than retyped per endpoint.
+     *
+     * The contract is a fixed four, so a fifth key cannot appear here by
+     * accident, and a changed key name changes one place.
+     *
+     * @return array{current_page: int, last_page: int, per_page: int, total: int}
+     */
+    protected function paginationFor(LengthAwarePaginator $paginator): array
+    {
+        return [
+            'current_page' => $paginator->currentPage(),
+            'last_page' => $paginator->lastPage(),
+            'per_page' => $paginator->perPage(),
+            'total' => $paginator->total(),
+        ];
     }
 }
