@@ -422,12 +422,14 @@ class RbacPerformanceTest extends TestCase
             'users.edit — picker gates' => [
                 'GET /users/{id}/edit',
                 5,
-                fn () => route('users.edit', User::query()->firstOrFail()),
+                // Not the fixture superadmin: a delegated viewer now gets a 404
+                // for that account by design (SuperadminVisibilityTest).
+                fn () => route('users.edit', User::factory()->create()),
             ],
             'users.show — role list gates' => [
                 'GET /users/{id}',
                 5,
-                fn () => route('users.show', User::query()->firstOrFail()),
+                fn () => route('users.show', User::factory()->create()),
             ],
             'settings.index — write form gate' => [
                 'GET /settings',

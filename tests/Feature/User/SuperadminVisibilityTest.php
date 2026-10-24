@@ -13,6 +13,7 @@ use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Laravel\Sanctum\Sanctum;
 use Spatie\Permission\Models\Permission;
 use Tests\TestCase;
 use App\Http\Middleware\VerifyCsrfToken;
@@ -251,5 +252,89 @@ class SuperadminVisibilityTest extends TestCase
         $body = $this->actingAs($this->delegate)->get(route('roles.index'))->getContent();
 
         $this->assertStringNotContainsString('>superadmin<', $body);
+    }
+
+    // -- direct access --
+
+    public function test_a_delegated_admin_cannot_open_a_superadmin_detail_page(): void
+    {
+        $this->actingAs($this->delegate)
+            ->get(route('users.show', $this->superadmin))
+            ->assertNotFound();
+    }
+
+    public function test_a_delegated_admin_cannot_open_a_superadmin_edit_page(): void
+    {
+        $this->actingAs($this->delegate)
+            ->get(route('users.edit', $this->superadmin))
+            ->assertNotFound();
+    }
+
+    public function test_a_superadmin_can_open_a_superadmin_detail_page(): void
+    {
+        $this->actingAs($this->superadmin)
+            ->get(route('users.show', $this->superadmin))
+            ->assertOk();
+    }
+
+    public function test_a_delegated_admin_cannot_restore_a_superadmin(): void
+    {
+        $this->superadmin->delete();
+
+        $this->actingAs($this->delegate)
+            ->post(route('users.restore', $this->superadmin->id))
+            ->assertNotFound();
+
+        $this->assertSoftDeleted('users', ['id' => $this->superadmin->id]);
+    }
+
+    public function test_a_delegated_admin_cannot_force_delete_a_superadmin(): void
+    {
+        $this->superadmin->delete();
+
+        $this->actingAs($this->delegate)
+            ->delete(route('users.force-delete', $this->superadmin->id))
+            ->assertNotFound();
+
+        $this->assertSoftDeleted('users', ['id' => $this->superadmin->id]);
+    }
+
+    public function test_the_api_hides_a_superadmin_from_a_delegated_admin(): void
+    {
+        Sanctum::actingAs($this->delegate, ['*']);
+
+        $this->getJson(route('api.v1.users.show', $this->superadmin))
+            ->assertNotFound();
+    }
+
+    public function test_the_api_refuses_a_delegated_admin_restoring_a_superadmin(): void
+    {
+        $this->superadmin->delete();
+        Sanctum::actingAs($this->delegate, ['*']);
+
+        $this->postJson(route('api.v1.users.restore', $this->superadmin->id))
+            ->assertNotFound();
+
+        $this->assertSoftDeleted('users', ['id' => $this->superadmin->id]);
+    }
+
+    public function test_the_api_refuses_a_delegated_admin_force_deleting_a_superadmin(): void
+    {
+        $this->superadmin->delete();
+        Sanctum::actingAs($this->delegate, ['*']);
+
+        $this->deleteJson(route('api.v1.users.force-delete', $this->superadmin->id))
+            ->assertNotFound();
+
+        $this->assertSoftDeleted('users', ['id' => $this->superadmin->id]);
+    }
+
+    public function test_the_api_shows_a_superadmin_to_a_superadmin(): void
+    {
+        Sanctum::actingAs($this->superadmin, ['*']);
+
+        $this->getJson(route('api.v1.users.show', $this->superadmin))
+            ->assertOk()
+            ->assertJsonPath('data.user.id', $this->superadmin->id);
     }
 }

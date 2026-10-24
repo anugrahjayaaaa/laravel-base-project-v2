@@ -23,6 +23,7 @@ use App\Http\Requests\V1\User\EmailChangeRequest;
 use App\Http\Requests\V1\User\UpdateUserRequest;
 use App\Http\Requests\V1\User\UserQueryRequest;
 use App\Http\Requests\V1\User\VerifyEmailChangeRequest;
+use App\Models\RoleLookup;
 use App\Models\SystemSetting;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -114,6 +115,8 @@ class UserController extends Controller
      */
     public function show(User $user)
     {
+        abort_unless(RoleLookup::viewerCanSee(auth()->user(), $user), 404);
+
         return view('pages.users.edit', [
             'title' => 'User Detail',
             'user' => $user,
@@ -198,6 +201,8 @@ class UserController extends Controller
      */
     public function restore(User $user)
     {
+        abort_unless(RoleLookup::viewerCanSee(auth()->user(), $user), 404);
+
         $this->restoreAction->run($user, causer: auth()->user());
 
         return back()->with('status', "User '{$user->name}' has been successfully restored.");
@@ -212,6 +217,8 @@ class UserController extends Controller
      */
     public function forceDelete(Request $request, User $user)
     {
+        abort_unless(RoleLookup::viewerCanSee($request->user(), $user), 404);
+
         $this->forceDeleteAction->run($user, $request->user());
 
         return redirect()->route('users.index')->with('status', "User '{$user->name}' has been permanently deleted.");

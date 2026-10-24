@@ -27,6 +27,7 @@ use Dedoc\Scramble\Attributes\QueryParameter;
 use Dedoc\Scramble\Attributes\Response;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use App\Models\RoleLookup;
 use App\Models\User;
 
 /**
@@ -105,11 +106,14 @@ class UserController extends Controller
     /**
      * Get a single user by ID.
      *
+     * @param  Request  $request
      * @param  User  $user
      * @return JsonResponse
      */
-    public function show(User $user): JsonResponse
+    public function show(Request $request, User $user): JsonResponse
     {
+        abort_unless(RoleLookup::viewerCanSee($request->user(), $user), 404);
+
         return $this->respond('', 200, [
             'user' => new UserResource($user),
         ]);
@@ -197,6 +201,8 @@ class UserController extends Controller
      */
     public function forceDelete(Request $request, User $user): JsonResponse
     {
+        abort_unless(RoleLookup::viewerCanSee($request->user(), $user), 404);
+
         $this->forceDeleteAction->run($user, $request->user());
 
         return $this->respond('User permanently deleted.', 200);
@@ -211,6 +217,8 @@ class UserController extends Controller
      */
     public function restore(Request $request, User $user): JsonResponse
     {
+        abort_unless(RoleLookup::viewerCanSee($request->user(), $user), 404);
+
         $this->restoreAction->run($user, causer: $request->user());
 
         return $this->respond('User restored successfully.', 200, [
