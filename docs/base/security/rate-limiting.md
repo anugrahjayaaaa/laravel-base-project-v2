@@ -19,6 +19,7 @@ stale. Re-derive it rather than editing by hand when a limiter changes.
 | `register` | `registration_rate_limit_per_minute` (3) | per minute | IP | 302 + errors (web) / 429 JSON |
 | `forgot-password` | `password_forgot_rate_limit` (3) | per minute | identifier + IP | 302 + errors (web) / 429 JSON |
 | `reset-password` | `password_reset_rate_limit` (3) | per minute | identifier + IP | 302 + errors (web) / 429 JSON |
+| `password-change` | `password_change_rate_limit_per_minute` (5) | per minute | user id | 302 + errors (web) / 429 JSON |
 | `resend-verification` | `email_verification_rate_limit` (5) | per hour | user id, else email | 302 + errors (web) / 429 JSON |
 | `email-verification` | `email_verification_rate_limit` (5) | per hour | identifier | 302 + errors (web) / 429 JSON |
 | `user-state-actions` | `user_state_actions_rate_limit_per_minute` (15) | per minute | user id, else IP | 302 + errors (web) / 429 JSON |
@@ -59,7 +60,7 @@ wider key is not redundant — it is the only bucket that sees the spray.
 | `POST /users/bulk-action`, `POST /roles/bulk-action`, `POST /features/bulk-action` | `user-state-actions` + `bulk-action` | 5/min per user |
 | `POST /notifications/test-mail` | `user-state-actions` + `send-test-mail` | 5/min per user + IP + recipient |
 | the three `/activity-logs/exports*` routes | `user-state-actions` + `audit-export` | 5/hour per user + IP |
-| `POST /auth/password/change` | **none** — see below | unbounded |
+| `POST /auth/password/change` | `password-change` | 5/min per user |
 | `GET /health` | `health` | 120/min per IP |
 
 The inbox is the one protected list that looks under-throttled against its web
@@ -68,14 +69,20 @@ ceiling is the group's 15/min. A 30-second poll uses 2 of those; a 5-second poll
 would not fit. The web number is not copied across because a second, looser
 limiter on the API route could never be the one to refuse.
 
-**Open gap, stated rather than hidden:** `POST /auth/password/change` sits
-outside the protected group on purpose — a user whose password expired must be
-able to reach it — and that is also why it inherits no limiter. It verifies
-`current_password` before doing any work, so an attacker holding a token is
-guessing the password they could have tried at `/auth/login`, which *is*
-throttled. It is still the one authenticated endpoint with no ceiling of its own;
-if a limiter is added it should be `throttle:user-state-actions`, which keys on
-the authenticated user and cannot block the recovery path for anybody else.
+**`POST /auth/password/change`** sits outside the protected group on purpose — a
+user whose password expired must be able to reach it — so it carries its own
+limiter instead of inheriting the group's. `password-change` is keyed on the
+authenticated user alone: the route already verifies `current_password` before
+doing any work, so a refusal costs one hash, and a stolen session cannot escape
+the ceiling by changing address.
+
+The same limiter is on both web routes that can change a password:
+`PUT /password/change` and `PUT /profile` (the profile form changes the password
+when its password fields are filled). One bucket per user across the three
+addresses, because it is one capability — limiting only the API route would
+leave the web form as the way around it. A profile save that does not touch the
+password still spends a request from that bucket; five a minute is well above
+what the form needs.
 
 Every limiter answers through the shared builder
 (`App\Auth\LoginThrottle::responseFor()`), so every one branches on

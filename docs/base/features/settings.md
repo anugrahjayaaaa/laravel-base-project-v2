@@ -43,6 +43,7 @@ lockout_increment_minutes
 login_max_attempts
 login_rate_limit_per_minute
 login_ip_rate_limit_per_minute
+password_change_rate_limit_per_minute
 password_expiry_days
 password_expiry_enabled
 password_expiry_warn_days
@@ -80,7 +81,7 @@ has no category column.
 | Group | Keys |
 |-------|------|
 | Login rate limiting & lockout | `login_max_attempts`, `lockout_base_minutes`, `lockout_increment_minutes`, `login_rate_limit_per_minute`, `login_ip_rate_limit_per_minute` |
-| Password reset / verification rate limits | `password_forgot_rate_limit`, `password_reset_rate_limit`, `password_reset_token_expire_minutes`, `email_verification_rate_limit`, `email_verification_token_expire_minutes` |
+| Password reset / verification rate limits | `password_forgot_rate_limit`, `password_reset_rate_limit`, `password_change_rate_limit_per_minute`, `password_reset_token_expire_minutes`, `email_verification_rate_limit`, `email_verification_token_expire_minutes` |
 | Password policy & lifecycle | `password_min_length`, `password_require_*`, `password_reject_username`, `password_uncompromised`, `password_history_*`, `password_expiry_*`, `password_security_sweep_*`, `inactivity_lock_*` |
 | Email verification | `email_verification_expire_minutes`, `email_verification_mode` |
 | Identity / account rules | `allow_username_change`, `username_change_cooldown_days`, `allow_email_change`, `email_change_cooldown_days` |
@@ -131,6 +132,7 @@ of truth. `P8-E1a` proves every numeric bound rejects a value outside it.
 | `login_ip_rate_limit_per_minute` | integer, min:1, max:120 |
 | `password_forgot_rate_limit` | integer, min:1, max:30 |
 | `password_reset_rate_limit` | integer, min:1, max:30 |
+| `password_change_rate_limit_per_minute` | integer, min:1, max:30 |
 | `password_reset_token_expire_minutes` | integer, min:1, max:1440 |
 | `email_verification_rate_limit` | integer, min:1, max:100 |
 | `email_verification_token_expire_minutes` | integer, min:1, max:1440 |
