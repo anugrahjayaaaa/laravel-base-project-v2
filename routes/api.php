@@ -315,6 +315,6 @@ Route::prefix('v1')->group(function () {
     // user can always recover.
     // ---------------------------------------------------------------------------
     Route::middleware(['auth:sanctum'])->group(function () {
-        Route::post('/auth/password/change', ApiPasswordChangeController::class)->name('api.v1.auth.password.change');
+        Route::post('/auth/password/change', ApiPasswordChangeController::class)->name('api.v1.auth.password.change')->middleware('throttle:password-change');
     });
 });

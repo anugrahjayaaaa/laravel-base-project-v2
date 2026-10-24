@@ -88,10 +88,10 @@ Route::middleware(['auth:web,sanctum', 'verified', 'password.change.required', '
     // Profile
     Route::controller(ProfileController::class)->group(function () {
         Route::get('/profile', 'show')->name('profile.show');
-        Route::put('/profile', 'update')->name('profile.update');
+        Route::put('/profile', 'update')->name('profile.update')->middleware('throttle:password-change');
         Route::get('/password/expired', 'showExpiredPassword')->name('password.expired');
         Route::get('/password/change', 'show')->name('password.change');
-        Route::put('/password/change', 'changePassword')->name('password.change.update');
+        Route::put('/password/change', 'changePassword')->name('password.change.update')->middleware('throttle:password-change');
     });
 
     // Users — flag `users` (P7-D7).

@@ -459,6 +459,21 @@
                                 @enderror
                             </div>
                             <div class="col-md-6">
+                                <label for="password_change_rate_limit_per_minute" class="form-label">
+                                    Password Change Limit
+                                    <i class="bi bi-info-circle text-muted fs-7 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Maximum password change requests allowed per minute for a single user."></i>
+                                </label>
+                                <div class="input-group">
+                                    <input type="number" name="password_change_rate_limit_per_minute" id="password_change_rate_limit_per_minute"
+                                           class="form-control form-control-sm @error('password_change_rate_limit_per_minute') is-invalid @enderror" @error('password_change_rate_limit_per_minute') aria-invalid="true" aria-describedby="password_change_rate_limit_per_minute_error" @enderror
+                                           value="{{ old('password_change_rate_limit_per_minute', $settings['password_change_rate_limit_per_minute'] ?? 5) }}" min="1" max="30">
+                                    <span class="input-group-text bg-body-tertiary">/ min</span>
+                                </div>
+                                @error('password_change_rate_limit_per_minute')
+                                    <div class="invalid-feedback d-block" id="password_change_rate_limit_per_minute_error">{{ $message }}</div>
+                                @enderror
+                            </div>
+                            <div class="col-md-6">
                                 <label for="password_reset_token_expire_minutes" class="form-label">
                                     Reset Link Lifetime
                                     <i class="bi bi-info-circle text-muted fs-7 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Duration in minutes a password reset link remains usable before expiring."></i>

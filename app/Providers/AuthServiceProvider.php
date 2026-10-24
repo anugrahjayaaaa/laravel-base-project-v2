@@ -183,6 +183,18 @@ class AuthServiceProvider extends ServiceProvider
                 ->response($throttle->responseFor('identifier'));
         });
 
+        // Password change is behind a session and verifies `current_password`
+        // before doing any work, so the refusal is cheap; this caps how fast a
+        // stolen session can guess the old password. Keyed on the user alone:
+        // rotating addresses must not buy a second budget.
+        RateLimiter::for('password-change', function (Request $request) use ($throttle) {
+            $limit = SystemSetting::getInt('password_change_rate_limit_per_minute', 5);
+
+            return Limit::perMinute($limit)
+                ->by($request->user()?->getKey() ?: $request->ip())
+                ->response($throttle->responseFor('current_password'));
+        });
+
         RateLimiter::for('forgot-password', function (Request $request) use ($throttle) {
             $identifier = $request->input('email', $request->input('username', ''));
             $limit = SystemSetting::getInt('password_forgot_rate_limit', 3);

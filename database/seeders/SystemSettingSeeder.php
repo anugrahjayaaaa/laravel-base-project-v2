@@ -29,6 +29,7 @@ class SystemSettingSeeder extends Seeder
         // Password reset / verification rate limits
         SystemSetting::set('password_forgot_rate_limit', '3');
         SystemSetting::set('password_reset_rate_limit', '3');
+        SystemSetting::set('password_change_rate_limit_per_minute', '5');
         SystemSetting::set('password_reset_token_expire_minutes', '15');
         SystemSetting::set('email_verification_rate_limit', '5');
         SystemSetting::set('email_verification_token_expire_minutes', '60');
