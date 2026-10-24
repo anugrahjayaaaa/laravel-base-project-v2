@@ -30,7 +30,7 @@ Two disjoint audiences, and no third category.
 |----------|---------|----------|-------|
 | Email verification (self-registration) | mail | The affected user | `RegisterNotification` |
 | Account created with a temporary password | mail | The affected user | `UserCreatedNotification` |
-| Confirm a new email address | mail | The affected user | `ChangeEmailVerificationNotification` |
+| Confirm a new email address | mail | The pending address — the one being confirmed | `ChangeEmailVerificationNotification` |
 | Account locked / unlocked / activated / deactivated | mail, database | The affected user **and** every holder of the matching action permission | `AccountStateChangedNotification` |
 | New registration (administrative copy) | mail, database | Every holder of `users.create` | `UserRegisteredNotification` |
 | Roles granted / revoked | mail, database | The affected user, **and** `roles.assign` holders when an administrator did it | `RolesChangedNotification` |
@@ -45,8 +45,10 @@ confirmation, account state, and the temporary password. Their absence does not
 make a notification quieter, it makes a flow uncompletable: a locked account
 cannot open the inbox that would carry the news, and the other three carry the
 only link or the only credential the user will ever be sent. `NotificationChannel::for(essential: true)`
-is what says so, and the channels page states the exception rather than letting
-a switch imply an effect it does not have.
+is what says so for three of them. The email-change confirmation is mail-only by
+construction instead: it is sent on demand to the address being confirmed, so it
+has no user notifiable to write an in-app row against — and delivering it to the
+account's current inbox would prove control of the wrong mailbox.
 
 ### The rule, for events not yet dispatched
 
@@ -162,8 +164,8 @@ Mail/notification templates:
 ### Copy rules
 
 The rules below are not style preferences; they come from where these strings are
-read. `NotificationCopyTest` asserts the mechanical ones across all seven classes
-and both audiences, so the defects it was written for cannot return unnoticed.
+read. `NotificationCopyTest` asserts the mechanical ones across every class that
+writes to the inbox, so the defects it was written for cannot return unnoticed.
 
 | Rule | Why |
 |---|---|

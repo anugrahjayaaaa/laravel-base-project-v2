@@ -210,8 +210,8 @@ success and the value does not change. See "Adding a new setting" in
 
 ### Email Change Verification Flow
 
-1. Admin/user requests email change → `pending_email` + `email_change_token` + `email_change_token_expires_at` set
-2. Signed email sent to **new** address (`pending_email`) with 24h expiry
+1. Admin/user requests email change → `pending_email` + `email_change_token` (SHA-256 hash of the token) + `email_change_token_expires_at` set
+2. Signed email sent to **new** address (`pending_email`) with 24h expiry — the signature, the stored expiry and the copy all say 24 hours
 3. User clicks link → `email` ← `pending_email`, `email_changed_at = now()`, `email_verified_at = now()`
 4. All sessions + API tokens revoked on successful change
 5. Cancel request clears `pending_email`
