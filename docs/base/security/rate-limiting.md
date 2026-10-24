@@ -15,6 +15,7 @@ stale. Re-derive it rather than editing by hand when a limiter changes.
 | Limiter | Setting key (default) | Window | Keyed on | Over-limit response |
 |---------|-----------------------|--------|----------|---------------------|
 | `login` | `login_rate_limit_per_minute` (5) | per minute | identifier + IP | 302 + errors (web) / 429 JSON |
+| `login-ip` | `login_ip_rate_limit_per_minute` (10) | per minute | IP | 302 + errors (web) / 429 JSON |
 | `register` | `registration_rate_limit_per_minute` (3) | per minute | IP | 302 + errors (web) / 429 JSON |
 | `forgot-password` | `password_forgot_rate_limit` (3) | per minute | identifier + IP | 302 + errors (web) / 429 JSON |
 | `reset-password` | `password_reset_rate_limit` (3) | per minute | identifier + IP | 302 + errors (web) / 429 JSON |
@@ -33,16 +34,22 @@ key: they are the same action, reachable by two routes.
 ## API ladder — which limiter is the one that refuses
 
 Two limiters can apply to one request. Both are checked, and **the tighter
-ceiling is the one a caller meets first** — a looser second limiter can only
-ever refuse someone the tighter one already refused. That is why no `api`
-limiter exists: the protected group already runs `user-state-actions` at
-15/minute, and a typical 60/minute `api` limiter beside it would change nothing
-while reading like a control that does the work. Adding one *instead* would be a
-4× loosening, which is not an option.
+ceiling is the one a caller meets first** — a looser second limiter with the
+same key can only ever refuse someone the tighter one already refused. That is
+why no `api` limiter exists: the protected group already runs
+`user-state-actions` at 15/minute, and a typical 60/minute `api` limiter beside
+it would change nothing while reading like a control that does the work. Adding
+one *instead* would be a 4× loosening, which is not an option.
+
+The exception is a second limiter with a **different key**. `/auth/login`
+carries `login` and `login-ip`: the first counts per identifier + IP, the second
+per IP alone. One address trying one password against a thousand accounts never
+repeats the first key and is only visible to the second. A looser number on a
+wider key is not redundant — it is the only bucket that sees the spray.
 
 | Route(s) | Limiter(s) | Effective ceiling |
 |---|---|---|
-| `POST /auth/login` | `login` | 5/min per identifier + IP |
+| `POST /auth/login` | `login` + `login-ip` | 5/min per identifier + IP (in the action on the API), and 10/min per IP |
 | `POST /auth/register` | `register` | 3/min per IP |
 | `POST /auth/password/forgot` | `forgot-password` | 3/min per identifier + IP |
 | `POST /auth/password/reset` | `reset-password` | 3/min per identifier + IP |
@@ -145,7 +152,9 @@ directly; the facade is the only thing that should know.
 
 - **Rate limiting** protects the endpoint surface — DoS and brute force at the
   transport layer.
-- **Failed-login tracking** protects the account — lockout after N failures.
+- **Failed-login tracking** protects the account — lockout after N failures,
+  scoped to identifier + IP. The per-IP `login-ip` limiter above is what sees
+  one address spraying many accounts.
 
 Separate mechanisms. Neither replaces the other.
 

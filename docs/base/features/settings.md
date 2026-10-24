@@ -42,6 +42,7 @@ lockout_base_minutes
 lockout_increment_minutes
 login_max_attempts
 login_rate_limit_per_minute
+login_ip_rate_limit_per_minute
 password_expiry_days
 password_expiry_enabled
 password_expiry_warn_days
@@ -78,7 +79,7 @@ has no category column.
 
 | Group | Keys |
 |-------|------|
-| Login rate limiting & lockout | `login_max_attempts`, `lockout_base_minutes`, `lockout_increment_minutes`, `login_rate_limit_per_minute` |
+| Login rate limiting & lockout | `login_max_attempts`, `lockout_base_minutes`, `lockout_increment_minutes`, `login_rate_limit_per_minute`, `login_ip_rate_limit_per_minute` |
 | Password reset / verification rate limits | `password_forgot_rate_limit`, `password_reset_rate_limit`, `password_reset_token_expire_minutes`, `email_verification_rate_limit`, `email_verification_token_expire_minutes` |
 | Password policy & lifecycle | `password_min_length`, `password_require_*`, `password_reject_username`, `password_uncompromised`, `password_history_*`, `password_expiry_*`, `password_security_sweep_*`, `inactivity_lock_*` |
 | Email verification | `email_verification_expire_minutes`, `email_verification_mode` |
@@ -87,6 +88,16 @@ has no category column.
 | API documentation | `api_docs_public` |
 | API token lifetime | `api_token_expire_value`, `api_token_expire_unit` |
 | Web session lifetime | `web_session_expire_value`, `web_session_expire_unit` |
+
+### Login security defaults
+
+`login_max_attempts` 5 · `lockout_base_minutes` 5 ·
+`lockout_increment_minutes` 10 · `login_rate_limit_per_minute` 5 ·
+`login_ip_rate_limit_per_minute` 10.
+
+The failed-login lockout is scoped to identifier + IP; the per-IP `login-ip`
+ceiling is what caps one address spraying many accounts. Behaviour:
+`docs/base/security/authentication.md`.
 
 ## Two-Layer Configuration
 
@@ -117,6 +128,7 @@ of truth. `P8-E1a` proves every numeric bound rejects a value outside it.
 | `lockout_base_minutes` | integer, min:1, max:60 |
 | `lockout_increment_minutes` | integer, min:1, max:120 |
 | `login_rate_limit_per_minute` | integer, min:1, max:120 |
+| `login_ip_rate_limit_per_minute` | integer, min:1, max:120 |
 | `password_forgot_rate_limit` | integer, min:1, max:30 |
 | `password_reset_rate_limit` | integer, min:1, max:30 |
 | `password_reset_token_expire_minutes` | integer, min:1, max:1440 |
