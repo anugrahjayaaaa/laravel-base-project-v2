@@ -62,6 +62,7 @@ class SystemSettingsUpdateAction
             'lockout_base_minutes' => (string) ($data['lockout_base_minutes'] ?? 5),
             'lockout_increment_minutes' => (string) ($data['lockout_increment_minutes'] ?? 10),
             'login_rate_limit_per_minute' => (string) ($data['login_rate_limit_per_minute'] ?? 5),
+            'login_ip_rate_limit_per_minute' => (string) ($data['login_ip_rate_limit_per_minute'] ?? 10),
 
             // Password reset / verification rate limits
             'password_forgot_rate_limit' => (string) ($data['password_forgot_rate_limit'] ?? 3),

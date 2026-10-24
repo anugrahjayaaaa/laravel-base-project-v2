@@ -24,6 +24,7 @@ class SystemSettingSeeder extends Seeder
         SystemSetting::set('lockout_base_minutes', '5');
         SystemSetting::set('lockout_increment_minutes', '10');
         SystemSetting::set('login_rate_limit_per_minute', '5');
+        SystemSetting::set('login_ip_rate_limit_per_minute', '10');
 
         // Password reset / verification rate limits
         SystemSetting::set('password_forgot_rate_limit', '3');

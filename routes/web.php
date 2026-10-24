@@ -35,7 +35,7 @@ Route::controller(AuthController::class)->group(function () {
     Route::get('/login', 'showLogin')->name('login');
     Route::post('/login', 'login')
         ->name('login.submit')
-        ->middleware('throttle:login');
+        ->middleware(['throttle:login', 'throttle:login-ip']);
 
     Route::get('/forgot-password', 'showForgotPassword')->name('password.request');
     Route::post('/forgot-password', 'sendPasswordResetLink')

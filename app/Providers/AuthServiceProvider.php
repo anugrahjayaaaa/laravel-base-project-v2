@@ -161,11 +161,25 @@ class AuthServiceProvider extends ServiceProvider
         $throttle = app(LoginThrottle::class);
 
         RateLimiter::for('login', function (Request $request) use ($throttle) {
-            $identifier = $request->input('identifier', '');
+            // ConvertEmptyStringsToNull runs before route middleware, so an
+            // empty identifier arrives as null, not ''.
+            $identifier = (string) $request->input('identifier', '');
             $limit = SystemSetting::getInt('login_rate_limit_per_minute', 5);
 
             return Limit::perMinute($limit)
                 ->by($throttle->key('login', $identifier, $request->ip()))
+                ->response($throttle->responseFor('identifier'));
+        });
+
+        // The second ceiling on the same endpoint, keyed on the address alone.
+        // The limiter above is per identifier + IP, so one address trying one
+        // password against a thousand accounts never repeats a key and never
+        // meets it. This is the bucket that sees the spray.
+        RateLimiter::for('login-ip', function (Request $request) use ($throttle) {
+            $limit = SystemSetting::getInt('login_ip_rate_limit_per_minute', 10);
+
+            return Limit::perMinute($limit)
+                ->by($throttle->key('login-ip', 'ip', $request->ip()))
                 ->response($throttle->responseFor('identifier'));
         });
 

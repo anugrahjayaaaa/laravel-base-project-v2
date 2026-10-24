@@ -32,6 +32,7 @@ class SystemSettingRequest extends BaseFormRequest
             'lockout_base_minutes' => ['integer', 'min:1', 'max:60'],
             'lockout_increment_minutes' => ['integer', 'min:1', 'max:120'],
             'login_rate_limit_per_minute' => ['integer', 'min:1', 'max:120'],
+            'login_ip_rate_limit_per_minute' => ['integer', 'min:1', 'max:120'],
 
             // Password reset / verification rate limits
             'password_forgot_rate_limit' => ['integer', 'min:1', 'max:30'],

@@ -93,7 +93,7 @@
                             <div class="col-6 col-md-3">
                                 <label for="login_rate_limit_per_minute" class="form-label">
                                     Login Rate Limit
-                                    <i class="bi bi-info-circle text-muted fs-7 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Maximum number of total login requests allowed per minute per IP address."></i>
+                                    <i class="bi bi-info-circle text-muted fs-7 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Login requests per minute per account and IP."></i>
                                 </label>
                                 <div class="input-group">
                                     <input type="number" name="login_rate_limit_per_minute" id="login_rate_limit_per_minute"
@@ -103,6 +103,21 @@
                                 </div>
                                 @error('login_rate_limit_per_minute')
                                     <div class="invalid-feedback d-block" id="login_rate_limit_per_minute_error">{{ $message }}</div>
+                                @enderror
+                            </div>
+                            <div class="col-6 col-md-3">
+                                <label for="login_ip_rate_limit_per_minute" class="form-label">
+                                    Login Attempts per IP
+                                    <i class="bi bi-info-circle text-muted fs-7 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Login requests per minute per IP, all accounts."></i>
+                                </label>
+                                <div class="input-group">
+                                    <input type="number" name="login_ip_rate_limit_per_minute" id="login_ip_rate_limit_per_minute"
+                                           class="form-control form-control-sm @error('login_ip_rate_limit_per_minute') is-invalid @enderror" @error('login_ip_rate_limit_per_minute') aria-invalid="true" aria-describedby="login_ip_rate_limit_per_minute_error" @enderror
+                                           value="{{ old('login_ip_rate_limit_per_minute', $settings['login_ip_rate_limit_per_minute'] ?? 10) }}" min="1" max="120">
+                                    <span class="input-group-text bg-body-tertiary">/ min</span>
+                                </div>
+                                @error('login_ip_rate_limit_per_minute')
+                                    <div class="invalid-feedback d-block" id="login_ip_rate_limit_per_minute_error">{{ $message }}</div>
                                 @enderror
                             </div>
                         </div>

@@ -271,6 +271,24 @@ class AuthControllerTest extends TestCase
             ->assertSessionHasErrors('identifier');
     }
 
+    public function test_web_login_is_limited_per_ip_across_accounts(): void
+    {
+        // The per-identifier limiter cannot see this: every request uses a
+        // different account for the first time. The per-IP bucket can. Ten
+        // requests are allowed, the eleventh is refused.
+        for ($i = 1; $i <= 10; $i++) {
+            $this->post('/login', [
+                'identifier' => "target{$i}@example.com",
+                'password' => 'wrong',
+            ]);
+        }
+
+        $this->post('/login', [
+            'identifier' => 'target11@example.com',
+            'password' => 'wrong',
+        ])->assertStatus(302)->assertSessionHas('rate_limit_seconds');
+    }
+
     public function test_web_forgot_password_rate_limited_after_3_attempts(): void
     {
         for ($i = 0; $i < 4; $i++) {

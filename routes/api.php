@@ -39,7 +39,7 @@ Route::prefix('v1')->group(function () {
     // Public auth routes — no authentication required
     // ---------------------------------------------------------------------------
     Route::prefix('auth')->group(function () {
-        Route::post('/login', LoginController::class)->name('api.v1.auth.login');
+        Route::post('/login', LoginController::class)->name('api.v1.auth.login')->middleware('throttle:login-ip');
         Route::post('/register', RegisterController::class)->name('api.v1.auth.register')->middleware('throttle:register');
         Route::post('/password/forgot', PasswordForgotController::class)->name('api.v1.auth.password.forgot')->middleware('throttle:forgot-password');
         Route::post('/password/reset', PasswordResetController::class)->name('api.v1.auth.password.reset')->middleware('throttle:reset-password');
