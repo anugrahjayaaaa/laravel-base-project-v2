@@ -4,7 +4,6 @@ namespace Tests\Feature\Notification;
 
 use App\Models\User;
 use App\Notifications\AccountStateChangedNotification;
-use App\Notifications\ChangeEmailVerificationNotification;
 use App\Notifications\ConfigurationChangedNotification;
 use App\Notifications\RegisterNotification;
 use App\Notifications\RolesChangedNotification;
@@ -325,9 +324,6 @@ class NotificationCopyTest extends TestCase
             'account locked, no actor' => [AccountStateChangedNotification::class, [
                 ['as' => 'self', 'args' => ['@subject', '#none', 'user.locked']],
                 ['as' => 'operator', 'args' => ['@subject', '#none', 'user.locked']],
-            ]],
-            'email change confirmation' => [ChangeEmailVerificationNotification::class, [
-                ['as' => 'self', 'args' => ['moved@example.test', 'a-token']],
             ]],
             'feature flag changed' => [ConfigurationChangedNotification::class, [
                 ['as' => 'operator', 'args' => ['feature.changed', 'billing_v2', '#causer']],

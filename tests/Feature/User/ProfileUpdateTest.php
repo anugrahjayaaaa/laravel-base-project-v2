@@ -67,7 +67,7 @@ class ProfileUpdateTest extends TestCase
 
         $response->assertRedirect();
         $response->assertSessionHas('status', 'Verification email sent to new email address.');
-        Notification::assertSentTo($user, ChangeEmailVerificationNotification::class);
+        Notification::assertSentOnDemand(ChangeEmailVerificationNotification::class);
     }
 
     public function test_email_verify_link_returns_not_found_without_signed_route(): void
@@ -76,7 +76,7 @@ class ProfileUpdateTest extends TestCase
         $token = Str::random(64);
         $user->update([
             'pending_email' => 'new@example.com',
-            'email_change_token' => $token,
+            'email_change_token' => hash('sha256', $token),
             'email_change_token_expires_at' => now()->addHours(24),
         ]);
 

@@ -74,7 +74,9 @@ class UserUpdateAction
 
                     $user->update([
                         'pending_email' => $data['email'],
-                        'email_change_token' => $token,
+                        // Hashed: a leaked database read must not hand over a
+                        // working confirmation link. See the request action.
+                        'email_change_token' => hash('sha256', $token),
                         'email_change_token_expires_at' => now()->addHours(24),
                     ]);
 
@@ -143,9 +145,11 @@ class UserUpdateAction
         // row committed — and a rollback still delivered a verification link
         // for a token the database never stored, so the link could never work.
         if ($emailChangeToken !== null) {
-            Notification::send(
-                $updated->fresh(),
-                new ChangeEmailVerificationNotification($data['email'], $emailChangeToken)
+            // On-demand to the address being confirmed, not to `$updated` — the
+            // account still holds the old address, so sending there would prove
+            // control of the wrong mailbox. See UserRequestEmailChangeAction.
+            Notification::route('mail', $data['email'])->notify(
+                new ChangeEmailVerificationNotification($updated->id, $data['email'], $emailChangeToken)
             );
         }
 

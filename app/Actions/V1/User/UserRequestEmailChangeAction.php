@@ -27,7 +27,9 @@ class UserRequestEmailChangeAction
         DB::transaction(function () use ($user, $newEmail, $causer, $token) {
             $user->update([
                 'pending_email' => $newEmail,
-                'email_change_token' => $token,
+                // Hashed: a leaked database read must not hand over a working
+                // confirmation link. The plaintext exists only in the mail.
+                'email_change_token' => hash('sha256', $token),
                 'email_change_token_expires_at' => now()->addHours(24),
             ]);
 
@@ -36,11 +38,18 @@ class UserRequestEmailChangeAction
             }
         });
 
-        // Sent AFTER the commit. The notification implements ShouldQueue and
-        // the queue connections run with `after_commit => false`, so dispatching
-        // inside the transaction let a worker send before the token row
-        // committed — a rollback would still have delivered a verification link
-        // whose token the database never stored, so the link could never work.
-        Notification::send($user->fresh(), new ChangeEmailVerificationNotification($newEmail, $token));
+        // Sent AFTER the commit, to the address being confirmed. The notification
+        // implements ShouldQueue and the queue connections run with
+        // `after_commit => false`, so dispatching inside the transaction let a
+        // worker send before the token row committed — a rollback would still
+        // have delivered a verification link whose token the database never
+        // stored, so the link could never work.
+        //
+        // On-demand, not `send($user)`: `$user` still carries the OLD address,
+        // and a confirmation delivered there proves control of the address the
+        // account already owns. That was the defect.
+        Notification::route('mail', $newEmail)->notify(
+            new ChangeEmailVerificationNotification($user->id, $newEmail, $token)
+        );
     }
 }
