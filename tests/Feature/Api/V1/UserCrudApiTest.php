@@ -178,6 +178,23 @@ class UserCrudApiTest extends TestCase
             ->assertStatus(422);
     }
 
+    public function test_patch_updates_the_user(): void
+    {
+        $user = User::factory()->create(['name' => 'Before Patch']);
+
+        $this->patchJson(route('api.v1.users.patch', $user->id), [
+            'name' => 'After Patch',
+            'status' => UserStatusEnum::INACTIVE->value,
+        ])
+            ->assertOk()
+            ->assertJsonPath('data.message', 'User updated successfully.');
+
+        $this->assertDatabaseHas('users', [
+            'id' => $user->id,
+            'name' => 'After Patch',
+        ]);
+    }
+
     // -- Restore --
 
     public function test_restore_soft_deleted_user(): void
@@ -201,6 +218,27 @@ class UserCrudApiTest extends TestCase
 
         $this->postJson(route('api.v1.users.restore', $user->id))
             ->assertStatus(200); // restore on non-trashed is idempotent in Laravel
+    }
+
+    // -- Email change --
+
+    public function test_cancel_email_change_clears_the_pending_fields(): void
+    {
+        $user = User::factory()->create([
+            'pending_email' => 'pending@example.com',
+            'email_change_token' => 'a-token',
+            'email_change_token_expires_at' => now()->addHour(),
+        ]);
+
+        $this->postJson(route('api.v1.users.cancel-email-change', $user->id))
+            ->assertOk()
+            ->assertJsonPath('data.message', 'Email change cancelled.');
+
+        $this->assertDatabaseHas('users', [
+            'id' => $user->id,
+            'pending_email' => null,
+            'email_change_token' => null,
+        ]);
     }
 
     // -- Authorization --

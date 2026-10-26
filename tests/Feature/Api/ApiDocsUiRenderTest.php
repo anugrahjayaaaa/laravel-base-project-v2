@@ -82,8 +82,8 @@ class ApiDocsUiRenderTest extends TestCase
         // The Authorize box in `/docs/api` renders only when the document names
         // a scheme; Scramble derives it from the `auth:*` middleware, and a route
         // without it is marked public rather than asking for a token it ignores.
-        $this->assertSame('bearer', $spec['components']['securitySchemes']['http']['scheme']);
-        $this->assertSame([['http' => []]], $spec['security']);
+        $this->assertSame('bearer', $spec['components']['securitySchemes']['bearerAuth']['scheme']);
+        $this->assertSame([['bearerAuth' => []]], $spec['security']);
         $this->assertSame([], $spec['paths']['/v1/auth/login']['post']['security']);
     }
 

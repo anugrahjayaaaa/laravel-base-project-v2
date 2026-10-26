@@ -147,8 +147,88 @@ class ApiDocumentationTest extends TestCase
 
     public function test_the_document_declares_the_bearer_scheme(): void
     {
-        $this->assertSame('bearer', $this->spec['components']['securitySchemes']['http']['scheme'] ?? null);
-        $this->assertSame([['http' => []]], $this->spec['security'] ?? null);
+        $this->assertSame('bearer', $this->spec['components']['securitySchemes']['bearerAuth']['scheme'] ?? null);
+        $this->assertSame([['bearerAuth' => []]], $this->spec['security'] ?? null);
+    }
+
+    /**
+     * Every error response the document publishes must describe the body the
+     * handler actually sends (`docs/base/api/error-contract.md`).
+     *
+     * Scramble answers an inferred exception with `{message}`, which is not the
+     * contract, and this gate used to assert the status only — so 148 responses
+     * documented a body no client receives and nothing failed. `code` and `meta`
+     * are the two keys that separate the envelope from the framework default.
+     *
+     * 503 is the one documented exception: the health probe answers with its own
+     * unwrapped body on purpose, so it is exempt by name rather than by accident.
+     */
+    public function test_every_documented_error_response_publishes_the_contract_envelope(): void
+    {
+        $wrong = [];
+
+        foreach ($this->spec['paths'] as $path => $operations) {
+            foreach ($operations as $method => $operation) {
+                foreach ($operation['responses'] ?? [] as $status => $response) {
+                    if (str_starts_with((string) $status, '2') || (string) $status === '503') {
+                        continue;
+                    }
+
+                    $body = json_encode($response);
+
+                    if (! str_contains($body, '"code"') || ! str_contains($body, '"meta"')) {
+                        $wrong[] = strtoupper($method).' '.$path.' '.$status;
+                    }
+                }
+            }
+        }
+
+        $this->assertSame(
+            [],
+            $wrong,
+            'These error responses document a body outside the contract envelope: '.implode(', ', $wrong),
+        );
+    }
+
+    /**
+     * A gated operation must say what gates it.
+     *
+     * Scramble reads neither `can:` nor `feature:`, so before
+     * `AuthorizationDescriptionExtension` the document showed a permission-gated
+     * endpoint as if any token could call it. The requirement lives in the route
+     * middleware; this test makes the description carry the same words.
+     */
+    public function test_every_gated_operation_states_its_requirement(): void
+    {
+        $missing = [];
+
+        foreach ($this->apiRoutes() as $route) {
+            $requirements = array_values(array_filter(
+                $route->gatherMiddleware(),
+                static fn (string $middleware): bool => str_starts_with($middleware, 'can:')
+                    || str_starts_with($middleware, 'feature:'),
+            ));
+
+            if ($requirements === []) {
+                continue;
+            }
+
+            foreach ($this->documentedMethods($route) as $method) {
+                $description = $this->operation($route, $method)['description'] ?? '';
+
+                foreach ($requirements as $requirement) {
+                    if (! str_contains($description, '`'.$requirement.'`')) {
+                        $missing[] = $method.' '.$this->documentedPath($route).' ('.$requirement.')';
+                    }
+                }
+            }
+        }
+
+        $this->assertSame(
+            [],
+            $missing,
+            'These operations do not state the middleware that gates them: '.implode(', ', $missing),
+        );
     }
 
     /**
