@@ -6,6 +6,8 @@ use App\Actions\V1\User\UserCreateAction;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\V1\Auth\RegisterRequest;
 use App\Models\SystemSetting;
+use App\Support\ApiError;
+use Dedoc\Scramble\Attributes\Response;
 use Illuminate\Http\JsonResponse;
 
 /**
@@ -24,13 +26,14 @@ class RegisterController extends Controller
      * @param  UserCreateAction  $action
      * @return JsonResponse
      */
+    #[Response(status: 404, type: ApiError::DOC_TYPE)]
     public function __invoke(RegisterRequest $request, UserCreateAction $action): JsonResponse
     {
         // A disabled feature is a 404 on the web, where the route has no meaning
         // at all. An API client gets the same answer so it cannot probe for the
         // existence of a feature the operator turned off.
         if (! SystemSetting::getBool('registration_enabled', false)) {
-            return $this->respond('Not found.', 404);
+            return $this->respondError('Not found.', 'NOT_FOUND', 404);
         }
 
         $data = $request->validated();

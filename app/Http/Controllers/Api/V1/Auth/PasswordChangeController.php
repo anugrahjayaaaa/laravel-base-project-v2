@@ -32,12 +32,6 @@ class PasswordChangeController extends Controller
             newPassword: $data['password'],
         );
 
-        return response()->json([
-            'data' => ['message' => 'Password changed successfully.'],
-            'meta' => [
-                'request_id' => app('request_id'),
-                'timestamp' => now()->toIso8601String(),
-            ],
-        ]);
+        return $this->respond('Password changed successfully.');
     }
 }

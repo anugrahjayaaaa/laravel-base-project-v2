@@ -5,6 +5,7 @@ namespace App\Auth;
 use App\Models\FailedLoginAttempt;
 use App\Models\SystemSetting;
 use App\Models\User;
+use App\Support\ApiError;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -180,11 +181,15 @@ class LoginThrottle
             $retryAfter = $headers['Retry-After'] ?? 60;
 
             if ($jsonOnly || $request->expectsJson()) {
-                return response()->json([
-                    'message' => 'Too many requests. Please try again later.',
-                    'code' => 'RATE_LIMITED',
-                    'retry_after_seconds' => $retryAfter,
-                ], 429);
+                // Through ApiError, not a hand-built body: the exchange rate
+                // limiter is the one refusal that fires on an otherwise-valid
+                // request, so it is the last place to lose the correlation block.
+                return ApiError::make(
+                    'Too many requests. Please try again later.',
+                    'RATE_LIMITED',
+                    429,
+                    ['retry_after_seconds' => $retryAfter],
+                );
             }
 
             return back()->withErrors([$field => 'Too many attempts. Please try again later.'])
@@ -212,11 +217,12 @@ class LoginThrottle
             $retryAfter = $headers['Retry-After'] ?? 60;
 
             if ($request->expectsJson()) {
-                return response()->json([
-                    'message' => 'Too many requests. Please try again later.',
-                    'code' => 'RATE_LIMITED',
-                    'retry_after_seconds' => $retryAfter,
-                ], 429);
+                return ApiError::make(
+                    'Too many requests. Please try again later.',
+                    'RATE_LIMITED',
+                    429,
+                    ['retry_after_seconds' => $retryAfter],
+                );
             }
 
             return back()->with('error', $message)->with('rate_limit_seconds', $retryAfter);

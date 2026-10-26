@@ -22,6 +22,8 @@ use App\Http\Requests\V1\User\CreateUserRequest;
 use App\Http\Requests\V1\User\EmailChangeRequest;
 use App\Http\Requests\V1\User\UpdateUserRequest;
 use App\Http\Requests\V1\User\UserQueryRequest;
+use App\Http\Requests\V1\User\VerifyEmailChangeRequest;
+use App\Models\RoleLookup;
 use App\Models\SystemSetting;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -113,6 +115,8 @@ class UserController extends Controller
      */
     public function show(User $user)
     {
+        abort_unless(RoleLookup::viewerCanSee(auth()->user(), $user), 404);
+
         return view('pages.users.edit', [
             'title' => 'User Detail',
             'user' => $user,
@@ -197,6 +201,8 @@ class UserController extends Controller
      */
     public function restore(User $user)
     {
+        abort_unless(RoleLookup::viewerCanSee(auth()->user(), $user), 404);
+
         $this->restoreAction->run($user, causer: auth()->user());
 
         return back()->with('status', "User '{$user->name}' has been successfully restored.");
@@ -211,6 +217,8 @@ class UserController extends Controller
      */
     public function forceDelete(Request $request, User $user)
     {
+        abort_unless(RoleLookup::viewerCanSee($request->user(), $user), 404);
+
         $this->forceDeleteAction->run($user, $request->user());
 
         return redirect()->route('users.index')->with('status', "User '{$user->name}' has been permanently deleted.");
@@ -273,13 +281,17 @@ class UserController extends Controller
     /**
      * Verify and complete an email change.
      *
-     * @param  Request  $request
+     * The token is validated by `VerifyEmailChangeRequest`; a missing one is a
+     * documented 400, not a 422, so the rule is `nullable` and the refusal below
+     * owns that answer.
+     *
+     * @param  VerifyEmailChangeRequest  $request
      * @param  User  $user
      * @return RedirectResponse
      */
-    public function verifyEmailChange(Request $request, User $user)
+    public function verifyEmailChange(VerifyEmailChangeRequest $request, User $user)
     {
-        $token = $request->query('token') ?? $request->route('token');
+        $token = $request->validated('token');
 
         if (! $token) {
             return $this->verifyRedirect('Missing verification token.', false);

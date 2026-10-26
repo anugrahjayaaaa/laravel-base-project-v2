@@ -19,6 +19,8 @@ class UserUpdateAction
     public function __construct(
         private readonly RoleAssignAction $assignRolesAction,
         private readonly NotificationAdminEventAction $notifyAction,
+        private readonly UserActivateAction $activateAction,
+        private readonly UserDeactivateAction $deactivateAction,
     ) {
     }
 
@@ -51,12 +53,11 @@ class UserUpdateAction
                 'is_active' => $user->is_active,
             ];
 
-            $user->update([
-                'name' => strip_tags($data['name'] ?? $user->name),
-                'is_active' => isset($data['status'])
-                    ? $data['status'] === UserStatusEnum::ACTIVE->value
-                    : $user->is_active,
-            ]);
+            $user->update(['name' => strip_tags($data['name'] ?? $user->name)]);
+
+            if (isset($data['status'])) {
+                $this->syncActiveState($user, $data['status'] === UserStatusEnum::ACTIVE->value, $causer ?? $user);
+            }
 
             if (isset($data['username']) && $data['username'] !== $user->username) {
                 $user->update([
@@ -73,7 +74,9 @@ class UserUpdateAction
 
                     $user->update([
                         'pending_email' => $data['email'],
-                        'email_change_token' => $token,
+                        // Hashed: a leaked database read must not hand over a
+                        // working confirmation link. See the request action.
+                        'email_change_token' => hash('sha256', $token),
                         'email_change_token_expires_at' => now()->addHours(24),
                     ]);
 
@@ -142,9 +145,11 @@ class UserUpdateAction
         // row committed — and a rollback still delivered a verification link
         // for a token the database never stored, so the link could never work.
         if ($emailChangeToken !== null) {
-            Notification::send(
-                $updated->fresh(),
-                new ChangeEmailVerificationNotification($data['email'], $emailChangeToken)
+            // On-demand to the address being confirmed, not to `$updated` — the
+            // account still holds the old address, so sending there would prove
+            // control of the wrong mailbox. See UserRequestEmailChangeAction.
+            Notification::route('mail', $data['email'])->notify(
+                new ChangeEmailVerificationNotification($updated->id, $data['email'], $emailChangeToken)
             );
         }
 
@@ -158,6 +163,28 @@ class UserUpdateAction
         }
 
         return $updated;
+    }
+
+    /**
+     * Apply `status` through the action that owns `is_active`.
+     *
+     * Writing the column here as well made this a SECOND writer of a state
+     * column whose invariants — not the last superadmin, not yourself, not a
+     * locked account — live in `UserActivateAction` / `UserDeactivateAction`.
+     * A payload carrying `status=inactive` therefore skipped every one of them
+     * and deactivated the last superadmin through the edit form.
+     */
+    private function syncActiveState(User $user, bool $active, User $causer): void
+    {
+        if ($active === (bool) $user->is_active) {
+            return;
+        }
+
+        if ($active) {
+            $this->activateAction->run($user, $causer);
+        } else {
+            $this->deactivateAction->run($user, $causer);
+        }
     }
 
     /**

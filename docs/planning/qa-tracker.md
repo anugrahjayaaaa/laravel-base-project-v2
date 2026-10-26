@@ -83,11 +83,11 @@
 
 || ID | Scenario | Category | Feature | Status |
 ||----|----------|----------|---------|--------|
-|| QA-API-001 | Verify all API responses use consistent envelope | API | API v1 | PLANNED |
-|| QA-API-002 | Verify 401 for unauthenticated API access | API | API v1 | PLANNED |
-|| QA-API-003 | Verify request_id in all responses | Security | API v1 | PLANNED |
-|| QA-API-004 | Verify 429 on rate-limited endpoint | API | Rate limiting | PLANNED |
-|| QA-API-005 | Verify pagination metadata in collections | API | API v1 | PLANNED |
+|| QA-API-001 | Verify all API responses use consistent envelope | API | API v1 | DONE (2026-10-21) — `ApiErrorEnvelopeTest` (eight handler codes, identical key set minus `debug`), `ThrottleJsonResponseTest` (limiter's own 429 carries `meta`), `CheckAccountStateMiddlewareTest` + `PasswordExpiredEnforcementTest` (middleware 403s carry `meta`), `ApiDocsUiRenderTest` (docs 401). Manual: call any endpoint with a bad payload and confirm `{message, code, meta}` |
+|| QA-API-002 | Verify 401 for unauthenticated API access | API | API v1 | DONE (2026-10-21) — `ApiDocumentationTest::test_every_authenticated_operation_documents_a_401` (reachability from `auth:sanctum`) + `ApiDocsUiRenderTest` (guest on `/docs/api.json`). Manual: `GET /api/v1/profile` with no token answers 401 `UNAUTHENTICATED` |
+|| QA-API-003 | Verify request_id in all responses | Security | API v1 | DONE (2026-10-21) — `ApiErrorEnvelopeTest::test_a_handler_error_carries_a_code_and_correlation_meta`, `AuditRequestIdTest` (`meta.request_id` equals the `X-Request-ID` header), and `ApiError::meta()` is the single builder. Manual: compare `meta.request_id` with the `X-Request-ID` header on any response |
+|| QA-API-004 | Verify 429 on rate-limited endpoint | API | Rate limiting | DONE (2026-10-21) — `ThrottleJsonResponseTest` (JSON 429 with `retry_after_seconds`, web twin still redirects) + the auth lockout cases. Manual: exceed the login lockout and confirm 429 `RATE_LIMITED` |
+|| QA-API-005 | Verify pagination metadata in collections | API | API v1 | DONE (2026-10-21) — `AuditApiTest` pins `data.pagination`'s four keys and `AuditPentestTest` reads them through the query chain; the per-module API files assert the envelope beside them; `response-contract.md` § Collection lists the three unpaginated endpoints. Manual: `GET /api/v1/users?per_page=5` returns `current_page`, `last_page`, `per_page`, `total` |
 
 ### Security QA
 

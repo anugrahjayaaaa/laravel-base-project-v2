@@ -152,16 +152,17 @@ only page that can bring a flag back, leaving a redeploy as the sole way out.
 
 ### Management API
 
-Both management routes are also exposed over the API, sharing the same actions
+The management surface is also exposed over the API, sharing the same actions
 and the same `BulkFeatureRequest`, so the `features.manage` gate and the
 undeclared-slug refusal cannot drift between channels:
 
 | Route | Gate |
 |---|---|
+| `GET /api/v1/features` | `can('features.view')` |
 | `POST /api/v1/features/{feature}/toggle` | `can('features.manage')`, plus the check in the controller |
 | `POST /api/v1/features/bulk-action` | `BulkFeatureRequest::authorize()`; `throttle:bulk-action` |
 
-**Neither route carries `feature:` middleware, and neither ever may.** The
+**None of them carries `feature:` middleware, and none ever may.** The
 middleware goes on the routes of the modules being *controlled*. Putting it on
 the flag management API means switching a flag off deletes the only way to
 switch it back on — the module disables its own recovery. `FeatureFlagApiTest`
@@ -169,8 +170,18 @@ walks every declared slug in turn for exactly this: switch it off, then switch
 it back on through the API. A test that checked one slug would pass while the
 group was gated on some other flag.
 
-There is deliberately no API `index`. The catalogue is eight slugs of config,
-and a caller cleared to toggle a flag can name the one it wants.
+**The read is a projection, not the page model.** `GET /api/v1/features` serves
+`FeatureIndexAction`'s resolved rows cut down to `slug`, `label`, `group`,
+`description`, `enabled`, `pending`. The action also builds a web `toggle_url`,
+the viewer's `manageable` bit and each flag's owned `permissions` — a JSON client
+cannot POST to the first (session + CSRF), the second is a button affordance, and
+the third is management copy. `FeatureFlagApiTest` pins the six keys so the page
+model cannot leak back in. `pending` is carried because a flag whose module has
+no routes yet is not "disabled".
+
+The state the read serves is the state the writer produced: `FeatureToggleAction`
+flushes `FeatureIndexAction::SNAPSHOT_KEY`, so a toggle followed by a read cannot
+answer from a snapshot up to 30 seconds old.
 
 ### Management UI
 
@@ -393,9 +404,12 @@ consult. `EnsureFeatureIsEnabled` calls a bare `abort(403)`, so nothing in the
 response names the flag.
 
 A client that genuinely must tell *module killed* from *no permission* from
-*account disabled* cannot read it off the status. `GET /features` is ungated by
-design and reports every flag's state — that is the capability endpoint, and it
-is the intended way to ask.
+*account disabled* cannot read it off the status. `GET /features` is not gated
+on any flag (it carries `features.view`, never `feature:*`) and reports every
+flag's state — that is the capability endpoint, and it is the intended way to
+ask. A non-browser client asks the same question at
+`GET /api/v1/features` (`features.view`), which returns the same resolved state
+as `data.features`.
 
 ## Pennant Stores
 

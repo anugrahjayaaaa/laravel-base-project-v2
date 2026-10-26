@@ -9,32 +9,68 @@ covered by tests.
 
 ## Canonical keys
 
-37 keys, seeded by `SystemSettingSeeder` and validated by
-`App\Http\Requests\V1\System\SystemSettingRequest`. This list was regenerated
-from `SystemSetting::getAll()`; an earlier version of this file listed nine keys
-and named three others (`security.*`, `registration.*`) that no code has ever
-read.
+45 keys, validated by `App\Http\Requests\V1\System\SystemSettingRequest` and
+seeded by `SystemSettingSeeder`. This list is regenerated from the request's
+`rules()` — a key that is validated but missing from
+`SystemSettingsUpdateAction::$updates` saves and changes nothing, so the request
+is the list that matters. The seeder also writes the mail transport (`mail_*`,
+validated by `UpdateMailSettingsRequest`) and the notification-channel keys,
+which are managed by their own screens. An earlier version of this file listed
+nine keys and named three others (`security.*`, `registration.*`) that no code
+has ever read.
 
 ```text
-allow_email_change                      email_verification_expire_minutes
-allow_username_change                   email_verification_mode
-email_change_cooldown_days              email_verification_rate_limit
+allow_email_change
+allow_username_change
+api_docs_public
+api_token_expire_unit
+api_token_expire_value
+audit_export_max_manual_retries
+audit_export_rate_limit_per_hour
+bulk_action_rate_limit_per_minute
+email_change_cooldown_days
+email_verification_expire_minutes
+email_verification_mode
+email_verification_rate_limit
 email_verification_token_expire_minutes
-inactivity_lock_days                    lockout_base_minutes
-inactivity_lock_enabled                 lockout_increment_minutes
-inactivity_lock_grace_days              login_max_attempts
-inactivity_lock_grace_enabled           login_rate_limit_per_minute
-password_expiry_days                    password_forgot_rate_limit
-password_expiry_enabled                 password_history_count
-password_expiry_warn_days               password_history_enabled
-password_min_length                     password_reject_username
-password_require_digit                  password_require_lower
-password_require_symbol                 password_require_upper
-password_reset_expire_minutes           password_reset_rate_limit
-password_reset_token_expire_minutes     password_security_sweep_time
-password_security_sweep_timezone        password_uncompromised
-registration_default_role               registration_enabled
-registration_rate_limit_per_minute      username_change_cooldown_days
+health_rate_limit_per_minute
+inactivity_lock_days
+inactivity_lock_enabled
+inactivity_lock_grace_days
+inactivity_lock_grace_enabled
+lockout_base_minutes
+lockout_increment_minutes
+login_max_attempts
+login_rate_limit_per_minute
+login_ip_rate_limit_per_minute
+password_change_rate_limit_per_minute
+password_expiry_days
+password_expiry_enabled
+password_expiry_warn_days
+password_forgot_rate_limit
+password_history_count
+password_history_enabled
+password_min_length
+password_reject_username
+password_require_digit
+password_require_lower
+password_require_symbol
+password_require_upper
+password_reset_expire_minutes
+password_reset_rate_limit
+password_reset_token_expire_minutes
+password_security_sweep_time
+password_security_sweep_timezone
+password_uncompromised
+queue_retry_rate_limit_per_minute
+registration_default_role
+registration_enabled
+registration_rate_limit_per_minute
+send_test_mail_rate_limit_per_minute
+user_state_actions_rate_limit_per_minute
+username_change_cooldown_days
+web_session_expire_unit
+web_session_expire_value
 ```
 
 ## Groups
@@ -44,12 +80,25 @@ has no category column.
 
 | Group | Keys |
 |-------|------|
-| Login rate limiting & lockout | `login_max_attempts`, `lockout_base_minutes`, `lockout_increment_minutes`, `login_rate_limit_per_minute` |
-| Password reset / verification rate limits | `password_forgot_rate_limit`, `password_reset_rate_limit`, `password_reset_token_expire_minutes`, `email_verification_rate_limit`, `email_verification_token_expire_minutes` |
+| Login rate limiting & lockout | `login_max_attempts`, `lockout_base_minutes`, `lockout_increment_minutes`, `login_rate_limit_per_minute`, `login_ip_rate_limit_per_minute` |
+| Password reset / verification rate limits | `password_forgot_rate_limit`, `password_reset_rate_limit`, `password_change_rate_limit_per_minute`, `password_reset_token_expire_minutes`, `email_verification_rate_limit`, `email_verification_token_expire_minutes` |
 | Password policy & lifecycle | `password_min_length`, `password_require_*`, `password_reject_username`, `password_uncompromised`, `password_history_*`, `password_expiry_*`, `password_security_sweep_*`, `inactivity_lock_*` |
 | Email verification | `email_verification_expire_minutes`, `email_verification_mode` |
 | Identity / account rules | `allow_username_change`, `username_change_cooldown_days`, `allow_email_change`, `email_change_cooldown_days` |
 | Self-registration | `registration_enabled`, `registration_default_role`, `registration_rate_limit_per_minute` |
+| API documentation | `api_docs_public` |
+| API token lifetime | `api_token_expire_value`, `api_token_expire_unit` |
+| Web session lifetime | `web_session_expire_value`, `web_session_expire_unit` |
+
+### Login security defaults
+
+`login_max_attempts` 5 · `lockout_base_minutes` 5 ·
+`lockout_increment_minutes` 10 · `login_rate_limit_per_minute` 5 ·
+`login_ip_rate_limit_per_minute` 10.
+
+The failed-login lockout is scoped to identifier + IP; the per-IP `login-ip`
+ceiling is what caps one address spraying many accounts. Behaviour:
+`docs/base/security/authentication.md`.
 
 ## Two-Layer Configuration
 
@@ -80,8 +129,10 @@ of truth. `P8-E1a` proves every numeric bound rejects a value outside it.
 | `lockout_base_minutes` | integer, min:1, max:60 |
 | `lockout_increment_minutes` | integer, min:1, max:120 |
 | `login_rate_limit_per_minute` | integer, min:1, max:120 |
+| `login_ip_rate_limit_per_minute` | integer, min:1, max:120 |
 | `password_forgot_rate_limit` | integer, min:1, max:30 |
 | `password_reset_rate_limit` | integer, min:1, max:30 |
+| `password_change_rate_limit_per_minute` | integer, min:1, max:30 |
 | `password_reset_token_expire_minutes` | integer, min:1, max:1440 |
 | `email_verification_rate_limit` | integer, min:1, max:100 |
 | `email_verification_token_expire_minutes` | integer, min:1, max:1440 |
@@ -109,6 +160,21 @@ of truth. `P8-E1a` proves every numeric bound rejects a value outside it.
 | `registration_enabled` | boolean |
 | `registration_rate_limit_per_minute` | integer, min:1, max:30 |
 | `registration_default_role` | nullable, string, must be a role `RoleLookup::visibleTo($user)` returns |
+| `api_docs_public` | boolean |
+| `api_token_expire_value` | integer, min:1, max:3650 |
+| `api_token_expire_unit` | in:minutes,hours,days |
+| `web_session_expire_value` | integer, min:1, max:3650 |
+| `web_session_expire_unit` | in:minutes,hours,days |
+
+Both lifetime pairs are a number plus its unit, stored separately because the
+sane answers span minutes to days. `AppServiceProvider::bindExpirations()`
+converts each pair to the minutes its consumer counts in — `sanctum.expiration`
+for the bearer token, `session.lifetime` for the idle browser session — and does
+it at boot as well as after a save; the config files carry plain defaults
+because a config file is evaluated before the database and cache exist. The
+setting row is the only authority: `SystemSettingSeeder` owns it, so an existing
+install picks it up by re-running
+`php artisan db:seed --class=SystemSettingSeeder`.
 
 `registration_default_role` is scoped to the viewer rather than merely checked
 for existence. An earlier `Rule::exists('roles','name')` let a non-superadmin
@@ -167,17 +233,17 @@ Measured by `tests/Feature/Settings/SettingsBenchmarkTest.php`.
 | `getAll()` warm (request static) | 0 | ~0 ms |
 | 60 typed reads | 1 | ~0.37 ms |
 | `GET /settings` (full kernel) | 3–9 | ~12 ms |
-| Save (all keys) | 39 | ~21 ms |
-| Save (1 key, partial) | 39 | ~21 ms |
+| Save (all keys) | 49 | ~38 ms |
+| Save (1 key, partial) | 49 | ~41 ms |
 
-The save cost is **constant overhead, not an N+1** — the count held at 40 across
-6 to 1003 rows, because it scales with the whitelist length rather than the
-table. 36 of those queries are `updateOrCreate`'s existence probe, one per key,
-issued to discover rows that already exist. A single bulk `upsert` of the same
-pairs costs 1 query / ~0.9 ms. No statement exceeds 0.3 ms and the probe uses
-the `system_settings_key_unique` index (`EXPLAIN`: `type=const, rows=1`), so
-this is a round-trip count to revisit when network latency matters, not a
-defect.
+The save cost is **constant overhead, not an N+1** — it scales with the
+whitelist length rather than the table. 44 of those queries are `updateOrCreate`'s
+existence probe, one per validated key, issued to discover rows that already
+exist. A single bulk `upsert` of the same pairs costs 1 query / ~1.8 ms — measured
+at 55 rows in the table and 45 validated keys (2026-10-20). No statement exceeds
+0.3 ms and the probe uses the `system_settings_key_unique` index (`EXPLAIN`:
+`type=const, rows=1`), so this is a round-trip count to revisit when network
+latency matters, not a defect.
 
 ## Dependencies
 

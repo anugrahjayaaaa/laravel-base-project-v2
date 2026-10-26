@@ -47,7 +47,7 @@ class NotificationInboxAction
         $notifications = $viewer
             ->notifications()
             ->latest()
-            ->paginate(30);
+            ->paginate(10);
 
         return [
             'notifications' => $notifications,

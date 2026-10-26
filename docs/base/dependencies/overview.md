@@ -29,7 +29,7 @@ installed and verified against `composer.lock`.
 || Audit Trail | Spatie Activitylog | `spatie/laravel-activitylog` | Required | P0 | Prefer Audit abstraction |
 || Technical Observability | Laravel Pulse | `laravel/pulse` | Required | P1 | Restricted (technical users) |
 || Feature Flags | Laravel Pennant | `laravel/pennant` | Required | P1 | Through Feature facade |
-|| API Documentation | Scramble | `dedoc/scramble` | Planned | P1 | Documentation only |
+|| API Documentation | Scramble | `dedoc/scramble` | Required (installed) | P1 | Documentation only |
 || Queue (default backend) | Laravel Queue | Native | Core | P0 | Through Queue facade |
 || Cache (default backend) | Laravel Cache | Native | Core | P0 | Through Cache facade |
 || Redis (production option) | Redis backend | `predis/predis` or `phpredis` | Optional / Deployment | P2 | Never directly |
@@ -720,7 +720,7 @@ documented in `docs/base/features/feature-flags.md`.
 || Field | Value |
 ||-------|-------|
 || Composer package | `dedoc/scramble` |
-|| Status | Planned |
+|| Status | Required (installed; `require` since ADR-025) |
 || Priority | P1 |
 ||| Architecture area | API V1 (Phase 12 `API-003`) |
 ||| Package constraint | `^0.13` (Laravel 13 compatible; ^2.x not yet released) |
@@ -728,7 +728,8 @@ documented in `docs/base/features/feature-flags.md`.
 ### Purpose
 
 - Auto-generates API documentation from Laravel routes, Form Requests, and
-  API Resources (annotation-free)
+  API Resources; most endpoints need no annotation, and `#[Response]` is used
+  only where inference cannot see the body or status
 - API contract generation from code structure
 - Provides an interactive API documentation UI for frontend/mobile developers
 - Produces an OpenAPI specification (output, not the driving concern)
@@ -740,8 +741,8 @@ Per `docs/base/api/documentation.md`, Scramble is the documented
 recommended tool:
 
 > **Recommended documentation generators:**
-> - **Scramble** — annotation-free, generates API documentation from Laravel
->   routes, Form Requests, and API Resources
+> - **Scramble** — generates API documentation from Laravel routes, Form
+>   Requests, and API Resources
 > - OpenApiJson — alternative JSON output
 > - Redoc — API docs UI renderer
 
@@ -761,24 +762,27 @@ documentation and produces an interactive documentation UI.
 
 ### How It Integrates
 
-- Installed at Phase 12 (`API-003`).
-- Configured via `config/scramble.php`.
-- Documentation available at `/api/docs/v1` (versioned alongside the API).
-- Scramble extracts auth requirements from route middleware (`auth:sanctum`).
+- Installed at Phase 12 (`API-003`), and a production dependency since ADR-025.
+- Configured via `config/scramble.php`; the document is exported at deploy and
+  served from `storage/app/openapi.<APP_ENV>.json`.
+- Documentation available at `/docs/api` (UI) and `/docs/api.json` (document).
+- Scramble extracts auth requirements from route middleware (`auth:sanctum`);
+  the published scheme is named `bearerAuth`.
 - Scramble extracts validation rules from Form Requests — documentation is
   generated from the Form Request definition, ensuring DRY.
 
 ### Security Considerations
 
-- Scramble docs may expose API structure — gate behind `auth:sanctum` or
-  restrict to non-production environments.
+- Docs expose API structure, so the route is gated by `api_docs_public`
+  (off by default) or the `api_docs.view` permission — see
+  `docs/base/api/documentation.md` § *Availability and access*.
 - Never expose internal implementation details in example responses.
 - API documentation must not include secrets or real tokens in examples.
 
 ### Maintenance / Upgrade Considerations
 
 - Scramble version must track Laravel/PHP compatibility.
-- Re-run `scramble:docs` after route/resource changes before release.
+- Re-run `php artisan scramble:export` after route/resource changes before release.
 
 ### Testing Implications
 
@@ -787,9 +791,12 @@ documentation and produces an interactive documentation UI.
 
 ### Application-Level Abstraction
 
-Documentation-only package. Application code does not depend on Scramble at
-runtime in production. Scramble is a dev dependency used for documentation
-generation.
+Documentation-only package. Application code does not call it at request time:
+production installs it only because the docs routes live in it. `AppServiceProvider`
+owns the `ExportedDocument` binding, the two generator extensions (error envelope,
+authorization description) and the tag resolver; `config/scramble.php` owns the
+gate and the bearer scheme. The document is built once per release, not per
+request (ADR-025).
 
 ---
 

@@ -32,11 +32,26 @@ class GenerateRequestCorrelationId
     {
         $provided = $request->header(self::REQUEST_ID_HEADER);
 
-        if (is_string($provided) && $provided !== '') {
+        if (is_string($provided) && $this->isAcceptable($provided)) {
             return $provided;
         }
 
         return (string) Str::uuid();
+    }
+
+    /**
+     * Whether a client-supplied id can be propagated.
+     *
+     * It lands in every log line and in the response header, so it is untrusted
+     * input at a trust boundary: a UUID, or a short token of safe characters.
+     * Anything longer or stranger is replaced with our own rather than echoed —
+     * an unbounded value bloats every row it touches, and a multi-line one
+     * forges log entries instead of correlating them.
+     */
+    private function isAcceptable(string $id): bool
+    {
+        return Str::isUuid($id)
+            || (strlen($id) <= 64 && preg_match('/^[A-Za-z0-9._:-]+$/', $id) === 1);
     }
 
     /**

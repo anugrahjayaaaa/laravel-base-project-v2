@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Models\User;
+use App\Support\ApiError;
 use App\Services\InactivityLock;
 use App\Services\PasswordExpiry;
 use Closure;
@@ -73,10 +74,11 @@ class EnsurePasswordChangeRequired
             ]);
 
             if ($request->expectsJson() || $request->is('api/*')) {
-                return response()->json([
-                    'message' => 'Account locked due to inactivity. Contact your administrator.',
-                    'code' => 'ACCOUNT_LOCKED_INACTIVITY',
-                ], 403);
+                return ApiError::make(
+                    'Account locked due to inactivity. Contact your administrator.',
+                    'ACCOUNT_LOCKED_INACTIVITY',
+                    403,
+                );
             }
 
             return redirect()->route('login')->with('error', 'Account locked due to inactivity.');
@@ -84,10 +86,11 @@ class EnsurePasswordChangeRequired
 
         if ($this->shouldForceChange($user)) {
             if ($request->expectsJson() || $request->is('api/*')) {
-                return response()->json([
-                    'message' => 'Password change required before accessing this resource.',
-                    'code' => 'PASSWORD_CHANGE_REQUIRED',
-                ], 403);
+                return ApiError::make(
+                    'Password change required before accessing this resource.',
+                    'PASSWORD_CHANGE_REQUIRED',
+                    403,
+                );
             }
 
             return redirect()->route('password.expired');

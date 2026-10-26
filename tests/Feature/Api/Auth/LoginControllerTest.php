@@ -50,7 +50,8 @@ class LoginControllerTest extends TestCase
         ]);
 
         $response->assertStatus(401)
-            ->assertJsonPath('data.message', 'Invalid credentials.');
+            ->assertJsonPath('message', 'Invalid credentials.')
+            ->assertJsonPath('code', 'UNAUTHENTICATED');
     }
 
     public function test_login_fails_with_wrong_password(): void
@@ -63,7 +64,8 @@ class LoginControllerTest extends TestCase
         ]);
 
         $response->assertStatus(401)
-            ->assertJsonPath('data.message', 'Invalid credentials.');
+            ->assertJsonPath('message', 'Invalid credentials.')
+            ->assertJsonPath('code', 'UNAUTHENTICATED');
     }
 
     public function test_login_fails_for_inactive_user(): void
@@ -76,7 +78,8 @@ class LoginControllerTest extends TestCase
         ]);
 
         $response->assertStatus(403)
-            ->assertJsonPath('data.message', 'Account is inactive.');
+            ->assertJsonPath('message', 'Account is inactive.')
+            ->assertJsonPath('code', 'FORBIDDEN');
     }
 
     public function test_login_fails_for_locked_user(): void
@@ -89,7 +92,8 @@ class LoginControllerTest extends TestCase
         ]);
 
         $response->assertStatus(403)
-            ->assertJsonPath('data.message', fn ($msg) => str($msg)->startsWith('Account is locked'));
+            ->assertJsonPath('message', fn ($msg) => str($msg)->startsWith('Account is locked'))
+            ->assertJsonPath('code', 'FORBIDDEN');
     }
 
     public function test_login_fails_for_unverified_email(): void
@@ -124,5 +128,23 @@ class LoginControllerTest extends TestCase
             'identifier' => $user->email,
             'password' => 'wrong',
         ])->assertStatus(429);
+    }
+
+    public function test_api_login_is_limited_per_ip_across_accounts(): void
+    {
+        // One address, ten different accounts, one request each: the
+        // per-identifier limiter is untouched and the per-IP one refuses the
+        // eleventh.
+        for ($i = 1; $i <= 10; $i++) {
+            $this->postJson(route('api.v1.auth.login'), [
+                'identifier' => "target{$i}@example.com",
+                'password' => 'wrong',
+            ]);
+        }
+
+        $this->postJson(route('api.v1.auth.login'), [
+            'identifier' => 'target11@example.com',
+            'password' => 'wrong',
+        ])->assertStatus(429)->assertJsonPath('code', 'RATE_LIMITED');
     }
 }

@@ -163,7 +163,9 @@ User MUST change password before normal application access
 ||| POST | `/api/v1/users/{user}/deactivate` | YES | `UserStateController@deactivate` |
 ||| POST | `/api/v1/users/{user}/lock` | YES | `UserStateController@lock` |
 ||| POST | `/api/v1/users/{user}/unlock` | YES | `UserStateController@unlock` |
-||| POST | `/api/v1/auth/unlock` | YES (legacy redirect) | redirects to `api.v1.users.unlock` |
+
+The `/api/v1/auth/unlock` redirect shim was removed in P12-C1: it had no `{user}`
+parameter to forward and answered 500.
 
 All state endpoints return JSON `{ data: { message }, meta: { request_id, timestamp } }`.
 
@@ -175,7 +177,7 @@ All state endpoints return JSON `{ data: { message }, meta: { request_id, timest
 
 `UserUnlockAction` moved from `App\Actions\Auth\` → `App\Actions\User\` for consistency. All state actions now live in `App\Actions\User\`.
 
-`UnlockController` (`Api\V1\Auth\`) removed — `unlock` method merged into `Api\V1\User\UserStateController`. Backwards-compat route `/api/v1/auth/unlock` redirects to `api.v1.users.unlock`.
+`UnlockController` (`Api\V1\Auth\`) removed — `unlock` method merged into `Api\V1\User\UserStateController`. The backwards-compat route `/api/v1/auth/unlock` was removed in P12-C1: it could not name the user it redirected to.
 
 ## Username, Email Change & System Settings (Phase 4)
 
@@ -208,8 +210,8 @@ success and the value does not change. See "Adding a new setting" in
 
 ### Email Change Verification Flow
 
-1. Admin/user requests email change → `pending_email` + `email_change_token` + `email_change_token_expires_at` set
-2. Signed email sent to **new** address (`pending_email`) with 24h expiry
+1. Admin/user requests email change → `pending_email` + `email_change_token` (SHA-256 hash of the token) + `email_change_token_expires_at` set
+2. Signed email sent to **new** address (`pending_email`) with 24h expiry — the signature, the stored expiry and the copy all say 24 hours
 3. User clicks link → `email` ← `pending_email`, `email_changed_at = now()`, `email_verified_at = now()`
 4. All sessions + API tokens revoked on successful change
 5. Cancel request clears `pending_email`

@@ -62,10 +62,12 @@ class SystemSettingsUpdateAction
             'lockout_base_minutes' => (string) ($data['lockout_base_minutes'] ?? 5),
             'lockout_increment_minutes' => (string) ($data['lockout_increment_minutes'] ?? 10),
             'login_rate_limit_per_minute' => (string) ($data['login_rate_limit_per_minute'] ?? 5),
+            'login_ip_rate_limit_per_minute' => (string) ($data['login_ip_rate_limit_per_minute'] ?? 10),
 
             // Password reset / verification rate limits
             'password_forgot_rate_limit' => (string) ($data['password_forgot_rate_limit'] ?? 3),
             'password_reset_rate_limit' => (string) ($data['password_reset_rate_limit'] ?? 3),
+            'password_change_rate_limit_per_minute' => (string) ($data['password_change_rate_limit_per_minute'] ?? 5),
             'password_reset_token_expire_minutes' => (string) ($data['password_reset_token_expire_minutes'] ?? 15),
             'email_verification_rate_limit' => (string) ($data['email_verification_rate_limit'] ?? 5),
             'email_verification_token_expire_minutes' => (string) ($data['email_verification_token_expire_minutes'] ?? 60),
@@ -103,6 +105,17 @@ class SystemSettingsUpdateAction
             // Password reset token (Laravel broker)
             'password_reset_expire_minutes' => (string) ($data['password_reset_expire_minutes'] ?? 15),
 
+            // API token lifetime (Phase 12 finding #3). The pair means the web
+            // form posts both fields; an API client that omits them gets one day,
+            // matching the seeder and `tokenLifetimeMinutes()`'s own fallback.
+            'api_token_expire_value' => (string) ($data['api_token_expire_value'] ?? 1),
+            'api_token_expire_unit' => $data['api_token_expire_unit'] ?? 'days',
+
+            // Idle browser-session lifetime, same pair and same defaults as the
+            // seeder and the migration that backfilled them.
+            'web_session_expire_value' => (string) ($data['web_session_expire_value'] ?? 120),
+            'web_session_expire_unit' => $data['web_session_expire_unit'] ?? 'minutes',
+
             // Username / email change settings
             'allow_username_change' => ($data['allow_username_change'] ?? false) ? 'true' : 'false',
             'username_change_cooldown_days' => (string) ($data['username_change_cooldown_days'] ?? 30),
@@ -113,6 +126,12 @@ class SystemSettingsUpdateAction
             'registration_enabled' => ($data['registration_enabled'] ?? false) ? 'true' : 'false',
             'registration_default_role' => $data['registration_default_role'] ?? 'user',
             'registration_rate_limit_per_minute' => (string) ($data['registration_rate_limit_per_minute'] ?? 3),
+
+            // API documentation visibility (Phase 12 Group A). Off when absent,
+            // matching the form's unchecked-checkbox behaviour and the seeder's
+            // default: an operator who never touches this must not publish the
+            // endpoint map by accident.
+            'api_docs_public' => ($data['api_docs_public'] ?? false) ? 'true' : 'false',
 
             // Audit trail export ceiling (Phase 10, §11 P10-E9). Per HOUR, not per
             // minute — the limiter reads this same key, and the audit page's Export
@@ -171,7 +190,7 @@ class SystemSettingsUpdateAction
         // After the transaction, not inside: binding a config from values a
         // rollback then discards would leave the process enforcing a lifetime
         // the database never accepted.
-        AppServiceProvider::bindTokenExpirations();
+        AppServiceProvider::bindExpirations();
 
         // Every `settings.manage` holder. The message names how many keys changed,
         // never their values: a settings notification quoting the new value hands a

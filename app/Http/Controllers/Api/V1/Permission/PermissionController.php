@@ -4,9 +4,9 @@ namespace App\Http\Controllers\Api\V1\Permission;
 
 use App\Actions\V1\Permission\PermissionIndexAction;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\V1\Permission\PermissionQueryRequest;
 use App\Http\Resources\Api\V1\Permission\PermissionResource;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 
 /**
  * API permission catalogue (Phase 6 — the other half of the missing API).
@@ -24,14 +24,18 @@ class PermissionController extends Controller
 
     /**
      * List the permission catalogue with the roles holding each permission.
+     *
+     * Query parameters are validated by `PermissionQueryRequest` — a raw query
+     * read could not document its own allowlist, and an unknown `sort` fell back
+     * silently instead of answering 422.
      */
-    public function index(Request $request): JsonResponse
+    public function index(PermissionQueryRequest $request): JsonResponse
     {
         $data = $this->indexAction->run(
-            search: (string) $request->query('search', ''),
-            sort: $request->query('sort'),
-            direction: (string) $request->query('direction', 'asc'),
-            perPage: (int) $request->query('per_page', 10),
+            search: (string) $request->validated('search', ''),
+            sort: (string) $request->validated('sort', ''),
+            direction: (string) $request->validated('direction', 'asc'),
+            perPage: (int) $request->validated('per_page', 10),
         );
 
         /** @var \\Illuminate\Contracts\\Pagination\\LengthAwarePaginator $permissions */
@@ -39,12 +43,7 @@ class PermissionController extends Controller
 
         return $this->respond('', 200, [
             'permissions' => PermissionResource::collection($permissions),
-            'pagination' => [
-                'current_page' => $permissions->currentPage(),
-                'last_page' => $permissions->lastPage(),
-                'per_page' => $permissions->perPage(),
-                'total' => $permissions->total(),
-            ],
+            'pagination' => $this->paginationFor($permissions),
         ]);
     }
 }

@@ -424,11 +424,11 @@ class RbacUiRenderTest extends TestCase
         // comparison compare a stale list against a fresh one.
         $asc = $this->get(route('permissions.index', ['sort' => 'name', 'direction' => 'asc']))
             ->viewData('permissions')->pluck('name')->all();
-        // `audit.export` now sorts first — the `audit` group arrived with the Phase 10
-        // viewer routes. Pinned by hand rather than computed, so a catalogue that
-        // changes shape has to be looked at, which is what happened twice now
-        // (`features.*` when the flags shipped, `audit.*` when the viewer did).
-        $this->assertSame('audit.export', $asc[0]);
+        // `api_docs.view` now sorts first — the docs permission arrived with the
+        // Phase 12 interface. Pinned by hand rather than computed, so a catalogue
+        // that changes shape has to be looked at, which is what happened three
+        // times now (`features.*`, `audit.*`, `api_docs.*`).
+        $this->assertSame('api_docs.view', $asc[0]);
 
         $desc = $this->get(route('permissions.index', ['sort' => 'name', 'direction' => 'desc']))
             ->viewData('permissions')->pluck('name')->all();
@@ -441,15 +441,17 @@ class RbacUiRenderTest extends TestCase
         $this->assertSame(array_slice($all, 0, 10), $asc);
         $this->assertSame(array_slice(array_reverse($all), 0, 10), $desc);
 
-        // ?sort= reaches orderBy, so an unknown column must not reach SQL and
-        // must fall back to the default order — not merely avoid a 500.
-        $injected = $this->get(route('permissions.index', ['sort' => 'name); DROP TABLE permissions;--']))
-            ->assertOk()
-            ->viewData('permissions')->pluck('name')->all();
+        // ?sort= reaches orderBy, so an unknown column is refused by the
+        // request's in: rule before it can travel into SQL — the same answer
+        // the API gives with a 422.
+        $this->get(route('permissions.index', ['sort' => 'name); DROP TABLE permissions;--']))
+            ->assertRedirect()
+            ->assertSessionHasErrors('sort');
+
+        // The catalogue survived, and a normal request still lists it.
         $this->assertSame(
-            $this->get(route('permissions.index', ['sort' => 'name', 'direction' => 'asc']))
-                ->viewData('permissions')->pluck('name')->all(),
-            $injected
+            Permission::where('guard_name', RoleLookup::guard())->count(),
+            $this->get(route('permissions.index'))->assertOk()->viewData('permissions')->total(),
         );
     }
 
@@ -590,7 +592,7 @@ class RbacUiRenderTest extends TestCase
         $this->assertStringContainsString('search=Supp&amp;trashed=1', $html);
     }
 
-    public function test_the_index_headers_sort_and_an_unknown_column_is_ignored(): void
+    public function test_the_index_headers_sort_and_an_unknown_column_is_refused(): void
     {
         $this->login();
 
@@ -610,13 +612,17 @@ class RbacUiRenderTest extends TestCase
         $this->assertStringNotContainsString('sort=permissions_count', $html);
         $this->assertStringNotContainsString('sort=actions', $html);
 
-        // The value reaches orderBy, so an unknown column must fall back to the
-        // default rather than travel into SQL.
+        // The value reaches orderBy, so an unknown column is refused by the
+        // shared request rather than fall back to the default order.
         Role::create(['name' => 'aaa', 'guard_name' => RoleLookup::guard()]);
         Role::create(['name' => 'zzz', 'guard_name' => RoleLookup::guard()]);
 
-        $this->get(route('roles.index', ['sort' => 'name); DROP TABLE roles;--']))->assertOk();
-        $this->get(route('roles.index', ['sort' => 'guard_name']))->assertOk();
+        $this->get(route('roles.index', ['sort' => 'name); DROP TABLE roles;--']))
+            ->assertRedirect()
+            ->assertSessionHasErrors('sort');
+        $this->get(route('roles.index', ['sort' => 'guard_name']))
+            ->assertRedirect()
+            ->assertSessionHasErrors('sort');
         // Scoped to the two rows this test created. The seeded system roles are
         // present too, so an unscoped count is no longer 2 — what the assertion
         // is really about is that the injection attempt dropped nothing.

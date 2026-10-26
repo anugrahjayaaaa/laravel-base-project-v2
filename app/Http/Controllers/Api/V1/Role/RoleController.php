@@ -72,12 +72,7 @@ class RoleController extends Controller
 
         return $this->respond('', 200, [
             'roles' => RoleResource::collection($roles),
-            'pagination' => [
-                'current_page' => $roles->currentPage(),
-                'last_page' => $roles->lastPage(),
-                'per_page' => $roles->perPage(),
-                'total' => $roles->total(),
-            ],
+            'pagination' => $this->paginationFor($roles),
         ]);
     }
 

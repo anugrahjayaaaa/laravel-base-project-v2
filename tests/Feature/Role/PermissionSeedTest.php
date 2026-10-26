@@ -73,7 +73,7 @@ class PermissionSeedTest extends TestCase
         // a stale list is a stale fixture, and dropping the assertion would
         // leave the guard guarding nothing at all.
         $this->assertEqualsCanonicalizing(
-            ['users', 'roles', 'permissions', 'settings', 'notifications', 'features', 'audit', 'pulse', 'health', 'queues'],
+            ['users', 'roles', 'permissions', 'settings', 'notifications', 'features', 'audit', 'pulse', 'health', 'queues', 'api_docs'],
             array_keys(PermissionCatalog::grouped()),
             'The catalogue has a group with no feature behind it.'
         );

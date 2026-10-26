@@ -30,9 +30,15 @@ return [
     | to expire immediately when the browser is closed then you may
     | indicate that via the expire_on_close configuration option.
     |
+    | The enforced value lives in system settings (`web_session_expire_value` +
+    | `web_session_expire_unit`) and is pushed here by
+    | `AppServiceProvider::bindExpirations()` at boot. It cannot be read in this
+    | file: config is evaluated before providers, the database and the cache
+    | exist. 120 is the default the seeder writes, kept for that window.
+    |
     */
 
-    'lifetime' => (int) env('SESSION_LIFETIME', 120),
+    'lifetime' => 120,
 
     'expire_on_close' => env('SESSION_EXPIRE_ON_CLOSE', false),
 

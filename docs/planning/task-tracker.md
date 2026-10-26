@@ -297,6 +297,42 @@ permission it checks.
 
 Detail: `docs/planning/phase-9-notifications-mail.md`.
 
+### Phase 12 — API V1
+
+> Breakdown written 2026-10-20, owner-closed 2026-10-21. Status of the *phase* is
+> DONE; most endpoints shipped before the breakdown, so Groups B–D were
+> audit-and-close rather than greenfield. The post-review pass fixed the inline
+> validation, the `meta`-less refusals and the documentation drift found after
+> the first close — see `phase-12-api-v1.md` § *Post-review fixes*.
+> The per-task detail (27 tasks, P12-A1..E5) lives in
+> `docs/planning/phase-12-api-v1.md`; this table is the summary only, to keep one
+> authority per task list.
+
+| ID | Task | Phase | Priority | Depends On | Status |
+|----|------|-------|----------|-----------|--------|
+| P12-A | Scramble docs interface — package placement, config, `viewApiDocs` gate, public/private switch, sidebar entry, UI render test | 12 | P0 | — | DONE — all seven tasks implemented and committed 2026-10-20 on `feature/p12-a-api-docs` |
+| P12-B | Base responses & resources — one base controller (accepted), resource schemas, error envelope reconciliation | 12 | P0 | P12-A | DONE — every emitter builds through `ApiError`; the limiter's own 429 callback included |
+| P12-C | Routes & controllers — verify + annotate every module, close the absent `GET /features` | 12 | P0 | P12-A, P12-B | DONE — no controller validates inline or reads `$request->query()` |
+| P12-D | Security — token abilities decision, `can:` sweep, rate-limit ladder, bearer scheme, audit context | 12 | P0 | P12-C | DONE — D1..D7 implemented 2026-10-20; detail and measurements in `docs/planning/phase-12-api-v1.md` § Group D |
+| P12-E | Tests — per-module API tests, `ApiDocumentationTest` drift gate, full verification | 12 | P0 | P12-D | DONE — four per-module API files (16 tests, both directions of each sibling gate), `ApiDocumentationTest` (9 tests: route→path+method, 401/403/422 reachability, `bearerAuth`, the contract envelope on every documented error, the authorization requirement on every gated operation, the unnamed `/v1/health` path, no status outside the contract), 8-code envelope matrix in `ApiErrorEnvelopeTest`, `ThrottleJsonResponseTest` asserting `meta` on the limiter's own answer; `ApiDocsUiRenderTest` retained from A4. The three `meta`-less middleware 403s found by E4 are fixed and pinned. Full suite and Pint clean; live count in `progress.md` § *Test Status*. Detail: `phase-12-api-v1.md` § *Post-review fixes* and § *Post-close audit* |
+
+**Deviations from the brief, recorded rather than applied:** flags return **403**
+(not 404 — Phase 7 decision, pinned by `FeatureFlagMiddlewareTest`); no second
+`Api\V1\BaseApiController` (`App\Http\Controllers\Controller::respond()` is that
+class); Scramble was dev-only in this phase and ADR-025 has since promoted it to
+`require` and moved the document to a deploy-time export. See the phase doc
+§ *Decisions that override the brief* (D-1..D-6).
+
+**Post-close audit (2026-10-24):** eight findings, all closed — the scheme is
+named `bearerAuth`; `ApiErrorResponseExtension` publishes the real error
+envelope instead of Scramble's `{message}`; `AuthorizationDescriptionExtension`
+states each route's `can:`/`feature:`; operations are tagged by module folder;
+the reachable statuses inference cannot see are annotated (`#[Response]`); and
+the three endpoints that had no API test (password reset, email verify,
+notification channels) plus `PATCH /users/{id}` and cancel-email-change now have
+one. The test factory no longer repeats a username. Detail:
+`phase-12-api-v1.md` § *Post-close audit*.
+
 ## Full Task List (JSON for AI parsing)
 
 ```json[
@@ -1829,7 +1865,7 @@ Detail: `docs/planning/phase-9-notifications-mail.md`.
       "SET-003",
       "AUDIT-004"
     ],
-    "status": "PLANNED"
+    "status": "DONE"
   },
   {
     "id": "API-002",
@@ -1839,7 +1875,7 @@ Detail: `docs/planning/phase-9-notifications-mail.md`.
     "depends_on": [
       "API-001"
     ],
-    "status": "PLANNED"
+    "status": "DONE"
   },
   {
     "id": "API-003",
@@ -1849,7 +1885,7 @@ Detail: `docs/planning/phase-9-notifications-mail.md`.
     "depends_on": [
       "API-002"
     ],
-    "status": "PLANNED"
+    "status": "DONE"
   },
   {
     "id": "SEC-001",

@@ -612,3 +612,57 @@ never fires `Looping` at all — those keep `VANTAGE_ENABLED` as their only swit
 `FeaturePermissionRevokeTest`, `PulseRecordingKillSwitchTest`,
 `VantageRecordingKillSwitchTest`, `HealthCheckCacheFallbackTest`,
 `QueueRetryThrottleTest`
+
+## ADR-025: the API document is exported at deploy, not built per request
+
+**Status**: Accepted
+**Date**: 2026-10-21
+**Context**: `/docs/api.json` was measured at ~700 ms per request on the 47-path
+document. Scramble ships its own answer — `scramble:cache` — and it measured at
+**no benefit**: 703/736/707 ms uncached against 738/747/724 ms cached, three
+requests each in one process, cache state verified through the configured store.
+What that command caches is a `GeneratorResult` (the route/FormRequest
+analysis); the request cost is `spec()` serialising 381 KB of OpenAPI array from
+it — which runs every time either way.
+
+The second half of the problem was availability. Scramble was `require-dev`
+(DEP-007), so `composer install --no-dev` removed the package and both docs
+routes with it — while `api_docs_public` and the `api_docs.view` permission kept
+promising a surface an operator could switch on. On the deployment that
+mattered, the setting did nothing.
+
+**Decision**: Promote `dedoc/scramble` to `require`, and serve the document from
+a file produced once per release.
+
+- The deploy runs `php artisan scramble:export --path="storage/app/openapi.<APP_ENV>.json"`
+  after the config and route caches. A failed export fails the deploy.
+- `App\Support\OpenApi\ExportedDocument` decorates Scramble's
+  `CacheableGenerator` (bound in `AppServiceProvider::register()`) and answers
+  both routes — `/docs/api.json` and the UI's embedded `spec` — from that file.
+  A missing, unreadable or invalid file falls back to live generation.
+- `bin/deploy-rollback.sh` deletes the file after restoring: a spec for the
+  failed release outliving it would document routes that no longer exist.
+- The file name carries `APP_ENV`, so an export made in development can never be
+  served here or read by the test suite.
+- The gate is unchanged: `api_docs_public` (off by default) or `api_docs.view`.
+
+**Alternatives considered**: `scramble:cache` at deploy — rejected on the
+measurement above. A spec committed to the repository, or built in CI and
+shipped as an artifact — rejected: it makes the spec a second source of truth
+that can disagree with the release, and the deployed export is the same idea
+without the commit. A custom documentation generator — rejected in DEP-007.
+
+**Consequences**: Measured after the change, same probe: **11.0 / 15.7 ms per
+request** from the file against **751 / 807 ms** live (first call in a fresh
+process 118 ms against 6.6 s, which is autoload, not this change). Production
+now installs a documentation package; it does no application work — `app/`
+touches Scramble only in the binding and the docs gate. The settings surface
+finally matches what it advertises. `response()->json()` re-encodes the decoded
+array, so key order follows the file and an empty `paths` object would serialise
+as `[]`; the generated document never has empty `paths`, and the fallback covers
+a broken file.
+
+**Related**: DEP-007, P12-A1, D-4, Phase 12,
+`docs/base/api/documentation.md` § *Availability and access*,
+`.github/workflows/ci-cd.yml`, `bin/deploy-rollback.sh`, `OpenApiExportTest`,
+`ApiDocsUiRenderTest`

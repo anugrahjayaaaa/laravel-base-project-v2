@@ -69,6 +69,20 @@ class RoleLookup
     }
 
     /**
+     * Whether the viewer may see this account at all.
+     *
+     * The account half of the same rule: a non-superadmin may not address a
+     * superadmin by id either. Routes answer 404 rather than 403 for the hidden
+     * account — "you may not" would confirm it exists, which is the thing the
+     * hidden account is meant to deny.
+     */
+    public static function viewerCanSee(?User $viewer, User $target): bool
+    {
+        return static::viewerIsSuperAdmin($viewer)
+            || ! $target->hasRole(SystemRole::SUPERADMIN);
+    }
+
+    /**
      * Roles the viewer may see, ordered for a picker.
      *
      * The superadmin role is invisible to anyone who is not a superadmin: the

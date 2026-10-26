@@ -68,12 +68,12 @@ class ChannelParityTest extends TestCase
         'user list' => ['web' => ['users.index'], 'api' => ['users.index']],
         'user read' => ['web' => ['users.show'], 'api' => ['users.show']],
         'user create' => ['web' => ['users.create', 'users.store'], 'api' => ['users.store']],
-        'user update' => ['web' => ['users.edit', 'users.update'], 'api' => ['users.update']],
+        'user update' => ['web' => ['users.edit', 'users.update'], 'api' => ['users.update', 'users.patch']],
         'user delete' => ['web' => ['users.destroy'], 'api' => ['users.destroy']],
         'user restore' => ['web' => ['users.restore'], 'api' => ['users.restore']],
         'user force delete' => ['web' => ['users.force-delete'], 'api' => ['users.force-delete']],
         'user lock' => ['web' => ['users.lock'], 'api' => ['users.lock']],
-        'user unlock' => ['web' => ['users.unlock'], 'api' => ['users.unlock', 'auth.unlock']],
+        'user unlock' => ['web' => ['users.unlock'], 'api' => ['users.unlock']],
         'user activate' => ['web' => ['users.activate'], 'api' => ['users.activate']],
         'user deactivate' => ['web' => ['users.deactivate'], 'api' => ['users.deactivate']],
         'user bulk action' => ['web' => ['users.bulk-action'], 'api' => ['users.bulk-action']],
@@ -102,11 +102,7 @@ class ChannelParityTest extends TestCase
         'permission list' => ['web' => ['permissions.index'], 'api' => ['permissions.index']],
 
         // ---- Feature flags ----
-        'feature list' => [
-            'only' => 'web',
-            'web' => ['features.index'],
-            'why' => 'No API read endpoint for the flag list. Both ACTIONS on it — toggle and bulk-action — are on both channels, which is the part that carries risk. Declared here so the gap is visible rather than forgotten.',
-        ],
+        'feature list' => ['web' => ['features.index'], 'api' => ['features.index']],
         'feature toggle' => ['web' => ['features.toggle'], 'api' => ['features.toggle']],
         'feature bulk action' => ['web' => ['features.bulk-action'], 'api' => ['features.bulk-action']],
 
@@ -121,6 +117,11 @@ class ChannelParityTest extends TestCase
         // ---- Sessions ----
         'session list' => ['web' => ['sessions'], 'api' => ['sessions']],
         'session logout all' => ['web' => ['sessions.logout-all'], 'api' => ['auth.logout-all']],
+        'session revoke' => [
+            'only' => 'api',
+            'api' => ['sessions.destroy'],
+            'why' => 'The web sessions page lists devices and offers "log out everywhere"; a per-device revoke is an affordance for the client holding that device, and the fact it produces (one row gone from a list) is not a page a browser flow needs.',
+        ],
 
         // ---- Notifications ----
         'notification list' => ['web' => ['notifications.index'], 'api' => ['notifications.index']],
@@ -152,7 +153,7 @@ class ChannelParityTest extends TestCase
         'auth password reset' => ['web' => ['password.reset', 'password.update'], 'api' => ['auth.password.reset']],
         'auth email verification' => [
             'web' => ['verification.notice', 'verification.resend', 'verification.verify'],
-            'api' => ['auth.email.resend'],
+            'api' => ['auth.email.resend', 'auth.email.verify'],
         ],
         'password expired' => [
             'only' => 'web',

@@ -10,6 +10,8 @@ use App\Http\Requests\V1\Notification\SendTestMailRequest;
 use App\Http\Requests\V1\Notification\UpdateMailSettingsRequest;
 use App\Http\Requests\V1\Notification\UpdateNotificationChannelsRequest;
 use App\Models\SystemSetting;
+use App\Support\ApiError;
+use Dedoc\Scramble\Attributes\Response;
 use Illuminate\Http\JsonResponse;
 
 /**
@@ -46,7 +48,12 @@ class NotificationController extends Controller
 
     /**
      * Read the mail transport and the channel switches.
+     *
+     * Typed explicitly: `settings` and `channels` are built as maps in this
+     * method, and inference flattened both to `string` — a schema that lies
+     * about two of the four keys.
      */
+    #[Response(status: 200, type: 'array{data: array{settings: array<string, string>, has_password: bool, channels: array<string, bool>, mailers: array<int, string>}, meta: array{request_id: string, timestamp: string}}')]
     public function index(): JsonResponse
     {
         $stored = SystemSetting::getAll();
@@ -113,8 +120,11 @@ class NotificationController extends Controller
      * A transport failure is a 502, not a 500: the request was understood and
      * authorized, and the thing that failed is downstream of this application —
      * the mail server. The body carries the same actionable sentence the web page
-     * shows; the exception itself went to the log.
+     * shows, under the documented error envelope (`BAD_GATEWAY`), so a client can
+     * branch on the code instead of parsing the sentence; the exception itself
+     * went to the log.
      */
+    #[Response(status: 502, type: ApiError::DOC_TYPE)]
     public function sendTestMail(
         SendTestMailRequest $request,
         NotificationTestMailSendAction $action
@@ -122,7 +132,7 @@ class NotificationController extends Controller
         $result = $action->run($request->validated('email'), causer: $request->user());
 
         if (! $result['ok']) {
-            return $this->respond($result['message'], 502);
+            return $this->respondError($result['message'], 'BAD_GATEWAY', 502);
         }
 
         return $this->respond($result['message'], 200);

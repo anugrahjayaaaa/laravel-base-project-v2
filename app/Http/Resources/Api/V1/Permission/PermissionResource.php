@@ -27,7 +27,7 @@ class PermissionResource extends JsonResource
      * Transform the permission into an API response array.
      *
      * @param  Request  $request
-     * @return array<string, mixed>
+     * @return array{id: int, name: string, roles_count?: int, roles: array<int, string>|null}
      */
     public function toArray(Request $request): array
     {

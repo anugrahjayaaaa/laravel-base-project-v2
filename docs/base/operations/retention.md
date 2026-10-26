@@ -14,7 +14,7 @@ Define retention separately for each data type. Do NOT apply one global retentio
 || Security logs | 90 days | Incident response, security investigation |
 || Server logs | Configured by infra team | Infrastructure monitoring |
 | Pulse data | Pulse's own retention config | Runtime metrics, ingested on a schedule |
-|| Sessions | Until expiration (`SESSION_LIFETIME`) | Automatic cleanup |
+|| Sessions | Until expiration (`web_session_expire_*` setting) | Automatic cleanup |
 || Revoked tokens | 30 days after revocation | Allow investigation window |
 || Password history | Configurable (`security.password_history.count`) | Prevent reuse (IM8 policy) |
 || Password history count | Configurable count (default: 5) | Balance security vs usability |

@@ -96,7 +96,8 @@
 - `POST /api/v1/users/{user}/deactivate` — `UserStateController@deactivate`
 - `POST /api/v1/users/{user}/lock` — `UserStateController@lock`
 - `POST /api/v1/users/{user}/unlock` — `UserStateController@unlock`
-- Backwards-compat: `/api/v1/auth/unlock` redirects to `api.v1.users.unlock`
+- The old `/api/v1/auth/unlock` redirect was removed in P12-C1: it had no
+  `{user}` to forward and answered 500.
 
 **Contextual UI rules:**
 - Active → show Deactivate + Lock

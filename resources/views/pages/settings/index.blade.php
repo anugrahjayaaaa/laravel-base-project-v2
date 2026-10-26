@@ -93,7 +93,7 @@
                             <div class="col-6 col-md-3">
                                 <label for="login_rate_limit_per_minute" class="form-label">
                                     Login Rate Limit
-                                    <i class="bi bi-info-circle text-muted fs-7 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Maximum number of total login requests allowed per minute per IP address."></i>
+                                    <i class="bi bi-info-circle text-muted fs-7 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Login requests per minute per account and IP."></i>
                                 </label>
                                 <div class="input-group">
                                     <input type="number" name="login_rate_limit_per_minute" id="login_rate_limit_per_minute"
@@ -103,6 +103,21 @@
                                 </div>
                                 @error('login_rate_limit_per_minute')
                                     <div class="invalid-feedback d-block" id="login_rate_limit_per_minute_error">{{ $message }}</div>
+                                @enderror
+                            </div>
+                            <div class="col-6 col-md-3">
+                                <label for="login_ip_rate_limit_per_minute" class="form-label">
+                                    Login Attempts per IP
+                                    <i class="bi bi-info-circle text-muted fs-7 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Login requests per minute per IP, all accounts."></i>
+                                </label>
+                                <div class="input-group">
+                                    <input type="number" name="login_ip_rate_limit_per_minute" id="login_ip_rate_limit_per_minute"
+                                           class="form-control form-control-sm @error('login_ip_rate_limit_per_minute') is-invalid @enderror" @error('login_ip_rate_limit_per_minute') aria-invalid="true" aria-describedby="login_ip_rate_limit_per_minute_error" @enderror
+                                           value="{{ old('login_ip_rate_limit_per_minute', $settings['login_ip_rate_limit_per_minute'] ?? 10) }}" min="1" max="120">
+                                    <span class="input-group-text bg-body-tertiary">/ min</span>
+                                </div>
+                                @error('login_ip_rate_limit_per_minute')
+                                    <div class="invalid-feedback d-block" id="login_ip_rate_limit_per_minute_error">{{ $message }}</div>
                                 @enderror
                             </div>
                         </div>
@@ -361,6 +376,59 @@
                                 <h6 class="text-body-secondary text-uppercase small fw-semibold mb-0 mt-1">Authentication</h6>
                             </div>
                             <div class="col-md-6">
+                                <label for="api_token_expire_value" class="form-label">
+                                    API Token Lifetime
+                                    <i class="bi bi-info-circle text-muted fs-7 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="How long a Sanctum bearer token stays valid after login. Existing tokens are cut off too, so shortening this applies immediately."></i>
+                                </label>
+                                <div class="input-group">
+                                    <input type="number" name="api_token_expire_value" id="api_token_expire_value"
+                                           class="form-control form-control-sm @error('api_token_expire_value') is-invalid @enderror" @error('api_token_expire_value') aria-invalid="true" aria-describedby="api_token_expire_value_error" @enderror
+                                           value="{{ old('api_token_expire_value', $settings['api_token_expire_value'] ?? 1) }}" min="1" max="3650">
+                                    {{-- Default size, not `-sm`: every unit chip on
+                                         this page is a default-size
+                                         `input-group-text`, so a `-sm` select made
+                                         this one field ~7px shorter than its
+                                         neighbours. --}}
+                                    <select class="form-select bg-body-tertiary flex-grow-0 w-auto @error('api_token_expire_unit') is-invalid @enderror"
+                                            name="api_token_expire_unit" id="api_token_expire_unit" aria-label="API token lifetime unit">
+                                        @foreach (['minutes' => 'min', 'hours' => 'hr', 'days' => 'days'] as $unit => $unitLabel)
+                                            <option value="{{ $unit }}" @selected(old('api_token_expire_unit', $settings['api_token_expire_unit'] ?? 'days') === $unit)>{{ $unitLabel }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                                @error('api_token_expire_value')
+                                    <div class="invalid-feedback d-block" id="api_token_expire_value_error">{{ $message }}</div>
+                                @enderror
+                                @error('api_token_expire_unit')
+                                    <div class="invalid-feedback d-block" id="api_token_expire_unit_error">{{ $message }}</div>
+                                @enderror
+                            </div>
+
+                            <div class="col-md-6">
+                                <label for="web_session_expire_value" class="form-label">
+                                    Web Session Lifetime
+                                    <i class="bi bi-info-circle text-muted fs-7 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="How long a browser session may sit idle before the user is signed out. Applies to sessions that make a request after the change."></i>
+                                </label>
+                                <div class="input-group">
+                                    <input type="number" name="web_session_expire_value" id="web_session_expire_value"
+                                           class="form-control form-control-sm @error('web_session_expire_value') is-invalid @enderror" @error('web_session_expire_value') aria-invalid="true" aria-describedby="web_session_expire_value_error" @enderror
+                                           value="{{ old('web_session_expire_value', $settings['web_session_expire_value'] ?? 120) }}" min="1" max="3650">
+                                    <select class="form-select bg-body-tertiary flex-grow-0 w-auto @error('web_session_expire_unit') is-invalid @enderror"
+                                            name="web_session_expire_unit" id="web_session_expire_unit" aria-label="Web session lifetime unit">
+                                        @foreach (['minutes' => 'min', 'hours' => 'hr', 'days' => 'days'] as $unit => $unitLabel)
+                                            <option value="{{ $unit }}" @selected(old('web_session_expire_unit', $settings['web_session_expire_unit'] ?? 'minutes') === $unit)>{{ $unitLabel }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                                @error('web_session_expire_value')
+                                    <div class="invalid-feedback d-block" id="web_session_expire_value_error">{{ $message }}</div>
+                                @enderror
+                                @error('web_session_expire_unit')
+                                    <div class="invalid-feedback d-block" id="web_session_expire_unit_error">{{ $message }}</div>
+                                @enderror
+                            </div>
+
+                            <div class="col-md-6">
                                 <label for="password_forgot_rate_limit" class="form-label">
                                     Forgot Password Limit
                                     <i class="bi bi-info-circle text-muted fs-7 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Maximum forgot-password requests allowed per minute for a single email and IP pair."></i>
@@ -388,6 +456,21 @@
                                 </div>
                                 @error('password_reset_rate_limit')
                                     <div class="invalid-feedback d-block" id="password_reset_rate_limit_error">{{ $message }}</div>
+                                @enderror
+                            </div>
+                            <div class="col-md-6">
+                                <label for="password_change_rate_limit_per_minute" class="form-label">
+                                    Password Change Limit
+                                    <i class="bi bi-info-circle text-muted fs-7 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Maximum password change requests allowed per minute for a single user."></i>
+                                </label>
+                                <div class="input-group">
+                                    <input type="number" name="password_change_rate_limit_per_minute" id="password_change_rate_limit_per_minute"
+                                           class="form-control form-control-sm @error('password_change_rate_limit_per_minute') is-invalid @enderror" @error('password_change_rate_limit_per_minute') aria-invalid="true" aria-describedby="password_change_rate_limit_per_minute_error" @enderror
+                                           value="{{ old('password_change_rate_limit_per_minute', $settings['password_change_rate_limit_per_minute'] ?? 5) }}" min="1" max="30">
+                                    <span class="input-group-text bg-body-tertiary">/ min</span>
+                                </div>
+                                @error('password_change_rate_limit_per_minute')
+                                    <div class="invalid-feedback d-block" id="password_change_rate_limit_per_minute_error">{{ $message }}</div>
                                 @enderror
                             </div>
                             <div class="col-md-6">
@@ -740,7 +823,29 @@
                     </div>
                 </div>
 
-                {{-- Card 6: Sticky Save Actions Card --}}
+                {{-- Card 6: API Documentation --}}
+                <div class="card border-0 shadow-sm mb-4" id="section-api-docs">
+                    <div class="card-header bg-transparent border-bottom py-3">
+                        <h5 class="card-title mb-0 fw-semibold">API Documentation</h5>
+                    </div>
+                    <div class="card-body p-4">
+                        <div class="form-check form-switch mb-3">
+                            <input type="hidden" name="api_docs_public" value="0">
+                            <input class="form-check-input" type="checkbox" name="api_docs_public" id="api_docs_public"
+                                @checked($settings['api_docs_public'] ?? false)>
+                            <label class="form-check-label" for="api_docs_public">
+                                Publish API Documentation Publicly
+                                <i class="bi bi-info-circle text-muted fs-7 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="When off, /docs/api requires a signed-in user holding the api_docs.view permission. When on, anyone who can reach the URL may read the specification without signing in."></i>
+                            </label>
+                        </div>
+                        <p class="text-muted small mb-0">
+                            Off by default: the generated document names every endpoint, field and status code.
+                            Only the OpenAPI page is affected — the API endpoints themselves keep their own authorization.
+                        </p>
+                    </div>
+                </div>
+
+                {{-- Card 7: Sticky Save Actions Card --}}
                 <div class="card border-0 shadow-sm mb-4 sticky-top" style="top: 80px;">
                     <div class="card-header bg-transparent border-bottom py-3">
                         <h5 class="card-title mb-0 fw-semibold">Save Settings</h5>

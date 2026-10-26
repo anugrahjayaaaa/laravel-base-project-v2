@@ -15,6 +15,11 @@ class SystemSettingController extends Controller
 {
     /**
      * Get all system settings.
+     *
+     * `data` is a flat key → value map, not a list. Secrets never leave this
+     * endpoint: `mail_password` is dropped by `SystemSetting::getAll()` (P9-X1),
+     * so the key is absent rather than nulled — a client sees "not readable",
+     * which is a different statement from "not set".
      */
     public function index(): JsonResponse
     {

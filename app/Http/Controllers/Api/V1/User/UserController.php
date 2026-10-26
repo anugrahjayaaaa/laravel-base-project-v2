@@ -20,9 +20,14 @@ use App\Http\Requests\V1\User\CreateUserRequest;
 use App\Http\Requests\V1\User\EmailChangeRequest;
 use App\Http\Requests\V1\User\UpdateUserRequest;
 use App\Http\Requests\V1\User\UserQueryRequest;
+use App\Http\Requests\V1\User\VerifyEmailChangeRequest;
 use App\Http\Resources\Api\V1\User\UserResource;
+use App\Support\ApiError;
+use Dedoc\Scramble\Attributes\QueryParameter;
+use Dedoc\Scramble\Attributes\Response;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use App\Models\RoleLookup;
 use App\Models\User;
 
 /**
@@ -81,12 +86,7 @@ class UserController extends Controller
 
         return $this->respond('', 200, [
             'users' => UserResource::collection($users),
-            'pagination' => [
-                'current_page' => $users->currentPage(),
-                'last_page' => $users->lastPage(),
-                'per_page' => $users->perPage(),
-                'total' => $users->total(),
-            ],
+            'pagination' => $this->paginationFor($users),
         ]);
     }
 
@@ -100,23 +100,20 @@ class UserController extends Controller
     {
         $this->createAction->run($request->validated(), causer: $request->user());
 
-        return response()->json([
-            'data' => ['message' => 'User created successfully.'],
-            'meta' => [
-                'request_id' => app('request_id'),
-                'timestamp' => now()->toIso8601String(),
-            ],
-        ], 201);
+        return $this->respond('User created successfully.', 201);
     }
 
     /**
      * Get a single user by ID.
      *
+     * @param  Request  $request
      * @param  User  $user
      * @return JsonResponse
      */
-    public function show(User $user): JsonResponse
+    public function show(Request $request, User $user): JsonResponse
     {
+        abort_unless(RoleLookup::viewerCanSee($request->user(), $user), 404);
+
         return $this->respond('', 200, [
             'user' => new UserResource($user),
         ]);
@@ -125,10 +122,16 @@ class UserController extends Controller
     /**
      * Update an existing user.
      *
+     * 409 `LAST_SUPERADMIN` when the payload's `status` would deactivate the
+     * last active superadmin. `UserUpdateAction` delegates the column to
+     * `UserDeactivateAction`, so this route carries the same refusal as
+     * `POST /users/{user}/deactivate` rather than writing `is_active` itself.
+     *
      * @param  UpdateUserRequest  $request
      * @param  User  $user
      * @return JsonResponse
      */
+    #[Response(status: 409, type: ApiError::DOC_TYPE)]
     public function update(UpdateUserRequest $request, User $user): JsonResponse
     {
         $this->updateAction->run($user, $request->validated(), $request->user());
@@ -142,9 +145,15 @@ class UserController extends Controller
     /**
      * Execute bulk user actions (delete, restore, lock, unlock, activate, deactivate).
      *
+     * 409 `LAST_SUPERADMIN` aborts the whole batch: `BulkActionProcessor` owns one
+     * transaction around the loop, so a refused item applies nothing. The request
+     * was well-formed and the answer is not a validation failure — it is the
+     * system refusing to reach zero superadmins.
+     *
      * @param  BulkUserRequest  $request
      * @return JsonResponse
      */
+    #[Response(status: 409, type: ApiError::DOC_TYPE)]
     public function bulkAction(BulkUserRequest $request): JsonResponse
     {
         $result = $this->processor->run(
@@ -164,10 +173,15 @@ class UserController extends Controller
     /**
      * Soft-delete a user (moves to trash).
      *
+     * 409 `LAST_SUPERADMIN` when this row is the last active superadmin — the
+     * refusal exists so the system never reaches zero, and it is raised by
+     * `UserDeleteAction` inside its transaction, not here.
+     *
      * @param  Request  $request
      * @param  User  $user
      * @return JsonResponse
      */
+    #[Response(status: 409, type: ApiError::DOC_TYPE)]
     public function destroy(Request $request, User $user): JsonResponse
     {
         // No audit call here: UserDeleteAction writes `user.deleted` inside its
@@ -187,6 +201,8 @@ class UserController extends Controller
      */
     public function forceDelete(Request $request, User $user): JsonResponse
     {
+        abort_unless(RoleLookup::viewerCanSee($request->user(), $user), 404);
+
         $this->forceDeleteAction->run($user, $request->user());
 
         return $this->respond('User permanently deleted.', 200);
@@ -201,6 +217,8 @@ class UserController extends Controller
      */
     public function restore(Request $request, User $user): JsonResponse
     {
+        abort_unless(RoleLookup::viewerCanSee($request->user(), $user), 404);
+
         $this->restoreAction->run($user, causer: $request->user());
 
         return $this->respond('User restored successfully.', 200, [
@@ -230,6 +248,7 @@ class UserController extends Controller
      * @param  User  $user
      * @return JsonResponse
      */
+    #[Response(status: 403, type: ApiError::DOC_TYPE)]
     public function cancelEmailChange(Request $request, User $user): JsonResponse
     {
         // Same rule as the web controller: own account, or users.update. Same
@@ -247,22 +266,32 @@ class UserController extends Controller
     /**
      * Verify and complete an email change.
      *
-     * @param  Request  $request
+     * The token travels as `?token=`, the same address shape the web twin and
+     * `ChangeEmailVerificationNotification` use — the path carries the user only,
+     * so a signed link works on either channel.
+     *
+     * The token is validated by `VerifyEmailChangeRequest`; a missing one is the
+     * documented 400 below, not a 422, so its rule is `nullable`.
+     *
+     * @param  VerifyEmailChangeRequest  $request
      * @param  User  $user
      * @return JsonResponse
      */
-    public function verifyEmailChange(Request $request, User $user): JsonResponse
+    #[QueryParameter(name: 'token', type: 'string', required: false, description: 'Email-change token from the signed link.')]
+    #[Response(status: 400, type: ApiError::DOC_TYPE)]
+    #[Response(status: 403, type: ApiError::DOC_TYPE)]
+    public function verifyEmailChange(VerifyEmailChangeRequest $request, User $user): JsonResponse
     {
-        $token = $request->route('token');
+        $token = $request->validated('token');
 
         if (! $token) {
-            return $this->respond('Missing verification token.', 400);
+            return $this->respondError('Missing verification token.', 'INVALID_TOKEN', 400);
         }
 
         $verified = $this->verifyEmailChangeAction->run($user, $token, $request->user());
 
         if (! $verified) {
-            return $this->respond('Invalid or expired verification link.', 400);
+            return $this->respondError('Invalid or expired verification link.', 'INVALID_TOKEN', 400);
         }
 
         return $this->respond('Email changed successfully. Please login with your new email.', 200);
@@ -271,19 +300,31 @@ class UserController extends Controller
     /**
      * Resend verification email to a user.
      *
+     * The action decides the status and the code (403 disabled, 422 already
+     * verified, 429 throttled, 500 transport failure); the codes are annotated
+     * because they arrive as variables and inference cannot see them.
+     *
      * @param  Request  $request
      * @param  User  $user
      * @return JsonResponse
      */
+    #[Response(status: 422, type: ApiError::DOC_TYPE)]
+    #[Response(status: 429, type: ApiError::DOC_TYPE)]
+    #[Response(status: 500, type: ApiError::DOC_TYPE)]
     public function resendVerification(Request $request, User $user): JsonResponse
     {
         $result = $this->resendVerificationAction->run($user, $request->ip(), $request->user());
 
         if (isset($result['error'])) {
-            // The action already decided the status (403 disabled, 422 already
-            // verified, 429 throttled). Hardcoding 400 here threw all of that
-            // away and told the client its request was malformed.
-            return $this->respond($result['error']['message'], $result['error']['status'] ?? 400);
+            // The action already decided the status AND the code (403 disabled,
+            // 422 already verified, 429 throttled, 500 transport failure).
+            // Answering through respond() put that under data.message with no
+            // code, which is the shape the error contract no longer allows.
+            return $this->respondError(
+                $result['error']['message'],
+                $result['error']['error_code'] ?? 'HTTP_ERROR',
+                $result['error']['status'] ?? 400,
+            );
         }
 
         return $this->respond('Verification email successfully sent.', 200);

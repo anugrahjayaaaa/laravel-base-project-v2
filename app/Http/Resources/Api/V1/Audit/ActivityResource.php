@@ -37,7 +37,7 @@ class ActivityResource extends JsonResource
 {
     /**
      * @param  Request  $request
-     * @return array<string, mixed>
+     * @return array{id: int, occurred_at: string|null, event: string, description: string|null, actor: string|null, causer_id: int|null, causer_type: string|null, target: string|null, subject_type: string|null, subject_id: string|null, source: string|null, ip: string|null, user_agent: string|null, request_id: string|null, batch_uuid: string|null, properties: array<string, mixed>|null}
      */
     public function toArray(Request $request): array
     {

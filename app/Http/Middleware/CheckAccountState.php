@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Models\User;
+use App\Support\ApiError;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -64,10 +65,11 @@ class CheckAccountState
             }
 
             if ($request->expectsJson() || $request->is('api/*')) {
-                return response()->json([
-                    'message' => 'Account is inactive or locked. Contact administrator.',
-                    'code' => 'ACCOUNT_DISABLED',
-                ], 403);
+                return ApiError::make(
+                    'Account is inactive or locked. Contact administrator.',
+                    'ACCOUNT_DISABLED',
+                    403,
+                );
             }
 
             auth()->logout();

@@ -20,7 +20,8 @@ class UserVerifyEmailChangeAction
      */
     public function run(User $user, string $token, ?User $causer = null): bool
     {
-        if ($user->email_change_token !== $token) {
+        if ($user->email_change_token === null
+            || ! hash_equals($user->email_change_token, hash('sha256', $token))) {
             return false;
         }
 

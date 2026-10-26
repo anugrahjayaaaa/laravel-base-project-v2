@@ -2,10 +2,18 @@
 
 namespace App\Http\Controllers;
 
+use App\Support\ApiError;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Http\JsonResponse;
+use LogicException;
 
 /**
- * Base API controller with the JSON response helper.
+ * Base controller with the two JSON envelope helpers.
+ *
+ * `respond()` for successes (message/data + `meta`), `respondError()` for the
+ * documented error body (`message`/`code`/`meta`). Both take their `meta` block
+ * from `ApiError`, which the exception handler also uses — one definition, so an
+ * error cannot drift from the success beside it.
  *
  * Deliberately holds no audit helper. Both that used to live here —
  * `audit()` and `bulkAudit()` — are gone. The controllers that called them get
@@ -29,12 +37,51 @@ abstract class Controller
         int $status = 200,
         array $data = []
     ): JsonResponse {
+        if ($status >= 400) {
+            throw new LogicException('respond() is a success helper; use respondError() for refusals.');
+        }
+
         return response()->json([
             'data' => $data ?: ['message' => $message],
-            'meta' => [
-                'request_id' => app('request_id'),
-                'timestamp' => now()->toIso8601String(),
-            ],
+            'meta' => ApiError::meta(),
         ], $status);
+    }
+
+    /**
+     * Return an error in the shape `docs/base/api/error-contract.md` documents.
+     *
+     * Use this, not `respond($message, 4xx)`, for anything a client is meant to
+     * branch on: `respond()` puts the message under `data`, which is the success
+     * envelope and carries no `code`. `respond()` refuses a 4xx status outright
+     * so a refusal cannot drift back into the success envelope.
+     *
+     * @param  array<string, mixed>  $extra  Additional top-level keys.
+     */
+    protected function respondError(
+        string $message,
+        string $code,
+        int $status,
+        array $extra = []
+    ): JsonResponse {
+        return ApiError::make($message, $code, $status, $extra);
+    }
+
+    /**
+     * The four pagination keys `docs/base/api/response-contract.md` documents,
+     * read from the paginator rather than retyped per endpoint.
+     *
+     * The contract is a fixed four, so a fifth key cannot appear here by
+     * accident, and a changed key name changes one place.
+     *
+     * @return array{current_page: int, last_page: int, per_page: int, total: int}
+     */
+    protected function paginationFor(LengthAwarePaginator $paginator): array
+    {
+        return [
+            'current_page' => $paginator->currentPage(),
+            'last_page' => $paginator->lastPage(),
+            'per_page' => $paginator->perPage(),
+            'total' => $paginator->total(),
+        ];
     }
 }

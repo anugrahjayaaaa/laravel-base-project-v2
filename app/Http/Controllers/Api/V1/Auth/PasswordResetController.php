@@ -6,6 +6,8 @@ use App\Actions\V1\Auth\AuthResetPasswordAction;
 use App\Auth\LoginThrottle;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\V1\Auth\PasswordResetRequest;
+use App\Support\ApiError;
+use Dedoc\Scramble\Attributes\Response;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Password;
 
@@ -22,6 +24,7 @@ class PasswordResetController extends Controller
      * @param  AuthResetPasswordAction  $action
      * @return JsonResponse
      */
+    #[Response(status: 400, type: ApiError::DOC_TYPE)]
     public function __invoke(
         PasswordResetRequest $request,
         LoginThrottle $throttle,
@@ -33,25 +36,17 @@ class PasswordResetController extends Controller
         $result = $action->run($email, $ip, $request, $throttle);
 
         if (isset($result['error'])) {
-            return response()->json([
-                'message' => $result['error']['message'],
-                'code' => 'RESET_TOKEN_INVALID',
-            ], $result['error']['status']);
+            return $this->respondError(
+                $result['error']['message'],
+                'RESET_TOKEN_INVALID',
+                $result['error']['status'],
+            );
         }
 
         if ($result['status'] === Password::PASSWORD_RESET) {
-            return response()->json([
-                'data' => ['message' => 'Password reset successfully.'],
-                'meta' => [
-                    'request_id' => app('request_id'),
-                    'timestamp' => now()->toIso8601String(),
-                ],
-            ]);
+            return $this->respond('Password reset successfully.');
         }
 
-        return response()->json([
-            'message' => 'Invalid or expired token.',
-            'code' => 'RESET_TOKEN_INVALID',
-        ], 400);
+        return $this->respondError('Invalid or expired token.', 'RESET_TOKEN_INVALID', 400);
     }
 }

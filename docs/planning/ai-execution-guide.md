@@ -94,8 +94,9 @@
     abstraction, Spatie Permission through Gate/Policy).
 
 26. **Pulse and Scramble are not application dependencies** — Pulse is a
-    technical tool (gated by flag + permission), Scramble is dev-only. Application code must
-    never import/depend on them.
+    technical tool (gated by flag + permission), Scramble is documentation-only
+    (installed everywhere since ADR-025, serving the spec exported at deploy).
+    Application code must never import/depend on them.
 
 27. **Redis is an infrastructure option, not an application dependency.** Use
     Laravel facades (`Cache`, `Queue`, `RateLimiter`, `Lock`) exclusively —

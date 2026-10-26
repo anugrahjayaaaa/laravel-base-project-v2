@@ -32,10 +32,12 @@ class SystemSettingRequest extends BaseFormRequest
             'lockout_base_minutes' => ['integer', 'min:1', 'max:60'],
             'lockout_increment_minutes' => ['integer', 'min:1', 'max:120'],
             'login_rate_limit_per_minute' => ['integer', 'min:1', 'max:120'],
+            'login_ip_rate_limit_per_minute' => ['integer', 'min:1', 'max:120'],
 
             // Password reset / verification rate limits
             'password_forgot_rate_limit' => ['integer', 'min:1', 'max:30'],
             'password_reset_rate_limit' => ['integer', 'min:1', 'max:30'],
+            'password_change_rate_limit_per_minute' => ['integer', 'min:1', 'max:30'],
             'password_reset_token_expire_minutes' => ['integer', 'min:1', 'max:1440'],
             'email_verification_rate_limit' => ['integer', 'min:1', 'max:100'],
             'email_verification_token_expire_minutes' => ['integer', 'min:1', 'max:1440'],
@@ -72,6 +74,20 @@ class SystemSettingRequest extends BaseFormRequest
             // Password reset token (Laravel broker)
             'password_reset_expire_minutes' => ['integer', 'min:1', 'max:1440'],
 
+            // API token lifetime — Phase 12 finding #3. A number plus a unit
+            // because the sane values span three magnitudes (5 minutes for a
+            // script, 90 days for a phone). The bound is on the NUMBER, applied
+            // per unit: 3650 days is a decade and stays the operator's choice,
+            // while the smallest window is one minute.
+            'api_token_expire_value' => ['integer', 'min:1', 'max:3650'],
+            'api_token_expire_unit' => ['in:minutes,hours,days'],
+
+            // Idle browser-session lifetime, same pair and same bounds. The
+            // number is per unit, so 1440 minutes and 1440 hours are both
+            // accepted; the effective ceiling is the operator's call.
+            'web_session_expire_value' => ['integer', 'min:1', 'max:3650'],
+            'web_session_expire_unit' => ['in:minutes,hours,days'],
+
             // Username / email change settings
             'allow_username_change' => ['boolean'],
             'username_change_cooldown_days' => ['integer', 'min:0', 'max:365'],
@@ -81,6 +97,11 @@ class SystemSettingRequest extends BaseFormRequest
             // Self-registration
             'registration_enabled' => ['boolean'],
             'registration_rate_limit_per_minute' => ['integer', 'min:1', 'max:30'],
+
+            // API documentation visibility (Phase 12 Group A). A boolean, so an
+            // API client can publish or unpublish the docs without a deploy.
+            'api_docs_public' => ['boolean'],
+
             // Empty means "no role"; otherwise it must name a role this viewer
             // is allowed to pick. That set is the very one the dropdown is built
             // from, so the form cannot offer a choice the rules then refuse, or
@@ -155,6 +176,7 @@ class SystemSettingRequest extends BaseFormRequest
                 'allow_username_change',
                 'allow_email_change',
                 'registration_enabled',
+                'api_docs_public',
             ] as $key
         ) {
             if ($this->has($key)) {

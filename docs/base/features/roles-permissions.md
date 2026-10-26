@@ -135,6 +135,13 @@ who is already a superadmin. This is presentation, layered on top of the
 authorization rules above — hiding a control is not what prevents the action, and
 the API paths are guarded independently.
 
+Direct access follows the same rule. `RoleLookup::viewerCanSee()` is the account
+half of the predicate, and `show`/`edit`, `restore` and `force-delete` — on the
+web and on the API — answer **404** for a non-superadmin viewer who addresses a
+superadmin by id. 403 would confirm the account exists, which is exactly what the
+hidden account is meant to deny. The guard lives in the controller because the
+route's `can:` middleware asks about the permission, not about the target.
+
 `RoleLookup::viewerIsSuperAdmin()` is the single decision. `RoleLookup::visibleTo()`
 applies it to the role list, and the two index actions apply the same predicate to
 their own queries — an Eloquent relation filter cannot be expressed by the

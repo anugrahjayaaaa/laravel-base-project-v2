@@ -11,6 +11,8 @@ use App\Http\Requests\V1\Audit\ActivityQueryRequest;
 use App\Http\Requests\V1\Audit\AuditExportRequest;
 use App\Http\Resources\Api\V1\Audit\ActivityResource;
 use App\Http\Resources\Api\V1\Audit\AuditExportResource;
+use App\Support\ApiError;
+use Dedoc\Scramble\Attributes\Response;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -61,12 +63,7 @@ class AuditController extends Controller
 
         return $this->respond('', 200, [
             'activities' => ActivityResource::collection($activities),
-            'pagination' => [
-                'current_page' => $activities->currentPage(),
-                'last_page' => $activities->lastPage(),
-                'per_page' => $activities->perPage(),
-                'total' => $activities->total(),
-            ],
+            'pagination' => $this->paginationFor($activities),
         ]);
     }
 
@@ -143,7 +140,15 @@ class AuditController extends Controller
      * and the streamed response. Those are the interesting parts of this route
      * and none of them are API-specific: an id in a URL is attacker-supplied on
      * both channels, and the answer for someone else's file is 403 either way.
+     *
+     * 404 is two different answers with one status — no such export, or a row
+     * whose file is gone — because a client can do the same thing about both:
+     * ask again. 410 means the retention window closed and the file was
+     * deleted; asking again will never work, so the status is different on
+     * purpose.
      */
+    #[Response(status: 404, type: ApiError::DOC_TYPE)]
+    #[Response(status: 410, type: ApiError::DOC_TYPE)]
     public function downloadExport(Request $request, AuditExportDownloadAction $downloadAction, string $export): StreamedResponse
     {
         return $downloadAction->run($request->user(), $export);
@@ -162,8 +167,15 @@ class AuditController extends Controller
      * comes back with `retry_count` incremented so a client that polls can watch
      * the budget go down.
      *
+     * 409 covers three refusals that a client cannot tell apart by the status
+     * alone — not a failed export, the retry budget is spent, or the row changed
+     * under the claim. All three mean "poll the row, do not re-send", which is
+     * why they share one code and the body carries the reason.
+     *
      * @param  Request  $request
      */
+    #[Response(status: 404, type: ApiError::DOC_TYPE)]
+    #[Response(status: 409, type: ApiError::DOC_TYPE)]
     public function retryExport(Request $request, string $export): JsonResponse
     {
         $row = $this->exportRequestAction->retry($request->user(), $export);

@@ -13,6 +13,22 @@ A successful password change or password reset revokes all Sanctum tokens,
 all database-backed Web sessions, and clears `remember_token`. This happens in
 the same database transaction as the password mutation.
 
+A token is also time-bounded even when nobody revokes it: the lifetime is a
+setting (`api_token_expire_value` + `api_token_expire_unit`, default one day),
+`AppServiceProvider::bindExpirations()` binds it to
+`config('sanctum.expiration')`, and Sanctum checks `created_at` against it on
+every request. Shortening it therefore cuts tokens already issued.
+`DELETE /api/v1/sessions/{session}` revokes a single token and is scoped to the
+caller's own tokens — another account's id answers 404.
+
+Browser sessions have the same shape and the same source: the idle window is
+`web_session_expire_value` + `web_session_expire_unit` (default 120 minutes,
+the same default `config/session.php` carries), bound to
+`config('session.lifetime')` by the same provider method. It is read when a
+session starts and when its cookie is written, so a session already in flight
+keeps the window it began with until it is next used; a lowered value ends idle
+sessions as they are touched, not the moment it is saved.
+
 ## Session/Device Architecture
 
 Supported: Web + Mobile.

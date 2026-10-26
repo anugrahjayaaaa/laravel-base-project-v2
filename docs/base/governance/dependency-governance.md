@@ -81,7 +81,7 @@ an application-level abstraction:
 | `spatie/laravel-activitylog` | `Audit` service class | Audit policy, transaction boundaries, metadata enrichment |
 | `laravel/pulse` | None (technical tool only) | Application code never calls Pulse directly |
 | `laravel/pennant` | None (Feature facade is the API) | Lightweight feature flag layer for runtime feature availability |
-| `dedoc/scramble` | None (dev-only) | Documentation generation, not runtime |
+| `dedoc/scramble` | Documentation routes only | Documentation generation; the spec is exported at deploy and served from a file (ADR-025) |
 | `spatie/laravel-backup` | None (scheduled jobs) | Infrastructure concern, scheduled via Kernel |
 
 ## Upgrade Policy

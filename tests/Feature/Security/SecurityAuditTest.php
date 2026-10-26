@@ -75,6 +75,10 @@ class SecurityAuditTest extends TestCase
 
     protected function mockRequest(User $user, string $routeName = 'api.v1.users.index'): Request
     {
+        // Middleware is invoked directly here, so the global correlation
+        // middleware never binds the id the ApiError envelope reads.
+        app()->instance('request_id', 'test-request-id');
+
         $route = new Route('GET', '/test', fn () => response()->json([]));
         $route->name($routeName);
         $request = Request::create('/test', 'GET', [], [], [], ['HTTP_ACCEPT' => 'application/json']);

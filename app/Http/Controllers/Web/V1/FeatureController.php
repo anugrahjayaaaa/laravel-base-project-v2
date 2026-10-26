@@ -6,11 +6,11 @@ use App\Actions\V1\Feature\FeatureBulkToggleAction;
 use App\Actions\V1\Feature\FeatureIndexAction;
 use App\Actions\V1\Feature\FeatureToggleAction;
 use App\Http\Requests\V1\Feature\BulkFeatureRequest;
+use App\Http\Requests\V1\Feature\ToggleFeatureRequest;
 use App\Http\Controllers\Controller;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 
 /**
  * Feature flag management (Phase 7).
@@ -39,8 +39,6 @@ class FeatureController extends Controller
      */
     public function index(Request $request): View
     {
-        $this->authorize($request, 'features.view');
-
         return view('pages.features.index', [
             ...$this->indexAction->run($request->user()),
         ]);
@@ -49,21 +47,15 @@ class FeatureController extends Controller
     /**
      * Switch one flag.
      *
-     * No Form Request class: the payload is one boolean on a query string, and
-     * `P6-C13` deleted a one-rule request class for exactly this. The gate and
-     * the slug check are both here instead of relying on the route.
+     * Validation and authorization live in `ToggleFeatureRequest`, shared with
+     * the API channel. The route carries `can:features.manage`; the request
+     * repeats it so stripping that middleware is not an unguarded write.
      */
-    public function toggle(Request $request, string $feature): RedirectResponse
+    public function toggle(ToggleFeatureRequest $request, string $feature): RedirectResponse
     {
-        $this->authorize($request, 'features.manage');
-
-        $validated = $request->validate([
-            'enabled' => ['required', 'boolean', Rule::in(['0', '1', '0.0', '1.0', 0, 1, false, true])],
-        ]);
-
         $result = $this->toggleAction->run(
             $feature,
-            (bool) $validated['enabled'],
+            (bool) $request->validated('enabled'),
             $request->user(),
         );
 
@@ -99,17 +91,5 @@ class FeatureController extends Controller
             count($result['changed']) + count($result['unchanged']),
             count($result['unchanged']),
         ));
-    }
-
-    /**
-     * Authorize against the app's own Gate.
-     *
-     * Routed through a helper rather than `$this->authorize()` alone so both
-     * the route gate and this method run the same check — the two-layer
-     * pattern `GateD6DPentestTest` exists to prove in the other direction.
-     */
-    private function authorize(Request $request, string $permission): void
-    {
-        abort_unless($request->user()?->can($permission), 403);
     }
 }

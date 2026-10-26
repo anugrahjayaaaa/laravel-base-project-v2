@@ -199,7 +199,11 @@ HTTP Request → Controller → Service → DB → Event → Queue → Notificat
 - The correlation ID is **generated at middleware level** (see FOUND-008).
 - **Generation:** a UUID (or ULID) generated in middleware on the first
   request. If the client provides an `X-Request-ID` header, that value is
-  respected and propagated (echoed back in the response header).
+  respected and propagated (echoed back in the response header) **only when it
+  is a UUID or a token of at most 64 characters from `[A-Za-z0-9._:-]`**.
+  Anything else is replaced with a generated UUID: the id is copied into every
+  log line and audit row for the request, so an unbounded or multi-line value
+  would bloat or forge those records.
 - It is available globally via a helper or context accessor.
 - **Propagation:** automatically attached to all structured log calls via
   Laravel's `Log::withContext(['request_id' => $id])` at middleware level.

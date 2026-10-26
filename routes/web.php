@@ -35,7 +35,7 @@ Route::controller(AuthController::class)->group(function () {
     Route::get('/login', 'showLogin')->name('login');
     Route::post('/login', 'login')
         ->name('login.submit')
-        ->middleware('throttle:login');
+        ->middleware(['throttle:login', 'throttle:login-ip']);
 
     Route::get('/forgot-password', 'showForgotPassword')->name('password.request');
     Route::post('/forgot-password', 'sendPasswordResetLink')
@@ -88,10 +88,10 @@ Route::middleware(['auth:web,sanctum', 'verified', 'password.change.required', '
     // Profile
     Route::controller(ProfileController::class)->group(function () {
         Route::get('/profile', 'show')->name('profile.show');
-        Route::put('/profile', 'update')->name('profile.update');
+        Route::put('/profile', 'update')->name('profile.update')->middleware('throttle:password-change');
         Route::get('/password/expired', 'showExpiredPassword')->name('password.expired');
         Route::get('/password/change', 'show')->name('password.change');
-        Route::put('/password/change', 'changePassword')->name('password.change.update');
+        Route::put('/password/change', 'changePassword')->name('password.change.update')->middleware('throttle:password-change');
     });
 
     // Users — flag `users` (P7-D7).
@@ -207,11 +207,13 @@ Route::middleware(['auth:web,sanctum', 'verified', 'password.change.required', '
     // auto-submitting input.
     // ---------------------------------------------------------------------------
     Route::get('/features', [FeatureController::class, 'index'])->name('features.index')->can('features.view');
-    // Not `->can()` here: the permission depends on which action is requested,
-    // so BulkFeatureRequest decides. See routes/web.php users.bulk-action and
-    // the class for why one features.manage gate covers both directions.
+    // Unlike users/roles, this bulk route CAN carry a route gate: every flag
+    // action is the same `features.manage` permission, so nothing depends on
+    // the requested action. BulkFeatureRequest repeats the check for the same
+    // reason every FormRequest authorizes its payload — defense in depth, not
+    // the only guard.
     Route::post('/features/bulk-action', [FeatureController::class, 'bulkAction'])
-        ->name('features.bulk-action')->middleware('throttle:bulk-action');
+        ->name('features.bulk-action')->can('features.manage')->middleware('throttle:bulk-action');
     Route::post('/features/{feature}/toggle', [FeatureController::class, 'toggle'])->name('features.toggle')->can('features.manage');
 
     // -----------------------------------------------------------------------

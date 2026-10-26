@@ -86,6 +86,36 @@ class NotificationInboxApiTest extends TestCase
     }
 
     /**
+     * Pagination is fixed at 10 and stated in the body.
+     *
+     * The rows used to arrive in a bare `data.notifications` array: a client
+     * could see the first 30 and had no way to ask for the rest, and nothing
+     * told it there was a rest. `data.pagination` is the same four keys the
+     * other lists use.
+     */
+    public function test_the_inbox_paginates_ten_per_page(): void
+    {
+        $user = $this->login();
+
+        for ($i = 1; $i <= 12; $i++) {
+            $this->notify($user, "Notification {$i}");
+        }
+
+        $this->getJson(route('api.v1.notifications.inbox.index'))
+            ->assertOk()
+            ->assertJsonCount(10, 'data.notifications')
+            ->assertJsonPath('data.pagination.current_page', 1)
+            ->assertJsonPath('data.pagination.last_page', 2)
+            ->assertJsonPath('data.pagination.per_page', 10)
+            ->assertJsonPath('data.pagination.total', 12);
+
+        $this->getJson(route('api.v1.notifications.inbox.index', ['page' => 2]))
+            ->assertOk()
+            ->assertJsonCount(2, 'data.notifications')
+            ->assertJsonPath('data.pagination.current_page', 2);
+    }
+
+    /**
      * Someone else's notification is not merely filtered out of this one — it is
      * in a different table row attached to a different user, and nothing here can
      * reach it. The web inbox scopes the same way, for the same reason.

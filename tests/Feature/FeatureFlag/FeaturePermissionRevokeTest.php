@@ -323,6 +323,8 @@ class FeaturePermissionRevokeTest extends TestCase
      */
     private function indexedNames(): array
     {
-        return app(PermissionIndexAction::class)->run()['permissions']->pluck('name')->all();
+        // The whole catalogue, not page 1: this asserts presence or absence of a
+        // specific row, and a row that sorts onto page 2 would read as "hidden".
+        return app(PermissionIndexAction::class)->run(perPage: 100)['permissions']->pluck('name')->all();
     }
 }

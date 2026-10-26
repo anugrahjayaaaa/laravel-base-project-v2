@@ -2,6 +2,7 @@
 
 namespace App\Concerns;
 
+use App\Support\ApiError;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Http\Exceptions\HttpResponseException;
 
@@ -26,17 +27,14 @@ trait FormatsApiErrors
     protected function failedValidation(Validator $validator): void
     {
         if (request()->expectsJson() || request()->is('api/*')) {
-            throw new HttpResponseException(
-                response()->json([
-                    'message' => 'The given data was invalid.',
-                    'errors' => $validator->errors(),
-                    'code' => 'VALIDATION_ERROR',
-                    'meta' => [
-                        'request_id' => app('request_id'),
-                        'timestamp' => now()->toIso8601String(),
-                    ],
-                ], 422)
-            );
+            // Built by the same class the exception handler uses, so a 422 from
+            // a form request and one from the handler cannot drift apart.
+            throw new HttpResponseException(ApiError::make(
+                'The given data was invalid.',
+                'VALIDATION_ERROR',
+                422,
+                ['errors' => $validator->errors()],
+            ));
         }
 
         // Web: redirect back with validation errors and old input.

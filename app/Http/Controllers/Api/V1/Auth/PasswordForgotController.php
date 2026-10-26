@@ -29,20 +29,12 @@ class PasswordForgotController extends Controller
         $data = $request->validated();
         $email = $data['email'];
         $ip = $request->ip();
-        $result = $action->run($email, $ip, $request, $throttle);
 
-        if (isset($result['error'])) {
-            return response()->json([
-                'message' => 'If the email exists, a reset link has been sent.',
-            ], 200);
-        }
+        // One line, no branch on the result: whether the address exists is not
+        // the caller's business (enumeration), so a refusal and a send have to
+        // look identical from outside. The action still refuses internally.
+        $action->run($email, $ip, $request, $throttle);
 
-        return response()->json([
-            'data' => ['message' => 'If the email exists, a reset link has been sent.'],
-            'meta' => [
-                'request_id' => app('request_id'),
-                'timestamp' => now()->toIso8601String(),
-            ],
-        ]);
+        return $this->respond('If the email exists, a reset link has been sent.');
     }
 }

@@ -8,6 +8,7 @@ use App\Http\Middleware\EnsurePasswordChangeRequired;
 use App\Http\Middleware\GenerateRequestCorrelationId;
 use App\Http\Middleware\VerifyCsrfToken;
 use App\Providers\AuthServiceProvider;
+use App\Support\ApiError;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -71,11 +72,16 @@ return Application::configure(basePath: dirname(__DIR__))
         );
 
         $exceptions->renderable(function (Throwable $e, Request $request) {
+            // Debug adds a key; it never changes the shape. The envelope is the
+            // contract, and a body whose keys depend on an env var is not one:
+            // a client cannot branch on a payload a deploy can silently rewrite.
+            // Traces stay in the log, where they belong — `report()` still runs.
+            $detail = static fn (array $extra = []): array => config('app.debug')
+                ? $extra + ['debug' => ['exception' => $e::class, 'message' => $e->getMessage()]]
+                : $extra;
+
             if ($e instanceof TokenMismatchException) {
-                return response()->json([
-                    'message' => 'CSRF token mismatch.',
-                    'code' => 'CSRF_TOKEN_MISMATCH',
-                ], 419);
+                return ApiError::make('CSRF token mismatch.', 'CSRF_TOKEN_MISMATCH', 419, $detail());
             }
 
             // A conflict, not a server fault: the payload was well-formed, it just
@@ -83,45 +89,31 @@ return Application::configure(basePath: dirname(__DIR__))
             // API handler below, which would otherwise turn it into a 500.
             if ($e instanceof LastSuperadminException) {
                 if ($request->is('api/*') || $request->expectsJson()) {
-                    return response()->json([
-                        'message' => $e->getMessage(),
-                        'code' => 'LAST_SUPERADMIN',
-                    ], 409);
+                    return ApiError::make($e->getMessage(), 'LAST_SUPERADMIN', 409, $detail());
                 }
 
                 return back()->with('error', $e->getMessage());
             }
 
-            if ($request->is('api/*') && ! config('app.debug')) {
+            if ($request->is('api/*')) {
                 if ($e instanceof ValidationException) {
-                    return response()->json([
-                        'message' => 'Validation failed.',
-                        'code' => 'VALIDATION_ERROR',
+                    return ApiError::make('Validation failed.', 'VALIDATION_ERROR', 422, $detail([
                         'errors' => $e->errors(),
-                    ], 422);
+                    ]));
                 }
 
                 if ($e instanceof AuthenticationException) {
-                    return response()->json([
-                        'message' => 'Unauthenticated.',
-                        'code' => 'UNAUTHENTICATED',
-                    ], 401);
+                    return ApiError::make('Unauthenticated.', 'UNAUTHENTICATED', 401, $detail());
                 }
 
                 if ($e instanceof InvalidSignatureException) {
                     // Unsigned URL (no signature param) → controller would reject token as fake/missing → 400
                     // Tampered signed URL (has signature param) → 403
                     if ($request->has('signature')) {
-                        return response()->json([
-                            'message' => 'Invalid signature.',
-                            'code' => 'INVALID_SIGNATURE',
-                        ], 403);
+                        return ApiError::make('Invalid signature.', 'INVALID_SIGNATURE', 403, $detail());
                     }
 
-                    return response()->json([
-                        'message' => 'Invalid or missing verification token.',
-                        'code' => 'INVALID_TOKEN',
-                    ], 400);
+                    return ApiError::make('Invalid or missing verification token.', 'INVALID_TOKEN', 400, $detail());
                 }
 
                 if ($e instanceof HttpResponseException) {
@@ -133,10 +125,30 @@ return Application::configure(basePath: dirname(__DIR__))
                 // than that they are not allowed, and a 403-based client cannot tell
                 // "retry later" from "never". Must sit above that handler.
                 if ($e instanceof AuthorizationException || $e instanceof AccessDeniedHttpException) {
-                    return response()->json([
-                        'message' => $e->getMessage() ?: 'This action is unauthorized.',
-                        'code' => 'FORBIDDEN',
-                    ], 403);
+                    return ApiError::make(
+                        $e->getMessage() ?: 'This action is unauthorized.',
+                        'FORBIDDEN',
+                        403,
+                        $detail(),
+                    );
+                }
+
+                // The specific 404/429 branches must come BEFORE the generic
+                // `HttpException 4xx` one: `NotFoundHttpException` and
+                // `ThrottleRequestsException` both extend it, so with the
+                // generic branch first every route-level 404 answered
+                // `HTTP_ERROR` and every framework 429 answered `HTTP_ERROR` —
+                // two codes the contract documents and nothing could emit.
+                if ($e instanceof ModelNotFoundException) {
+                    return ApiError::make('Resource not found.', 'NOT_FOUND', 404, $detail());
+                }
+
+                if ($e instanceof NotFoundHttpException) {
+                    return ApiError::make('Resource not found.', 'NOT_FOUND', 404, $detail());
+                }
+
+                if ($e instanceof ThrottleRequestsException) {
+                    return ApiError::make('Too many requests.', 'RATE_LIMITED', 429, $detail());
                 }
 
                 // abort(403) throws a plain HttpException, not AccessDeniedHttpException,
@@ -146,37 +158,15 @@ return Application::configure(basePath: dirname(__DIR__))
                 // abort(4xx) gets the same treatment instead of each one being a new
                 // instance to remember here.
                 if ($e instanceof HttpException && $e->getStatusCode() >= 400 && $e->getStatusCode() < 500) {
-                    return response()->json([
-                        'message' => $e->getMessage() ?: 'Request could not be completed.',
-                        'code' => 'HTTP_ERROR',
-                    ], $e->getStatusCode());
+                    return ApiError::make(
+                        $e->getMessage() ?: 'Request could not be completed.',
+                        'HTTP_ERROR',
+                        $e->getStatusCode(),
+                        $detail(),
+                    );
                 }
 
-                if ($e instanceof ModelNotFoundException) {
-                    return response()->json([
-                        'message' => 'Resource not found.',
-                        'code' => 'NOT_FOUND',
-                    ], 404);
-                }
-
-                if ($e instanceof NotFoundHttpException) {
-                    return response()->json([
-                        'message' => 'Resource not found.',
-                        'code' => 'NOT_FOUND',
-                    ], 404);
-                }
-
-                if ($e instanceof ThrottleRequestsException) {
-                    return response()->json([
-                        'message' => 'Too many requests.',
-                        'code' => 'RATE_LIMITED',
-                    ], 429);
-                }
-
-                return response()->json([
-                    'message' => 'Server Error.',
-                    'code' => 'SERVER_ERROR',
-                ], 500);
+                return ApiError::make('Server Error.', 'SERVER_ERROR', 500, $detail());
             }
         });
     })->create();

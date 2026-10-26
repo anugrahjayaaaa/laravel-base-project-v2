@@ -28,7 +28,7 @@ class AuditExportResource extends JsonResource
 {
     /**
      * @param  Request  $request
-     * @return array<string, mixed>
+     * @return array{id: int, status: array{value: string, label: string}, filters: array<string, mixed>|null, row_count: int|null, retry_count: int, max_retries: int, can_retry: bool, requested_at: string|null, completed_at: string|null, expires_at: string|null, expired: bool, download_url?: string}
      */
     public function toArray(Request $request): array
     {

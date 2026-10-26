@@ -80,7 +80,21 @@ class UsernameEmailChangeTest extends TestCase
         ]);
 
         $this->assertTrue($response->isRedirect() || $response->getStatusCode() === 302);
-        Notification::assertSentTo($user, ChangeEmailVerificationNotification::class);
+
+        // Delivered to the address being confirmed, not the account's current
+        // one — a link in the old inbox proves control of the mailbox the
+        // account already owns. And the row holds a hash, never the token.
+        Notification::assertSentOnDemand(
+            ChangeEmailVerificationNotification::class,
+            function (ChangeEmailVerificationNotification $notification, array $channels, $notifiable) use ($user): bool {
+                $mail = $notification->toMail($notifiable);
+                parse_str((string) parse_url($mail->actionUrl, PHP_URL_QUERY), $query);
+
+                return $notifiable->routes['mail'] === 'new@example.com'
+                    && $user->fresh()->email_change_token === hash('sha256', $query['token'])
+                    && $user->fresh()->email_change_token !== $query['token'];
+            }
+        );
     }
 
     public function test_email_verification_link_updates_email_and_sets_timestamp(): void
@@ -90,7 +104,7 @@ class UsernameEmailChangeTest extends TestCase
         $token = Str::random(64);
         $user->update([
             'pending_email' => 'new@example.com',
-            'email_change_token' => $token,
+            'email_change_token' => hash('sha256', $token),
             'email_change_token_expires_at' => now()->addHours(24),
         ]);
 

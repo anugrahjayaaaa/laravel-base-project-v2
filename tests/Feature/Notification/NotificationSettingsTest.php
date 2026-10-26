@@ -28,7 +28,7 @@ use Tests\TestCase;
  * stays encrypted, and the gates answer correctly.
  *
  * The failure worth testing is not "the save returned 200" — it is the one
- * `bindTokenExpirations()` was written for: a field that looks live, saves
+ * `bindExpirations()` was written for: a field that looks live, saves
  * successfully, and changes nothing. So most of these assert the value the
  * TRANSPORT ends up with, not the row that was written.
  */

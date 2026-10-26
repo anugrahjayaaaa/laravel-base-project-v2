@@ -5,6 +5,7 @@ namespace Tests\Feature\FeatureFlag;
 use App\Models\Role;
 use App\Models\RoleLookup;
 use App\Models\User;
+use App\Support\FeatureCatalog;
 use App\Support\PermissionCatalog;
 use App\Support\SystemRole;
 use Database\Seeders\PermissionSeeder;
@@ -27,6 +28,9 @@ use Spatie\Permission\PermissionRegistrar;
  *   - the flags are reachable while the `features` flag is itself off, which is
  *     the whole reason these routes carry no feature: middleware
  *   - bulk-action refuses an undeclared slug instead of creating a row for it
+ *   - the read is `features.view`, projects the page model down to the six
+ *     fields a client can act on, and answers the writer's own state (the
+ *     toggle flushes the snapshot the read serves)
  *
  * Mutation-verified on 2026-10-02: dropping `->can('features.manage')` fails
  * the toggle test, dropping the abort_unless in the controller fails it too,
@@ -143,6 +147,70 @@ class FeatureFlagApiTest extends TestCase
             fn (string $slug) => [$slug],
             array_keys($features['features'] ?? []),
         );
+    }
+
+    public function test_a_viewer_can_read_the_flag_catalogue_through_the_api(): void
+    {
+        // `features.view` only: reading the catalogue is a different permission
+        // from changing it, the same split the web page uses.
+        $this->actingAs($this->viewerWithout('features.manage'), 'sanctum');
+
+        $response = $this->getJson(route('api.v1.features.index'))->assertSuccessful();
+
+        $rows = collect($response->json('data.features'))->keyBy('slug');
+
+        $this->assertCount(count(FeatureCatalog::slugs()), $rows);
+
+        // The projection, pinned: a page model leaking through here is how a
+        // JSON client gets a web toggle URL it cannot POST to (session + CSRF).
+        $this->assertSame(
+            ['slug', 'label', 'group', 'description', 'enabled', 'pending'],
+            array_keys($rows['users']),
+        );
+
+        // A declared flag whose module has no routes is not "disabled".
+        $this->assertNotNull($rows['translations']['pending']);
+    }
+
+    public function test_the_catalogue_reflects_a_state_change_made_through_the_api(): void
+    {
+        $this->actingAs($this->manager(), 'sanctum');
+
+        $this->postJson(route('api.v1.features.toggle', ['feature' => 'pulse']), ['enabled' => false])
+            ->assertSuccessful();
+
+        // The toggle flushes FeatureIndexAction's snapshot; if it did not, this
+        // read would answer from a cache up to 30 seconds old and the endpoint
+        // would be a state report that disagrees with its own writer.
+        $response = $this->getJson(route('api.v1.features.index'))->assertSuccessful();
+
+        $this->assertFalse(
+            collect($response->json('data.features'))->firstWhere('slug', 'pulse')['enabled'],
+        );
+    }
+
+    public function test_the_catalogue_is_refused_without_features_view(): void
+    {
+        // Holds everything except the one permission the read needs, including
+        // `features.manage` — a route written against the wrong sibling gate
+        // passes a zero-permission test and fails here.
+        $this->actingAs($this->viewerWithout('features.view'), 'sanctum');
+
+        $this->getJson(route('api.v1.features.index'))->assertForbidden();
+    }
+
+    public function test_the_catalogue_is_not_public(): void
+    {
+        $this->getJson(route('api.v1.features.index'))->assertUnauthorized();
+    }
+
+    public function test_a_viewer_cannot_toggle(): void
+    {
+        $this->actingAs($this->viewerWithout('features.manage'), 'sanctum');
+
+        $this->getJson(route('api.v1.features.index'))->assertSuccessful();
+        $this->postJson(route('api.v1.features.toggle', ['feature' => 'pulse']), ['enabled' => false])
+            ->assertForbidden();
     }
 
     public function test_bulk_action_refuses_an_undeclared_slug(): void

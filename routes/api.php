@@ -39,23 +39,11 @@ Route::prefix('v1')->group(function () {
     // Public auth routes — no authentication required
     // ---------------------------------------------------------------------------
     Route::prefix('auth')->group(function () {
-        Route::post('/login', LoginController::class)->name('api.v1.auth.login');
+        Route::post('/login', LoginController::class)->name('api.v1.auth.login')->middleware('throttle:login-ip');
         Route::post('/register', RegisterController::class)->name('api.v1.auth.register')->middleware('throttle:register');
         Route::post('/password/forgot', PasswordForgotController::class)->name('api.v1.auth.password.forgot')->middleware('throttle:forgot-password');
         Route::post('/password/reset', PasswordResetController::class)->name('api.v1.auth.password.reset')->middleware('throttle:reset-password');
-        Route::get('/email/verify/{id}/{hash}', VerifyEmailController::class)->name('verification.verify.api')->middleware('signed');
-
-        // Backwards-compat: the unlock endpoint as it was addressed before it
-        // moved under `/users/{user}`. The redirect is kept; what changed is
-        // that it is DOCUMENTED as a redirect and not silently sitting in the
-        // route table looking like the current address.
-        //
-        // It stays a closure, and that is a known cost rather than an oversight:
-        // Scramble cannot introspect a closure, so this endpoint does not appear
-        // in the generated API documentation at all — which is correct, because
-        // a client reading the docs should use `POST /api/v1/users/{user}/unlock`.
-        Route::post('/unlock', fn () => to_route('api.v1.users.unlock', ['user' => request()->route('user')]))
-            ->name('api.v1.auth.unlock');
+        Route::get('/email/verify/{id}/{hash}', VerifyEmailController::class)->name('api.v1.auth.email.verify')->middleware('signed');
     });
 
     // ---------------------------------------------------------------------------
@@ -85,6 +73,10 @@ Route::prefix('v1')->group(function () {
         Route::middleware('feature:sessions')->group(function () {
             Route::controller(SessionController::class)->group(function () {
                 Route::get('/sessions', 'index')->name('api.v1.sessions');
+                // Revoking one session is self-service, so it carries no `can:`.
+                // The scope is the caller's own token query: an id belonging to
+                // someone else answers 404, not 403.
+                Route::delete('/sessions/{session}', 'destroy')->name('api.v1.sessions.destroy');
             });
         });
 
@@ -230,10 +222,13 @@ Route::prefix('v1')->group(function () {
                 ->name('api.v1.users.show')->can('users.view');
             Route::post('/users', [UserController::class, 'store'])
                 ->name('api.v1.users.store')->can('users.create');
-            // PUT + PATCH in ONE route object: two routes sharing a name breaks
-            // route:cache ("Another route has already been assigned name").
-            Route::match(['put', 'patch'], '/users/{user}', [UserController::class, 'update'])
+            // Two route objects with distinct names: Scramble documents one
+            // method per route object, so a single `match()` left PATCH absent
+            // from the spec. Sharing a name breaks route:cache.
+            Route::put('/users/{user}', [UserController::class, 'update'])
                 ->name('api.v1.users.update')->can('users.update');
+            Route::patch('/users/{user}', [UserController::class, 'update'])
+                ->name('api.v1.users.patch')->can('users.update');
             Route::delete('/users/{user}', [UserController::class, 'destroy'])
                 ->name('api.v1.users.destroy')->can('users.delete');
             Route::delete('/users/{user}/force', [UserController::class, 'forceDelete'])->name('api.v1.users.force-delete')->can('users.force_delete');
@@ -242,7 +237,7 @@ Route::prefix('v1')->group(function () {
             // Email change flow
             Route::post('/users/{user}/request-email-change', [UserController::class, 'requestEmailChange'])->name('api.v1.users.request-email-change');
             Route::post('/users/{user}/cancel-email-change', [UserController::class, 'cancelEmailChange'])->name('api.v1.users.cancel-email-change');
-            Route::get('/email/verify-change/{user}/{token?}', [UserController::class, 'verifyEmailChange'])->name('api.v1.email.verify-change')->middleware(['signed', 'throttle:email-verification']);
+            Route::get('/email/verify-change/{user}', [UserController::class, 'verifyEmailChange'])->name('api.v1.email.verify-change')->middleware(['signed', 'throttle:email-verification']);
             Route::post('/users/{user}/resend-verification', [UserController::class, 'resendVerification'])->name('api.v1.users.resend-verification')->middleware('throttle:resend-verification')->can('users.update');
             // Same reasoning as the web bulk route: the permission depends on the
             // requested action, so AuthorizesBulkAction decides. See routes/web.php.
@@ -298,13 +293,19 @@ Route::prefix('v1')->group(function () {
         // the routes of the modules being controlled, and putting it here would
         // mean the endpoints that re-enable a flag disappear with it, leaving
         // no way back. Same reasoning as the web group, and the reason the
-        // feature middleware is absent from these two lines.
+        // feature middleware is absent from these three lines.
         //
-        // No `->can()` on bulk-action: the permission depends on which action
-        // was requested, so BulkFeatureRequest decides. One `features.manage`
-        // gate covers both directions.
+        // Unlike the users and roles bulk routes, this one CAN carry a route
+        // gate: every flag action is the same `features.manage` permission
+        // (turning a module off is not a lesser privilege than turning it on),
+        // so nothing is action-dependent here. `BulkFeatureRequest` repeats the
+        // check for the same reason every other FormRequest authorizes its own
+        // payload — the route is not the only caller a future refactor may add.
+        // The read is `features.view`, the same split the web page uses.
+        Route::get('/features', [FeatureController::class, 'index'])
+            ->name('api.v1.features.index')->can('features.view');
         Route::post('/features/bulk-action', [FeatureController::class, 'bulkAction'])
-            ->name('api.v1.features.bulk-action')->middleware('throttle:bulk-action');
+            ->name('api.v1.features.bulk-action')->can('features.manage')->middleware('throttle:bulk-action');
         Route::post('/features/{feature}/toggle', [FeatureController::class, 'toggle'])->name('api.v1.features.toggle')->can('features.manage');
     });
 
@@ -314,6 +315,6 @@ Route::prefix('v1')->group(function () {
     // user can always recover.
     // ---------------------------------------------------------------------------
     Route::middleware(['auth:sanctum'])->group(function () {
-        Route::post('/auth/password/change', ApiPasswordChangeController::class)->name('api.v1.auth.password.change');
+        Route::post('/auth/password/change', ApiPasswordChangeController::class)->name('api.v1.auth.password.change')->middleware('throttle:password-change');
     });
 });

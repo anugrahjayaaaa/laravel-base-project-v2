@@ -40,6 +40,7 @@ class AuthServiceProvider extends ServiceProvider
         $this->configureSuperAdmin();
         $this->configurePulseGate();
         $this->configureVantageGate();
+        $this->configureApiDocsGate();
         $this->configureRateLimiters();
         $this->configurePasswordResetNotification();
         $this->configureEmailVerification();
@@ -120,6 +121,33 @@ class AuthServiceProvider extends ServiceProvider
     }
 
     /**
+     * Override the gate both the docs route and the sidebar consult.
+     *
+     * Scramble's middleware consults `viewApiDocs`, and until this existed
+     * nothing defined it — so `/docs/api` was 403 for everyone outside `local`,
+     * superadmin included. A gate defined against a missing ability fails
+     * closed, which reads as "disabled" rather than "unfinished".
+     *
+     * Two ways to pass, and the operator decides which: `api_docs_public` (a
+     * system setting, off by default) or the `api_docs.view` permission. The
+     * public flag lives HERE rather than in the middleware so that the sidebar —
+     * which asks `can('viewApiDocs')` — and the route cannot disagree about
+     * whether the document is visible.
+     *
+     * Nullable user on purpose: in public mode a guest is allowed, and the docs
+     * route carries no `auth` middleware. Without `?User` the callback would be
+     * a `TypeError` and the guest would get a 500.
+     *
+     * `Gate::before` is untouched, so superadmin passes without holding a
+     * `role_has_permissions` row — same shape as the Pulse and Vantage gates.
+     */
+    protected function configureApiDocsGate(): void
+    {
+        Gate::define('viewApiDocs', fn (?User $user): bool => SystemSetting::getBool('api_docs_public', false)
+            || ($user?->can('api_docs.view') ?? false));
+    }
+
+    /**
      * Configure rate limiters for auth endpoints.
      *
      * RateLimiter key format: rate_limit:{feature}:{identifier_type}:{slug}:{ip}
@@ -133,12 +161,38 @@ class AuthServiceProvider extends ServiceProvider
         $throttle = app(LoginThrottle::class);
 
         RateLimiter::for('login', function (Request $request) use ($throttle) {
-            $identifier = $request->input('identifier', '');
+            // ConvertEmptyStringsToNull runs before route middleware, so an
+            // empty identifier arrives as null, not ''.
+            $identifier = (string) $request->input('identifier', '');
             $limit = SystemSetting::getInt('login_rate_limit_per_minute', 5);
 
             return Limit::perMinute($limit)
                 ->by($throttle->key('login', $identifier, $request->ip()))
                 ->response($throttle->responseFor('identifier'));
+        });
+
+        // The second ceiling on the same endpoint, keyed on the address alone.
+        // The limiter above is per identifier + IP, so one address trying one
+        // password against a thousand accounts never repeats a key and never
+        // meets it. This is the bucket that sees the spray.
+        RateLimiter::for('login-ip', function (Request $request) use ($throttle) {
+            $limit = SystemSetting::getInt('login_ip_rate_limit_per_minute', 10);
+
+            return Limit::perMinute($limit)
+                ->by($throttle->key('login-ip', 'ip', $request->ip()))
+                ->response($throttle->responseFor('identifier'));
+        });
+
+        // Password change is behind a session and verifies `current_password`
+        // before doing any work, so the refusal is cheap; this caps how fast a
+        // stolen session can guess the old password. Keyed on the user alone:
+        // rotating addresses must not buy a second budget.
+        RateLimiter::for('password-change', function (Request $request) use ($throttle) {
+            $limit = SystemSetting::getInt('password_change_rate_limit_per_minute', 5);
+
+            return Limit::perMinute($limit)
+                ->by($request->user()?->getKey() ?: $request->ip())
+                ->response($throttle->responseFor('current_password'));
         });
 
         RateLimiter::for('forgot-password', function (Request $request) use ($throttle) {

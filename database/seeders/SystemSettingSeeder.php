@@ -24,10 +24,12 @@ class SystemSettingSeeder extends Seeder
         SystemSetting::set('lockout_base_minutes', '5');
         SystemSetting::set('lockout_increment_minutes', '10');
         SystemSetting::set('login_rate_limit_per_minute', '5');
+        SystemSetting::set('login_ip_rate_limit_per_minute', '10');
 
         // Password reset / verification rate limits
         SystemSetting::set('password_forgot_rate_limit', '3');
         SystemSetting::set('password_reset_rate_limit', '3');
+        SystemSetting::set('password_change_rate_limit_per_minute', '5');
         SystemSetting::set('password_reset_token_expire_minutes', '15');
         SystemSetting::set('email_verification_rate_limit', '5');
         SystemSetting::set('email_verification_token_expire_minutes', '60');
@@ -60,6 +62,21 @@ class SystemSettingSeeder extends Seeder
         // Password reset token (Laravel broker)
         SystemSetting::set('password_reset_expire_minutes', '15');
 
+        // API token lifetime — one day. Stored as a number plus a unit so the
+        // settings page can offer minutes, hours or days; `AppServiceProvider`
+        // converts the pair to the minutes Sanctum counts in. One day is the
+        // default because the token is a session: long enough for a mobile app
+        // to stay signed in between uses, short enough that a token copied out
+        // of a device stops working on its own.
+        SystemSetting::set('api_token_expire_value', '1');
+        SystemSetting::set('api_token_expire_unit', 'days');
+
+        // Idle browser-session lifetime — two hours, matching the default in
+        // `config/session.php`. Same value-plus-unit shape as the API token so
+        // both are edited the same way and bound by the same provider method.
+        SystemSetting::set('web_session_expire_value', '120');
+        SystemSetting::set('web_session_expire_unit', 'minutes');
+
         // Username / email change settings
         SystemSetting::set('allow_username_change', 'true');
         SystemSetting::set('username_change_cooldown_days', '30');
@@ -71,6 +88,14 @@ class SystemSettingSeeder extends Seeder
         SystemSetting::set('registration_enabled', 'false');
         SystemSetting::set('registration_default_role', 'user');
         SystemSetting::set('registration_rate_limit_per_minute', '3');
+
+        // API documentation visibility — Phase 12 Group A.
+        //
+        // Off by default. The document names every endpoint, field and status
+        // code, so publishing it is a disclosure decision an operator makes on
+        // purpose rather than a default a fresh install inherits. Off means the
+        // reader has to be signed in and hold `api_docs.view`.
+        SystemSetting::set('api_docs_public', 'false');
 
         // Audit trail export ceiling — Phase 10, §11 P10-E9.
         //

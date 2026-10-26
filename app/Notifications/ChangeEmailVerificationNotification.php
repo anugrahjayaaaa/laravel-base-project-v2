@@ -2,8 +2,6 @@
 
 namespace App\Notifications;
 
-use App\Models\User;
-use App\Support\NotificationChannel;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
@@ -33,31 +31,39 @@ class ChangeEmailVerificationNotification extends Notification implements Should
     public $afterCommit = true;
 
     /**
-     * Create the notification with pending email and verification token.
+     * Create the notification with the account, pending email and token.
      *
+     * The account id is carried because the recipient is the pending ADDRESS,
+     * not the User: an on-demand notifiable has no `id` to build the signed
+     * route from.
+     *
+     * @param  int     $userId
      * @param  string  $pendingEmail
      * @param  string  $token
      */
     public function __construct(
+        private readonly int $userId,
         private readonly string $pendingEmail,
         private readonly string $token,
     ) {
     }
 
     /**
-     * Deliver on the channels the admin has enabled.
+     * Mail only, and only to the address being confirmed.
+     *
+     * This is the one notification whose whole purpose is to prove control of
+     * an address the account does not own yet, so it cannot go to the current
+     * inbox. There is no User notifiable to write an in-app row against.
      *
      * @return array<string>
      */
     public function via($notifiable): array
     {
-        // From the admin's global switches rather than a hardcoded list, so the
-        // channels page controls something that is actually read.
-        //
         // Essential: this link is the only thing that completes the email change.
         // Mail off would strand the request — the account keeps its old address
-        // and the pending one is never confirmed. See `NotificationChannel::for()`.
-        return NotificationChannel::for(essential: true);
+        // and the pending one is never confirmed. That is why the channel is
+        // hardcoded here instead of read from the admin switches.
+        return ['mail'];
     }
 
     /**
@@ -67,10 +73,13 @@ class ChangeEmailVerificationNotification extends Notification implements Should
      */
     public function toMail($notifiable): MailMessage
     {
+        // 24 hours, matching the stored token's expiry and the sentence below.
+        // The signature used to last one hour while the row and the copy said
+        // 24, so the link died nine tenths of the way through its own promise.
         $verifyUrl = URL::temporarySignedRoute(
             'email.verify-change',
-            now()->addHours(1),
-            ['user' => $notifiable->id, 'token' => $this->token],
+            now()->addHours(24),
+            ['user' => $this->userId, 'token' => $this->token],
         );
 
         return (new MailMessage())
@@ -79,34 +88,5 @@ class ChangeEmailVerificationNotification extends Notification implements Should
             ->line("New email: {$this->pendingEmail}")
             ->action('Verify Email Change', $verifyUrl)
             ->line('This link expires in 24 hours. If you did not request this, ignore this email.');
-    }
-
-    /**
-     * The in-app representation, stored verbatim in `notifications.data`.
-     *
-     * Required the moment `database` is a channel — without it Laravel throws
-     * rather than writing an empty row. The shape (`subject` + `lines`) is what
-     * `pages/notifications/inbox` reads, so the two are a contract: a class that
-     * stores different keys renders as a bare "Notification" placeholder rather
-     * than an undefined-variable fatal on someone's inbox.
-     *
-     * `lines` is escaped here, not in the view: this string is persisted and
-     * re-rendered later, so escaping at write time is the only place the value
-     * can be trusted.
-     *
-     * @return array<string, mixed>
-     */
-    public function toArray(User $notifiable): array
-    {
-        return [
-            'subject' => 'Confirm your new email address',
-            'lines' => [
-                // The inbox row carries no link, so it names where the link is and
-                // which address it moves to — the two facts a person needs before
-                // they go looking for an email.
-                "Open the link we emailed you to confirm the change to {$this->pendingEmail}.",
-                'If you did not request this, your address has not changed.',
-            ],
-        ];
     }
 }
