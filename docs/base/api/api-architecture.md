@@ -245,6 +245,24 @@ documentation from Laravel routes, Form Requests, and API Resources, so most
 endpoints need no annotation at all; `#[Response]` appears only where inference
 cannot reach (see item 7 above).
 
+The generated document is corrected in three places where inference alone gets
+the contract wrong:
+
+- `App\Support\OpenApi\ApiErrorResponseExtension` — the project envelope
+  (`{message, code, meta}`) for the statuses the package infers as `{message}`;
+  before it, 148 of 180 documented error responses described a body no client
+  receives.
+- `App\Support\OpenApi\AuthorizationDescriptionExtension` — the route's
+  `can:` / `feature:` appended to the operation description; before it, 56 of 59
+  operations showed a gated endpoint as if any token could call it.
+- `Scramble::resolveTagsUsing()` — one tag per module folder under `Api\V1`
+  instead of one per controller class, so the sidebar groups the way
+  `routes/api.php` does.
+
+`ApiDocumentationTest` asserts the first two, so a drift turns the suite red
+rather than the document silently wrong. The tag grouping is presentation and
+has no equivalent gate.
+
 Documentation must include:
 - Authentication
 - Endpoint

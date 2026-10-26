@@ -15,7 +15,7 @@
 | Technical Observability | Laravel Pulse | `laravel/pulse` | Required | P1 | Restricted (technical users only) |
 | Queue Monitoring | Vantage | `storviaio/vantage` | Required | P1 | Restricted (`queues.view` read / `queues.retry` retry) |
 | Feature Flags | Laravel Pennant | `laravel/pennant` | Required | P1 | Through Feature facade |
-| API Documentation | Scramble | `dedoc/scramble` | Installed | P1 | Documentation generation; exported at deploy, served from a file (ADR-025) |
+| API Documentation | Scramble | `dedoc/scramble` | Required (installed) | P1 | Documentation generation; exported at deploy, served from a file (ADR-025) |
 | Queue (default) | Laravel Queue | Native | Core | P0 | Through Queue facade |
 | Cache (default) | Laravel Cache | Native | Core | P0 | Through Cache facade |
 | Redis (option) | Redis backend | `predis/predis` / `ext-redis` | Optional / Deployment | P2 | Never directly (facades only) |

@@ -56,20 +56,24 @@ Use `dedoc/scramble` for API documentation generation.
 
 ## Security Implications
 
-- Scramble docs should be gated behind `auth:sanctum` or restricted to
-  non-production environments — the docs expose API structure.
+- The docs route is gated by `api_docs_public` (off by default) or the
+  `api_docs.view` permission; a guest is redirected on the UI and answers 401
+  on the JSON document. See `docs/base/api/documentation.md`.
 - Example responses must not contain real secrets or tokens.
 
 ## Maintenance Implications
 
 - Scramble version must track Laravel/PHP compatibility.
-- Re-run `scramble:docs` before releases.
-- Scramble is annotation-free — most docs come from code analysis.
+- Run `php artisan scramble:export` before releases (the deploy does this).
+- Most documentation comes from code analysis; `#[Response]` is added only
+  where inference cannot see the body or status.
 
 ## Reversal / Replacement
 
 - Scramble is documentation-only. Removing it removes the docs routes and
-  nothing else: no application code calls it.
-- Replacing with another generator: swap the dev dependency, run the
-  replacement's generation command, update the doc-publishing pipeline.
+  nothing else: no application code calls it. Since ADR-025 it is a `require`
+  dependency, so removal also means dropping it from `require` and deleting the
+  deploy export step.
+- Replacing with another generator: swap the dependency, run the replacement's
+  generation command, update the doc-publishing pipeline.
   No application code changes required.

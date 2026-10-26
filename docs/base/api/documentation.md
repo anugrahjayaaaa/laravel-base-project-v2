@@ -3,8 +3,19 @@
 ## Approach
 
 Use Scramble for API documentation generation. Scramble auto-generates
-documentation from Laravel routes, Form Requests and API Resources —
-annotation-free.
+documentation from Laravel routes, Form Requests and API Resources, so most
+endpoints need no annotation. `#[Response]` appears only where inference cannot
+reach (a hand-built body, or a status raised with `abort()` inside an Action) —
+see `api-architecture.md` § *API Conventions* item 7.
+
+Two registered extensions correct what inference gets wrong rather than asking
+every controller to repeat it:
+
+- `App\Support\OpenApi\ApiErrorResponseExtension` publishes the project's
+  `{message, code, meta}` envelope for the six exceptions Scramble infers as
+  `{message}`.
+- `App\Support\OpenApi\AuthorizationDescriptionExtension` appends the route's
+  `can:*` / `feature:*` middleware to the operation description.
 
 Do not build a custom documentation system unnecessarily.
 
@@ -14,10 +25,15 @@ Do not build a custom documentation system unnecessarily.
 |---|---|---|
 | UI | `/docs/api` | Stoplight Elements view over the generated document |
 | Document | `/docs/api.json` | The OpenAPI 3 document itself |
-| Export | `php artisan scramble:export` | Writes `api.json` to the export path in `config/scramble.php` |
+| Export | `php artisan scramble:export` | Writes the file named by `export_path` (`api.json`, gitignored); the deploy passes `--path="storage/app/openapi.<APP_ENV>.json"` instead |
 
 The document covers the routes under `/api` — this project's versioned surface,
 `/api/v1/*`. Web routes are not documented: they are Blade pages, not a contract.
+
+Operations are tagged by the module folder under `App\Http\Controllers\Api\V1`
+(`Auth`, `User`, `Audit`, …); a controller outside a folder keeps its own class
+name. That is the grouping the docs sidebar shows, and the same grouping a reader
+gets from `routes/api.php`.
 
 ## Availability and access
 
@@ -134,7 +150,9 @@ Tokens are issued by `POST /api/v1/auth/login` and revoked by
 hand-kept list. Every route behind `auth` / `auth:*` inherits the bearer scheme
 published in `components.securitySchemes`, so `/docs/api` renders the Authorize
 box; a route without it is marked `security: []` (public) instead of asking for
-a token it ignores. `ApiDocsUiRenderTest` pins both halves.
+a token it ignores. The scheme is named `bearerAuth`, because that name is what
+the UI prints beside the Authorize button. `ApiDocsUiRenderTest` pins both
+halves.
 
 ## Versioning
 
@@ -163,7 +181,12 @@ plain user and a guest are refused, and the published version is `v1`.
 - every `auth:sanctum` operation documents 401;
 - every `can:` operation documents 403;
 - every operation taking a FormRequest documents 422;
-- the bearer scheme and global `security` are declared;
+- every documented error response (except the health probe's 503) publishes the
+  `{message, code, meta}` envelope — this is what makes the two extensions
+  load-bearing rather than cosmetic;
+- every operation behind `can:` / `feature:` names that middleware in its
+  description;
+- the `bearerAuth` scheme and global `security` are declared;
 - no operation documents a status outside the contract table.
 
 It catches a route that exists but is **absent** from the document. A route
