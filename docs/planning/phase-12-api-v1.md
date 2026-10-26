@@ -1,6 +1,6 @@
 # Phase 12 — API V1
 
-> Date: 2026-10-20 | Status: **DONE** (owner-closed 2026-10-21) | Branch: `feature/phase-12-api-v1`
+> Date: 2026-10-20 | Status: **DONE** (owner-closed 2026-10-21; post-close document audit 2026-10-24) | Branch: `feature/phase-12-api-v1`
 > Part I is the capability audit of 2026-10-13, kept as written because it is the
 > record of what the route-table comparison found and `ChannelParityTest`
 > references it. Part II is the execution breakdown that closes the remaining
@@ -676,6 +676,35 @@ Finding → fix:
 | Docs drift: wrong unread-count path, three-vs-four unpaginated lists, verify-change exception reason, stale tracker statuses | reconciled in `error-contract.md`, `response-contract.md`, `api-architecture.md`, `task-tracker.md`, `progress.md`, `qa-tracker.md`, `feature-tracker.md` |
 
 **Measured after the fixes (2026-10-21):** full suite **2157 passed / 7628 assertions** (358s), `vendor/bin/pint --test` clean, `scramble:analyze` only the known `HealthCheckResource` warning. The generated document holds 47 paths, `/v1/health` now visible with 200+503, and 429 on the three operations where the limiter is endpoint-specific.
+
+---
+
+## Post-close audit (2026-10-24)
+
+The owner treated the phase as done, then asked what the generated document
+actually said. It described a different API than the code answers: 148 of 180
+error responses published the framework's `{message}`, and 56 of 59 operations
+did not state the middleware that gates them. Eight findings, all closed.
+
+| # | Finding | Fix |
+|---|---|---|
+| F1 | Auth scheme was published as `http` | `SecurityScheme::http('bearer')->as('bearerAuth')` in `config/scramble.php`; the name is what the docs UI prints |
+| F2 | Every inferred error response described `{message}`, not the contract envelope | `App\Support\OpenApi\ApiErrorResponseExtension` publishes `{message, code, meta}` (plus `errors` on 422) for the six exceptions Scramble infers; `ApiDocumentationTest` fails on any response that drifts back |
+| F3 | `can:` / `feature:` never reached the document | `App\Support\OpenApi\AuthorizationDescriptionExtension` appends them to each operation description; the drift gate asserts every gated operation states its requirement |
+| F4 | 21 controller-class tags put `LogoutAll` and `VerifyEmail` beside `Users` as peers | `Scramble::resolveTagsUsing()` groups by the module folder under `Api\V1`; a controller outside a folder keeps its own name |
+| F5 | Reachable statuses inference cannot see were missing | `#[Response]` added where the code raises them: login 403/429, password reset 400, register 404, resend 403, test-mail 502, cancel-email-change 403, verify-change 400 |
+| F6 | Password reset, email verify and notification channels had no API test | `tests/Feature/Api/V1/Auth/{PasswordResetApiTest,VerifyEmailApiTest}.php` and `Notification/NotificationSettingsApiTest.php` |
+| F7 | `PATCH /users/{id}` and cancel-email-change had no test | two cases in `UserCrudApiTest` |
+| F8 | `UserFactory` could repeat a username, making unrelated tests flaky | `fake()->unique()->userName()` |
+
+No route, status code or success shape changed. The two new document gates are
+`test_every_documented_error_response_publishes_the_contract_envelope` and
+`test_every_gated_operation_states_its_requirement`.
+
+**Measured (2026-10-24):** full suite **2206 passed / 7797 assertions** (397s),
+`vendor/bin/pint --test` clean. `scramble:analyze` still reports only the known
+`HealthCheckResource` warning (the resource wraps an array, so there is no model
+type to infer and naming a fictional one would be worse).
 
 ---
 

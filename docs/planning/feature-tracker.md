@@ -40,8 +40,8 @@ capability, two addresses).
 | 29 | Storvia Vantage (queue monitor) | ✅ | — | — | features/monitoring.md | done — `storviaio/vantage ^0.1.25` (MONITOR-003, ADR-022; installed 2026-10-16, reversing the Phase 11 D-1 deferral). Six app-declared web routes behind `feature:vantage` + `can:queues.view` (`can:queues.retry` on the retry POST only); `viewVantage` overridden to `queues.view`; `store_payload=false` with retry reading `failed_jobs`. Pinned by `VantagePermissionGateTest` (7) + `VantageRetryTest` (3) |
 | 30 | Queue (DB + Redis compat) | — | — | — | infrastructure/queue.md | done |
 | 31 | Cache abstraction | — | — | — | infrastructure/cache.md | done |
-| 32 | API v1 (versioned) | — | ✅ | — | api/api-architecture.md | done |
-| 33 | Scramble API docs | — | — | — | api/documentation.md | done |
+| 32 | API v1 (versioned) | — | ✅ | — | api/api-architecture.md | done — Phase 12 DONE 2026-10-21. Web/API capability parity is pinned by `ChannelParityTest`; the contract checklist and the conformance audit live in `api/api-architecture.md`. The 2026-10-24 post-close audit made the generated document state the real error envelope and each route's `can:`/`feature:` |
+| 33 | Scramble API docs | — | — | — | api/documentation.md | done — `/docs/api` + `/docs/api.json` exist in every deployment (ADR-025), gated by `api_docs_public` (off by default) or `api_docs.view`; the document is exported at deploy and served from `storage/app/openapi.<APP_ENV>.json`. `ApiDocumentationTest` is the drift gate |
 | 34 | Storage abstraction | — | — | — | infrastructure/storage.md | done |
 | 35 | Data retention | — | — | — | operations/retention.md | planned |
 | 36 | Backup/DR | — | — | — | infrastructure/backup-disaster-recovery.md | planned |

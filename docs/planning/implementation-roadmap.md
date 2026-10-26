@@ -173,7 +173,12 @@ email-verification-notice, password-change pages using AdminLTE auth layout.
 - Versioned API routes
 - API resources
 - Documentation (Scramble/API docs)
-- Status: PLANNED
+- Status: **DONE 2026-10-21** — Groups A–E closed, plus the 2026-10-24
+  post-close audit (contract envelope and authorization in the generated
+  document, the `bearerAuth` scheme, module tags, and the three untested
+  endpoints covered). `/docs/api` and `/docs/api.json` are gated by
+  `api_docs_public` / `api_docs.view` and served from the deploy export
+  (ADR-025). See [phase-12-api-v1.md](phase-12-api-v1.md).
 
 ### Phase 13: Security Hardening
 - Security headers (CSP, HSTS, etc.)
