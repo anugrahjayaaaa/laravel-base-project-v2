@@ -333,6 +333,26 @@ notification channels) plus `PATCH /users/{id}` and cancel-email-change now have
 one. The test factory no longer repeats a username. Detail:
 `phase-12-api-v1.md` § *Post-close audit*.
 
+### Phase 13 — Security Hardening
+
+> Breakdown written 2026-10-26, status **PLANNED** — no task started. Groups A, B, D2,
+> E1 and E2 are audit-and-close because the controls shipped earlier (Phase 10's
+> `AddSecurityHeaders`, `VerifyCsrfToken`, the exception envelope, the composite throttle
+> keys); Group C and D1 carry the phase's real work. Five brief-vs-code conflicts are
+> recorded as D-1..D-5 in the phase doc, the load-bearing ones being **no
+> `X-Frame-Options`** (`frame-ancestors 'none'` already answers it) and **no global
+> `'unsafe-eval'`** (scoped to `pulse.*`/`vantage.*` only).
+> The per-task detail (14 tasks, P13-A1..E3) lives in
+> `docs/planning/phase-13-security-hardening.md`; this table is the summary only.
+
+| ID | Task | Phase | Priority | Depends On | Status |
+|----|------|-------|----------|-----------|--------|
+| P13-A | CSP & security headers — verify `AddSecurityHeaders`, unescaped-output/nonce audit, extend `SecurityHeadersTest` | 13 | P0 | — | PLANNED |
+| P13-B | CSRF — verify strict middleware, `@csrf`/meta-token/AJAX audit, new `CsrfProtectionTest` | 13 | P0 | P13-A | PLANNED |
+| P13-C | CORS — ship `config/cors.php` default-deny from `CORS_ALLOWED_ORIGINS`, new `CorsPolicyTest` | 13 | P0 | P13-B | PLANNED |
+| P13-D | Input safety — output-sink audit, fillable/whitelist sweep, new `InputSanitizationTest` | 13 | P0 | P13-C | PLANNED |
+| P13-E | Disclosure & limits — HTML error masking, composite-key 429 proof, `--filter=Security` + full suite run | 13 | P0 | P13-D | PLANNED |
+
 ## Full Task List (JSON for AI parsing)
 
 ```json[

@@ -31,6 +31,9 @@
 for what is open: rows 0–2, 4–5 and 7–11 DONE (Phase 10 Audit Trail closed 2026-10-13, Phase 11
 Monitoring/Observability closed 2026-10-16), row 12 is DONE — capability gap audit, the
 five-group breakdown, and the post-review fixes, closed 2026-10-21; rows 3 and 6 still IN PROGRESS, rows 13–17 PLANNED.
+**Phase 13 breakdown written 2026-10-26** — 14 tasks in five groups (A headers/CSP,
+B CSRF, C CORS, D input safety, E disclosure/limits); no task started, no branch
+created. Detail: `docs/planning/phase-13-security-hardening.md`.
 `feature/phase-11-monitoring-observability` carries Phase 11 (Groups A–F, full suite 2078/7265,
 Pint clean) — committed through the Vantage queue monitor
 (MONITOR-003, added 2026-10-16, reversing the D-1 deferral), ADR-023, and the §15 security
