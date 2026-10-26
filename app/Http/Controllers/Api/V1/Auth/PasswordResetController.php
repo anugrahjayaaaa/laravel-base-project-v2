@@ -6,6 +6,8 @@ use App\Actions\V1\Auth\AuthResetPasswordAction;
 use App\Auth\LoginThrottle;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\V1\Auth\PasswordResetRequest;
+use App\Support\ApiError;
+use Dedoc\Scramble\Attributes\Response;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Password;
 
@@ -22,6 +24,7 @@ class PasswordResetController extends Controller
      * @param  AuthResetPasswordAction  $action
      * @return JsonResponse
      */
+    #[Response(status: 400, type: ApiError::DOC_TYPE)]
     public function __invoke(
         PasswordResetRequest $request,
         LoginThrottle $throttle,

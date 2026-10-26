@@ -29,6 +29,8 @@ class LoginController extends Controller
      * @return JsonResponse
      */
     #[Response(status: 401, type: ApiError::DOC_TYPE)]
+    #[Response(status: 403, type: ApiError::DOC_TYPE)]
+    #[Response(status: 429, type: ApiError::DOC_TYPE)]
     public function __invoke(
         LoginRequest $request,
         LoginThrottle $throttle,

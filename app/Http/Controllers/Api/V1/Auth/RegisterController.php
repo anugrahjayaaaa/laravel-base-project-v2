@@ -6,6 +6,8 @@ use App\Actions\V1\User\UserCreateAction;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\V1\Auth\RegisterRequest;
 use App\Models\SystemSetting;
+use App\Support\ApiError;
+use Dedoc\Scramble\Attributes\Response;
 use Illuminate\Http\JsonResponse;
 
 /**
@@ -24,6 +26,7 @@ class RegisterController extends Controller
      * @param  UserCreateAction  $action
      * @return JsonResponse
      */
+    #[Response(status: 404, type: ApiError::DOC_TYPE)]
     public function __invoke(RegisterRequest $request, UserCreateAction $action): JsonResponse
     {
         // A disabled feature is a 404 on the web, where the route has no meaning

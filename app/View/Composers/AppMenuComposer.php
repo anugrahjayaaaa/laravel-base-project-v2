@@ -252,7 +252,7 @@ class AppMenuComposer
                     ],
                     // Scramble generates this page itself, with its own
                     // full-page layout — hence `target`, same as Pulse. The
-                    // route only exists while the dev-only package is installed
+                    // route exists whenever the package is installed
                     // (`Route::has` drops the item otherwise), and `viewApiDocs`
                     // is the same gate the route consults: public mode shows it
                     // to everyone, private mode to `api_docs.view` holders.

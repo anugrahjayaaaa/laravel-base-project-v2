@@ -13,6 +13,8 @@ use App\Observers\UserObserver;
 use App\Services\PasswordExpiry;
 use App\Support\FeatureCatalog;
 use App\Support\MorphMap;
+use App\Support\OpenApi\ApiErrorResponseExtension;
+use App\Support\OpenApi\AuthorizationDescriptionExtension;
 use App\Support\OpenApi\ExportedDocument;
 use App\Support\Vantage\FailedJobPayloadRestorer;
 use App\View\Composers\AccountOptionsComposer;
@@ -20,6 +22,8 @@ use App\View\Composers\AppMenuComposer;
 use App\View\Composers\PasswordStrengthComposer;
 use Dedoc\Scramble\CacheableGenerator;
 use Dedoc\Scramble\Generator;
+use Dedoc\Scramble\Scramble;
+use Dedoc\Scramble\Support\RouteInfo;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Queue\Events\Looping;
@@ -31,6 +35,7 @@ use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Str;
 use Illuminate\View\View;
 use Laravel\Pennant\Feature;
 use Laravel\Pulse\Facades\Pulse;
@@ -655,5 +660,31 @@ class AppServiceProvider extends ServiceProvider
             $app->make(Generator::class),
             ExportedDocument::path(),
         ));
+
+        // The document's two corrections to what Scramble infers on its own:
+        // the project envelope for the statuses the package answers with
+        // `{message}`, and the route's `can:`/`feature:` in the description.
+        // See each class for what was wrong without it.
+        Scramble::registerExtensions([
+            ApiErrorResponseExtension::class,
+            AuthorizationDescriptionExtension::class,
+        ]);
+
+        // Tags are the docs sidebar's grouping, and Scramble derives one per
+        // controller class — 21 of them, so `LogoutAll` and `VerifyEmail` sat
+        // beside `Users` as peers. The module folder under `Api\V1` is the
+        // grouping a reader already has from `routes/api.php`; a controller
+        // outside a folder (`ProfileController`) keeps its own name.
+        Scramble::resolveTagsUsing(static function (RouteInfo $routeInfo): array {
+            $class = $routeInfo->route->getControllerClass();
+
+            if ($class === null) {
+                return [];
+            }
+
+            $segments = explode('\\', Str::after($class, 'Controllers\\Api\\V1\\'));
+
+            return [count($segments) > 1 ? $segments[0] : Str::before(class_basename($class), 'Controller')];
+        });
     }
 }

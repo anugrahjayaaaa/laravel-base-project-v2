@@ -2,6 +2,7 @@
 
 use App\Http\Middleware\RestrictApiDocsAccess;
 use Dedoc\Scramble\SecurityDocumentation\MiddlewareAuthSecurityStrategy;
+use Dedoc\Scramble\Support\Generator\SecurityScheme;
 
 return [
     /*
@@ -58,7 +59,7 @@ return [
         'description' => 'Versioned JSON API. Authenticate with a Sanctum bearer token (`Authorization: Bearer <token>`). '
             .'Every mutation runs through the same Action as the web channel and is written to the audit trail. '
             .'Errors share one envelope, `{message, code, meta}` — see the error contract. '
-            .'Every route is rate limited: a refused request answers 429 `RATE_LIMITED` with the wait in the `Retry-After` header.',
+            .'A throttled route answers 429 `RATE_LIMITED` with the wait in the `Retry-After` header.',
     ],
 
     'ui' => [
@@ -193,5 +194,13 @@ return [
      *     ],
      * ],
      */
-    'security_strategy' => MiddlewareAuthSecurityStrategy::class,
+    'security_strategy' => [
+        MiddlewareAuthSecurityStrategy::class,
+        [
+            'middleware' => ['auth', 'auth:*'],
+            // Named rather than the default `http`: the scheme name is what the
+            // docs UI prints next to the Authorize button.
+            'scheme' => SecurityScheme::http('bearer')->as('bearerAuth'),
+        ],
+    ],
 ];

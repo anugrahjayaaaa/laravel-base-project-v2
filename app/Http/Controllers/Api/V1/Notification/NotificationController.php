@@ -10,6 +10,7 @@ use App\Http\Requests\V1\Notification\SendTestMailRequest;
 use App\Http\Requests\V1\Notification\UpdateMailSettingsRequest;
 use App\Http\Requests\V1\Notification\UpdateNotificationChannelsRequest;
 use App\Models\SystemSetting;
+use App\Support\ApiError;
 use Dedoc\Scramble\Attributes\Response;
 use Illuminate\Http\JsonResponse;
 
@@ -123,6 +124,7 @@ class NotificationController extends Controller
      * branch on the code instead of parsing the sentence; the exception itself
      * went to the log.
      */
+    #[Response(status: 502, type: ApiError::DOC_TYPE)]
     public function sendTestMail(
         SendTestMailRequest $request,
         NotificationTestMailSendAction $action

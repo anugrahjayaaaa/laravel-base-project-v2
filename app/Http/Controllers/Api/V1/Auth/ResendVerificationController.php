@@ -25,6 +25,7 @@ class ResendVerificationController extends Controller
      * @param  AuthResendVerificationAction  $action
      * @return JsonResponse
      */
+    #[Response(status: 403, type: ApiError::DOC_TYPE)]
     #[Response(status: 429, type: ApiError::DOC_TYPE)]
     #[Response(status: 500, type: ApiError::DOC_TYPE)]
     public function __invoke(ResendVerificationRequest $request, AuthResendVerificationAction $action): JsonResponse

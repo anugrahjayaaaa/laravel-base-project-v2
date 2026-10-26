@@ -248,6 +248,7 @@ class UserController extends Controller
      * @param  User  $user
      * @return JsonResponse
      */
+    #[Response(status: 403, type: ApiError::DOC_TYPE)]
     public function cancelEmailChange(Request $request, User $user): JsonResponse
     {
         // Same rule as the web controller: own account, or users.update. Same
@@ -277,6 +278,7 @@ class UserController extends Controller
      * @return JsonResponse
      */
     #[QueryParameter(name: 'token', type: 'string', required: false, description: 'Email-change token from the signed link.')]
+    #[Response(status: 400, type: ApiError::DOC_TYPE)]
     #[Response(status: 403, type: ApiError::DOC_TYPE)]
     public function verifyEmailChange(VerifyEmailChangeRequest $request, User $user): JsonResponse
     {
