@@ -230,15 +230,15 @@ class ContentSecurityPolicyTest extends TestCase
     }
 
     /**
-     * The policy is a web-page answer. A JSON response and a streamed file carry
-     * no document for it to govern, and a header on the file response is the
-     * classic way to corrupt the stream.
+     * The policy rides on JSON too. It governs no document there, so it is
+     * inert — sent because a uniform header set is one answer to "is this
+     * response hardened", not two.
      */
-    public function test_the_api_carries_no_policy(): void
+    public function test_the_api_carries_the_policy_too(): void
     {
         $this->getJson('/api/v1/health')
             ->assertOk()
-            ->assertHeaderMissing('Content-Security-Policy');
+            ->assertHeader('Content-Security-Policy');
     }
 
     /**
