@@ -190,10 +190,14 @@ outside its whitelist.
 **483 passed / 2005 assertions**; Pint clean on the new file. The full suite was not run
 here — Group E3 owns the recount and measured 2241/8034 below.
 
-**Known shapes (reported, not changed):** `RolesChangedNotification` interpolates role
-names into Markdown body lines, and `StoreRoleRequest` permits newlines in a name — a
-reader of the role-change mail can be shown fabricated lines. Requires `roles.create`, so
-the reach is an admin misleading another admin; severity low. Both Group C findings are
+**Known shapes:** `RolesChangedNotification` interpolated role names into Markdown body
+lines, and `StoreRoleRequest` permits newlines in a name — a reader of the role-change
+mail could be shown fabricated lines. **Fixed 2026-10-27** at the sink: `lines()`
+flattens every line break before the array becomes rendered lines, so a name cannot add
+one and no write path has to be trusted. Pinned by
+`NotificationPentestTest::test_a_role_name_cannot_fabricate_a_mail_line`. The residual
+ceiling is Markdown syntax inside a name (not line breaks) — recorded in the method's
+`shortcut:` comment. Both Group C findings are
 **fixed 2026-10-27**: `X-Request-ID` is now in `allowed_headers` (the header the
 middleware reads) and `CorsPolicyTest` pins it; `CORS_ALLOWED_ORIGINS=*` is honoured
 only uncredentialed — the derived flag is false whenever the list contains `*` — so the
@@ -236,7 +240,7 @@ that path took the `$status === 403 ? FORBIDDEN : UNAUTHENTICATED` branch. **Fix
 `CompositeRateLimitKeyTest` asserts both. The `SecurityAuditTest` `echo "DEBUG Request …"`
 lines from an earlier investigation were removed 2026-10-27, so the suite output is clean.
 Group C's two findings are fixed 2026-10-27 (`X-Request-ID` accepted; `*` uncredentialed
-only).
+only), and the role-name newline finding is fixed at the `lines()` sink.
 
 ---
 
@@ -248,6 +252,7 @@ only).
 | `tests/Feature/Security/CsrfProtectionTest.php` (new) | B | 419 per verb, JSON 419 code, meta↔token, empty `except` |
 | `tests/Feature/Security/CorsPolicyTest.php` (new) | C | preflight allowed/denied, `Vary: Origin`, credentials never `*`, web routes clean, `*` honoured uncredentialed |
 | `tests/Feature/Security/InputSanitizationTest.php` (new) | D | 6 cases — index/show escaping of a stored hostile name, mass-assignment refusal on profile and admin update, web sort/direction refusal, undeclared query key absent from the query log, inbox ignoring sort/filter keys |
+| `tests/Feature/Security/NotificationPentestTest.php` (extend) | D | a role name cannot fabricate a mail line |
 | `tests/Feature/Security/SecurityAuditTest.php` (extend) | E | HTML 500 renders the error page with no exception class, message, source path, `Stack trace` or `vendor/` |
 | `tests/Feature/Security/CompositeRateLimitKeyTest.php` (new) | E | 4 cases — login keyed on identifier + IP (second IP = own bucket), second identifier from one IP = own bucket, `reset-password` 429 on the fourth, `email-verification` 429 on the sixth |
 
