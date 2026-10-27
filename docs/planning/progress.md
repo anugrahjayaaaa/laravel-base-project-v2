@@ -33,7 +33,11 @@ Monitoring/Observability closed 2026-10-16), row 12 is DONE — capability gap a
 five-group breakdown, and the post-review fixes, closed 2026-10-21; rows 3 and 6 still IN PROGRESS, rows 13–17 PLANNED.
 **Phase 13 breakdown written 2026-10-26** — 14 tasks in five groups (A headers/CSP,
 B CSRF, C CORS, D input safety, E disclosure/limits). **Group A DONE** (implemented
-2026-10-26, owner-reviewed 2026-10-27; `--filter=Security` 94 passed); Groups B–E not
+2026-10-26, owner-reviewed 2026-10-27; `--filter=Security` 94 passed). **Group B
+DONE** (implemented and owner-reviewed 2026-10-27): the CSRF middleware now replaces
+the framework's `PreventRequestForgery` in the `web` group (appending had put `auth`
+ahead of it), and the 419 branch matches the prepared `HttpException` so
+`CSRF_TOKEN_MISMATCH` is reachable; `CsrfProtectionTest` 10 passed. Groups C–E not
 started. Detail: `docs/planning/phase-13-security-hardening.md`.
 `feature/phase-11-monitoring-observability` carries Phase 11 (Groups A–F, full suite 2078/7265,
 Pint clean) — committed through the Vantage queue monitor

@@ -335,8 +335,8 @@ one. The test factory no longer repeats a username. Detail:
 
 ### Phase 13 — Security Hardening
 
-> Breakdown written 2026-10-26, status **IN PROGRESS** — Group A **DONE** (owner-reviewed
-> 2026-10-27); Groups B–E not started. Groups A, B, D2,
+> Breakdown written 2026-10-26, status **IN PROGRESS** — Groups A and B **DONE**
+> (owner-reviewed 2026-10-27); Groups C–E not started. Groups A, B, D2,
 > E1 and E2 are audit-and-close because the controls shipped earlier (Phase 10's
 > `AddSecurityHeaders`, `VerifyCsrfToken`, the exception envelope, the composite throttle
 > keys); Group C and D1 carry the phase's real work. Five brief-vs-code conflicts are
@@ -349,7 +349,7 @@ one. The test factory no longer repeats a username. Detail:
 | ID | Task | Phase | Priority | Depends On | Status |
 |----|------|-------|----------|-----------|--------|
 | P13-A | CSP & security headers — verify `AddSecurityHeaders`, unescaped-output/nonce audit, extend `SecurityHeadersTest` | 13 | P0 | — | DONE — implemented 2026-10-26, owner-reviewed 2026-10-27; 94 security tests green; detail in `phase-13-security-hardening.md` § Group A |
-| P13-B | CSRF — verify strict middleware, `@csrf`/meta-token/AJAX audit, new `CsrfProtectionTest` | 13 | P0 | P13-A | PLANNED |
+| P13-B | CSRF — verify strict middleware, `@csrf`/meta-token/AJAX audit, new `CsrfProtectionTest` | 13 | P0 | P13-A | DONE — implemented 2026-10-27, owner-reviewed 2026-10-27; fixed the group slot (was appended, `auth` sorted above it) and the dead 419 branch; `CsrfProtectionTest` 10/127 plus 259 adjacent tests green; detail in `phase-13-security-hardening.md` § Group B |
 | P13-C | CORS — ship `config/cors.php` default-deny from `CORS_ALLOWED_ORIGINS`, new `CorsPolicyTest` | 13 | P0 | P13-B | PLANNED |
 | P13-D | Input safety — output-sink audit, fillable/whitelist sweep, new `InputSanitizationTest` | 13 | P0 | P13-C | PLANNED |
 | P13-E | Disclosure & limits — HTML error masking, composite-key 429 proof, `--filter=Security` + full suite run | 13 | P0 | P13-D | PLANNED |

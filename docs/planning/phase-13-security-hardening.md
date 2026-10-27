@@ -1,6 +1,6 @@
 # Phase 13 — Security Hardening
 
-> Date: 2026-10-26 | Status: **IN PROGRESS** — Group A **DONE** (owner-reviewed 2026-10-27); Groups B–E not started | Branch: `feature/phase-13-security-hardening`
+> Date: 2026-10-26 | Status: **IN PROGRESS** — Groups A and B **DONE** (owner-reviewed 2026-10-27); Groups C–E not started | Branch: `feature/phase-13-security-hardening`
 > Purpose: close the remaining browser-facing and input-facing attack surface, and turn
 > the controls that already shipped into a suite that fails when one of them regresses.
 > Dependency chain: **A → B → C → D → E**. A and B are verification-heavy because the
@@ -102,17 +102,33 @@ scan, so prose about the directive does not have to be allowlisted.
 
 > Depends on: A. Blocks: C (both are request-origin decisions).
 
-Status: **PLANNED**. `VerifyCsrfToken` already refuses to skip under test, which is the
-load-bearing half.
+Status: **DONE** — implemented 2026-10-27, owner-reviewed and closed 2026-10-27. The
+control shipped long ago; the group found
+that it was not in the slot it claimed to be in. `VerifyCsrfToken` was appended to the
+`web` group, which puts it after `SubstituteBindings`; priority sorting then moves `auth`
+above it, so an unauthenticated write never reached the check and answered 302 (HTML) or
+401 (JSON). It now **replaces** the framework's `PreventRequestForgery` in that group —
+same slot, ahead of binding and route auth, and one execution per request instead of two.
+
+The second defect was in the exception handler: the `TokenMismatchException` branch could
+never run, because Laravel's `prepareException()` rewrites it to `HttpException(419)`
+before renderables are called. The documented `CSRF_TOKEN_MISMATCH` envelope was therefore
+unreachable. The branch now matches the 419 status: JSON gets the envelope, a form
+submission gets the framework's 419 page (it was being handed JSON it could not read).
 
 | ID | Task | Pri | Depends On | Status |
 |----|------|-----|-----------|--------|
-| P13-B1 | **Verify the strict-CSRF alignment.** `bootstrap/app.php` appends `VerifyCsrfToken` to the `web` group; `runningUnitTests()` returns `false`; a `TokenMismatchException` renders `419` with `ApiError` `CSRF_TOKEN_MISMATCH` for JSON and the 419 page for HTML. Confirm both branches, and confirm `api/*` (Sanctum bearer) is not inside the CSRF group. No change to the framework's middleware order | P0 | P13-A1 | PLANNED |
-| P13-B2 | **Blade form & AJAX audit.** `@csrf` present in every `<form method="POST">` (method-spoofed `PUT`/`PATCH`/`DELETE` included); the three layouts carry `<meta name="csrf-token">`; every `fetch`/`XHR` mutation in `resources/js` reads that meta tag or a hidden input, including `<x-ui.confirm-action>`'s payload and the bulk-action bars. A route scan asserts no state-mutating web route lacks a form that posts a token | P0 | P13-B1 | PLANNED |
-| P13-B3 | **`tests/Feature/Security/CsrfProtectionTest.php`.** Web POST/PUT/PATCH/DELETE without a token → 419; with a valid token → the action's own status; JSON request without a token → 419 with the code; the meta tag equals `csrf_token()`; the exception list in `VerifyCsrfToken::except` stays empty. Replaces nothing — `SecurityAuditTest`'s single-form probe stays as the smoke test | P0 | P13-B2 | PLANNED |
+| P13-B1 | **Verify the strict-CSRF alignment.** `bootstrap/app.php` appends `VerifyCsrfToken` to the `web` group; `runningUnitTests()` returns `false`; a `TokenMismatchException` renders `419` with `ApiError` `CSRF_TOKEN_MISMATCH` for JSON and the 419 page for HTML. Confirm both branches, and confirm `api/*` (Sanctum bearer) is not inside the CSRF group. No change to the framework's middleware order | P0 | P13-A1 | DONE — registration fixed: replaced `PreventRequestForgery` in the group (was appended, so `auth` sorted above it); 419 branch now matches the prepared `HttpException`; HTML → 419 page, JSON → envelope |
+| P13-B2 | **Blade form & AJAX audit.** `@csrf` present in every `<form method="POST">` (method-spoofed `PUT`/`PATCH`/`DELETE` included); the three layouts carry `<meta name="csrf-token">`; every `fetch`/`XHR` mutation in `resources/js` reads that meta tag or a hidden input, including `<x-ui.confirm-action>`'s payload and the bulk-action bars. A route scan asserts no state-mutating web route lacks a form that posts a token | P0 | P13-B1 | DONE — 26 POST forms, all carry `@csrf` (four method-spoofed ones included); three layouts carry the meta tag and it equals `csrf_token()`; no AJAX mutation exists (the three inline pollers are GET), and the shared confirmation modal — the submit surface for button-driven actions — carries the token. Scan for "every route has a form" was implemented as the two invariants that can be proven: every mutating route runs the `web` group, every mutating form carries a token |
+| P13-B3 | **`tests/Feature/Security/CsrfProtectionTest.php`.** Web POST/PUT/PATCH/DELETE without a token → 419; with a valid token → the action's own status; JSON request without a token → 419 with the code; the meta tag equals `csrf_token()`; the exception list in `VerifyCsrfToken::except` stays empty. Replaces nothing — `SecurityAuditTest`'s single-form probe stays as the smoke test | P0 | P13-B2 | DONE — 10 tests / 127 assertions: four verbs, token-present, both 419 branches, meta↔session, three layouts, form scan, AJAX scan, route scan incl. `api/*` not in `web`, empty `except` |
 
 **Gate B:** every state-mutating web route answers 419 without a token and works with
 one, JSON gets a machine-readable 419, and the `except` array is still empty.
+
+**Measured (2026-10-27):** `CsrfProtectionTest` **10 passed / 127 assertions**;
+`tests/Feature/Security` + `RbacPentestTest` + `FeatureFlagPentestTest` **126 passed /
+555 assertions**; `tests/Feature/Auth` **133 passed / 353 assertions**; Pint clean on the
+changed PHP files.
 
 ---
 
