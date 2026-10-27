@@ -233,10 +233,10 @@ here — groups A–E all DONE, and `progress.md` § Test Status carries this ru
 that path took the `$status === 403 ? FORBIDDEN : UNAUTHENTICATED` branch. **Fixed
 2026-10-27**: the action now returns `lockedSeconds` at the top level, the controller's
 429 answers `RATE_LIMITED` + `retry_after_seconds` as `error-contract.md` documents, and
-`CompositeRateLimitKeyTest` asserts both. Also open:
-`SecurityAuditTest` still carries `echo "DEBUG Request …"` lines from an earlier
-investigation, which pollute the suite output. Group C's two findings are fixed
-2026-10-27 (`X-Request-ID` accepted; `*` uncredentialed only).
+`CompositeRateLimitKeyTest` asserts both. The `SecurityAuditTest` `echo "DEBUG Request …"`
+lines from an earlier investigation were removed 2026-10-27, so the suite output is clean.
+Group C's two findings are fixed 2026-10-27 (`X-Request-ID` accepted; `*` uncredentialed
+only).
 
 ---
 

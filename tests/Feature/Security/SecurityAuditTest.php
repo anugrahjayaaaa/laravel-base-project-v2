@@ -102,7 +102,6 @@ class SecurityAuditTest extends TestCase
                 'password' => 'wrong',
             ]);
 
-            echo "\nDEBUG Request " . ($i + 1) . ": status=" . $resp->status() . " body=" . $resp->getContent();
             $resp->assertStatus(401);
         }
 
@@ -111,7 +110,6 @@ class SecurityAuditTest extends TestCase
             'password' => 'wrong',
         ]);
 
-        echo "\nDEBUG Request 6: status=" . $resp->status() . " body=" . $resp->getContent();
         $resp->assertStatus(429);
     }
 
