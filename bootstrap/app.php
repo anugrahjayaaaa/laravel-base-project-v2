@@ -43,10 +43,10 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->appendToGroup('web', VerifyCsrfToken::class);
 
         // Appended to GLOBAL middleware, not to a group: these are decisions
-        // about this origin — HSTS, nosniff, referrer and permissions apply to
-        // the JSON API and to the streamed CSV exactly as they apply to a page.
-        // The CSP itself stays HTML-only inside the class, which is why moving
-        // the registration here does not put a policy on JSON.
+        // about this origin — HSTS, nosniff, referrer, permissions and the CSP
+        // apply to the JSON API and to the streamed CSV exactly as they apply to
+        // a page. The policy is inert where there is no document, but it is sent
+        // anyway so "is this response hardened" has one answer.
         //
         // Registered once and only here. A second registration (this plus the
         // web group) would run the class twice per request: the outer run

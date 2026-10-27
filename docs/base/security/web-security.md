@@ -42,11 +42,12 @@ value above when that decision is made.
 ## Content-Security-Policy
 
 `App\Http\Middleware\AddSecurityHeaders`, appended to global middleware, sets the
-policy **only** on `text/html` responses — on JSON there is no document for a
-policy to govern, and on a file response it would govern nothing. The four
-response headers above are written on every response including that one, and
-that is safe: they are set here, before the response is returned, which is
-before a `StreamedResponse` starts sending. A header set after output has begun
+policy on **every** response, the JSON API and the streamed CSV included. It only
+governs a document, so on those it is inert — it is sent anyway because a header
+set that changes with `Content-Type` is one a proxy or a scanner has to
+special-case, and "is this response hardened" should have one answer. Setting it
+here is safe for a file response: this runs before the response is returned, which
+is before a `StreamedResponse` starts sending. A header set after output has begun
 is what corrupts a stream. The nonce is shared on every request and read only
 where a view renders.
 
