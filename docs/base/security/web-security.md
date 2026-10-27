@@ -145,6 +145,10 @@ View May Contain), with the self-check greps for views the test does not cover.
 - Laravel's built-in CSRF tokens via `VerifyCsrfToken` middleware.
 - API routes use `api` middleware group (stateless) or Sanctum SPA tokens.
 - Web routes require CSRF token for all state-changing requests.
+- A missing or stale token answers **419**: the framework's error page for a form
+  submission, the `CSRF_TOKEN_MISMATCH` envelope for a JSON caller. The
+  middleware's `except` list stays empty, and `runningUnitTests()` returns `false`
+  so the check is enforced in the suite too.
 
 ## CORS Policy
 

@@ -12,8 +12,8 @@ use App\Support\ApiError;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Http\Request;
-use Illuminate\Session\TokenMismatchException;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Auth\AuthenticationException;
@@ -39,8 +39,11 @@ return Application::configure(basePath: dirname(__DIR__))
         // Generate and propagate correlation/request ID on every request.
         $middleware->append(GenerateRequestCorrelationId::class);
 
-        // Append custom CSRF middleware to web group (enforces CSRF in tests).
-        $middleware->appendToGroup('web', VerifyCsrfToken::class);
+        // Replace the framework's class in the web group; do not append a second
+        // one. Appended, ours lands after SubstituteBindings, and priority
+        // sorting then moves `auth` above it — an unauthenticated PUT answered
+        // 302 and the check never ran. Same slot also means it runs once.
+        $middleware->replaceInGroup('web', PreventRequestForgery::class, VerifyCsrfToken::class);
 
         // Appended to GLOBAL middleware, not to a group: these are decisions
         // about this origin — HSTS, nosniff, referrer, permissions and the CSP
@@ -80,7 +83,16 @@ return Application::configure(basePath: dirname(__DIR__))
                 ? $extra + ['debug' => ['exception' => $e::class, 'message' => $e->getMessage()]]
                 : $extra;
 
-            if ($e instanceof TokenMismatchException) {
+            // `prepareException()` rewrites TokenMismatchException to a plain 419
+            // HttpException BEFORE renderables run, so matching the original class
+            // never fired and this envelope was unreachable. Match the status.
+            if ($e instanceof HttpException && $e->getStatusCode() === 419) {
+                // A form submission gets the framework's 419 page; only a JSON
+                // caller gets the envelope. The page is what a browser can read.
+                if (! $request->is('api/*') && ! $request->expectsJson()) {
+                    return null;
+                }
+
                 return ApiError::make('CSRF token mismatch.', 'CSRF_TOKEN_MISMATCH', 419, $detail());
             }
 
