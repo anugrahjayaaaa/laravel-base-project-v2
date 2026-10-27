@@ -335,7 +335,8 @@ one. The test factory no longer repeats a username. Detail:
 
 ### Phase 13 — Security Hardening
 
-> Breakdown written 2026-10-26, status **PLANNED** — no task started. Groups A, B, D2,
+> Breakdown written 2026-10-26, status **IN PROGRESS** — Group A **DONE** (owner-reviewed
+> 2026-10-27); Groups B–E not started. Groups A, B, D2,
 > E1 and E2 are audit-and-close because the controls shipped earlier (Phase 10's
 > `AddSecurityHeaders`, `VerifyCsrfToken`, the exception envelope, the composite throttle
 > keys); Group C and D1 carry the phase's real work. Five brief-vs-code conflicts are
@@ -347,7 +348,7 @@ one. The test factory no longer repeats a username. Detail:
 
 | ID | Task | Phase | Priority | Depends On | Status |
 |----|------|-------|----------|-----------|--------|
-| P13-A | CSP & security headers — verify `AddSecurityHeaders`, unescaped-output/nonce audit, extend `SecurityHeadersTest` | 13 | P0 | — | PLANNED |
+| P13-A | CSP & security headers — verify `AddSecurityHeaders`, unescaped-output/nonce audit, extend `SecurityHeadersTest` | 13 | P0 | — | DONE — implemented 2026-10-26, owner-reviewed 2026-10-27; 94 security tests green; detail in `phase-13-security-hardening.md` § Group A |
 | P13-B | CSRF — verify strict middleware, `@csrf`/meta-token/AJAX audit, new `CsrfProtectionTest` | 13 | P0 | P13-A | PLANNED |
 | P13-C | CORS — ship `config/cors.php` default-deny from `CORS_ALLOWED_ORIGINS`, new `CorsPolicyTest` | 13 | P0 | P13-B | PLANNED |
 | P13-D | Input safety — output-sink audit, fillable/whitelist sweep, new `InputSanitizationTest` | 13 | P0 | P13-C | PLANNED |

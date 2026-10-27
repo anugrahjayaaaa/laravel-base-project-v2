@@ -32,8 +32,9 @@ for what is open: rows 0–2, 4–5 and 7–11 DONE (Phase 10 Audit Trail closed
 Monitoring/Observability closed 2026-10-16), row 12 is DONE — capability gap audit, the
 five-group breakdown, and the post-review fixes, closed 2026-10-21; rows 3 and 6 still IN PROGRESS, rows 13–17 PLANNED.
 **Phase 13 breakdown written 2026-10-26** — 14 tasks in five groups (A headers/CSP,
-B CSRF, C CORS, D input safety, E disclosure/limits); no task started, no branch
-created. Detail: `docs/planning/phase-13-security-hardening.md`.
+B CSRF, C CORS, D input safety, E disclosure/limits). **Group A DONE** (implemented
+2026-10-26, owner-reviewed 2026-10-27; `--filter=Security` 94 passed); Groups B–E not
+started. Detail: `docs/planning/phase-13-security-hardening.md`.
 `feature/phase-11-monitoring-observability` carries Phase 11 (Groups A–F, full suite 2078/7265,
 Pint clean) — committed through the Vantage queue monitor
 (MONITOR-003, added 2026-10-16, reversing the D-1 deferral), ADR-023, and the §15 security
@@ -341,7 +342,7 @@ None — no implementation has started yet.
 
 ## Test Status
 
-**2206 passed / 7797 assertions** (2026-10-24, `feature/phase-12-api-v1` — measured after the post-close document audit F1–F8, on the tree that also carries the inbox pagination, the `paginationFor()` consolidation and ADR-025's deployed OpenAPI export). `vendor/bin/pint --test` passes across the whole tree. PHPUnit 12, `test_` prefix, SQLite
+**2208 passed / 7805 assertions** (2026-10-26, `feature/phase-13-security-hardening` — measured after Phase 13 Group A: the `{!! !!}` allowlist and the frame-protection pin added two tests to `SecurityHeadersTest`; baseline 2206/7797 on 2026-10-24). `vendor/bin/pint --test` passes across the whole tree. PHPUnit 12, `test_` prefix, SQLite
 `:memory:`, 5 intentionally assertion-free benchmark cases. This is the LIVE figure; the counts inside the phase rows above are dated gate measurements, deliberately left at what each gate actually saw.
 
 The suite is grouped by domain (13 folders under `tests/Feature/`, nothing at the root) and governed by

@@ -1,6 +1,6 @@
 # Phase 13 — Security Hardening
 
-> Date: 2026-10-26 | Status: **PLANNED** | Branch: `feature/phase-13-security-hardening` (not created yet)
+> Date: 2026-10-26 | Status: **IN PROGRESS** — Group A **DONE** (owner-reviewed 2026-10-27); Groups B–E not started | Branch: `feature/phase-13-security-hardening`
 > Purpose: close the remaining browser-facing and input-facing attack surface, and turn
 > the controls that already shipped into a suite that fails when one of them regresses.
 > Dependency chain: **A → B → C → D → E**. A and B are verification-heavy because the
@@ -35,10 +35,11 @@ This phase is mostly an **audit-and-close**, not greenfield. Measured, not assum
 | Control | Evidence | State |
 |---|---|---|
 | Security headers middleware | `App\Http\Middleware\AddSecurityHeaders`, appended **globally** in `bootstrap/app.php` | Present |
-| CSP with per-request nonce | `AddSecurityHeaders::policy()` — `default-src 'self'`, `script-src 'self' 'nonce-…'`, `object-src 'none'`, `base-uri 'self'`, `form-action 'self'`, `frame-ancestors 'none'` | Present, HTML-only |
+| CSP with per-request nonce | `AddSecurityHeaders::policy()` — `default-src 'self'`, `script-src 'self' 'nonce-…'`, `object-src 'none'`, `base-uri 'self'`, `form-action 'self'`, `frame-ancestors 'none'` | Present, every response |
 | HSTS / nosniff / referrer / permissions | Same class, on **every** response incl. JSON and the streamed CSV | Present |
 | Nonce at the call site | `@nonce` Blade directive + shared `$cspNonce` + `Vite::useCspNonce()` (`AppServiceProvider`) | Present — 12 views use it |
-| Header tests | `tests/Feature/Security/SecurityHeadersTest.php` (3), `ContentSecurityPolicyTest.php` (10) | Present |
+| Unescaped output | 5 `{!! !!}` sites: 3 sort icons (`pages/users/index`, constant markup), 2 vendor Pulse emitters | Audited, allowlisted by test |
+| Header tests | `tests/Feature/Security/SecurityHeadersTest.php` (5), `ContentSecurityPolicyTest.php` (10) | Present |
 | Strict CSRF under test | `App\Http\Middleware\VerifyCsrfToken::runningUnitTests()` returns `false` | Present |
 | CSRF form probe | `SecurityAuditTest::test_web_state_changing_forms_require_csrf` | Present — one form |
 | CSRF meta tag | `layouts/app`, `layouts/auth`, `layouts/guest` | Present |
@@ -75,18 +76,25 @@ five places.
 
 > Depends on: nothing. Blocks: B (both concern what the browser is allowed to do).
 
-Status: **PLANNED**. Most of this group shipped with Phase 10; the tasks close the
-remaining coverage gaps rather than the headers themselves.
+Status: **DONE** — implemented 2026-10-26, owner-reviewed and closed 2026-10-27. Most of
+this group shipped with Phase 10; the tasks closed the remaining coverage gaps rather
+than the headers themselves.
 
 | ID | Task | Pri | Depends On | Status |
 |----|------|-----|-----------|--------|
-| P13-A1 | **Verify `AddSecurityHeaders` against the four-header table.** Confirm HSTS, `X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy` and the CSP directives are on HTML, JSON and the streamed CSV; confirm the registration is global and single (a second registration overwrites the nonce after render). No new middleware is created. Update `docs/base/security/web-security.md` only if a value drifted | P0 | — | PLANNED |
-| P13-A2 | **Unescaped-output audit + nonce sweep.** Every `{!! … !!}` in `resources/views` is enumerated and each is either (a) machine-generated markup whose producer escapes, or (b) removed in favour of `{{ }}`. Current count is 7: 4 in `pages/users/index.blade.php` (sort icons/button, produced by view helpers), 2 vendor Pulse, 1 explanatory comment. Confirm every inline `<script>` on app pages carries `@nonce` and none relies on a policy bypass | P0 | P13-A1 | PLANNED |
-| P13-A3 | **Extend `tests/Feature/Security/SecurityHeadersTest.php`.** Add: the nonce in the CSP header equals the nonce on the rendered script tags; a page with an injected `<script>` has no `'unsafe-inline'`; HSTS present on a redirect and on JSON; the `{!! !!}` allowlist is a declared list, so a new one fails until it is justified | P0 | P13-A2 | PLANNED |
+| P13-A1 | **Verify `AddSecurityHeaders` against the four-header table.** Confirm HSTS, `X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy` and the CSP directives are on HTML, JSON and the streamed CSV; confirm the registration is global and single (a second registration overwrites the nonce after render). No new middleware is created. Update `docs/base/security/web-security.md` only if a value drifted | P0 | — | DONE — verified: appended once, globally, in `bootstrap/app.php`; the four origin-header values match `web-security.md` exactly, and the CSP is now sent on every response (inert off-document, uniform by choice). No doc drift |
+| P13-A2 | **Unescaped-output audit + nonce sweep.** Every `{!! … !!}` in `resources/views` is enumerated and each is either (a) machine-generated markup whose producer escapes, or (b) removed in favour of `{{ }}`. Confirm every inline `<script>` on app pages carries `@nonce` and none relies on a policy bypass | P0 | P13-A1 | DONE — `$editBtn` removed (string-built `<a>` → escaped Blade anchor); 5 sites remain, all constant/vendor markup. No executable inline `<script>` lacks `@nonce` (the Scramble dev-tools block is `type="application/json"`) |
+| P13-A3 | **Extend `tests/Feature/Security/SecurityHeadersTest.php`.** Add: the nonce in the CSP header equals the nonce on the rendered script tags; a page with an injected `<script>` has no `'unsafe-inline'`; HSTS present on a redirect and on JSON; the `{!! !!}` allowlist is a declared list, so a new one fails until it is justified | P0 | P13-A2 | DONE — `Permissions-Policy` folded into the shared exact-value set (now pinned on JSON too), `X-Frame-Options` absence pinned, `{!! !!}` allowlist added. Nonce↔script matching and no-`unsafe-inline` were already pinned by `ContentSecurityPolicyTest`, not duplicated |
 
 **Gate A:** every response carries the four origin headers, HTML carries a CSP whose
 nonce matches the document, `'unsafe-eval'` appears on exactly the two vendor route
 groups, and each `{!! !!}` site is either justified in the test's allowlist or gone.
+
+**Measured (2026-10-26):** `php artisan test --filter=Security` → **94 passed / 453
+assertions**, `--filter=SecurityHeadersTest` → 6 passed / 34 assertions,
+`--filter=UserCrudWebTest` → 13 passed, full suite **2208 passed / 7805 assertions**,
+`vendor/bin/pint --test` clean. Blade comments are stripped before the `{!! !!}`
+scan, so prose about the directive does not have to be allowlisted.
 
 ---
 
