@@ -40,8 +40,11 @@ ahead of it), and the 419 branch matches the prepared `HttpException` so
 `CSRF_TOKEN_MISMATCH` is reachable; `CsrfProtectionTest` 10 passed. **Group C DONE**
 (implemented and owner-reviewed 2026-10-27): `config/cors.php` now exists, default-deny
 and scoped to `api/*` with credentials derived from the origin list (D-6);
-`CorsPolicyTest` 8 passed. Groups D–E
-not started. Detail: `docs/planning/phase-13-security-hardening.md`.
+`CorsPolicyTest` 8 passed. **Group D DONE** (implemented and owner-reviewed
+2026-10-27): audit-and-close, no production code changed — the sinks and sort/filter
+whitelists already held, so `InputSanitizationTest` fills only the uncovered gaps
+(6 tests / 31 assertions). Groups E not started.
+Detail: `docs/planning/phase-13-security-hardening.md`.
 `feature/phase-11-monitoring-observability` carries Phase 11 (Groups A–F, full suite 2078/7265,
 Pint clean) — committed through the Vantage queue monitor
 (MONITOR-003, added 2026-10-16, reversing the D-1 deferral), ADR-023, and the §15 security

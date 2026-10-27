@@ -169,19 +169,34 @@ Policy rather than hidden.
 
 > Depends on: C. Blocks: E.
 
-Status: **PLANNED**. Validation and mass-assignment shielding already ship; D1 is the
-decision that a blanket input filter is the wrong fix (D-4) and a targeted audit is the
-right one.
+Status: **DONE** — implemented 2026-10-27, owner-reviewed and closed 2026-10-27. The audit-and-close
+group: the controls were already in the tree, so no production code changed. What was
+missing was proof in one place, and the sweep found the controls in better shape than the
+brief assumed — most of the probes D1/D2 asked for already existed under other names, so
+the new test file fills only the gaps (D-3) instead of restating them.
 
 | ID | Task | Pri | Depends On | Status |
 |----|------|-----|-----------|--------|
-| P13-D1 | **Output-escaping audit + targeted sink hardening.** Enumerate every place user-controlled text reaches a non-Blade sink: audit CSV export (already handled — `CsvInjectionPentestTest`), notification bodies, mail subjects, `data-*` attributes consumed by JS, JSON written into a `<script>` block. Each gets either an escaping call at the sink or a test that proves the sink escapes. **No `SanitizesInput` trait** (D-4); `strip_tags` stays where a specific action already needs it (`UserCreateAction`, `UserUpdateAction`, `GenerateAuditExport`) | P0 | P13-C1 | PLANNED |
-| P13-D2 | **Model & query shielding sweep.** Re-read every `#[Fillable]` / `$fillable`: no `$guarded = []`; sensitive attributes (`is_locked`, `must_change_password`, `password_expires_at`, `roles`, permission names) are writable only by the action that owns the transition, never by a generic update FormRequest. Extend the sort/filter whitelist check to **every** index action — `User`/`Role`/`Permission` have it; audit, notifications, exports must be proven, and an unknown `sort`/`direction` answers 422 (not a silent fallback) where a FormRequest exists | P0 | P13-D1 | PLANNED |
-| P13-D3 | **`tests/Feature/Security/InputSanitizationTest.php`.** Stored XSS payload in `name`/`username` renders escaped on the index and the show page; a `javascript:` URL in a notification payload does not become an anchor; `sort=name;DROP TABLE users` and `direction=sideways` are refused with 422 on each index; `is_locked` and role names submitted in a profile/user update payload are ignored; an unknown filter key is not forwarded to the query builder | P0 | P13-D2 | PLANNED |
+| P13-D1 | **Output-escaping audit + targeted sink hardening.** Enumerate every place user-controlled text reaches a non-Blade sink: audit CSV export (already handled — `CsvInjectionPentestTest`), notification bodies, mail subjects, `data-*` attributes consumed by JS, JSON written into a `<script>` block. Each gets either an escaping call at the sink or a test that proves the sink escapes. **No `SanitizesInput` trait** (D-4); `strip_tags` stays where a specific action already needs it (`UserCreateAction`, `UserUpdateAction`, `GenerateAuditExport`) | P0 | P13-C1 | DONE — audited: `{!! !!}` is the three users-index sort icons plus the two vendor Pulse emitters already on the Group A allowlist; `data-*` payloads go through `@json` (Json-escaped) and the JS helpers `escHtml` before any `innerHTML`; notification `subject`/`lines` render through `{{ }}`; `audit.show` renders properties through `{{ }}`. Every one was already pinned: `SecurityHeadersTest` (allowlist), `NotificationPentestTest` + `NotificationActionLinkTest` (bodies, `javascript:`), `CsvInjectionPentestTest` (export), `AuditPentestTest` (audit values). No sink needed a new escaping call |
+| P13-D2 | **Model & query shielding sweep.** Re-read every `#[Fillable]` / `$fillable`: no `$guarded = []`; sensitive attributes (`is_locked`, `must_change_password`, `password_expires_at`, `roles`, permission names) are writable only by the action that owns the transition, never by a generic update FormRequest. Extend the sort/filter whitelist check to **every** index action — `User`/`Role`/`Permission` have it; audit, notifications, exports must be proven, and an unknown `sort`/`direction` answers 422 (not a silent fallback) where a FormRequest exists | P0 | P13-D1 | DONE — no `$guarded = []` anywhere; `User::$fillable` lists the sensitive columns but every write goes through the owning Action (`UserUpdateAction` delegates status to Activate/Deactivate and roles to `RoleAssignAction`); both profile and admin update consume `validated()` only. Whitelists measured: users `in:created_at,name,email,is_active` + action guard, roles `Rule::in(RoleIndexAction::SORTABLE)`, permissions `SORTABLE`, audit `SORTABLE`/`FILTER_KEYS` shared by viewer and exports. Notifications and the inbox take no sort/filter key at all. Only `orderByRaw` is a constant (`deleted_at IS NOT NULL ASC`). Refusal shape is channel-appropriate: API 422, web 302 with session errors — a web index cannot answer 422 |
+| P13-D3 | **`tests/Feature/Security/InputSanitizationTest.php`.** Stored XSS payload in `name`/`username` renders escaped on the index and the show page; a `javascript:` URL in a notification payload does not become an anchor; `sort=name;DROP TABLE users` and `direction=sideways` are refused with 422 on each index; `is_locked` and role names submitted in a profile/user update payload are ignored; an unknown filter key is not forwarded to the query builder | P0 | P13-D2 | DONE — 6 tests / 31 assertions, gaps only: users index + show escaping of a stored hostile name (existing coverage only proved `strip_tags` at write time), profile and admin update ignoring `is_locked`/`must_change_password`/`password_expires_at`/`roles`, users **web** sort/direction refusal, undeclared query key absent from the query log (text and bindings), inbox ignoring sort/filter keys. The `javascript:` half is `NotificationActionLinkTest`; the rules/permissions sort half is `RbacUiRenderTest`; the API half is `SecurityAuditTest` — cited, not duplicated |
 
 **Gate D:** no user-controlled value reaches a sink without escaping, no sensitive column
 is mass-assignable through a generic FormRequest, and every index refuses a sort column
 outside its whitelist.
+
+**Measured (2026-10-27):** `InputSanitizationTest` **6 passed / 31 assertions**;
+`tests/Feature/Security` + `tests/Feature/User` + `tests/Feature/Notification`
+**483 passed / 2005 assertions**; Pint clean on the new file. The full suite was not run —
+Group E3 owns the recount, so `progress.md` § Test Status still carries 2208/7805.
+
+**Known shapes (reported, not changed):** `RolesChangedNotification` interpolates role
+names into Markdown body lines, and `StoreRoleRequest` permits newlines in a name — a
+reader of the role-change mail can be shown fabricated lines. Requires `roles.create`, so
+the reach is an admin misleading another admin; severity low. Group C's two open findings
+(`X-Request-ID` absent from `allowed_headers` while the middleware reads it;
+`CORS_ALLOWED_ORIGINS=*` would echo any origin with credentials) remain open by the same
+rule: a reported finding is not a mandate.
 
 ---
 
@@ -210,7 +225,7 @@ and the counts are recorded.
 | `tests/Feature/Security/SecurityHeadersTest.php` (extend) | A | nonce↔document match, no `'unsafe-inline'`, HSTS on redirect/JSON, `{!! !!}` allowlist |
 | `tests/Feature/Security/CsrfProtectionTest.php` (new) | B | 419 per verb, JSON 419 code, meta↔token, empty `except` |
 | `tests/Feature/Security/CorsPolicyTest.php` (new) | C | preflight allowed/denied, `Vary: Origin`, credentials never `*`, web routes clean |
-| `tests/Feature/Security/InputSanitizationTest.php` (new) | D | stored/reflected XSS, JSON-in-script sink, sort/direction refusal, mass-assignment, unknown filter |
+| `tests/Feature/Security/InputSanitizationTest.php` (new) | D | 6 cases — index/show escaping of a stored hostile name, mass-assignment refusal on profile and admin update, web sort/direction refusal, undeclared query key absent from the query log, inbox ignoring sort/filter keys |
 | `tests/Feature/Security/SecurityAuditTest.php` (extend) | E | HTML error masking, composite-key 429s |
 
 Rule: a security test asserts the **refusal**, not just the happy path. A test that only

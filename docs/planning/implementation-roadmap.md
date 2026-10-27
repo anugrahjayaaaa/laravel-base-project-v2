@@ -184,7 +184,7 @@ email-verification-notice, password-change pages using AdminLTE auth layout.
 - Security headers (CSP, HSTS, etc.)
 - CSRF, CORS
 - Input sanitization
-- Status: IN PROGRESS — Groups A (headers/CSP), B (CSRF) and C (CORS) DONE 2026-10-27; Groups D–E PLANNED
+- Status: IN PROGRESS — Groups A (headers/CSP), B (CSRF) and C (CORS) DONE 2026-10-27; Group D DONE 2026-10-27; Group E PLANNED
 
 ### Phase 14: Storage / Backup / Retention
 - Storage disks (local, public, tmp)
