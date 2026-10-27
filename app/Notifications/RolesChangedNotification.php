@@ -167,7 +167,16 @@ class RolesChangedNotification extends Notification implements ShouldQueue
             ? 'Contact an administrator if this was not expected.'
             : 'Review the assignment from the user\'s page if this was a mistake.';
 
-        return $lines;
+        // Every element becomes one rendered line, and a role name or an
+        // operator's name can carry a line break — which would let its author
+        // add a line to a mail the recipient trusts. Flatten at the exit, so a
+        // name is rejected at no write path and every writer is covered.
+        // shortcut: line breaks only — Markdown syntax in a name still renders;
+        // upgrade to a Markdown escaper if a name ever becomes free prose.
+        return array_map(
+            static fn (string $line): string => str_replace(["\r", "\n"], ' ', $line),
+            $lines,
+        );
     }
 
     /**

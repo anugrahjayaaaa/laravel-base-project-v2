@@ -1,0 +1,314 @@
+# Phase 13 — Security Hardening
+
+> Date: 2026-10-26 | Status: **IN PROGRESS** — Groups A, B and C **DONE** (owner-reviewed 2026-10-27); Groups D–E not started | Branch: `feature/phase-13-security-hardening`
+> Purpose: close the remaining browser-facing and input-facing attack surface, and turn
+> the controls that already shipped into a suite that fails when one of them regresses.
+> Dependency chain: **A → B → C → D → E**. A and B are verification-heavy because the
+> controls exist; C and D1 carry the only real construction in the phase.
+> Detail authority: this document. `task-tracker.md` holds the summary rows only.
+> Design authority: `docs/base/security/` — a task that wants to contradict it needs an
+> ADR in `docs/planning/decisions.md`, not a code change.
+
+---
+
+## 1. Scope
+
+Fourteen tasks in five groups:
+
+| Group | Subject | Nature |
+|---|---|---|
+| A | CSP & security headers + nonce injection | **Verify + extend tests** — middleware and nonce plumbing shipped with Phase 10 |
+| B | CSRF & state-mutation protection | **Verify + extend tests** — strict CSRF already ships |
+| C | CORS & API hardening | **Build** — no `config/cors.php` exists |
+| D | Input sanitization, validation, parameter tampering | **Audit + targeted hardening** — blanket stripping is rejected (D-4) |
+| E | Information disclosure, rate limiting, suite run | **Verify + measure** — masking and composite keys already ship |
+
+Not in scope: WAF, dependency CVE sweep, secret rotation, penetration-test tooling,
+`Content-Security-Policy-Report-Only` rollout, SRI for CDN assets, i18n of security copy.
+
+---
+
+## 2. What already exists (measured 2026-10-26, before writing any task)
+
+This phase is mostly an **audit-and-close**, not greenfield. Measured, not assumed:
+
+| Control | Evidence | State |
+|---|---|---|
+| Security headers middleware | `App\Http\Middleware\AddSecurityHeaders`, appended **globally** in `bootstrap/app.php` | Present |
+| CSP with per-request nonce | `AddSecurityHeaders::policy()` — `default-src 'self'`, `script-src 'self' 'nonce-…'`, `object-src 'none'`, `base-uri 'self'`, `form-action 'self'`, `frame-ancestors 'none'` | Present, every response |
+| HSTS / nosniff / referrer / permissions | Same class, on **every** response incl. JSON and the streamed CSV | Present |
+| Nonce at the call site | `@nonce` Blade directive + shared `$cspNonce` + `Vite::useCspNonce()` (`AppServiceProvider`) | Present — 12 views use it |
+| Unescaped output | 5 `{!! !!}` sites: 3 sort icons (`pages/users/index`, constant markup), 2 vendor Pulse emitters | Audited, allowlisted by test |
+| Header tests | `tests/Feature/Security/SecurityHeadersTest.php` (5), `ContentSecurityPolicyTest.php` (10) | Present |
+| Strict CSRF under test | `App\Http\Middleware\VerifyCsrfToken::runningUnitTests()` returns `false` | Present |
+| CSRF form probe | `SecurityAuditTest::test_web_state_changing_forms_require_csrf` | Present — one form |
+| CSRF meta tag | `layouts/app`, `layouts/auth`, `layouts/guest` | Present |
+| CORS config | **absent** — `config/cors.php` does not exist; `HandleCors` is in Laravel's global stack but with no configured paths, so no CORS headers are emitted | **Gap (Group C)** |
+| FormRequest validation | Every write route; no inline `$request->validate()` | Present, arch-enforced |
+| Mass-assignment shielding | `#[Fillable([...])]` on `User`; `$guarded = ['*']` on `Activity`; no `$guarded = []` anywhere | Present |
+| Sort/filter whitelisting | `SORTABLE` const + `in_array(..., true)` in `UserIndexAction`, `RoleIndexAction`, `PermissionIndexAction` | Present — three actions |
+| Production error masking | `bootstrap/app.php` `renderable()` — envelope always, `debug` key added only when `APP_DEBUG=true` | Present |
+| Error-leak probe | `SecurityAuditTest::test_error_responses_do_not_leak_stack_traces` (JSON only) | Partial — no HTML assertion |
+| Composite throttle keys | `AuthServiceProvider` — `login` (`email+ip`), `login-ip`, `forgot-password` (`email+ip`), `resend-verification` (`user+ip`), `email-verification` | Present |
+| Existing security tests | `tests/Feature/Security/` — 5 files (`SecurityAuditTest`, `SecurityHeadersTest`, `ContentSecurityPolicyTest`, `SettingsPentestTest`, `NotificationPentestTest`) | Present |
+
+Consequence: **do not re-build a row marked Present.** A task whose subject exists is a
+verification + test-extension task and is worded that way.
+
+---
+
+## 3. Decisions that override the brief
+
+Recorded rather than silently applied — the brief disagrees with shipped behaviour in
+six places.
+
+| # | Brief says | Decision | Why |
+|---|---|---|---|
+| **D-1** | Send `X-Frame-Options: SAMEORIGIN` | **Do not send it.** `frame-ancestors 'none'` already answers it | Two headers for one decision means two sources of truth. `none` is stricter than `SAMEORIGIN`; adding the weaker header would either disagree with the policy or imply framing is allowed. Pinned by `SecurityHeadersTest::test_a_page_carries_the_origin_headers` and `docs/base/security/web-security.md` line 13 |
+| **D-2** | `'unsafe-eval'` globally so Alpine/Livewire keeps working | **Keep it scoped to `pulse.*` and `vantage.*` by route name** | Alpine/Livewire only run on those two vendor dashboards. A global `'unsafe-eval'` widens the XSS surface of every page and breaks `ContentSecurityPolicyTest::test_only_the_vendor_dashboards_grant_unsafe_eval` — which exists precisely to stop this "fix" |
+| **D-3** | New `csp_nonce()` helper | **Not added.** `@nonce` + `{{ $cspNonce }}` is the existing spelling | A second accessor for one value is a second thing to keep in sync. The directive consumes the shared variable the middleware writes; `Vite::useCspNonce()` reads the same value |
+| **D-4** | Blanket `strip_tags()` / `trim()` trait before validation | **No blanket trait.** D1 is an output-escaping audit plus targeted sanitization at the sinks that need it | Output escaping (`{{ }}`) is the XSS primitive and it already holds. Stripping input before validation mangles legitimate names (`O'Brien & Sons`), destines the change to be un-testable against stored history, and does not stop the real injection classes. Phase 10's CSV-formula finding is the precedent: `strip_tags()` drops markup, not a leading `=` |
+| **D-5** | CORS "allowed origins from env, credentials support" | **Ship the config, default-deny**: `allowed_origins` empty unless `CORS_ALLOWED_ORIGINS` is set; `supports_credentials` only with explicit origins; `paths` limited to `api/*` | A permissive default is a new cross-origin surface with no consumer today. `*` + credentials is also invalid per the CORS spec. This is an operator switch that starts closed, not a policy change |
+| **D-6** | Two env keys — origins and a credentials switch | **One key.** `CORS_ALLOWED_ORIGINS`; `supports_credentials` is derived (`$origins !== []`) | A second switch can express `*` + credentials, which the spec forbids and which would grant every origin a credentialed read. Deriving the credential flag removes that state instead of documenting it. The cost is that credentials cannot be turned off for a named origin, which no consumer needs |
+
+---
+
+## 4. Group A — CSP & security headers (views & middleware)
+
+> Depends on: nothing. Blocks: B (both concern what the browser is allowed to do).
+
+Status: **DONE** — implemented 2026-10-26, owner-reviewed and closed 2026-10-27. Most of
+this group shipped with Phase 10; the tasks closed the remaining coverage gaps rather
+than the headers themselves.
+
+| ID | Task | Pri | Depends On | Status |
+|----|------|-----|-----------|--------|
+| P13-A1 | **Verify `AddSecurityHeaders` against the four-header table.** Confirm HSTS, `X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy` and the CSP directives are on HTML, JSON and the streamed CSV; confirm the registration is global and single (a second registration overwrites the nonce after render). No new middleware is created. Update `docs/base/security/web-security.md` only if a value drifted | P0 | — | DONE — verified: appended once, globally, in `bootstrap/app.php`; the four origin-header values match `web-security.md` exactly, and the CSP is now sent on every response (inert off-document, uniform by choice). No doc drift |
+| P13-A2 | **Unescaped-output audit + nonce sweep.** Every `{!! … !!}` in `resources/views` is enumerated and each is either (a) machine-generated markup whose producer escapes, or (b) removed in favour of `{{ }}`. Confirm every inline `<script>` on app pages carries `@nonce` and none relies on a policy bypass | P0 | P13-A1 | DONE — `$editBtn` removed (string-built `<a>` → escaped Blade anchor); 5 sites remain, all constant/vendor markup. No executable inline `<script>` lacks `@nonce` (the Scramble dev-tools block is `type="application/json"`) |
+| P13-A3 | **Extend `tests/Feature/Security/SecurityHeadersTest.php`.** Add: the nonce in the CSP header equals the nonce on the rendered script tags; a page with an injected `<script>` has no `'unsafe-inline'`; HSTS present on a redirect and on JSON; the `{!! !!}` allowlist is a declared list, so a new one fails until it is justified | P0 | P13-A2 | DONE — `Permissions-Policy` folded into the shared exact-value set (now pinned on JSON too), `X-Frame-Options` absence pinned, `{!! !!}` allowlist added. Nonce↔script matching and no-`unsafe-inline` were already pinned by `ContentSecurityPolicyTest`, not duplicated |
+
+**Gate A:** every response carries the four origin headers, HTML carries a CSP whose
+nonce matches the document, `'unsafe-eval'` appears on exactly the two vendor route
+groups, and each `{!! !!}` site is either justified in the test's allowlist or gone.
+
+**Measured (2026-10-26):** `php artisan test --filter=Security` → **94 passed / 453
+assertions**, `--filter=SecurityHeadersTest` → 6 passed / 34 assertions,
+`--filter=UserCrudWebTest` → 13 passed, full suite **2208 passed / 7805 assertions**,
+`vendor/bin/pint --test` clean. Blade comments are stripped before the `{!! !!}`
+scan, so prose about the directive does not have to be allowlisted.
+
+---
+
+## 5. Group B — CSRF & state-mutation protection
+
+> Depends on: A. Blocks: C (both are request-origin decisions).
+
+Status: **DONE** — implemented 2026-10-27, owner-reviewed and closed 2026-10-27. The
+control shipped long ago; the group found
+that it was not in the slot it claimed to be in. `VerifyCsrfToken` was appended to the
+`web` group, which puts it after `SubstituteBindings`; priority sorting then moves `auth`
+above it, so an unauthenticated write never reached the check and answered 302 (HTML) or
+401 (JSON). It now **replaces** the framework's `PreventRequestForgery` in that group —
+same slot, ahead of binding and route auth, and one execution per request instead of two.
+
+The second defect was in the exception handler: the `TokenMismatchException` branch could
+never run, because Laravel's `prepareException()` rewrites it to `HttpException(419)`
+before renderables are called. The documented `CSRF_TOKEN_MISMATCH` envelope was therefore
+unreachable. The branch now matches the 419 status: JSON gets the envelope, a form
+submission gets the framework's 419 page (it was being handed JSON it could not read).
+
+| ID | Task | Pri | Depends On | Status |
+|----|------|-----|-----------|--------|
+| P13-B1 | **Verify the strict-CSRF alignment.** `bootstrap/app.php` appends `VerifyCsrfToken` to the `web` group; `runningUnitTests()` returns `false`; a `TokenMismatchException` renders `419` with `ApiError` `CSRF_TOKEN_MISMATCH` for JSON and the 419 page for HTML. Confirm both branches, and confirm `api/*` (Sanctum bearer) is not inside the CSRF group. No change to the framework's middleware order | P0 | P13-A1 | DONE — registration fixed: replaced `PreventRequestForgery` in the group (was appended, so `auth` sorted above it); 419 branch now matches the prepared `HttpException`; HTML → 419 page, JSON → envelope |
+| P13-B2 | **Blade form & AJAX audit.** `@csrf` present in every `<form method="POST">` (method-spoofed `PUT`/`PATCH`/`DELETE` included); the three layouts carry `<meta name="csrf-token">`; every `fetch`/`XHR` mutation in `resources/js` reads that meta tag or a hidden input, including `<x-ui.confirm-action>`'s payload and the bulk-action bars. A route scan asserts no state-mutating web route lacks a form that posts a token | P0 | P13-B1 | DONE — 26 POST forms, all carry `@csrf` (four method-spoofed ones included); three layouts carry the meta tag and it equals `csrf_token()`; no AJAX mutation exists (the three inline pollers are GET), and the shared confirmation modal — the submit surface for button-driven actions — carries the token. Scan for "every route has a form" was implemented as the two invariants that can be proven: every mutating route runs the `web` group, every mutating form carries a token |
+| P13-B3 | **`tests/Feature/Security/CsrfProtectionTest.php`.** Web POST/PUT/PATCH/DELETE without a token → 419; with a valid token → the action's own status; JSON request without a token → 419 with the code; the meta tag equals `csrf_token()`; the exception list in `VerifyCsrfToken::except` stays empty. Replaces nothing — `SecurityAuditTest`'s single-form probe stays as the smoke test | P0 | P13-B2 | DONE — 10 tests / 127 assertions: four verbs, token-present, both 419 branches, meta↔session, three layouts, form scan, AJAX scan, route scan incl. `api/*` not in `web`, empty `except` |
+
+**Gate B:** every state-mutating web route answers 419 without a token and works with
+one, JSON gets a machine-readable 419, and the `except` array is still empty.
+
+**Measured (2026-10-27):** `CsrfProtectionTest` **10 passed / 127 assertions**;
+`tests/Feature/Security` + `RbacPentestTest` + `FeatureFlagPentestTest` **126 passed /
+555 assertions**; `tests/Feature/Auth` **133 passed / 353 assertions**; Pint clean on the
+changed PHP files.
+
+---
+
+## 6. Group C — CORS & API hardening
+
+> Depends on: A, B. Blocks: D (a CORS misconfiguration is an input-boundary defect).
+
+Status: **DONE** — implemented 2026-10-27, owner-reviewed and closed 2026-10-27. `config/cors.php` did not exist, so the app
+emitted no CORS header at all; this is one of the phase's two construction tasks (the other
+is D1). The file
+ships default-deny (empty origin list = no grant), scoped to `api/*`, with credentials
+derived from the origin list rather than a second switch (D-6). `HandleCors` was already
+in Laravel's global stack and is **not** registered again — the test asserts exactly one
+entry. Refusal is pinned against the middleware, not the array: an unlisted origin gets no
+allow header, a listed one gets the configured grant, and a web route gets nothing.
+
+| ID | Task | Pri | Depends On | Status |
+|----|------|-----|-----------|--------|
+| P13-C1 | **`config/cors.php`, default-deny.** `paths` = `api/*` only (never `*`); `allowed_origins` from `CORS_ALLOWED_ORIGINS` split on comma, empty by default; `allowed_methods` explicit (`GET, POST, PUT, PATCH, DELETE, OPTIONS`); `allowed_headers` includes `Authorization`, `Content-Type`, `Accept`, `X-CSRF-TOKEN`, `X-Requested-With`, `X-Request-ID`; `exposed_headers` = `X-Request-ID`; `max_age` 3600; `supports_credentials` true only when at least one origin is named. Add both keys to `.env.example` with a comment. `HandleCors` is already in the global stack — verify, do not register it twice | P0 | P13-B1 | DONE — config shipped; one env key, not two (D-6); `.env.example` documents it; `HandleCors` untouched and asserted single; the derived credential flag is also false when the list is `*` (fixed 2026-10-27) |
+| P13-C2 | **`tests/Feature/Security/CorsPolicyTest.php`.** `OPTIONS /api/v1/…` from a configured origin → `Access-Control-Allow-Origin` echoes it and `Vary: Origin`; from an unlisted origin → no allow-origin header; `credentials` → `Access-Control-Allow-Credentials: true` and never `*`; the web routes (`/login`, `/users`) emit no CORS header; `X-Request-ID` is accepted and exposed | P0 | P13-C1 | DONE — 8 tests / 41 assertions: single global registration, full preflight grant, unlisted refusal (two origins), the single-origin echo shape, actual-request exposure, web-route silence, shipped-config invariants, empty-list default-deny (a ninth case, added 2026-10-27, pins the wildcard-uncredentialed derivation) |
+
+**Gate C:** an unlisted origin gets no CORS grant on any route, a listed one gets exactly
+the configured grant, and no response ever pairs `*` with credentials.
+
+**Measured (2026-10-27):** `CorsPolicyTest` **8 passed / 41 assertions**;
+`tests/Feature/Security` + `tests/Feature/Api` **240 passed / 1088 assertions**; Pint
+clean on the new PHP files.
+
+**Known shape:** with exactly one configured origin, `fruitcake/php-cors` answers that
+origin even to a foreign caller; the browser rejects the mismatch, so it is not a grant,
+and the refusal probe therefore configures two. Documented in `web-security.md` § CORS
+Policy rather than hidden.
+
+---
+
+## 7. Group D — Input sanitization, validation & parameter tampering
+
+> Depends on: C. Blocks: E.
+
+Status: **DONE** — implemented 2026-10-27, owner-reviewed and closed 2026-10-27. The audit-and-close
+group: the controls were already in the tree, so no production code changed. What was
+missing was proof in one place, and the sweep found the controls in better shape than the
+brief assumed — most of the probes D1/D2 asked for already existed under other names, so
+the new test file fills only the gaps (D-3) instead of restating them.
+
+| ID | Task | Pri | Depends On | Status |
+|----|------|-----|-----------|--------|
+| P13-D1 | **Output-escaping audit + targeted sink hardening.** Enumerate every place user-controlled text reaches a non-Blade sink: audit CSV export (already handled — `CsvInjectionPentestTest`), notification bodies, mail subjects, `data-*` attributes consumed by JS, JSON written into a `<script>` block. Each gets either an escaping call at the sink or a test that proves the sink escapes. **No `SanitizesInput` trait** (D-4); `strip_tags` stays where a specific action already needs it (`UserCreateAction`, `UserUpdateAction`, `GenerateAuditExport`) | P0 | P13-C1 | DONE — audited: `{!! !!}` is the three users-index sort icons plus the two vendor Pulse emitters already on the Group A allowlist; `data-*` payloads go through `@json` (Json-escaped) and the JS helpers `escHtml` before any `innerHTML`; notification `subject`/`lines` render through `{{ }}`; `audit.show` renders properties through `{{ }}`. Every one was already pinned: `SecurityHeadersTest` (allowlist), `NotificationPentestTest` + `NotificationActionLinkTest` (bodies, `javascript:`), `CsvInjectionPentestTest` (export), `AuditPentestTest` (audit values). No sink needed a new escaping call |
+| P13-D2 | **Model & query shielding sweep.** Re-read every `#[Fillable]` / `$fillable`: no `$guarded = []`; sensitive attributes (`is_locked`, `must_change_password`, `password_expires_at`, `roles`, permission names) are writable only by the action that owns the transition, never by a generic update FormRequest. Extend the sort/filter whitelist check to **every** index action — `User`/`Role`/`Permission` have it; audit, notifications, exports must be proven, and an unknown `sort`/`direction` answers 422 (not a silent fallback) where a FormRequest exists | P0 | P13-D1 | DONE — no `$guarded = []` anywhere; `User::$fillable` lists the sensitive columns but every write goes through the owning Action (`UserUpdateAction` delegates status to Activate/Deactivate and roles to `RoleAssignAction`); both profile and admin update consume `validated()` only. Whitelists measured: users `in:created_at,name,email,is_active` + action guard, roles `Rule::in(RoleIndexAction::SORTABLE)`, permissions `SORTABLE`, audit `SORTABLE`/`FILTER_KEYS` shared by viewer and exports. Notifications and the inbox take no sort/filter key at all. Only `orderByRaw` is a constant (`deleted_at IS NOT NULL ASC`). Refusal shape is channel-appropriate: API 422, web 302 with session errors — a web index cannot answer 422 |
+| P13-D3 | **`tests/Feature/Security/InputSanitizationTest.php`.** Stored XSS payload in `name`/`username` renders escaped on the index and the show page; a `javascript:` URL in a notification payload does not become an anchor; `sort=name;DROP TABLE users` and `direction=sideways` are refused with 422 on each index; `is_locked` and role names submitted in a profile/user update payload are ignored; an unknown filter key is not forwarded to the query builder | P0 | P13-D2 | DONE — 6 tests / 31 assertions, gaps only: users index + show escaping of a stored hostile name (existing coverage only proved `strip_tags` at write time), profile and admin update ignoring `is_locked`/`must_change_password`/`password_expires_at`/`roles`, users **web** sort/direction refusal, undeclared query key absent from the query log (text and bindings), inbox ignoring sort/filter keys. The `javascript:` half is `NotificationActionLinkTest`; the rules/permissions sort half is `RbacUiRenderTest`; the API half is `SecurityAuditTest` — cited, not duplicated |
+
+**Gate D:** no user-controlled value reaches a sink without escaping, no sensitive column
+is mass-assignable through a generic FormRequest, and every index refuses a sort column
+outside its whitelist.
+
+**Measured (2026-10-27):** `InputSanitizationTest` **6 passed / 31 assertions**;
+`tests/Feature/Security` + `tests/Feature/User` + `tests/Feature/Notification`
+**483 passed / 2005 assertions**; Pint clean on the new file. The full suite was not run
+here — Group E3 owns the recount and measured 2241/8034 below.
+
+**Known shapes:** `RolesChangedNotification` interpolated role names into Markdown body
+lines, and `StoreRoleRequest` permits newlines in a name — a reader of the role-change
+mail could be shown fabricated lines. **Fixed 2026-10-27** at the sink: `lines()`
+flattens every line break before the array becomes rendered lines, so a name cannot add
+one and no write path has to be trusted. Pinned by
+`NotificationPentestTest::test_a_role_name_cannot_fabricate_a_mail_line`. The residual
+ceiling is Markdown syntax inside a name (not line breaks) — recorded in the method's
+`shortcut:` comment. Both Group C findings are
+**fixed 2026-10-27**: `X-Request-ID` is now in `allowed_headers` (the header the
+middleware reads) and `CorsPolicyTest` pins it; `CORS_ALLOWED_ORIGINS=*` is honoured
+only uncredentialed — the derived flag is false whenever the list contains `*` — so the
+vendor's echo-any-origin-with-credentials path is unreachable, pinned by
+`CorsPolicyTest::test_a_wildcard_origin_never_carries_credentials`.
+
+---
+
+## 8. Group E — Information disclosure, rate limiting & verification suite
+
+> Depends on: A–D.
+
+Status: **DONE** — implemented 2026-10-27, owner-reviewed and closed 2026-10-27. Verification, not
+construction: both controls shipped earlier, so this group is the measurement that says
+they work — the HTML error branch nothing exercised, and the composite throttle keys no
+test asserted. Two routes (`reset-password`, `email-verification`) had a documented ceiling
+and no 429 probe at all.
+
+| ID | Task | Pri | Depends On | Status |
+|----|------|-----|-----------|--------|
+| P13-E1 | **Verify production error masking on both branches.** With `APP_DEBUG=false`: a JSON 500 carries `{message, code, meta}` and no `trace`/`file`/`line`; an HTML 500 renders the error page and no stack trace; a 404/419/429 keeps the same envelope. The exception handler's `debug` key is the only difference when debug is on. Extend `SecurityAuditTest::test_error_responses_do_not_leak_stack_traces` with the HTML branch it does not cover | P0 | P13-D2 | DONE — the HTML half was the gap and is now `SecurityAuditTest::test_html_error_pages_do_not_leak_the_exception`: a throw-away `web` route raises `RuntimeException` under `app.debug=false`, answers 500, and the body carries no exception class, message, `.php` path, `Stack trace` or `vendor/`. The JSON 500 (`SERVER_ERROR`, no `debug` key), the debug/no-debug shape parity and the 401/403/404/409/422/429/500 envelope were already pinned by `ApiErrorEnvelopeTest`; 419 by `CsrfProtectionTest`, the 429 body by `ThrottleJsonResponseTest` |
+| P13-E2 | **Verify the composite throttle keys.** Table each sensitive endpoint → limiter → key → rate: `login` (`email+ip`, 5/min), `login-ip` (10/min), `forgot-password` (`email+ip`, 3/min), `register`, `reset-password`, `resend-verification` (`user+ip`), `email-verification`. Prove 429 from two different IPs with one email still shares one bucket, and that a second email from the same IP gets its own. Record the ladder in `docs/base/security/rate-limiting.md` if a route is missing from it | P0 | P13-E1 | DONE — `CompositeRateLimitKeyTest` 4 tests / 20 assertions: `login` 429 on the seventh attempt, the same account from a second IP judged again (401, its own bucket), a second identifier from the same IP still open, `reset-password` 429 on the fourth, `email-verification` 429 on the sixth (signed URL; `signed` runs before the throttle). The brief's "two different IPs with one email share one bucket" is **not** what ships: the key is identifier + IP, so a second address is a second budget, and `login-ip` is the bucket that sees a spray — pinned as-is, not changed. Already probed: `login`/`login-ip` (`LoginControllerTest`), `forgot-password`/`resend-verification` (`SecurityAuditTest`), `register` (`RegisterTest`), `password-change` (`PasswordChangeThrottleTest`). Ladder completed with the admin resend route |
+| P13-E3 | **Suite run + trackers.** `php artisan test --filter=Security`, then the full `php artisan test` and `vendor/bin/pint --test`. Update § *Test Status* in `progress.md` with the measured counts, and flip only the tasks whose gates passed. No task reaches DONE on a green filter alone | P0 | P13-A3, P13-B3, P13-C2, P13-D3, P13-E2 | DONE — `php artisan test` **2241 passed / 8034 assertions** (1051s), `vendor/bin/pint --test` clean across the tree; `progress.md` § Test Status updated from 2208/7805 |
+
+**Gate E:** debug off and on differ by exactly one key; every sensitive auth/reset/
+verification route has a documented composite key and a 429 test; the full suite is green
+and the counts are recorded.
+
+**Measured (2026-10-27):** `CompositeRateLimitKeyTest` **4 passed / 20 assertions**; the
+HTML masking case added one test to `SecurityAuditTest`; `php artisan test`
+**2241 passed / 8034 assertions** (1051s); `vendor/bin/pint --test` clean. Phase 13 closes
+here — groups A–E all DONE, and `progress.md` § Test Status carries this run.
+
+**Known shapes:** the action-level login lock answered HTTP 429 with
+`code: UNAUTHENTICATED` — `AuthAuthenticateAction::checkThrottle()` left
+`lockedSeconds` inside `error` while `LoginController` read it from the top level, so
+that path took the `$status === 403 ? FORBIDDEN : UNAUTHENTICATED` branch. **Fixed
+2026-10-27**: the action now returns `lockedSeconds` at the top level, the controller's
+429 answers `RATE_LIMITED` + `retry_after_seconds` as `error-contract.md` documents, and
+`CompositeRateLimitKeyTest` asserts both. The `SecurityAuditTest` `echo "DEBUG Request …"`
+lines from an earlier investigation were removed 2026-10-27, so the suite output is clean.
+Group C's two findings are fixed 2026-10-27 (`X-Request-ID` accepted; `*` uncredentialed
+only), and the role-name newline finding is fixed at the `lines()` sink.
+
+---
+
+## 9. Test coverage added by this phase
+
+| File | Group | Cases |
+|---|---|---|
+| `tests/Feature/Security/SecurityHeadersTest.php` (extend) | A | nonce↔document match, no `'unsafe-inline'`, HSTS on redirect/JSON, `{!! !!}` allowlist |
+| `tests/Feature/Security/CsrfProtectionTest.php` (new) | B | 419 per verb, JSON 419 code, meta↔token, empty `except` |
+| `tests/Feature/Security/CorsPolicyTest.php` (new) | C | preflight allowed/denied, `Vary: Origin`, credentials never `*`, web routes clean, `*` honoured uncredentialed |
+| `tests/Feature/Security/InputSanitizationTest.php` (new) | D | 6 cases — index/show escaping of a stored hostile name, mass-assignment refusal on profile and admin update, web sort/direction refusal, undeclared query key absent from the query log, inbox ignoring sort/filter keys |
+| `tests/Feature/Security/NotificationPentestTest.php` (extend) | D | a role name cannot fabricate a mail line |
+| `tests/Feature/Security/SecurityAuditTest.php` (extend) | E | HTML 500 renders the error page with no exception class, message, source path, `Stack trace` or `vendor/` |
+| `tests/Feature/Security/CompositeRateLimitKeyTest.php` (new) | E | 4 cases — login keyed on identifier + IP (second IP = own bucket), second identifier from one IP = own bucket, `reset-password` 429 on the fourth, `email-verification` 429 on the sixth |
+| `tests/Feature/Security/SecurityOverheadBenchmarkTest.php` (new) | perf | 4 A/B/A arms (headers, CORS, CSRF, throttle) + isolated `handle()` cost — no DB cost, no latency above the noise floor; see §11 |
+
+Rule: a security test asserts the **refusal**, not just the happy path. A test that only
+proves a permitted request succeeds does not prove the control exists.
+
+---
+
+## 10. Definition of done
+
+- Every group gate met, measured, and written into this document.
+- `vendor/bin/pint --test` clean; full `php artisan test` green; `--filter=Security` green.
+- `docs/base/security/*` matches the code. If a control changed shape, the doc changed in
+  the same commit.
+- `task-tracker.md` rows updated from `PLANNED` through `IN_PROGRESS` → `REVIEW` → `DONE`;
+  `progress.md` § *Test Status* carries the measured count.
+- No commit, no push, no PR until the owner asks.
+
+---
+
+## 11. Performance (measured 2026-10-27)
+
+`tests/Feature/Security/SecurityOverheadBenchmarkTest.php` — 5 cases, numbers in
+`/tmp/phase13_security_benchmark.json`. Every control is measured A/B/A: the real stack,
+the same request with that ONE middleware replaced by a pass-through, then the real stack
+again. The second full pass is the noise floor — in-process HTTP on in-memory SQLite is
+noisy enough that a single A/B pair proves nothing.
+
+**Run it with `XDEBUG_MODE=off`.** This machine loads Xdebug in `debug,develop` mode, which
+reported `HandleCors` at 206 µs instead of 27 µs. Numbers are only comparable between runs
+started the same way.
+
+| Control | Page | Full min | Stripped min | Full (2nd) | Queries |
+|---|---|---|---|---|---|
+| Headers + CSP (`AddSecurityHeaders`, global) | `GET /dashboard` | 4.29 ms | 4.32 ms | 4.38 ms | 1 / 1 |
+| CORS (`HandleCors`, global) | `GET /api/v1/health` | 0.76 ms | 0.69 ms | 0.77 ms | 0 / 0 |
+| CSRF (`VerifyCsrfToken`, web group) | `POST /login` | 2.75 ms | 2.65 ms | 2.77 ms | 6 / 6 |
+| Throttle (`ThrottleRequests`, route) | `POST /login` | 2.46 ms | 2.30 ms | 2.67 ms | 6 / 6 |
+
+Isolated `handle()` over 5000 calls, baseline `new Response` 8.9 µs:
+`AddSecurityHeaders` **20.3 µs** (≈11 µs net), `HandleCors` **27.5 µs** (≈19 µs net).
+
+Findings — nothing actionable:
+
+- **No control touches the database.** Query count is identical in every pair, and
+  sabotaging `AddSecurityHeaders` with one `DB::table('users')->count()` turns the header
+  case red — so the assertion bites rather than decorating the file.
+- **Every latency delta is inside the noise floor** (≤0.2 ms). The throttle arm is the
+  largest and is the two limiter buckets' store increment, tens of µs in isolation. CORS
+  pays its ~19 µs only on `api/*`: `hasMatchingPath()` fails fast on web routes.
+- **The throttle's real cost is store round trips, not queries** — two buckets per login
+  attempt (`login` keyed on identifier+IP, `login-ip` on IP). In-process on the suite's
+  `array` store; on Redis it is two round trips per attempt, which is the accepted price of
+  a composite key.
+- **The arms cannot pass vacuously:** each proves the stripped run really lost the control
+  (no CSP, no allow-origin grant, a tokenless write reaching its action, no
+  `rate_limit_seconds` flash). Neutering the strip turns all four cases red.
+

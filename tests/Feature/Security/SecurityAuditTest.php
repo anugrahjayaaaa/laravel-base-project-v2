@@ -8,7 +8,9 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Route;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Route as RouteFacade;
 use Laravel\Sanctum\Sanctum;
+use RuntimeException;
 use Spatie\Permission\Models\Role;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
@@ -100,7 +102,6 @@ class SecurityAuditTest extends TestCase
                 'password' => 'wrong',
             ]);
 
-            echo "\nDEBUG Request " . ($i + 1) . ": status=" . $resp->status() . " body=" . $resp->getContent();
             $resp->assertStatus(401);
         }
 
@@ -109,7 +110,6 @@ class SecurityAuditTest extends TestCase
             'password' => 'wrong',
         ]);
 
-        echo "\nDEBUG Request 6: status=" . $resp->status() . " body=" . $resp->getContent();
         $resp->assertStatus(429);
     }
 
@@ -449,6 +449,8 @@ class SecurityAuditTest extends TestCase
 
     public function test_error_responses_do_not_leak_stack_traces(): void
     {
+        config(['app.debug' => false]);
+
         [$admin] = $this->makeUsers();
         $this->actingAsApi($admin);
 
@@ -458,5 +460,31 @@ class SecurityAuditTest extends TestCase
         $this->assertNull($content['trace'] ?? null);
         $this->assertNull($content['file'] ?? null);
         $this->assertNull($content['line'] ?? null);
+    }
+
+    /**
+     * The HTML half, on a real 500 rather than a 404.
+     *
+     * The JSON half above probes a route that does not exist, which the handler
+     * maps to `NOT_FOUND`; a thrown exception takes the blanket 500 branch. A
+     * browser hitting that branch must get the error page, not the framework's
+     * debug renderer — with `APP_DEBUG` off, the difference is whether the
+     * exception class, its message or a source path appear in the bytes.
+     */
+    public function test_html_error_pages_do_not_leak_the_exception(): void
+    {
+        config(['app.debug' => false]);
+
+        RouteFacade::middleware('web')->get('/__boom', fn () => throw new RuntimeException('boom-detail'));
+
+        $response = $this->get('/__boom');
+
+        $response->assertStatus(500);
+
+        $body = (string) $response->getContent();
+
+        foreach (['RuntimeException', 'boom-detail', '.php', 'Stack trace', 'vendor/'] as $needle) {
+            $this->assertStringNotContainsString($needle, $body, "the HTML error page leaked '{$needle}'");
+        }
     }
 }

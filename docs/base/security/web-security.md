@@ -14,7 +14,7 @@
 | Cookie Secure | `true` | `env('SESSION_SECURE_COOKIE')` — deployment decision, like `APP_DEBUG` |
 | Cookie SameSite | `Lax` or `Strict` | ✅ `Lax` (`config/session.php` default) |
 | CSRF | Laravel Sanctum/VerifyCsrfToken middleware | ✅ including under test — see `VerifyCsrfToken::runningUnitTests()` |
-| CORS | Restrict to known origins | No `config/cors.php`; nothing opts in |
+| CORS | Restrict to known origins | ✅ `config/cors.php` — `api/*` only, default-deny; see *CORS Policy* |
 
 A header missing from a response is a different gap from a header configured
 wrongly, so the third column is asserted rather than asserted-about:
@@ -42,11 +42,12 @@ value above when that decision is made.
 ## Content-Security-Policy
 
 `App\Http\Middleware\AddSecurityHeaders`, appended to global middleware, sets the
-policy **only** on `text/html` responses — on JSON there is no document for a
-policy to govern, and on a file response it would govern nothing. The four
-response headers above are written on every response including that one, and
-that is safe: they are set here, before the response is returned, which is
-before a `StreamedResponse` starts sending. A header set after output has begun
+policy on **every** response, the JSON API and the streamed CSV included. It only
+governs a document, so on those it is inert — it is sent anyway because a header
+set that changes with `Content-Type` is one a proxy or a scanner has to
+special-case, and "is this response hardened" should have one answer. Setting it
+here is safe for a file response: this runs before the response is returned, which
+is before a `StreamedResponse` starts sending. A header set after output has begun
 is what corrupts a stream. The nonce is shared on every request and read only
 where a view renders.
 
@@ -144,12 +145,38 @@ View May Contain), with the self-check greps for views the test does not cover.
 - Laravel's built-in CSRF tokens via `VerifyCsrfToken` middleware.
 - API routes use `api` middleware group (stateless) or Sanctum SPA tokens.
 - Web routes require CSRF token for all state-changing requests.
+- A missing or stale token answers **419**: the framework's error page for a form
+  submission, the `CSRF_TOKEN_MISMATCH` envelope for a JSON caller. The
+  middleware's `except` list stays empty, and `runningUnitTests()` returns `false`
+  so the check is enforced in the suite too.
 
 ## CORS Policy
 
-- CORS is handled natively by Laravel's `HandleCors` middleware (Laravel 11+).
-- Restrict to known frontend origins.
-- Do not use wildcard `*` for credentials-enabled endpoints.
+- CORS is handled natively by Laravel's `HandleCors`, which ships in the global
+  middleware stack; the application must not register it a second time.
+- `config/cors.php` is **default-deny**: `allowed_origins` comes from
+  `CORS_ALLOWED_ORIGINS` (comma-separated, no trailing slash), and an empty value
+  means no CORS header is emitted anywhere.
+- Only `api/*` is in scope. The Blade pages are same-origin; a cross-origin read
+  of an authenticated document is not a capability this app offers.
+- Explicit methods (`GET, POST, PUT, PATCH, DELETE, OPTIONS`), explicit headers
+  (`Authorization`, `Content-Type`, `Accept`, `X-CSRF-TOKEN`, `X-Requested-With`,
+  `X-Request-ID` — the header `GenerateRequestCorrelationId` reads), `X-Request-ID`
+  exposed so a browser can read the id back, `max_age` 3600.
+- `supports_credentials` is **derived** from the origin list, not a second env
+  key: it is `true` only when at least one origin is named, and never when the
+  list contains `*`. A wildcard is honoured as an uncredentialed grant only —
+  `*` with credentials is invalid per the CORS spec, and the vendor answers that
+  pair by echoing any caller's origin with `Allow-Credentials: true`.
+- Preflight answers `204`. With two or more configured origins the response
+  echoes the caller's origin and carries `Vary: Origin`; an unlisted origin gets
+  no `Access-Control-Allow-Origin`. With exactly one configured origin
+  `fruitcake/php-cors` answers that origin even to a foreign caller — the browser
+  then rejects the mismatch, so it is not a grant, but it is why the refusal
+  test uses two origins.
+- An origin list is a deployment decision (deploy-time `.env`), not a runtime
+  setting, so it is not in `SystemSetting`.
+- Pinned by `tests/Feature/Security/CorsPolicyTest.php`.
 
 ## Frontend Compatibility
 

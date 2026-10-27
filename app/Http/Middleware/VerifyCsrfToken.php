@@ -18,6 +18,11 @@ use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken as Middleware;
  * 419 in tests exactly as it does in production, which is what
  * `SecurityAuditTest::test_web_state_changing_forms_require_csrf` pins.
  *
+ * It is registered with `replaceInGroup('web', …)`, taking the framework's own
+ * slot ahead of binding and route auth. Appending it to the group instead puts
+ * it after `SubstituteBindings`, where priority sorting moves `auth` above it
+ * and an unauthenticated write never reaches this class.
+ *
  * Do not delete this to make a failing test pass — the test is telling you the
  * form lost its `@csrf`.
  */

@@ -136,24 +136,19 @@ class AddSecurityHeaders
 
         $response = $next($request);
 
-        // Set BEFORE the CSP block and unconditionally: these four are origin
-        // decisions, they apply to JSON and to the streamed CSV as much as to a
-        // page, and a StreamedResponse only refuses a header once it has started
-        // sending — which is after this line.
+        // Every header here, including the policy, is written on EVERY response.
+        // The policy governs a document; on JSON and on the streamed CSV it is
+        // inert. It is still sent, because a header set that depends on
+        // Content-Type is one a proxy or a scanner has to special-case, and
+        // "which responses are hardened" should not be a question with two
+        // answers. Safe on the stream for the same reason as the four above:
+        // this runs before the response is returned, hence before a
+        // StreamedResponse starts sending.
         $response->headers->set('X-Content-Type-Options', 'nosniff');
         $response->headers->set('Referrer-Policy', 'strict-origin-when-cross-origin');
         $response->headers->set('Permissions-Policy', self::PERMISSIONS_POLICY);
         $response->headers->set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
-
-        // CSP only for HTML: on JSON there is no document for a policy to
-        // govern, and on a file response it would govern nothing. The four
-        // headers above are written on every response including the streamed
-        // CSV — safely, because this runs before the response is returned and
-        // therefore before a StreamedResponse starts sending. A header set
-        // after output has begun is what corrupts a stream.
-        if (str_contains((string) $response->headers->get('Content-Type'), 'text/html')) {
-            $response->headers->set('Content-Security-Policy', $this->policy($nonce, $request->routeIs('pulse'), $request->routeIs('vantage.*')));
-        }
+        $response->headers->set('Content-Security-Policy', $this->policy($nonce, $request->routeIs('pulse'), $request->routeIs('vantage.*')));
 
         return $response;
     }
