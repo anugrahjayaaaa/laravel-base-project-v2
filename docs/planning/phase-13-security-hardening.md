@@ -255,6 +255,7 @@ only), and the role-name newline finding is fixed at the `lines()` sink.
 | `tests/Feature/Security/NotificationPentestTest.php` (extend) | D | a role name cannot fabricate a mail line |
 | `tests/Feature/Security/SecurityAuditTest.php` (extend) | E | HTML 500 renders the error page with no exception class, message, source path, `Stack trace` or `vendor/` |
 | `tests/Feature/Security/CompositeRateLimitKeyTest.php` (new) | E | 4 cases — login keyed on identifier + IP (second IP = own bucket), second identifier from one IP = own bucket, `reset-password` 429 on the fourth, `email-verification` 429 on the sixth |
+| `tests/Feature/Security/SecurityOverheadBenchmarkTest.php` (new) | perf | 4 A/B/A arms (headers, CORS, CSRF, throttle) + isolated `handle()` cost — no DB cost, no latency above the noise floor; see §11 |
 
 Rule: a security test asserts the **refusal**, not just the happy path. A test that only
 proves a permitted request succeeds does not prove the control exists.
@@ -270,3 +271,44 @@ proves a permitted request succeeds does not prove the control exists.
 - `task-tracker.md` rows updated from `PLANNED` through `IN_PROGRESS` → `REVIEW` → `DONE`;
   `progress.md` § *Test Status* carries the measured count.
 - No commit, no push, no PR until the owner asks.
+
+---
+
+## 11. Performance (measured 2026-10-27)
+
+`tests/Feature/Security/SecurityOverheadBenchmarkTest.php` — 5 cases, numbers in
+`/tmp/phase13_security_benchmark.json`. Every control is measured A/B/A: the real stack,
+the same request with that ONE middleware replaced by a pass-through, then the real stack
+again. The second full pass is the noise floor — in-process HTTP on in-memory SQLite is
+noisy enough that a single A/B pair proves nothing.
+
+**Run it with `XDEBUG_MODE=off`.** This machine loads Xdebug in `debug,develop` mode, which
+reported `HandleCors` at 206 µs instead of 27 µs. Numbers are only comparable between runs
+started the same way.
+
+| Control | Page | Full min | Stripped min | Full (2nd) | Queries |
+|---|---|---|---|---|---|
+| Headers + CSP (`AddSecurityHeaders`, global) | `GET /dashboard` | 4.29 ms | 4.32 ms | 4.38 ms | 1 / 1 |
+| CORS (`HandleCors`, global) | `GET /api/v1/health` | 0.76 ms | 0.69 ms | 0.77 ms | 0 / 0 |
+| CSRF (`VerifyCsrfToken`, web group) | `POST /login` | 2.75 ms | 2.65 ms | 2.77 ms | 6 / 6 |
+| Throttle (`ThrottleRequests`, route) | `POST /login` | 2.46 ms | 2.30 ms | 2.67 ms | 6 / 6 |
+
+Isolated `handle()` over 5000 calls, baseline `new Response` 8.9 µs:
+`AddSecurityHeaders` **20.3 µs** (≈11 µs net), `HandleCors` **27.5 µs** (≈19 µs net).
+
+Findings — nothing actionable:
+
+- **No control touches the database.** Query count is identical in every pair, and
+  sabotaging `AddSecurityHeaders` with one `DB::table('users')->count()` turns the header
+  case red — so the assertion bites rather than decorating the file.
+- **Every latency delta is inside the noise floor** (≤0.2 ms). The throttle arm is the
+  largest and is the two limiter buckets' store increment, tens of µs in isolation. CORS
+  pays its ~19 µs only on `api/*`: `hasMatchingPath()` fails fast on web routes.
+- **The throttle's real cost is store round trips, not queries** — two buckets per login
+  attempt (`login` keyed on identifier+IP, `login-ip` on IP). In-process on the suite's
+  `array` store; on Redis it is two round trips per attempt, which is the accepted price of
+  a composite key.
+- **The arms cannot pass vacuously:** each proves the stripped run really lost the control
+  (no CSP, no allow-origin grant, a tokenless write reaching its action, no
+  `rate_limit_seconds` flash). Neutering the strip turns all four cases red.
+
