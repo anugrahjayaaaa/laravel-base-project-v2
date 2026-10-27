@@ -161,7 +161,8 @@ View May Contain), with the self-check greps for views the test does not cover.
   of an authenticated document is not a capability this app offers.
 - Explicit methods (`GET, POST, PUT, PATCH, DELETE, OPTIONS`), explicit headers
   (`Authorization`, `Content-Type`, `Accept`, `X-CSRF-TOKEN`, `X-Requested-With`,
-  `X-Correlation-ID`), `X-Request-ID` exposed, `max_age` 3600.
+  `X-Request-ID` — the header `GenerateRequestCorrelationId` reads), `X-Request-ID`
+  exposed so a browser can read the id back, `max_age` 3600.
 - `supports_credentials` is **derived** from the origin list, not a second env
   key: it is `true` only when at least one origin is named. `*` with credentials
   is invalid per the CORS spec, and one key cannot express that pair.

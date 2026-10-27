@@ -40,7 +40,7 @@ class CorsPolicyTest extends TestCase
         return $this->options('/api/v1/health', [], [
             'Origin' => $origin,
             'Access-Control-Request-Method' => 'POST',
-            'Access-Control-Request-Headers' => 'authorization, x-correlation-id',
+            'Access-Control-Request-Headers' => 'authorization, x-request-id',
         ]);
     }
 
@@ -81,7 +81,7 @@ class CorsPolicyTest extends TestCase
             'accept',
             'x-csrf-token',
             'x-requested-with',
-            'x-correlation-id',
+            'x-request-id',
         ] as $header) {
             $this->assertStringContainsString($header, $allowed, "{$header} is not accepted on a preflight");
         }
@@ -160,7 +160,7 @@ class CorsPolicyTest extends TestCase
         $this->assertSame($origins !== [], $config['supports_credentials']);
         $this->assertSame(['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'], $config['allowed_methods']);
         $this->assertContains('Authorization', $config['allowed_headers']);
-        $this->assertContains('X-Correlation-ID', $config['allowed_headers']);
+        $this->assertContains('X-Request-ID', $config['allowed_headers']);
         $this->assertContains('X-Request-ID', $config['exposed_headers']);
         $this->assertSame(3600, $config['max_age']);
     }

@@ -193,10 +193,11 @@ here — Group E3 owns the recount and measured 2241/8034 below.
 **Known shapes (reported, not changed):** `RolesChangedNotification` interpolates role
 names into Markdown body lines, and `StoreRoleRequest` permits newlines in a name — a
 reader of the role-change mail can be shown fabricated lines. Requires `roles.create`, so
-the reach is an admin misleading another admin; severity low. Group C's two open findings
-(`X-Request-ID` absent from `allowed_headers` while the middleware reads it;
-`CORS_ALLOWED_ORIGINS=*` would echo any origin with credentials) remain open by the same
-rule: a reported finding is not a mandate.
+the reach is an admin misleading another admin; severity low. Group C's two findings: `X-Request-ID` was absent from
+`allowed_headers` while the middleware reads it — **fixed 2026-10-27**, the config
+now lists the header the middleware reads and `CorsPolicyTest` pins it;
+`CORS_ALLOWED_ORIGINS=*` would still echo any origin with credentials and remains
+open by the same rule: a reported finding is not a mandate.
 
 ---
 
@@ -231,8 +232,8 @@ with `code: UNAUTHENTICATED`** — `AuthAuthenticateAction::checkThrottle()` lea
 that path takes the `$status === 403 ? FORBIDDEN : UNAUTHENTICATED` branch. The status is
 right and the code is not; `CompositeRateLimitKeyTest` asserts the status only. Also open:
 `SecurityAuditTest` still carries `echo "DEBUG Request …"` lines from an earlier
-investigation, which pollute the suite output; and Group C's two CORS findings
-(`X-Request-ID` missing from `allowed_headers`; `CORS_ALLOWED_ORIGINS=*` with credentials).
+investigation, which pollute the suite output; and Group C's remaining CORS finding
+(`CORS_ALLOWED_ORIGINS=*` with credentials — the `X-Request-ID` half was fixed 2026-10-27).
 
 ---
 

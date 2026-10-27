@@ -27,7 +27,9 @@ return [
         'Accept',
         'X-CSRF-TOKEN',
         'X-Requested-With',
-        'X-Correlation-ID',
+        // The header `GenerateRequestCorrelationId` actually reads. Listing a
+        // name nothing reads would let a caller send an id that is ignored.
+        'X-Request-ID',
     ],
 
     'exposed_headers' => ['X-Request-ID'],
