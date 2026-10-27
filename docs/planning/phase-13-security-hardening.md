@@ -187,8 +187,8 @@ outside its whitelist.
 
 **Measured (2026-10-27):** `InputSanitizationTest` **6 passed / 31 assertions**;
 `tests/Feature/Security` + `tests/Feature/User` + `tests/Feature/Notification`
-**483 passed / 2005 assertions**; Pint clean on the new file. The full suite was not run —
-Group E3 owns the recount, so `progress.md` § Test Status still carries 2208/7805.
+**483 passed / 2005 assertions**; Pint clean on the new file. The full suite was not run
+here — Group E3 owns the recount and measured 2241/8034 below.
 
 **Known shapes (reported, not changed):** `RolesChangedNotification` interpolates role
 names into Markdown body lines, and `StoreRoleRequest` permits newlines in a name — a
@@ -204,17 +204,35 @@ rule: a reported finding is not a mandate.
 
 > Depends on: A–D.
 
-Status: **PLANNED**. Masking and composite keys ship; the tasks measure and pin them.
+Status: **DONE** — implemented 2026-10-27, owner-reviewed and closed 2026-10-27. Verification, not
+construction: both controls shipped earlier, so this group is the measurement that says
+they work — the HTML error branch nothing exercised, and the composite throttle keys no
+test asserted. Two routes (`reset-password`, `email-verification`) had a documented ceiling
+and no 429 probe at all.
 
 | ID | Task | Pri | Depends On | Status |
 |----|------|-----|-----------|--------|
-| P13-E1 | **Verify production error masking on both branches.** With `APP_DEBUG=false`: a JSON 500 carries `{message, code, meta}` and no `trace`/`file`/`line`; an HTML 500 renders the error page and no stack trace; a 404/419/429 keeps the same envelope. The exception handler's `debug` key is the only difference when debug is on. Extend `SecurityAuditTest::test_error_responses_do_not_leak_stack_traces` with the HTML branch it does not cover | P0 | P13-D2 | PLANNED |
-| P13-E2 | **Verify the composite throttle keys.** Table each sensitive endpoint → limiter → key → rate: `login` (`email+ip`, 5/min), `login-ip` (10/min), `forgot-password` (`email+ip`, 3/min), `register`, `reset-password`, `resend-verification` (`user+ip`), `email-verification`. Prove 429 from two different IPs with one email still shares one bucket, and that a second email from the same IP gets its own. Record the ladder in `docs/base/security/rate-limiting.md` if a route is missing from it | P0 | P13-E1 | PLANNED |
-| P13-E3 | **Suite run + trackers.** `php artisan test --filter=Security`, then the full `php artisan test` and `vendor/bin/pint --test`. Update § *Test Status* in `progress.md` with the measured counts, and flip only the tasks whose gates passed. No task reaches DONE on a green filter alone | P0 | P13-A3, P13-B3, P13-C2, P13-D3, P13-E2 | PLANNED |
+| P13-E1 | **Verify production error masking on both branches.** With `APP_DEBUG=false`: a JSON 500 carries `{message, code, meta}` and no `trace`/`file`/`line`; an HTML 500 renders the error page and no stack trace; a 404/419/429 keeps the same envelope. The exception handler's `debug` key is the only difference when debug is on. Extend `SecurityAuditTest::test_error_responses_do_not_leak_stack_traces` with the HTML branch it does not cover | P0 | P13-D2 | DONE — the HTML half was the gap and is now `SecurityAuditTest::test_html_error_pages_do_not_leak_the_exception`: a throw-away `web` route raises `RuntimeException` under `app.debug=false`, answers 500, and the body carries no exception class, message, `.php` path, `Stack trace` or `vendor/`. The JSON 500 (`SERVER_ERROR`, no `debug` key), the debug/no-debug shape parity and the 401/403/404/409/422/429/500 envelope were already pinned by `ApiErrorEnvelopeTest`; 419 by `CsrfProtectionTest`, the 429 body by `ThrottleJsonResponseTest` |
+| P13-E2 | **Verify the composite throttle keys.** Table each sensitive endpoint → limiter → key → rate: `login` (`email+ip`, 5/min), `login-ip` (10/min), `forgot-password` (`email+ip`, 3/min), `register`, `reset-password`, `resend-verification` (`user+ip`), `email-verification`. Prove 429 from two different IPs with one email still shares one bucket, and that a second email from the same IP gets its own. Record the ladder in `docs/base/security/rate-limiting.md` if a route is missing from it | P0 | P13-E1 | DONE — `CompositeRateLimitKeyTest` 4 tests / 20 assertions: `login` 429 on the seventh attempt, the same account from a second IP judged again (401, its own bucket), a second identifier from the same IP still open, `reset-password` 429 on the fourth, `email-verification` 429 on the sixth (signed URL; `signed` runs before the throttle). The brief's "two different IPs with one email share one bucket" is **not** what ships: the key is identifier + IP, so a second address is a second budget, and `login-ip` is the bucket that sees a spray — pinned as-is, not changed. Already probed: `login`/`login-ip` (`LoginControllerTest`), `forgot-password`/`resend-verification` (`SecurityAuditTest`), `register` (`RegisterTest`), `password-change` (`PasswordChangeThrottleTest`). Ladder completed with the admin resend route |
+| P13-E3 | **Suite run + trackers.** `php artisan test --filter=Security`, then the full `php artisan test` and `vendor/bin/pint --test`. Update § *Test Status* in `progress.md` with the measured counts, and flip only the tasks whose gates passed. No task reaches DONE on a green filter alone | P0 | P13-A3, P13-B3, P13-C2, P13-D3, P13-E2 | DONE — `php artisan test` **2241 passed / 8034 assertions** (1051s), `vendor/bin/pint --test` clean across the tree; `progress.md` § Test Status updated from 2208/7805 |
 
 **Gate E:** debug off and on differ by exactly one key; every sensitive auth/reset/
 verification route has a documented composite key and a 429 test; the full suite is green
 and the counts are recorded.
+
+**Measured (2026-10-27):** `CompositeRateLimitKeyTest` **4 passed / 20 assertions**; the
+HTML masking case added one test to `SecurityAuditTest`; `php artisan test`
+**2241 passed / 8034 assertions** (1051s); `vendor/bin/pint --test` clean. Phase 13 closes
+here — groups A–E all DONE, and `progress.md` § Test Status carries this run.
+
+**Known shapes (reported, not changed):** the action-level login lock answers HTTP **429
+with `code: UNAUTHENTICATED`** — `AuthAuthenticateAction::checkThrottle()` leaves
+`lockedSeconds` inside `error`, while `LoginController` reads it from the top level, so
+that path takes the `$status === 403 ? FORBIDDEN : UNAUTHENTICATED` branch. The status is
+right and the code is not; `CompositeRateLimitKeyTest` asserts the status only. Also open:
+`SecurityAuditTest` still carries `echo "DEBUG Request …"` lines from an earlier
+investigation, which pollute the suite output; and Group C's two CORS findings
+(`X-Request-ID` missing from `allowed_headers`; `CORS_ALLOWED_ORIGINS=*` with credentials).
 
 ---
 
@@ -226,7 +244,8 @@ and the counts are recorded.
 | `tests/Feature/Security/CsrfProtectionTest.php` (new) | B | 419 per verb, JSON 419 code, meta↔token, empty `except` |
 | `tests/Feature/Security/CorsPolicyTest.php` (new) | C | preflight allowed/denied, `Vary: Origin`, credentials never `*`, web routes clean |
 | `tests/Feature/Security/InputSanitizationTest.php` (new) | D | 6 cases — index/show escaping of a stored hostile name, mass-assignment refusal on profile and admin update, web sort/direction refusal, undeclared query key absent from the query log, inbox ignoring sort/filter keys |
-| `tests/Feature/Security/SecurityAuditTest.php` (extend) | E | HTML error masking, composite-key 429s |
+| `tests/Feature/Security/SecurityAuditTest.php` (extend) | E | HTML 500 renders the error page with no exception class, message, source path, `Stack trace` or `vendor/` |
+| `tests/Feature/Security/CompositeRateLimitKeyTest.php` (new) | E | 4 cases — login keyed on identifier + IP (second IP = own bucket), second identifier from one IP = own bucket, `reset-password` 429 on the fourth, `email-verification` 429 on the sixth |
 
 Rule: a security test asserts the **refusal**, not just the happy path. A test that only
 proves a permitted request succeeds does not prove the control exists.

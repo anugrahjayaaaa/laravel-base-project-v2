@@ -56,7 +56,7 @@ wider key is not redundant — it is the only bucket that sees the spray.
 | `POST /auth/password/reset` | `reset-password` | 3/min per identifier + IP |
 | `GET /auth/email/verify/{id}/{hash}` | none — `signed` only | one valid link, expiring |
 | every route in the protected group | `user-state-actions` | 15/min per user (IP when no user) |
-| `POST /auth/email/resend`, `GET /email/verify-change/{user}` | `user-state-actions` + `resend-verification` / `email-verification` | 5/hour per user |
+| `POST /auth/email/resend`, `POST /users/{user}/resend-verification`, `GET /email/verify-change/{user}` | `user-state-actions` + `resend-verification` / `email-verification` | 5/hour per user |
 | `POST /users/bulk-action`, `POST /roles/bulk-action`, `POST /features/bulk-action` | `user-state-actions` + `bulk-action` | 5/min per user |
 | `POST /notifications/test-mail` | `user-state-actions` + `send-test-mail` | 5/min per user + IP + recipient |
 | the three `/activity-logs/exports*` routes | `user-state-actions` + `audit-export` | 5/hour per user + IP |
