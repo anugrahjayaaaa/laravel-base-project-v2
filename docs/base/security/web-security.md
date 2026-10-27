@@ -14,7 +14,7 @@
 | Cookie Secure | `true` | `env('SESSION_SECURE_COOKIE')` — deployment decision, like `APP_DEBUG` |
 | Cookie SameSite | `Lax` or `Strict` | ✅ `Lax` (`config/session.php` default) |
 | CSRF | Laravel Sanctum/VerifyCsrfToken middleware | ✅ including under test — see `VerifyCsrfToken::runningUnitTests()` |
-| CORS | Restrict to known origins | No `config/cors.php`; nothing opts in |
+| CORS | Restrict to known origins | ✅ `config/cors.php` — `api/*` only, default-deny; see *CORS Policy* |
 
 A header missing from a response is a different gap from a header configured
 wrongly, so the third column is asserted rather than asserted-about:
@@ -152,9 +152,28 @@ View May Contain), with the self-check greps for views the test does not cover.
 
 ## CORS Policy
 
-- CORS is handled natively by Laravel's `HandleCors` middleware (Laravel 11+).
-- Restrict to known frontend origins.
-- Do not use wildcard `*` for credentials-enabled endpoints.
+- CORS is handled natively by Laravel's `HandleCors`, which ships in the global
+  middleware stack; the application must not register it a second time.
+- `config/cors.php` is **default-deny**: `allowed_origins` comes from
+  `CORS_ALLOWED_ORIGINS` (comma-separated, no trailing slash), and an empty value
+  means no CORS header is emitted anywhere.
+- Only `api/*` is in scope. The Blade pages are same-origin; a cross-origin read
+  of an authenticated document is not a capability this app offers.
+- Explicit methods (`GET, POST, PUT, PATCH, DELETE, OPTIONS`), explicit headers
+  (`Authorization`, `Content-Type`, `Accept`, `X-CSRF-TOKEN`, `X-Requested-With`,
+  `X-Correlation-ID`), `X-Request-ID` exposed, `max_age` 3600.
+- `supports_credentials` is **derived** from the origin list, not a second env
+  key: it is `true` only when at least one origin is named. `*` with credentials
+  is invalid per the CORS spec, and one key cannot express that pair.
+- Preflight answers `204`. With two or more configured origins the response
+  echoes the caller's origin and carries `Vary: Origin`; an unlisted origin gets
+  no `Access-Control-Allow-Origin`. With exactly one configured origin
+  `fruitcake/php-cors` answers that origin even to a foreign caller — the browser
+  then rejects the mismatch, so it is not a grant, but it is why the refusal
+  test uses two origins.
+- An origin list is a deployment decision (deploy-time `.env`), not a runtime
+  setting, so it is not in `SystemSetting`.
+- Pinned by `tests/Feature/Security/CorsPolicyTest.php`.
 
 ## Frontend Compatibility
 

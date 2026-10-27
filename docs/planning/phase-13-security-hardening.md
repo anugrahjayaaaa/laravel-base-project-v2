@@ -1,6 +1,6 @@
 # Phase 13 — Security Hardening
 
-> Date: 2026-10-26 | Status: **IN PROGRESS** — Groups A and B **DONE** (owner-reviewed 2026-10-27); Groups C–E not started | Branch: `feature/phase-13-security-hardening`
+> Date: 2026-10-26 | Status: **IN PROGRESS** — Groups A, B and C **DONE** (owner-reviewed 2026-10-27); Groups D–E not started | Branch: `feature/phase-13-security-hardening`
 > Purpose: close the remaining browser-facing and input-facing attack surface, and turn
 > the controls that already shipped into a suite that fails when one of them regresses.
 > Dependency chain: **A → B → C → D → E**. A and B are verification-heavy because the
@@ -60,7 +60,7 @@ verification + test-extension task and is worded that way.
 ## 3. Decisions that override the brief
 
 Recorded rather than silently applied — the brief disagrees with shipped behaviour in
-five places.
+six places.
 
 | # | Brief says | Decision | Why |
 |---|---|---|---|
@@ -69,6 +69,7 @@ five places.
 | **D-3** | New `csp_nonce()` helper | **Not added.** `@nonce` + `{{ $cspNonce }}` is the existing spelling | A second accessor for one value is a second thing to keep in sync. The directive consumes the shared variable the middleware writes; `Vite::useCspNonce()` reads the same value |
 | **D-4** | Blanket `strip_tags()` / `trim()` trait before validation | **No blanket trait.** D1 is an output-escaping audit plus targeted sanitization at the sinks that need it | Output escaping (`{{ }}`) is the XSS primitive and it already holds. Stripping input before validation mangles legitimate names (`O'Brien & Sons`), destines the change to be un-testable against stored history, and does not stop the real injection classes. Phase 10's CSV-formula finding is the precedent: `strip_tags()` drops markup, not a leading `=` |
 | **D-5** | CORS "allowed origins from env, credentials support" | **Ship the config, default-deny**: `allowed_origins` empty unless `CORS_ALLOWED_ORIGINS` is set; `supports_credentials` only with explicit origins; `paths` limited to `api/*` | A permissive default is a new cross-origin surface with no consumer today. `*` + credentials is also invalid per the CORS spec. This is an operator switch that starts closed, not a policy change |
+| **D-6** | Two env keys — origins and a credentials switch | **One key.** `CORS_ALLOWED_ORIGINS`; `supports_credentials` is derived (`$origins !== []`) | A second switch can express `*` + credentials, which the spec forbids and which would grant every origin a credentialed read. Deriving the credential flag removes that state instead of documenting it. The cost is that credentials cannot be turned off for a named origin, which no consumer needs |
 
 ---
 
@@ -136,16 +137,31 @@ changed PHP files.
 
 > Depends on: A, B. Blocks: D (a CORS misconfiguration is an input-boundary defect).
 
-Status: **PLANNED**. This is the one group with real construction: no `config/cors.php`
-exists today, so the app emits no CORS headers at all.
+Status: **DONE** — implemented 2026-10-27, owner-reviewed and closed 2026-10-27. `config/cors.php` did not exist, so the app
+emitted no CORS header at all; this is one of the phase's two construction tasks (the other
+is D1). The file
+ships default-deny (empty origin list = no grant), scoped to `api/*`, with credentials
+derived from the origin list rather than a second switch (D-6). `HandleCors` was already
+in Laravel's global stack and is **not** registered again — the test asserts exactly one
+entry. Refusal is pinned against the middleware, not the array: an unlisted origin gets no
+allow header, a listed one gets the configured grant, and a web route gets nothing.
 
 | ID | Task | Pri | Depends On | Status |
 |----|------|-----|-----------|--------|
-| P13-C1 | **`config/cors.php`, default-deny.** `paths` = `api/*` only (never `*`); `allowed_origins` from `CORS_ALLOWED_ORIGINS` split on comma, empty by default; `allowed_methods` explicit (`GET, POST, PUT, PATCH, DELETE, OPTIONS`); `allowed_headers` includes `Authorization`, `Content-Type`, `Accept`, `X-CSRF-TOKEN`, `X-Requested-With`, `X-Correlation-ID`; `exposed_headers` = `X-Request-ID`; `max_age` 3600; `supports_credentials` true only when at least one origin is named. Add both keys to `.env.example` with a comment. `HandleCors` is already in the global stack — verify, do not register it twice | P0 | P13-B1 | PLANNED |
-| P13-C2 | **`tests/Feature/Security/CorsPolicyTest.php`.** `OPTIONS /api/v1/…` from a configured origin → `Access-Control-Allow-Origin` echoes it and `Vary: Origin`; from an unlisted origin → no allow-origin header; `credentials` → `Access-Control-Allow-Credentials: true` and never `*`; the web routes (`/login`, `/users`) emit no CORS header; `X-Correlation-ID` is accepted and `X-Request-ID` is exposed | P0 | P13-C1 | PLANNED |
+| P13-C1 | **`config/cors.php`, default-deny.** `paths` = `api/*` only (never `*`); `allowed_origins` from `CORS_ALLOWED_ORIGINS` split on comma, empty by default; `allowed_methods` explicit (`GET, POST, PUT, PATCH, DELETE, OPTIONS`); `allowed_headers` includes `Authorization`, `Content-Type`, `Accept`, `X-CSRF-TOKEN`, `X-Requested-With`, `X-Correlation-ID`; `exposed_headers` = `X-Request-ID`; `max_age` 3600; `supports_credentials` true only when at least one origin is named. Add both keys to `.env.example` with a comment. `HandleCors` is already in the global stack — verify, do not register it twice | P0 | P13-B1 | DONE — config shipped; one env key, not two (D-6); `.env.example` documents it; `HandleCors` untouched and asserted single |
+| P13-C2 | **`tests/Feature/Security/CorsPolicyTest.php`.** `OPTIONS /api/v1/…` from a configured origin → `Access-Control-Allow-Origin` echoes it and `Vary: Origin`; from an unlisted origin → no allow-origin header; `credentials` → `Access-Control-Allow-Credentials: true` and never `*`; the web routes (`/login`, `/users`) emit no CORS header; `X-Correlation-ID` is accepted and `X-Request-ID` is exposed | P0 | P13-C1 | DONE — 8 tests / 41 assertions: single global registration, full preflight grant, unlisted refusal (two origins), the single-origin echo shape, actual-request exposure, web-route silence, shipped-config invariants, empty-list default-deny |
 
 **Gate C:** an unlisted origin gets no CORS grant on any route, a listed one gets exactly
 the configured grant, and no response ever pairs `*` with credentials.
+
+**Measured (2026-10-27):** `CorsPolicyTest` **8 passed / 41 assertions**;
+`tests/Feature/Security` + `tests/Feature/Api` **240 passed / 1088 assertions**; Pint
+clean on the new PHP files.
+
+**Known shape:** with exactly one configured origin, `fruitcake/php-cors` answers that
+origin even to a foreign caller; the browser rejects the mismatch, so it is not a grant,
+and the refusal probe therefore configures two. Documented in `web-security.md` § CORS
+Policy rather than hidden.
 
 ---
 
