@@ -148,8 +148,8 @@ allow header, a listed one gets the configured grant, and a web route gets nothi
 
 | ID | Task | Pri | Depends On | Status |
 |----|------|-----|-----------|--------|
-| P13-C1 | **`config/cors.php`, default-deny.** `paths` = `api/*` only (never `*`); `allowed_origins` from `CORS_ALLOWED_ORIGINS` split on comma, empty by default; `allowed_methods` explicit (`GET, POST, PUT, PATCH, DELETE, OPTIONS`); `allowed_headers` includes `Authorization`, `Content-Type`, `Accept`, `X-CSRF-TOKEN`, `X-Requested-With`, `X-Correlation-ID`; `exposed_headers` = `X-Request-ID`; `max_age` 3600; `supports_credentials` true only when at least one origin is named. Add both keys to `.env.example` with a comment. `HandleCors` is already in the global stack — verify, do not register it twice | P0 | P13-B1 | DONE — config shipped; one env key, not two (D-6); `.env.example` documents it; `HandleCors` untouched and asserted single |
-| P13-C2 | **`tests/Feature/Security/CorsPolicyTest.php`.** `OPTIONS /api/v1/…` from a configured origin → `Access-Control-Allow-Origin` echoes it and `Vary: Origin`; from an unlisted origin → no allow-origin header; `credentials` → `Access-Control-Allow-Credentials: true` and never `*`; the web routes (`/login`, `/users`) emit no CORS header; `X-Correlation-ID` is accepted and `X-Request-ID` is exposed | P0 | P13-C1 | DONE — 8 tests / 41 assertions: single global registration, full preflight grant, unlisted refusal (two origins), the single-origin echo shape, actual-request exposure, web-route silence, shipped-config invariants, empty-list default-deny |
+| P13-C1 | **`config/cors.php`, default-deny.** `paths` = `api/*` only (never `*`); `allowed_origins` from `CORS_ALLOWED_ORIGINS` split on comma, empty by default; `allowed_methods` explicit (`GET, POST, PUT, PATCH, DELETE, OPTIONS`); `allowed_headers` includes `Authorization`, `Content-Type`, `Accept`, `X-CSRF-TOKEN`, `X-Requested-With`, `X-Request-ID`; `exposed_headers` = `X-Request-ID`; `max_age` 3600; `supports_credentials` true only when at least one origin is named. Add both keys to `.env.example` with a comment. `HandleCors` is already in the global stack — verify, do not register it twice | P0 | P13-B1 | DONE — config shipped; one env key, not two (D-6); `.env.example` documents it; `HandleCors` untouched and asserted single; the derived credential flag is also false when the list is `*` (fixed 2026-10-27) |
+| P13-C2 | **`tests/Feature/Security/CorsPolicyTest.php`.** `OPTIONS /api/v1/…` from a configured origin → `Access-Control-Allow-Origin` echoes it and `Vary: Origin`; from an unlisted origin → no allow-origin header; `credentials` → `Access-Control-Allow-Credentials: true` and never `*`; the web routes (`/login`, `/users`) emit no CORS header; `X-Request-ID` is accepted and exposed | P0 | P13-C1 | DONE — 8 tests / 41 assertions: single global registration, full preflight grant, unlisted refusal (two origins), the single-origin echo shape, actual-request exposure, web-route silence, shipped-config invariants, empty-list default-deny (a ninth case, added 2026-10-27, pins the wildcard-uncredentialed derivation) |
 
 **Gate C:** an unlisted origin gets no CORS grant on any route, a listed one gets exactly
 the configured grant, and no response ever pairs `*` with credentials.
@@ -193,11 +193,12 @@ here — Group E3 owns the recount and measured 2241/8034 below.
 **Known shapes (reported, not changed):** `RolesChangedNotification` interpolates role
 names into Markdown body lines, and `StoreRoleRequest` permits newlines in a name — a
 reader of the role-change mail can be shown fabricated lines. Requires `roles.create`, so
-the reach is an admin misleading another admin; severity low. Group C's two findings: `X-Request-ID` was absent from
-`allowed_headers` while the middleware reads it — **fixed 2026-10-27**, the config
-now lists the header the middleware reads and `CorsPolicyTest` pins it;
-`CORS_ALLOWED_ORIGINS=*` would still echo any origin with credentials and remains
-open by the same rule: a reported finding is not a mandate.
+the reach is an admin misleading another admin; severity low. Both Group C findings are
+**fixed 2026-10-27**: `X-Request-ID` is now in `allowed_headers` (the header the
+middleware reads) and `CorsPolicyTest` pins it; `CORS_ALLOWED_ORIGINS=*` is honoured
+only uncredentialed — the derived flag is false whenever the list contains `*` — so the
+vendor's echo-any-origin-with-credentials path is unreachable, pinned by
+`CorsPolicyTest::test_a_wildcard_origin_never_carries_credentials`.
 
 ---
 
@@ -234,8 +235,8 @@ that path took the `$status === 403 ? FORBIDDEN : UNAUTHENTICATED` branch. **Fix
 429 answers `RATE_LIMITED` + `retry_after_seconds` as `error-contract.md` documents, and
 `CompositeRateLimitKeyTest` asserts both. Also open:
 `SecurityAuditTest` still carries `echo "DEBUG Request …"` lines from an earlier
-investigation, which pollute the suite output; and Group C's remaining CORS finding
-(`CORS_ALLOWED_ORIGINS=*` with credentials — the `X-Request-ID` half was fixed 2026-10-27).
+investigation, which pollute the suite output. Group C's two findings are fixed
+2026-10-27 (`X-Request-ID` accepted; `*` uncredentialed only).
 
 ---
 
@@ -245,7 +246,7 @@ investigation, which pollute the suite output; and Group C's remaining CORS find
 |---|---|---|
 | `tests/Feature/Security/SecurityHeadersTest.php` (extend) | A | nonce↔document match, no `'unsafe-inline'`, HSTS on redirect/JSON, `{!! !!}` allowlist |
 | `tests/Feature/Security/CsrfProtectionTest.php` (new) | B | 419 per verb, JSON 419 code, meta↔token, empty `except` |
-| `tests/Feature/Security/CorsPolicyTest.php` (new) | C | preflight allowed/denied, `Vary: Origin`, credentials never `*`, web routes clean |
+| `tests/Feature/Security/CorsPolicyTest.php` (new) | C | preflight allowed/denied, `Vary: Origin`, credentials never `*`, web routes clean, `*` honoured uncredentialed |
 | `tests/Feature/Security/InputSanitizationTest.php` (new) | D | 6 cases — index/show escaping of a stored hostile name, mass-assignment refusal on profile and admin update, web sort/direction refusal, undeclared query key absent from the query log, inbox ignoring sort/filter keys |
 | `tests/Feature/Security/SecurityAuditTest.php` (extend) | E | HTML 500 renders the error page with no exception class, message, source path, `Stack trace` or `vendor/` |
 | `tests/Feature/Security/CompositeRateLimitKeyTest.php` (new) | E | 4 cases — login keyed on identifier + IP (second IP = own bucket), second identifier from one IP = own bucket, `reset-password` 429 on the fourth, `email-verification` 429 on the sixth |

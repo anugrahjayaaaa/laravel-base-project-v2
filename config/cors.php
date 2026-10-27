@@ -35,8 +35,11 @@ return [
     'exposed_headers' => ['X-Request-ID'],
 
     // Derived, not a second switch. `*` with credentials is invalid per the CORS
-    // spec, and one env key cannot express that pair — two could.
-    'supports_credentials' => $origins !== [],
+    // spec, and fruitcake answers that pair by echoing any caller's origin with
+    // `Allow-Credentials: true` — so a wildcard is honoured only uncredentialed.
+    // shortcut: a list mixing `*` with named origins drops credentials for all of
+    // them; upgrade to an explicit origin list if credentialed mixed access is needed.
+    'supports_credentials' => $origins !== [] && ! in_array('*', $origins, true),
 
     'max_age' => 3600,
 

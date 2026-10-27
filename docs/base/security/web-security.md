@@ -164,8 +164,10 @@ View May Contain), with the self-check greps for views the test does not cover.
   `X-Request-ID` — the header `GenerateRequestCorrelationId` reads), `X-Request-ID`
   exposed so a browser can read the id back, `max_age` 3600.
 - `supports_credentials` is **derived** from the origin list, not a second env
-  key: it is `true` only when at least one origin is named. `*` with credentials
-  is invalid per the CORS spec, and one key cannot express that pair.
+  key: it is `true` only when at least one origin is named, and never when the
+  list contains `*`. A wildcard is honoured as an uncredentialed grant only —
+  `*` with credentials is invalid per the CORS spec, and the vendor answers that
+  pair by echoing any caller's origin with `Allow-Credentials: true`.
 - Preflight answers `204`. With two or more configured origins the response
   echoes the caller's origin and carries `Vary: Origin`; an unlisted origin gets
   no `Access-Control-Allow-Origin`. With exactly one configured origin

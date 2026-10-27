@@ -174,4 +174,27 @@ class CorsPolicyTest extends TestCase
         $this->assertNull($response->headers->get('Access-Control-Allow-Origin'));
         $this->assertNull($response->headers->get('Access-Control-Allow-Credentials'));
     }
+
+    /**
+     * `CORS_ALLOWED_ORIGINS=*` is a valid uncredentialed grant and an invalid
+     * credentialed one: fruitcake echoes the caller's own origin when `*` meets
+     * `supports_credentials`, which turns one env typo into a credentialed read
+     * of the API for every origin. The config file itself is re-evaluated, so
+     * this pins the derivation, not a value the test wrote.
+     */
+    public function test_a_wildcard_origin_never_carries_credentials(): void
+    {
+        $saved = [$_ENV['CORS_ALLOWED_ORIGINS'] ?? null, $_SERVER['CORS_ALLOWED_ORIGINS'] ?? null];
+        $_ENV['CORS_ALLOWED_ORIGINS'] = $_SERVER['CORS_ALLOWED_ORIGINS'] = '*';
+
+        try {
+            $config = require config_path('cors.php');
+        } finally {
+            $_ENV['CORS_ALLOWED_ORIGINS'] = $saved[0];
+            $_SERVER['CORS_ALLOWED_ORIGINS'] = $saved[1];
+        }
+
+        $this->assertSame(['*'], $config['allowed_origins']);
+        $this->assertFalse($config['supports_credentials']);
+    }
 }
