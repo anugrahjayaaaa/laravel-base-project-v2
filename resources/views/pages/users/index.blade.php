@@ -45,11 +45,6 @@
         return route('users.index') . '?' . http_build_query($params);
     };
 
-    $editBtn = function ($user) {
-        return '<a href="' .
-            route('users.show', $user) .
-            '" class="btn btn-sm btn-outline-primary" title="Edit"><i class="fas fa-pen"></i></a>';
-    };
 @endphp
 
 @section('content')
@@ -209,7 +204,9 @@
                                 <td>
                                     <div
                                         class="d-flex align-items-center justify-content-end gap-1 flex-wrap flex-md-nowrap">
-                                        {!! $editBtn($user) !!}
+                                        <a href="{{ route('users.show', $user) }}"
+                                            class="btn btn-sm btn-outline-primary" title="Edit"><i
+                                                class="fas fa-pen"></i></a>
                                         @if ($user->trashed())
                                             @can('users.restore')
                                                 <x-ui.confirm-action :action="route('users.restore', $user)" method="POST"
