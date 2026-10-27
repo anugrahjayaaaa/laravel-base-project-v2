@@ -226,11 +226,13 @@ HTML masking case added one test to `SecurityAuditTest`; `php artisan test`
 **2241 passed / 8034 assertions** (1051s); `vendor/bin/pint --test` clean. Phase 13 closes
 here — groups A–E all DONE, and `progress.md` § Test Status carries this run.
 
-**Known shapes (reported, not changed):** the action-level login lock answers HTTP **429
-with `code: UNAUTHENTICATED`** — `AuthAuthenticateAction::checkThrottle()` leaves
-`lockedSeconds` inside `error`, while `LoginController` reads it from the top level, so
-that path takes the `$status === 403 ? FORBIDDEN : UNAUTHENTICATED` branch. The status is
-right and the code is not; `CompositeRateLimitKeyTest` asserts the status only. Also open:
+**Known shapes:** the action-level login lock answered HTTP 429 with
+`code: UNAUTHENTICATED` — `AuthAuthenticateAction::checkThrottle()` left
+`lockedSeconds` inside `error` while `LoginController` read it from the top level, so
+that path took the `$status === 403 ? FORBIDDEN : UNAUTHENTICATED` branch. **Fixed
+2026-10-27**: the action now returns `lockedSeconds` at the top level, the controller's
+429 answers `RATE_LIMITED` + `retry_after_seconds` as `error-contract.md` documents, and
+`CompositeRateLimitKeyTest` asserts both. Also open:
 `SecurityAuditTest` still carries `echo "DEBUG Request …"` lines from an earlier
 investigation, which pollute the suite output; and Group C's remaining CORS finding
 (`CORS_ALLOWED_ORIGINS=*` with credentials — the `X-Request-ID` half was fixed 2026-10-27).

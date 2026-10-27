@@ -58,7 +58,11 @@ class CompositeRateLimitKeyTest extends TestCase
         $this->postJson(route('api.v1.auth.login'), [
             'identifier' => $user->email,
             'password' => 'wrong',
-        ])->assertStatus(429);
+        ])->assertStatus(429)
+            ->assertJsonPath('code', 'RATE_LIMITED')
+            // The lockout is the endpoint's own 429, not the generic
+            // UNAUTHENTICATED the shared error branch would produce.
+            ->assertJsonPath('retry_after_seconds', fn ($seconds) => is_int($seconds) && $seconds > 0);
 
         // Second address, same account: a different key, so the limiter does
         // not answer for the first one. Credentials are judged again (401).

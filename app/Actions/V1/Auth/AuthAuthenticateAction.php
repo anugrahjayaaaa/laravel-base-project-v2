@@ -35,7 +35,10 @@ class AuthAuthenticateAction
         $throttleError = $this->checkThrottle($identifier, $ip, $throttle);
 
         if ($throttleError) {
-            return ['error' => $throttleError];
+            // `lockedSeconds` rides at the top level, the shape the docblock
+            // promises and the controller reads; `checkThrottle()` also needs it
+            // to build the message, so the value is carried, not recomputed.
+            return ['error' => $throttleError, 'lockedSeconds' => $throttleError['lockedSeconds']];
         }
 
         $user = $this->findUser($identifier, $password);
