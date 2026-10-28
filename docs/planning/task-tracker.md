@@ -364,19 +364,20 @@ one. The test factory no longer repeats a username. Detail:
 
 | ID | Task | Phase | Priority | Depends On | Status |
 |----|------|-------|----------|-----------|--------|
-| P14-A1 | Storage Disk Configuration (`config/filesystems.php` S3-ready: local, public, tmp, secure_documents) | 14 | P1 | FOUND-003 | PLANNED |
-| P14-A2 | Secure Private Media Route & Middleware (signed URLs / authorization gated) | 14 | P1 | P14-A1 | PLANNED |
-| P14-A3 | Automated Storage Disk Access Test (`tests/Feature/Storage/StorageDiskTest.php`) | 14 | P1 | P14-A1, P14-A2 | PLANNED |
+| P14-A1 | Storage Disk Configuration (`config/filesystems.php` + runtime driver binding via `SystemSetting` key `storage_default_disk`) | 14 | P1 | FOUND-003 | PLANNED |
+| P14-A2 | Storage Capacity Limit Shield & Middleware (validate disk usage vs `storage_max_capacity_mb`, throw `StorageCapacityExceededException`) | 14 | P1 | P14-A1 | PLANNED |
+| P14-A3 | Secure Private Media Route & Signed URL Handler | 14 | P1 | P14-A1 | PLANNED |
+| P14-A4 | Automated Storage Disk & Capacity Limit Test (`tests/Feature/Storage/StorageDiskTest.php`) | 14 | P1 | P14-A1, P14-A2, P14-A3 | PLANNED |
 | P14-B1 | Spatie Backup Integration & Dynamic `SystemSetting` Control (MySQL DB + `storage/app`) | 14 | P1 | P14-A1 | PLANNED |
-| P14-B2 | Asynchronous Backup Job Execution (`ExecuteSystemBackupJob`) & Notification Alerts | 14 | P1 | P14-B1 | PLANNED |
-| P14-B3 | Automated Backup Strategy Test (`tests/Feature/Storage/BackupStrategyTest.php`) | 14 | P1 | P14-B1, P14-B2 | PLANNED |
-| P14-C1 | Retention Policy Configuration (`SystemSetting` key for temporary upload TTL) | 14 | P1 | DB-001 | PLANNED |
-| P14-C2 | Scheduled Temporary Cleanup Job (`CleanTemporaryStorageJob`) | 14 | P1 | P14-C1 | PLANNED |
+| P14-B2 | Pre-Backup Storage Check & Asynchronous Backup Execution (`ExecuteSystemBackupJob`), abort on full storage | 14 | P1 | P14-B1 | PLANNED |
+| P14-B3 | Automated Backup Strategy & Full Storage Test (`tests/Feature/Storage/BackupStrategyTest.php`) | 14 | P1 | P14-B1, P14-B2 | PLANNED |
+| P14-C1 | Retention & Threshold Policy Configuration (`SystemSetting` keys `temp_file_retention_hours`, `storage_warning_threshold_percent`) | 14 | P1 | DB-001 | PLANNED |
+| P14-C2 | Scheduled & Triggered Temporary Cleanup Job (`CleanTemporaryStorageJob`) | 14 | P1 | P14-C1 | PLANNED |
 | P14-C3 | Automated Retention Test (`tests/Feature/Storage/DataRetentionTest.php`) | 14 | P1 | P14-C1, P14-C2 | PLANNED |
 | P14-D1 | RBAC Authorization (`storage.view`, `storage.manage`, `backup.execute`) | 14 | P1 | RBAC-004 | PLANNED |
 | P14-D2 | Feature Flag Middleware (`feature:storage_management`) | 14 | P1 | P14-D1 | PLANNED |
-| P14-D3 | Action-First Audit Trail Logging (`backup.triggered`, `temp_storage.cleaned`) | 14 | P1 | P14-B2, P14-C2 | PLANNED |
-| P14-E1 | Comprehensive Test Run (`php artisan test --filter=Storage`) | 14 | P0 | P14-A3, P14-B3, P14-C3 | PLANNED |
+| P14-D3 | Action-First Audit Trail Logging (`backup.triggered`, `backup.aborted_storage_full`, `temp_storage.cleaned`, `storage.capacity_warning`) | 14 | P1 | P14-B2, P14-C2 | PLANNED |
+| P14-E1 | Comprehensive Test Run (`php artisan test --filter=Storage`) | 14 | P0 | P14-A4, P14-B3, P14-C3 | PLANNED |
 | P14-E2 | Update Documentation (`retention.md`, `backup-disaster-recovery.md`, `progress.md`) | 14 | P2 | P14-E1 | PLANNED |
 
 **Invariants (non-negotiable):** Audit Trail / Activity Logs are never deleted; soft-deleted models are never force-deleted automatically; only `tmp`/unattached uploads are cleaned by TTL; backup runs asynchronously; storage access gated by RBAC + feature flag; all jobs follow queue convention; audit rows written inside the transaction by the Action layer.

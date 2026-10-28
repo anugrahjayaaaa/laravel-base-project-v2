@@ -1,9 +1,10 @@
 # Phase 14 — Storage, Backup & Retention
 
 > Date: 2026-10-28 | Status: **PLANNED** | Branch: `feature/phase-14-storage-backup-retention`
-> Purpose: make the base project storage-aware and backup-capable, with a strict
-> retention policy that protects audit trails and soft-deleted models while
-> cleaning only temporary/unattached uploads.
+> Purpose: make the base project storage-aware and backup-capable, with strict
+> retention that protects audit trails and soft-deleted models, enforces
+> capacity limits via `SystemSetting`, and cleans only temporary/unattached
+> uploads.
 > Dependency chain: **A → B → C → D → E**.
 > Detail authority: this document. `task-tracker.md` holds the summary rows only.
 > Design authority: `docs/base/operations/retention.md` and
@@ -18,64 +19,93 @@ Fifteen tasks in five groups:
 
 | Group | Subject | Nature |
 |---|---|---|
-| A | Storage disks architecture & S3 readiness | **Build** — config + secure access route |
-| B | Backup strategy & async background engine | **Build** — Spatie backup + queued job |
-| C | Temporary data retention & cleanup | **Build** — TTL job + scheduler |
-| D | Security enforcement, RBAC, feature flags, audit trail | **Build** — gates + audit rows |
+| A | Storage architecture, SystemSetting control & capacity limits | **Build** |
+| B | Backup strategy & async background engine (with storage safety) | **Build** |
+| C | Temporary data retention & triggered cleanup | **Build** |
+| D | Security enforcement, RBAC, feature flags, audit trail | **Build** |
 | E | Automated tests, verification suite & documentation | **Verify + docs** |
 
-Not in scope: cloud-native snapshot tooling beyond S3-ready drivers, multi-region
-replication, encryption-at-rest beyond disk-level defaults, and UI file browser
-beyond the storage management page.
+Not in scope: cloud-native snapshot tooling beyond S3-ready drivers,
+multi-region replication, encryption-at-rest beyond disk-level defaults, and a
+UI file browser beyond the storage management page.
 
 ---
 
-## 2. Adjusted specifications (owner decisions)
+## 2. Updated specifications (owner decisions)
 
-1. **Group A — Storage Architecture & S3 Readiness**
-   - Default to local instance storage, but configure via `config/filesystems.php`
-     to be S3-ready (dynamic `.env` drivers for seamless cloud migration).
+1. **Group A — Storage Architecture, SystemSetting Control & Capacity Limits**
+   - Dynamic storage driver: read primary storage disk from `SystemSetting`
+     (`storage_default_disk` = `local` | `s3`), falling back to
+     `config/filesystems.php`.
+   - Capacity limit enforcement (`storage_max_capacity_mb` &
+     `db_max_capacity_mb` in `SystemSetting`): check available disk/S3 space
+     before processing new uploads; when the limit is reached (threshold met),
+     return a standard error response / prevent the upload and trigger an
+     administrative alert.
    - Private/secure file access handler via signed URLs or authorization gates.
-   - Disks: `local`, `public`, `tmp`, `secure_documents`.
 
-2. **Group B — Backup Strategy & Async Background Engine**
-   - Backup MySQL DB and `storage/app`.
+2. **Group B — Backup Strategy, Background Engine & Storage Safety**
+   - Backup MySQL DB and `storage/app` via `spatie/laravel-backup`.
    - Execute asynchronously via Queued Background Job `ExecuteSystemBackupJob`.
-   - Job execution and triggers controlled dynamically via `SystemSetting` keys.
+   - Check remaining storage before starting backup; abort and notify admin if
+     the backup size exceeds the available storage threshold.
+   - Controlled dynamically via `SystemSetting` keys (`backup_enabled`,
+     `backup_schedule`).
 
-3. **Group C — Data Retention & Cleanup (strict invariants)**
-   - Audit Trail / Activity Logs **MUST NOT** be deleted (retained permanently).
+3. **Group C — Temporary Data Retention & Emergency Purge**
+   - Audit Trail / Activity Logs **MUST NOT** be deleted (retained
+     permanently).
    - Soft-deleted models **MUST NOT** be force-deleted (no automatic pruning).
-   - **ONLY** temporary files / unattached uploads are cleaned up automatically
-     based on `SystemSetting` TTL (e.g., 24 hours).
+   - Temporary files / unattached uploads cleaned up automatically based on
+     `SystemSetting` TTL (`temp_file_retention_hours`).
+   - Capacity-triggered cleanup: auto-trigger `CleanTemporaryStorageJob` when
+     disk usage crosses the warning threshold.
 
 4. **Group D & E** — Standard RBAC (`storage.view`, `storage.manage`,
    `backup.execute`), Feature Flag (`feature:storage_management`), Action-First
-   Audit Trail logging (`backup.triggered`, `temp_storage.cleaned`), and 100%
-   test suite verification.
+   Audit Trail logging (`storage.capacity_warning`,
+   `backup.aborted_storage_full`, `backup.triggered`, `temp_storage.cleaned`),
+   and 100% test suite verification.
 
 ---
 
-## 3. Group A — Storage Disks Architecture & S3 Readiness
+## 3. Group A — Storage Architecture, SystemSetting Control & Capacity Limits
 
 ### P14-A1 — Storage Disk Configuration
 
 - **Task**: Add/adjust `config/filesystems.php` with S3-ready drivers for
   `local`, `public`, `tmp`, and `secure_documents` disks, all driven by `.env`
-  keys (`FILESYSTEM_DISK`, `AWS_*`, bucket, region, endpoint, path-style).
+  keys. Bind the primary disk at runtime from `SystemSetting`
+  (`storage_default_disk` = `local` | `s3`), falling back to the config default
+  when unset.
 - **Acceptance**:
-  - Default disk resolves to `local` when no env override is set.
-  - Switching `FILESYSTEM_DISK=s3` (with valid AWS env) routes all disks to S3
-    without code changes.
-  - `tmp` and `secure_documents` are declared and reachable via `Storage::disk()`.
+  - Default disk resolves to `local` when no setting/env override is set.
+  - Switching `storage_default_disk=s3` (with valid AWS env) routes all disks
+    to S3 without code changes.
+  - `tmp` and `secure_documents` are declared and reachable via
+    `Storage::disk()`.
   - No hard-coded bucket/region in `app/` or `config/`.
-- **Tests**: `StorageDiskTest` (disk resolution, env switch).
+- **Tests**: `StorageDiskTest` (disk resolution, env/setting switch).
 - **Docs**: `docs/base/infrastructure/storage.md` (if exists) or ADR note.
 
-### P14-A2 — Secure Private Media Route & Middleware
+### P14-A2 — Storage Capacity Limit Shield & Middleware
 
-- **Task**: Private/secure file access handler via signed URLs or authorization
-  gates (e.g., `StorageController` + `can:storage.view` / signed route).
+- **Task**: Validate disk usage against `storage_max_capacity_mb` (and
+  `db_max_capacity_mb` where applicable) before processing new uploads; when
+  the limit is reached, throw `StorageCapacityExceededException`, return a
+  standard error response, prevent the upload, and trigger an administrative
+  alert (audit row `storage.capacity_warning`).
+- **Acceptance**:
+  - Upload is refused with a standard error when capacity threshold is met.
+  - Alert/notification fired on threshold breach.
+  - No silent partial writes.
+- **Tests**: `StorageDiskTest` (capacity shield).
+- **Docs**: `docs/base/features/storage.md`.
+
+### P14-A3 — Secure Private Media Route & Signed URL Handler
+
+- **Task**: Private/secure file access handler via signed URLs or
+  authorization gates (`StorageController` + `can:storage.view` / signed route).
 - **Acceptance**:
   - Files on `secure_documents` are never publicly reachable via direct URL.
   - Access requires `storage.view` (or a valid signed URL) and the
@@ -84,10 +114,11 @@ beyond the storage management page.
 - **Tests**: `StorageDiskTest` (access gate, signed URL expiry).
 - **Docs**: `docs/base/features/storage.md`.
 
-### P14-A3 — Automated Storage Disk Access Test
+### P14-A4 — Automated Storage Disk & Capacity Limit Test
 
-- **Task**: `tests/Feature/Storage/StorageDiskTest.php` covering disk resolution,
-  env-driven S3 switch, and secure access gating.
+- **Task**: `tests/Feature/Storage/StorageDiskTest.php` covering disk
+  resolution, env/setting-driven switch, capacity shield, and secure access
+  gating.
 - **Acceptance**: All assertions green; no inline FQCN; no queries in views.
 
 ---
@@ -98,71 +129,76 @@ beyond the storage management page.
 
 - **Task**: Integrate `spatie/laravel-backup` (or equivalent) for MySQL DB +
   `storage/app`, with execution controlled by `SystemSetting` keys
-  (`backup.enabled`, `backup.schedule`, `backup.retention_daily`, etc.).
+  (`backup_enabled`, `backup_schedule`, `backup_retention_daily`, etc.).
 - **Acceptance**:
-  - Backup config reads schedule/retention from `SystemSetting`, not hardcoded.
+  - Backup config reads schedule/retention from `SystemSetting`, not
+    hardcoded.
   - Disabled via setting → no scheduled run.
   - ADR recorded if a new Composer package is added.
 - **Tests**: `BackupStrategyTest`.
 - **Docs**: `docs/infrastructure/backup-disaster-recovery.md`.
 
-### P14-B2 — Asynchronous Backup Job Execution & Notification Alerts
+### P14-B2 — Pre-Backup Storage Check & Asynchronous Backup Execution
 
 - **Task**: `ExecuteSystemBackupJob` queued job (follows
   `docs/base/infrastructure/queue.md` standard: `QueueName` + `onQueue()`,
-  explicit `$tries`/`$timeout`/`$maxExceptions`/`backoff()`, `failed()` logging
-  event name + exception + `request_id` via `ReadsCorrelationId`). Triggered via
-  `backup.execute` permission; notifies on success/failure.
+  explicit `$tries`/`$timeout`/`$maxExceptions`/`backoff()`, `failed()`
+  logging event name + exception + `request_id` via `ReadsCorrelationId`).
+  Check remaining storage before starting; abort gracefully (audit row
+  `backup.aborted_storage_full`) and notify admin if the backup size exceeds
+  the available storage threshold. Triggered via `backup.execute` permission;
+  notifies on success/failure.
 - **Acceptance**:
-  - Job runs on `exports`/`sweeps` (or a dedicated queue) named via
-    `App\Support\QueueName`.
+  - Job runs on a named queue via `App\Support\QueueName`.
   - `request_id` read in `failed()` from the payload, never from the container.
-  - Audit row `backup.triggered` written inside the transaction by the Action
-    layer.
-  - Notification alert on completion/failure.
-- **Tests**: `BackupStrategyTest` (dispatch, job convention, audit row).
-- **Docs**: `docs/base/infrastructure/queue.md` (convention compliance).
+  - Audit row `backup.triggered` (or `backup.aborted_storage_full`) written
+    inside the transaction by the Action layer.
+  - Notification alert on completion/failure/abort.
+- **Tests**: `BackupStrategyTest` (dispatch, job convention, audit row, abort).
+- **Docs**: `docs/base/infrastructure/queue.md`.
 
-### P14-B3 — Automated Backup Strategy Test
+### P14-B3 — Automated Backup Strategy & Full Storage Test
 
 - **Task**: `tests/Feature/Storage/BackupStrategyTest.php`.
-- **Acceptance**: Dispatch + job convention + audit + notification assertions
-  green.
+- **Acceptance**: Dispatch + job convention + audit + notification + abort
+  assertions green.
 
 ---
 
 ## 5. Group C — Temporary Data Retention & Storage Cleanup
 
-### P14-C1 — Retention Policy Configuration
+### P14-C1 — Retention & Threshold Policy Configuration
 
-- **Task**: `SystemSetting` key for temporary upload TTL (e.g.,
-  `storage.tmp_ttl_hours`, default 24). Audit logs and soft-deleted models are
-  explicitly **excluded** from any cleanup.
+- **Task**: `SystemSetting` keys for `temp_file_retention_hours` (default 24)
+  and `storage_warning_threshold_percent` (e.g., 95). Audit logs and
+  soft-deleted models are explicitly **excluded** from any cleanup.
 - **Acceptance**:
-  - Setting is readable via `SystemSetting::get()` and validated (1..8760).
+  - Settings readable via `SystemSetting::get()` and validated.
   - No setting exists that prunes audit logs or soft-deleted models.
 - **Tests**: `DataRetentionTest`.
 - **Docs**: `docs/operations/retention.md`.
 
-### P14-C2 — Scheduled Temporary Cleanup Job
+### P14-C2 — Scheduled & Triggered Temporary Cleanup Job
 
-- **Task**: `CleanTemporaryStorageJob` scheduled daily, cleaning only `tmp` /
-  unattached uploads older than the TTL. Never touches audit logs or
-  soft-deleted models.
+- **Task**: `CleanTemporaryStorageJob` scheduled daily and auto-triggered when
+  disk usage crosses the warning threshold, cleaning only `tmp` / unattached
+  uploads older than the TTL. Never touches audit logs or soft-deleted models.
 - **Acceptance**:
   - Job deletes only files under `tmp`/unattached older than TTL.
   - Audit log rows and soft-deleted model rows remain untouched (asserted).
   - Job follows queue convention (P14-B2).
   - Audit row `temp_storage.cleaned` written inside the transaction.
+  - Triggered automatically on threshold breach.
 - **Tests**: `DataRetentionTest`.
 - **Docs**: `docs/operations/retention.md`.
 
 ### P14-C3 — Automated Retention Test
 
 - **Task**: `tests/Feature/Storage/DataRetentionTest.php` asserting temp files
-  cleaned while Audit Logs and Soft Deleted models remain intact.
-- **Acceptance**: Green; sabotage check (removing the guard deletes audit rows)
-  turns red.
+  purged, Audit Logs & Soft Deleted models preserved, and threshold-triggered
+  cleanup.
+- **Acceptance**: Green; sabotage check (removing the guard deletes audit
+  rows) turns red.
 
 ---
 
@@ -180,12 +216,13 @@ beyond the storage management page.
 - **Task**: `feature:storage_management` flag declared in `config/pennant.php`,
   seeded by `FeatureFlagSeeder`, gated on routes + sidebar via
   `FeatureCatalog::isActive()`.
-- **Acceptance**: Flag off → 403 for every role (incl. superadmin) and menu item
-  drops.
+- **Acceptance**: Flag off → 403 for every role (incl. superadmin) and menu
+  item drops.
 
 ### P14-D3 — Action-First Audit Trail Logging
 
-- **Task**: `backup.triggered` and `temp_storage.cleaned` audit events written
+- **Task**: `backup.triggered`, `backup.aborted_storage_full`,
+  `temp_storage.cleaned`, and `storage.capacity_warning` audit events written
   inside the Action's transaction via `Auditable::audit()`.
 - **Acceptance**: Audit row present after commit; absent after rollback.
 
@@ -222,8 +259,11 @@ Phase 14 row in `docs/planning/progress.md` set to `PLANNED`.
 4. Backup runs asynchronously via queued job; never synchronously in a request.
 5. Storage access is gated by RBAC + feature flag; no public direct access to
    `secure_documents`.
-6. All jobs follow the queue convention; `JobConventionTest` must pass.
-7. Audit rows written inside the transaction by the Action layer only.
+6. Capacity limits enforced before uploads/backups; breach triggers alert +
+   audit row.
+7. Dynamic disk driver read from `SystemSetting` with config fallback.
+8. All jobs follow the queue convention; `JobConventionTest` must pass.
+9. Audit rows written inside the transaction by the Action layer only.
 
 ---
 
