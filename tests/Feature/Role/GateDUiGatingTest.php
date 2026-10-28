@@ -5,18 +5,20 @@ namespace Tests\Feature\Role;
 use App\Models\Role as AppRole;
 use App\Models\RoleLookup;
 use App\Models\User;
+use App\Support\PermissionCatalog;
 use App\Support\SystemRole;
 use Database\Seeders\PermissionSeeder;
 use Database\Seeders\RoleSeeder;
+use Database\Seeders\SystemSettingSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Route;
-use Tests\TestCase;
-use Symfony\Component\Finder\Finder;
-use App\Http\Middleware\VerifyCsrfToken;
-use App\Models\SystemSetting;
-use App\Support\PermissionCatalog;
+use Laravel\Pennant\Feature;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\PermissionRegistrar;
+use Symfony\Component\Finder\Finder;
+use Tests\TestCase;
+use App\Http\Middleware\VerifyCsrfToken;
+use App\Models\SystemSetting;
 
 /**
  * The permission boundary as a user actually meets it: routes, sidebar, buttons.
@@ -486,6 +488,32 @@ class GateDUiGatingTest extends TestCase
         $this->assertStringContainsString(
             (string) array_key_first($settings ?? []),
             $html
+        );
+    }
+
+    /**
+     * A read-only viewer must not see settings owned by a disabled feature flag.
+     *
+     * The read-only table iterates the settings passed to it; with the flag
+     * off the key must be absent, not merely greyed out — a value the route
+     * 403s before it can read is a ceiling the viewer can never reach and
+     * should never see.
+     */
+    public function test_read_only_view_excludes_disabled_feature_settings(): void
+    {
+        $this->seed(SystemSettingSeeder::class);
+        Feature::deactivate('notifications');
+        Feature::flushCache();
+
+        $reader = $this->userWith(['settings.view']);
+        $this->actingAs($reader, 'web');
+
+        $html = $this->get(route('settings.index'))->assertOk()->getContent();
+
+        $this->assertStringNotContainsString(
+            'send_test_mail_rate_limit_per_minute',
+            $html,
+            'a disabled-feature setting must not appear in the read-only table'
         );
     }
 

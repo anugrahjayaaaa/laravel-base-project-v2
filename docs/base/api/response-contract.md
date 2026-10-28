@@ -115,9 +115,11 @@ resources:
   level, unwrapped, 200 or 503. A monitor reads `status`, and an envelope would
   put the one meaningful key one level deeper for no gain.
 - **System settings** — `data` is the key→value map itself
-  (`SystemSetting::getAll()`), not a `settings` wrapper. Both the read and the
-  update answer with the full map after the write, so a form can re-render from
-  the response instead of a follow-up GET.
+  (`SystemSetting::getLive()`), not a `settings` wrapper. Both the read and the
+  update answer with the live map after the write, so a form can re-render from
+  the response instead of a follow-up GET. `getLive()` excludes settings whose
+  owning feature flag is off — those feed routes that 403 before the setting is
+  read, so exposing them would leak a limiter value nobody can reach.
 
 ## Query parameters
 

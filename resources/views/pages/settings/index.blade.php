@@ -549,6 +549,7 @@
                                 @enderror
                             </div>
 
+                            @if($settingGroups['activity_logs']['active'])
                             <div class="col-12">
                                 <h6 class="text-body-secondary text-uppercase small fw-semibold mb-0 mt-1">Audit Trail</h6>
                             </div>
@@ -601,12 +602,15 @@
                                     <div class="invalid-feedback d-block" id="audit_export_max_manual_retries_error">{{ $message }}</div>
                                 @enderror
                             </div>
+                            @endif
 
                             {{-- Phase 12 P12-2: these three were literals in
                                  AppServiceProvider until then. Not wrong —
                                  unreachable, which for the mail one means an
                                  admin cannot raise a relay ceiling during an
                                  incident without a deploy. --}}
+                            
+                            @if($settingGroups['users']['active'])
                             <div class="col-12">
                                 <h6 class="text-body-secondary text-uppercase small fw-semibold mb-0 mt-1">User Management</h6>
                             </div>
@@ -626,7 +630,6 @@
                                     <div class="invalid-feedback d-block" id="user_state_actions_rate_limit_per_minute_error">{{ $message }}</div>
                                 @enderror
                             </div>
-
                             <div class="col-md-6">
                                 <label for="bulk_action_rate_limit_per_minute" class="form-label">
                                     Bulk Actions
@@ -642,7 +645,9 @@
                                     <div class="invalid-feedback d-block" id="bulk_action_rate_limit_per_minute_error">{{ $message }}</div>
                                 @enderror
                             </div>
+                            @endif
 
+                            @if($settingGroups['notifications']['active'])
                             <div class="col-12">
                                 <h6 class="text-body-secondary text-uppercase small fw-semibold mb-0 mt-1">Notifications</h6>
                             </div>
@@ -662,6 +667,7 @@
                                     <div class="invalid-feedback d-block" id="send_test_mail_rate_limit_per_minute_error">{{ $message }}</div>
                                 @enderror
                             </div>
+                            @endif
 
                             <div class="col-12">
                                 <h6 class="text-body-secondary text-uppercase small fw-semibold mb-0 mt-1">System Health</h6>
@@ -683,6 +689,7 @@
                                 @enderror
                             </div>
 
+                            @if($settingGroups['vantage']['active'])
                             <div class="col-md-6">
                                 <label for="queue_retry_rate_limit_per_minute" class="form-label">
                                     Queue Job Retries
@@ -698,6 +705,7 @@
                                     <div class="invalid-feedback d-block" id="queue_retry_rate_limit_per_minute_error">{{ $message }}</div>
                                 @enderror
                             </div>
+                            @endif
                         </div>
                     </div>
                 </div>

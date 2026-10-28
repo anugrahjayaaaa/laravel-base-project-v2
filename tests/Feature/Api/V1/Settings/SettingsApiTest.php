@@ -8,7 +8,9 @@ use App\Models\SystemSetting;
 use App\Models\User;
 use Database\Seeders\PermissionSeeder;
 use Database\Seeders\RoleSeeder;
+use Database\Seeders\SystemSettingSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Laravel\Pennant\Feature;
 use Laravel\Sanctum\Sanctum;
 use Spatie\Permission\PermissionRegistrar;
 use Tests\TestCase;
@@ -108,5 +110,84 @@ class SettingsApiTest extends TestCase
                 'code',
                 'meta' => ['request_id', 'timestamp'],
             ]);
+    }
+
+    /**
+     * Settings owned by an inactive feature flag are excluded from the API read.
+     *
+     * `send_test_mail_rate_limit_per_minute` feeds the notifications test-mail
+     * route, which 403s when the flag is off. Returning the value anyway lets an
+     * operator inspect a ceiling they can never reach — a read-only leak.
+     */
+    public function test_api_index_excludes_settings_owned_by_a_disabled_feature(): void
+    {
+        $this->seed(SystemSettingSeeder::class);
+
+        // Precondition: the setting exists and the feature is on, so the
+        // absence in the disabled response is the flag's effect, not a missing
+        // key to begin with.
+        $this->assertTrue(
+            SystemSetting::getLive()['send_test_mail_rate_limit_per_minute'] === '5',
+            'precondition: the notifications setting is live when the flag is on'
+        );
+
+        Feature::deactivate('notifications');
+        Feature::flushCache();
+
+        Sanctum::actingAs($this->userWith('settings.view'));
+
+        $data = $this->getJson(route('api.v1.settings.index'))
+            ->assertOk()
+            ->json('data');
+
+        $this->assertArrayNotHasKey(
+            'send_test_mail_rate_limit_per_minute',
+            $data,
+            'a setting whose feature flag is off must not appear in the API read'
+        );
+    }
+
+    /**
+     * The same exclusion applies to the POST/PUT response body — a client must
+     * not get back a value it just wrote to a disabled-feature key.
+     */
+    public function test_api_update_response_excludes_disabled_feature_settings(): void
+    {
+        $this->seed(SystemSettingSeeder::class);
+        Feature::deactivate('notifications');
+        Feature::flushCache();
+
+        Sanctum::actingAs($this->userWith('settings.manage'));
+
+        $data = $this->putJson(route('api.v1.settings.update'), ['login_max_attempts' => 7])
+            ->assertOk()
+            ->json('data');
+
+        $this->assertArrayNotHasKey(
+            'send_test_mail_rate_limit_per_minute',
+            $data,
+            'a disabled-feature setting must not echo back in the write response'
+        );
+    }
+
+    /**
+     * The write itself is still a no-op — the setting is not persisted.
+     */
+    public function test_api_update_to_a_disabled_feature_setting_is_a_noop(): void
+    {
+        $this->seed(SystemSettingSeeder::class);
+        Feature::deactivate('notifications');
+        Feature::flushCache();
+
+        Sanctum::actingAs($this->userWith('settings.manage'));
+
+        $this->putJson(route('api.v1.settings.update'), ['send_test_mail_rate_limit_per_minute' => 99])
+            ->assertOk();
+
+        $this->assertSame(
+            '5',
+            SystemSetting::getString('send_test_mail_rate_limit_per_minute'),
+            'writing to a disabled-feature setting must not persist'
+        );
     }
 }

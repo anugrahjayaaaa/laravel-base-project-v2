@@ -8,6 +8,7 @@ use App\Http\Requests\V1\System\SystemSettingRequest;
 use App\Models\RoleLookup;
 use App\Models\SystemSetting;
 use App\Models\Timezone;
+use App\Support\FeatureCatalog;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 
@@ -53,7 +54,7 @@ class SystemSettingController extends Controller
      */
     public function index(): View
     {
-        $settings = SystemSetting::getAll();
+        $settings = SystemSetting::getLive();
 
         foreach (self::BOOLEAN_KEYS as $key) {
             $settings[$key] = filter_var($settings[$key] ?? false, FILTER_VALIDATE_BOOLEAN);
@@ -62,7 +63,8 @@ class SystemSettingController extends Controller
         $timezones = Timezone::active()->orderBy('name')->get();
         $roles = RoleLookup::visibleTo(request()->user())->pluck('name', 'name');
 
-        return view('pages.settings.index', compact('settings', 'timezones', 'roles'));
+        return view('pages.settings.index', compact('settings', 'timezones', 'roles'))
+            ->with('settingGroups', FeatureCatalog::settingGroups());
     }
 
     /**

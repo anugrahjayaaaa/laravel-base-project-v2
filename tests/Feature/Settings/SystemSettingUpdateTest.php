@@ -6,6 +6,7 @@ use App\Http\Middleware\VerifyCsrfToken;
 use App\Models\RoleLookup;
 use App\Models\SystemSetting;
 use App\Models\User;
+use Database\Seeders\FeatureFlagSeeder;
 use Database\Seeders\PermissionSeeder;
 use Database\Seeders\RoleSeeder;
 use Database\Seeders\TimezoneSeeder;
@@ -16,8 +17,10 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Password;
 use Tests\TestCase;
+use App\Actions\V1\System\SystemSettingsUpdateAction;
 use App\Http\Requests\V1\System\SystemSettingRequest;
 use App\Providers\AppServiceProvider;
+use App\Support\FeatureCatalog;
 use Database\Seeders\SystemSettingSeeder;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Auth\Notifications\VerifyEmail;
@@ -25,6 +28,7 @@ use Illuminate\Notifications\AnonymousNotifiable;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Testing\TestResponse;
 use Illuminate\Database\Eloquent\Relations\Relation;
+use Laravel\Pennant\Feature;
 
 class SystemSettingUpdateTest extends TestCase
 {
@@ -668,5 +672,120 @@ class SystemSettingUpdateTest extends TestCase
         $this->assertEquals('true', SystemSetting::where('key', 'allow_email_change')->value('value'));
         $this->assertEquals('15', SystemSetting::where('key', 'username_change_cooldown_days')->value('value'));
         $this->assertEquals('10', SystemSetting::where('key', 'email_change_cooldown_days')->value('value'));
+    }
+
+    /**
+     * A setting that belongs to a module must not be writable when that module
+     * is killed, even through the settings page — the write is a no-op and the
+     * audit record stays honest.
+     *
+     * send_test_mail_rate_limit_per_minute feeds the `send-test-mail` throttle,
+     * but that route lives under feature:notifications. With the flag off the
+     * route 403s before the limiter runs, so any write through /settings is a
+     * change the route can never feel. Guarded in SystemSettingsUpdateAction,
+     * so the assertion rides through the action directly — the API and web
+     * controllers are just callers.
+     */
+    public function test_a_disabled_notifications_module_locks_the_test_mail_rate_limit(): void
+    {
+        $this->seed(FeatureFlagSeeder::class);
+        Feature::deactivate('notifications');
+        Feature::flushCache();
+
+        SystemSetting::set('send_test_mail_rate_limit_per_minute', '5');
+        SystemSetting::bustCache();
+
+        $action = app(SystemSettingsUpdateAction::class);
+        $action->run(
+            ['send_test_mail_rate_limit_per_minute' => 99],
+            partial: true,
+            causer: User::factory()->create(),
+        );
+
+        SystemSetting::bustCache();
+        $this->assertSame(
+            '5',
+            SystemSetting::getString('send_test_mail_rate_limit_per_minute'),
+            'a write to a disabled-module setting should be a no-op'
+        );
+
+        // The audit record must not claim the key changed.
+        $audit = Activity::query()
+            ->where('event', 'system_setting.updated')
+            ->latest('id')
+            ->first();
+
+        $this->assertNotNull($audit);
+        $this->assertArrayNotHasKey(
+            'send_test_mail_rate_limit_per_minute',
+            json_decode($audit->properties, true) ?: [],
+            'the audit record claims a setting changed that the action never wrote'
+        );
+    }
+
+    /**
+     * The same setting IS writable when notifications is active — guards against
+     * the fix being always-on rather than feature-gated.
+     */
+    public function test_an_active_notifications_module_writes_the_test_mail_rate_limit(): void
+    {
+        $this->seed(FeatureFlagSeeder::class);
+        $this->assertTrue(FeatureCatalog::isActive('notifications'), 'precondition: notifications is on');
+
+        SystemSetting::set('send_test_mail_rate_limit_per_minute', '5');
+        SystemSetting::bustCache();
+
+        $action = app(SystemSettingsUpdateAction::class);
+        $action->run(['send_test_mail_rate_limit_per_minute' => 99], partial: true);
+
+        SystemSetting::bustCache();
+        $this->assertSame(
+            '99',
+            SystemSetting::getString('send_test_mail_rate_limit_per_minute'),
+            'an enabled module should still accept the setting write'
+        );
+    }
+
+    /**
+     * The hidden field is absent from the rendered settings page when the
+     * notifications module is off — a viewer should not see a control they
+     * cannot act on.
+     */
+    public function test_the_test_mail_field_is_hidden_when_notifications_is_off(): void
+    {
+        $this->seed(FeatureFlagSeeder::class);
+        Feature::deactivate('notifications');
+        Feature::flushCache();
+
+        $user = User::factory()->create();
+        $user->assignRole(RoleLookup::find('admin'));
+
+        $response = $this->actingAs($user, 'web')->get(route('settings.index'));
+
+        $response->assertOk()
+            ->assertDontSee('send_test_mail_rate_limit_per_minute', false)
+            ->assertDontSee('Test Mail', false);
+    }
+
+    /**
+     * The Bulk Actions limiter belongs to the same `users` flag as State
+     * Actions — both feed routes under feature:users. With the flag off the
+     * field must be absent, not merely disabled: a ceiling an operator can
+     * neither reach nor raise is a leak as much as one they can lower.
+     */
+    public function test_the_bulk_actions_field_is_hidden_when_users_is_off(): void
+    {
+        $this->seed(FeatureFlagSeeder::class);
+        Feature::deactivate('users');
+        Feature::flushCache();
+
+        $user = User::factory()->create();
+        $user->assignRole(RoleLookup::find('admin'));
+
+        $response = $this->actingAs($user, 'web')->get(route('settings.index'));
+
+        $response->assertOk()
+            ->assertDontSee('bulk_action_rate_limit_per_minute', false)
+            ->assertDontSee('Bulk Actions', false);
     }
 }
