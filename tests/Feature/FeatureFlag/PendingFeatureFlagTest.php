@@ -14,15 +14,19 @@ use App\Actions\V1\Feature\FeatureIndexAction;
  *
  * ## Why
  *
- * `translations` and `activity_logs` are declared in config before their modules
- * ship. The switch rendered, the POST succeeded, the store row flipped, the
- * audit row was written and the counter moved — and nothing else in the
- * application changed. To an operator that reads as "I switched this module off"
- * when the truthful answer is "this switch controls nothing".
+ * `translations` and `activity_logs` were declared in config before their
+ * modules shipped. The switch rendered, the POST succeeded, the store row
+ * flipped, the audit row was written and the counter moved — and nothing else
+ * in the application changed. To an operator that reads as "I switched this
+ * module off" when the truthful answer is "this switch controls nothing".
  *
- * The fix is a `pending` key in config, surfaced through the catalogue and
+ * The fix was a `pending` key in config, surfaced through the catalogue and
  * printed in the row. A flag that controls nothing should say so rather than
  * borrow the confidence of one that does.
+ *
+ * Both gaps are now closed: `activity_logs` shipped in Phase 10, and
+ * `translations` was removed entirely in Phase 12. The test below keeps the
+ * guard alive by asserting no flag carries the caveat.
  */
 class PendingFeatureFlagTest extends TestCase
 {
@@ -46,25 +50,24 @@ class PendingFeatureFlagTest extends TestCase
         ])->render();
     }
 
-    public function test_a_flag_with_no_module_says_so(): void
+    public function test_no_flag_carries_the_intent_only_caveat(): void
     {
         $pending = collect(FeatureCatalog::all())
             ->filter(fn (array $f): bool => $f['pending'] !== null)
             ->pluck('slug');
 
-        $this->assertNotEmpty($pending, 'no flag is marked pending — is every module built now?');
+        $this->assertEmpty(
+            $pending,
+            'a flag is marked pending — either ship its module or remove the flag'
+        );
 
         $html = $this->render();
 
-        foreach ($pending as $slug) {
-            $row = $this->rowFor($html, $slug);
-
-            $this->assertStringContainsString(
-                'this switch records intent only',
-                $row,
-                "[{$slug}] controls nothing but the row does not say so"
-            );
-        }
+        $this->assertStringNotContainsString(
+            'records intent only',
+            $html,
+            'a flag that controls nothing was rendered without the caveat'
+        );
     }
 
     public function test_a_wired_flag_carries_no_caveat(): void

@@ -20,6 +20,10 @@ return [
     |   description — one line on what turning it off actually removes
     |   disabled    — optional; true makes the flag a KILL SWITCH that needs no
     |                 deploy to flip (see AppServiceProvider::boot())
+    |   settings    — optional; system-setting keys that only affect this
+    |                 module. With the flag off their routes 403 before the
+    |                 limiter runs, so the page hides them and a write is a
+    |                 no-op (FeatureCatalog::settingGroups()).
     |
     | Declaring a flag does NOT activate it. With the `database` store,
     | Feature::active() resolves against a row in the `features` table and
@@ -33,6 +37,10 @@ return [
             'label' => 'User Management',
             'group' => 'Users',
             'description' => 'Accounts, roles, permissions and bulk actions.',
+            'settings' => [
+                'user_state_actions_rate_limit_per_minute',
+                'bulk_action_rate_limit_per_minute'
+            ],
         ],
         'roles' => [
             'label' => 'Roles',
@@ -53,17 +61,7 @@ return [
             'label' => 'Notifications & Mail',
             'group' => 'Settings',
             'description' => 'Mail transport configuration and the in-app notification inbox.',
-        ],
-        'translations' => [
-            'label' => 'Translations',
-            'group' => 'Settings',
-            'description' => 'Runtime-editable language lines.',
-            // Declared ahead of its module. Nothing reads this flag yet, so
-            // flipping the switch writes a store row and an audit row and
-            // changes nothing else — the page says so rather than letting an
-            // operator believe they switched a module off. Remove this key when
-            // routes/translations ships and the flag is wired to them.
-            'pending' => 'Module not built yet — this switch records intent only.',
+            'settings' => ['send_test_mail_rate_limit_per_minute'],
         ],
         'sessions' => [
             'label' => 'Sessions',
@@ -74,6 +72,10 @@ return [
             'label' => 'Activity Logs',
             'group' => 'Audit',
             'description' => 'The audit trail viewer.',
+            'settings' => [
+                'audit_export_rate_limit_per_hour',
+                'audit_export_max_manual_retries',
+            ],
             // The `pending` key is gone as of Phase 10 Group B: routes ship in
             // routes/web.php and the sidebar entry is live, so the flag now
             // controls something. Leaving it would keep `/features` telling an
@@ -94,6 +96,7 @@ return [
             'label' => 'Queue Monitor (Vantage)',
             'group' => 'Monitoring',
             'description' => 'Per-attempt job history, failure detail, retry chains and live queue depth.',
+            'settings' => ['queue_retry_rate_limit_per_minute'],
         ],
     ],
 

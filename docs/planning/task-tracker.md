@@ -218,7 +218,7 @@ Detail: `docs/planning/phase-6-rbac.md` § Group A and § C4.
 and the routes now carry it (`P7-D7`/`D8`) — turning a flag off at `/features`
 refuses those routes and drops the menu item, for superadmin included.
 
-**Still true:** three of the eight flags control nothing, because `translations`,
+**Still true:** two of the seven flags control nothing, because
 `activity_logs` and `pulse` have no routes to gate. Those modules ship in Phase 8.
 Closed. Full suite green; the follow-up audit is in `docs/planning/progress.md`.
 
@@ -1280,7 +1280,7 @@ one. The test factory no longer repeats a username. Detail:
     "priority": "P0",
     "depends_on": ["P7-A1"],
     "status": "DONE",
-    "note": "Phase 7 Group B, shipped b72a5f6. users, roles, permissions, settings, translations, sessions, activity_logs, pulse. The brief's `registration` flag was DROPPED — registration_enabled is already a system_settings row read at four entry points, so a flag would be a second writer for one question. `telescope` also dropped (package removed in 85384b4). The published `stores` block stays byte-identical: it carries the PENNANT_STORE env wiring deploy reads."
+    "note": "Phase 7 Group B, shipped b72a5f6. users, roles, permissions, settings, sessions, activity_logs, pulse. The brief's `registration` flag was DROPPED — registration_enabled is already a system_settings row read at four entry points, so a flag would be a second writer for one question. `telescope` also dropped (package removed in 85384b4). The published `stores` block stays byte-identical: it carries the PENNANT_STORE env wiring deploy reads."
   },
   {
     "id": "P7-B2",

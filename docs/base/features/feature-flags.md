@@ -43,12 +43,12 @@ descriptions in the database. A flag's identity and its human copy are code, lik
 a permission name in `PermissionCatalog` — a DB row nothing reads is a trap.
 
 Eight flags ship today, across five module groups (Users, Settings, Security,
-Audit, Monitoring): `users`, `roles`, `permissions`, `settings`, `translations`,
+Audit, Monitoring): `users`, `roles`, `permissions`, `settings`,
 `sessions`, `activity_logs`, `pulse`.
 
 **Five of the eight are wired to something.** `users`, `roles`, `permissions`,
 `settings` and `sessions` gate real routes. `pulse` gates the vendor dashboard
-through `pulse.middleware`. `translations` and `activity_logs` are declared ahead
+through `pulse.middleware` and `activity_logs` are declared ahead
 of their modules and gate nothing yet — their rows on `/features` say so, rather
 than presenting a switch that reports success and changes nothing.
 
@@ -315,7 +315,7 @@ Four consequences that are decisions, not details:
   `config/pennant.php` (the deploy-time kill switch) never runs a toggle, so the
   grant is still in the database while the checkbox is gone: the matrix cannot
   show it and nobody can remove it through the UI.
-- **`features` is the one resource with no flag**, and `translations` / `sessions`
+- **`features` is the one resource with no flag**, and  `sessions`
   own no permissions at all. The page that re-enables a flag cannot itself be
   behind a flag, and its `features.view` / `features.manage` permissions are
   therefore unconditional. `PermissionFeatureMapTest` asserts the unmapped set is
@@ -344,7 +344,7 @@ middleware does. See ADR-024.
 | `health` | `health.view` |
 | `vantage` | `queues.view`, `queues.retry` — resource `queues`, flag `vantage` |
 | *no flag* | `features.view`, `features.manage` — the resource is deliberately unmapped, so no switch can revoke them |
-| `translations`, `sessions` | none — these flags own no permissions |
+| `sessions` | none — these flags own no permissions |
 
 `PermissionFeatureMapTest` keeps the map behind this table honest: it fails when a
 resource is missing an entry, when a mapped flag is not declared, and when the

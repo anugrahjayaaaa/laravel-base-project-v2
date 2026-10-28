@@ -86,7 +86,7 @@ code, not the brief.
 ### Consequences — RESOLVED 2026-10-05 (see "Locked decisions")
 
 1. ~~**The feature flag does not exist.**~~ **RESOLVED (D2).** Originally: `config/pennant.php:52-61` documents
-   `translations` and `activity_logs` as `pending` flags that "record intent
+    `activity_logs` as `pending` flags that "record intent
    only". Adding a THIRD such flag is a category error — it makes the settings
    page grow switches that do nothing. `notifications` gets a flag **in the same
    commit that adds the routes it gates**, per the `PermissionCatalog:74` rule

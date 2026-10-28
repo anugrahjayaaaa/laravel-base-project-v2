@@ -236,14 +236,6 @@ class AppMenuComposer
                         'feature' => 'sessions',
                     ],
                     [
-                        'label' => 'Translations',
-                        'icon' => 'fas fa-language',
-                        'route' => 'translations.index',
-                        'active' => 'translations.*',
-                        // No route ships yet (P8) — dropped by Route::has.
-                        'feature' => 'translations',
-                    ],
-                    [
                         'label' => 'Feature Flags',
                         'icon' => 'fas fa-toggle-on',
                         'route' => 'features.index',

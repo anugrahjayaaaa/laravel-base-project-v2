@@ -168,8 +168,12 @@ class FeatureFlagApiTest extends TestCase
             array_keys($rows['users']),
         );
 
-        // A declared flag whose module has no routes is not "disabled".
-        $this->assertNotNull($rows['translations']['pending']);
+        // No flag is in the "pending" state — every declared feature either
+        // gates real routes or is a vendor dashboard, so no `pending` key
+        // survives in the catalogue.
+        foreach ($rows as $row) {
+            $this->assertNull($row['pending'], "{$row['slug']} should not carry a pending state");
+        }
     }
 
     public function test_the_catalogue_reflects_a_state_change_made_through_the_api(): void

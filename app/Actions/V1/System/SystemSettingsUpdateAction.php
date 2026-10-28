@@ -5,6 +5,7 @@ namespace App\Actions\V1\System;
 use App\Actions\V1\Notification\NotificationAdminEventAction;
 use App\Models\SystemSetting;
 use App\Models\User;
+use App\Support\FeatureCatalog;
 use App\Providers\AppServiceProvider;
 use Illuminate\Support\Facades\DB;
 
@@ -161,6 +162,21 @@ class SystemSettingsUpdateAction
         ];
 
         $graceEnabled = $updates['inactivity_lock_grace_enabled'] === 'true';
+
+        // A setting whose module is off feeds a route that 403s before the
+        // limiter runs, so writing it is a change nothing can read back. Strip
+        // every such key from both the pending writes and the audit payload so
+        // a save through /settings stays honest instead of recording a change
+        // the database never accepted. The map lives in config/pennant.php.
+        foreach (FeatureCatalog::settingGroups() as $group) {
+            if ($group['active']) {
+                continue;
+            }
+
+            foreach ($group['keys'] as $key) {
+                unset($updates[$key], $data[$key]);
+            }
+        }
 
         if ($graceEnabled && array_key_exists('inactivity_lock_grace_days', $data)) {
             $updates['inactivity_lock_grace_days'] = (string) $data['inactivity_lock_grace_days'];

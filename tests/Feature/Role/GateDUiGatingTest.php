@@ -5,18 +5,20 @@ namespace Tests\Feature\Role;
 use App\Models\Role as AppRole;
 use App\Models\RoleLookup;
 use App\Models\User;
+use App\Support\PermissionCatalog;
 use App\Support\SystemRole;
 use Database\Seeders\PermissionSeeder;
 use Database\Seeders\RoleSeeder;
+use Database\Seeders\SystemSettingSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Route;
-use Tests\TestCase;
-use Symfony\Component\Finder\Finder;
-use App\Http\Middleware\VerifyCsrfToken;
-use App\Models\SystemSetting;
-use App\Support\PermissionCatalog;
+use Laravel\Pennant\Feature;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\PermissionRegistrar;
+use Symfony\Component\Finder\Finder;
+use Tests\TestCase;
+use App\Http\Middleware\VerifyCsrfToken;
+use App\Models\SystemSetting;
 
 /**
  * The permission boundary as a user actually meets it: routes, sidebar, buttons.
@@ -290,15 +292,9 @@ class GateDUiGatingTest extends TestCase
      * A menu entry pointing at a route that was never shipped renders as a dead
      * '#' link, so the composer drops it.
      *
-     * `translations.index` is the one entry that genuinely has no route today, so
-     * the requirement is not "every entry resolves" but "no UNRESOLVED entry is
-     * rendered". Asserting the composer is honest about what it drops is what
-     * keeps a second dead link from being added quietly.
-     *
-     * `activity-logs.index` was the other exemplar until Phase 10 shipped the
-     * audit viewer, at which point `Route::has()` started returning true for it
-     * and this assertion failed for a reason that had nothing to do with the rule
-     * it exists to prove. The negative label assertion moved with it.
+     * The guard is now stronger — it proves the composer has ZERO unresolved routes
+     * rather than proving one specific route is dropped. A dead link to a route
+     * that does not exist is the bug this catches, whether it is one or none.
      */
     public function test_an_unshipped_menu_route_is_dropped_rather_than_rendered(): void
     {
@@ -317,18 +313,14 @@ class GateDUiGatingTest extends TestCase
             fn (string $name) => $name !== '#' && ! Route::has($name)
         ));
 
-        // Translations is one of them today, so prove the drop is real rather
-        // than an empty loop over nothing.
-        $this->assertContains('translations.index', $unshipped);
+        // Every non-decorative route must resolve.
+        // No route in the composer should be unshipped — assert that directly
+        // rather than proving one specific drop.
+        $this->assertSame([], $unshipped, implode(', ', $unshipped));
 
-        // Assert the dropped entry's LABEL is absent. Asserting on href="#" would
-        // be wrong: the decorative Labels group is '#' on purpose, and a dead
-        // link is what this rule exists to prevent, not the character itself.
-        $this->assertStringNotContainsString('Translations', $html);
-
-        // The counterpart, now that the audit route ships: a SHIPPED entry is
-        // rendered. Without this the previous assertion would pass simply because
-        // the label vanished for an unrelated reason.
+        // The counterpart: a SHIPPED entry IS rendered. Without this the
+        // label-absence assertion could pass for an unrelated reason (a broken
+        // render, a redirect to login).
         $this->assertStringContainsString('Activity Logs', $html);
 
         // The labels group IS '#' by design and must survive.
@@ -486,6 +478,32 @@ class GateDUiGatingTest extends TestCase
         $this->assertStringContainsString(
             (string) array_key_first($settings ?? []),
             $html
+        );
+    }
+
+    /**
+     * A read-only viewer must not see settings owned by a disabled feature flag.
+     *
+     * The read-only table iterates the settings passed to it; with the flag
+     * off the key must be absent, not merely greyed out — a value the route
+     * 403s before it can read is a ceiling the viewer can never reach and
+     * should never see.
+     */
+    public function test_read_only_view_excludes_disabled_feature_settings(): void
+    {
+        $this->seed(SystemSettingSeeder::class);
+        Feature::deactivate('notifications');
+        Feature::flushCache();
+
+        $reader = $this->userWith(['settings.view']);
+        $this->actingAs($reader, 'web');
+
+        $html = $this->get(route('settings.index'))->assertOk()->getContent();
+
+        $this->assertStringNotContainsString(
+            'send_test_mail_rate_limit_per_minute',
+            $html,
+            'a disabled-feature setting must not appear in the read-only table'
         );
     }
 

@@ -121,7 +121,7 @@ class SettingsBenchmarkTest extends TestCase
             for ($i = 0; $i < 60; $i++) {
                 SystemSetting::getBool('registration_enabled');
                 SystemSetting::getInt('password_min_length');
-                SystemSetting::getString('locale_default');
+                SystemSetting::getString('registration_default_role');
             }
         }));
 
@@ -314,7 +314,6 @@ class SettingsBenchmarkTest extends TestCase
         return [
             'registration_enabled' => true,
             'registration_default_role' => 'user',
-            'locale_default' => 'en',
             'password_min_length' => 12,
             'password_max_length' => 72,
             'password_require_uppercase' => true,

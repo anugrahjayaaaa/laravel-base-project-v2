@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Concerns\Auditable;
+use App\Support\FeatureCatalog;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Cache;
@@ -133,6 +134,41 @@ class SystemSetting extends Model
     public static function getAll(): array
     {
         return array_diff_key(static::loadSettings(), array_flip(static::SECRET_KEYS));
+    }
+
+    /**
+     * All settings except those owned by an inactive feature flag.
+     *
+     * A setting whose flag is off feeds a route that 403s before the setting is
+     * ever read, so returning it over the API or in the read-only web view is a
+     * leak — an operator can inspect a limiter value they can never reach. Every
+     * consumer that renders settings to a viewer must use this, not `getAll()`.
+     *
+     * `getAll()` stays for internal callers (e.g.
+     * `SystemSettingsUpdateAction::backfill()`) that need every stored row
+     * regardless of flag state.
+     *
+     * Named `getLive()` — not `getVisible()` — because Eloquent's base `Model`
+     * already declares `getVisible()` for attribute serialization, which would
+     * conflict with the static signature this needs.
+     *
+     * @return array<string, string>
+     */
+    public static function getLive(): array
+    {
+        $settings = static::getAll();
+
+        foreach (FeatureCatalog::settingGroups() as $group) {
+            if ($group['active']) {
+                continue;
+            }
+
+            foreach ($group['keys'] as $key) {
+                unset($settings[$key]);
+            }
+        }
+
+        return $settings;
     }
 
     /**

@@ -3,6 +3,7 @@
 namespace Tests\Feature\Settings;
 
 use App\Models\Timezone;
+use App\Support\FeatureCatalog;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -112,6 +113,7 @@ class SettingsUiRenderTest extends TestCase
             'roles' => collect(['admin', 'editor', 'user'])->mapWithKeys(
                 fn (string $name): array => [$name => $name]
             ),
+            'settingGroups' => FeatureCatalog::settingGroups(),
         ];
     }
 

@@ -185,6 +185,48 @@ class FeatureCatalog
     }
 
     /**
+     * Settings owned by a flag, grouped by the flag that makes them
+     * meaningless when it is off.
+     *
+     * A key declared under `settings` in config/pennant.php feeds a route this
+     * flag gates. With the flag off that route 403s before the setting is ever
+     * read, so the settings page hides the field and the update action refuses
+     * the write. One map, so the two cannot disagree about which keys are dead.
+     *
+     * `active` is resolved through `activeMap()` — ONE store read for every
+     * group, not one per flag. The kill switch (`disabled => true`) is honoured
+     * there too, so a config-disabled flag reads false without asking the store.
+     *
+     * @return array<string, array{active: bool, keys: array<int, string>}>
+     */
+    public static function settingGroups(): array
+    {
+        $owned = [];
+
+        foreach (self::features() as $slug => $meta) {
+            $keys = $meta['settings'] ?? [];
+
+            if (! is_array($keys) || $keys === []) {
+                continue;
+            }
+
+            $owned[$slug] = array_values($keys);
+        }
+
+        $active = self::activeMap(array_keys($owned));
+        $groups = [];
+
+        foreach ($owned as $slug => $keys) {
+            $groups[$slug] = [
+                'active' => $active[$slug],
+                'keys' => $keys,
+            ];
+        }
+
+        return $groups;
+    }
+
+    /**
      * @return array<string, mixed>
      */
     private static function features(): array

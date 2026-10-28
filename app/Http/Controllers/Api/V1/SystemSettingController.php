@@ -23,7 +23,7 @@ class SystemSettingController extends Controller
      */
     public function index(): JsonResponse
     {
-        return $this->respond('', 200, SystemSetting::getAll());
+        return $this->respond('', 200, SystemSetting::getLive());
     }
 
     /**
@@ -41,6 +41,6 @@ class SystemSettingController extends Controller
     {
         $action->run($request->validated(), partial: true, causer: $request->user());
 
-        return $this->respond('Settings updated successfully.', 200, SystemSetting::getAll());
+        return $this->respond('Settings updated successfully.', 200, SystemSetting::getLive());
     }
 }
