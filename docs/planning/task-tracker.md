@@ -355,6 +355,34 @@ one. The test factory no longer repeats a username. Detail:
 | P13-D | Input safety — output-sink audit, fillable/whitelist sweep, new `InputSanitizationTest` | 13 | P0 | P13-C | DONE — audited 2026-10-27, owner-reviewed 2026-10-27: no production code changed (sinks and whitelists already correct); `InputSanitizationTest` 6/31 fills the gaps, existing probes cited; `Security`+`User`+`Notification` 483/2005 green, Pint clean; detail in `phase-13-security-hardening.md` § Group D |
 | P13-E | Disclosure & limits — HTML error masking, composite-key 429 proof, `--filter=Security` + full suite run | 13 | P0 | P13-D | DONE — implemented 2026-10-27, owner-reviewed 2026-10-27: `CompositeRateLimitKeyTest` 4/20 (key scope + `reset-password`/`email-verification` 429s that had no probe), `SecurityAuditTest` HTML 500 branch, ladder completed with the admin resend route; full suite 2241/8034, Pint clean — detail in `phase-13-security-hardening.md` § Group E |
 
+### Phase 14 — Storage, Backup & Retention
+
+> Breakdown written 2026-10-28, status **PLANNED**. Fifteen tasks in five groups
+> (A storage disks/S3 readiness → B backup strategy/async engine → C temporary
+> retention/cleanup → D security/RBAC/feature flags/audit → E tests/verification/docs).
+> Detail: `docs/planning/phase-14-storage-backup-retention.md`.
+
+| ID | Task | Phase | Priority | Depends On | Status |
+|----|------|-------|----------|-----------|--------|
+| P14-A1 | Storage Disk Configuration (`config/filesystems.php` S3-ready: local, public, tmp, secure_documents) | 14 | P1 | FOUND-003 | PLANNED |
+| P14-A2 | Secure Private Media Route & Middleware (signed URLs / authorization gated) | 14 | P1 | P14-A1 | PLANNED |
+| P14-A3 | Automated Storage Disk Access Test (`tests/Feature/Storage/StorageDiskTest.php`) | 14 | P1 | P14-A1, P14-A2 | PLANNED |
+| P14-B1 | Spatie Backup Integration & Dynamic `SystemSetting` Control (MySQL DB + `storage/app`) | 14 | P1 | P14-A1 | PLANNED |
+| P14-B2 | Asynchronous Backup Job Execution (`ExecuteSystemBackupJob`) & Notification Alerts | 14 | P1 | P14-B1 | PLANNED |
+| P14-B3 | Automated Backup Strategy Test (`tests/Feature/Storage/BackupStrategyTest.php`) | 14 | P1 | P14-B1, P14-B2 | PLANNED |
+| P14-C1 | Retention Policy Configuration (`SystemSetting` key for temporary upload TTL) | 14 | P1 | DB-001 | PLANNED |
+| P14-C2 | Scheduled Temporary Cleanup Job (`CleanTemporaryStorageJob`) | 14 | P1 | P14-C1 | PLANNED |
+| P14-C3 | Automated Retention Test (`tests/Feature/Storage/DataRetentionTest.php`) | 14 | P1 | P14-C1, P14-C2 | PLANNED |
+| P14-D1 | RBAC Authorization (`storage.view`, `storage.manage`, `backup.execute`) | 14 | P1 | RBAC-004 | PLANNED |
+| P14-D2 | Feature Flag Middleware (`feature:storage_management`) | 14 | P1 | P14-D1 | PLANNED |
+| P14-D3 | Action-First Audit Trail Logging (`backup.triggered`, `temp_storage.cleaned`) | 14 | P1 | P14-B2, P14-C2 | PLANNED |
+| P14-E1 | Comprehensive Test Run (`php artisan test --filter=Storage`) | 14 | P0 | P14-A3, P14-B3, P14-C3 | PLANNED |
+| P14-E2 | Update Documentation (`retention.md`, `backup-disaster-recovery.md`, `progress.md`) | 14 | P2 | P14-E1 | PLANNED |
+
+**Invariants (non-negotiable):** Audit Trail / Activity Logs are never deleted; soft-deleted models are never force-deleted automatically; only `tmp`/unattached uploads are cleaned by TTL; backup runs asynchronously; storage access gated by RBAC + feature flag; all jobs follow queue convention; audit rows written inside the transaction by the Action layer.
+
+---
+
 ## Full Task List (JSON for AI parsing)
 
 ```json[
