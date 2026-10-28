@@ -224,7 +224,7 @@ render.
 
 | ID | Task | Status |
 |----|------|--------|
-| P7-B1 | `config/pennant.php` — 8 flags across 5 groups (Users / Settings / Security / Audit / Monitoring): `users`, `roles`, `permissions`, `settings`, `translations`, `sessions`, `activity_logs`, `pulse`. Published `stores` block kept byte-identical — it carries the `PENNANT_STORE` env wiring deploy reads | ✅ DONE |
+| P7-B1 | `config/pennant.php` — 8 flags across 5 groups (Users / Settings / Security / Audit / Monitoring): `users`, `roles`, `permissions`, `settings`,, `sessions`, `activity_logs`, `pulse`. Published `stores` block kept byte-identical — it carries the `PENNANT_STORE` env wiring deploy reads | ✅ DONE |
 | P7-B2 | `AppServiceProvider::boot()` — declaration loop over `config('pennant.features')`, plus `Feature::resolveScopeUsing(fn () => 'global')` | ✅ DONE |
 | P7-B3 | `App\Support\FeatureCatalog` — `slugs()`, `all()`, `grouped()`, `find()`, `has()`, `isDisabledInConfig()`, `isActive()`. Same role `PermissionCatalog` plays for permissions: one source, so seeder / menu / view / tests cannot disagree | ✅ DONE |
 | P7-B4 | `database/seeders/FeatureFlagSeeder.php` — activates every catalogue slug when absent; deactivates **only** when config says `disabled => true`. Idempotent; never blanket-activates, so a flag an operator turned off stays off across a reseed | ✅ DONE |
@@ -370,7 +370,7 @@ missed it; the runtime walk caught it.
   The catalogue is defined in code (P6-C7), so roles being off does not
   invalidate it — which is exactly why it is its own flag.
 
-**Not gateable yet:** `translations` and `activity_logs` have no routes
+**Not gateable yet:** and `activity_logs` have no routes
 (`Route::has()` is false for both). Those modules ship in Phase 8, so **two of the
 eight flags control nothing** until then. The menu items carry a `feature` key
 anyway, so the entries keep working — and keep hiding — when the modules land,

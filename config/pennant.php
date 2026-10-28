@@ -63,17 +63,6 @@ return [
             'description' => 'Mail transport configuration and the in-app notification inbox.',
             'settings' => ['send_test_mail_rate_limit_per_minute'],
         ],
-        'translations' => [
-            'label' => 'Translations',
-            'group' => 'Settings',
-            'description' => 'Runtime-editable language lines.',
-            // Declared ahead of its module. Nothing reads this flag yet, so
-            // flipping the switch writes a store row and an audit row and
-            // changes nothing else — the page says so rather than letting an
-            // operator believe they switched a module off. Remove this key when
-            // routes/translations ships and the flag is wired to them.
-            'pending' => 'Module not built yet — this switch records intent only.',
-        ],
         'sessions' => [
             'label' => 'Sessions',
             'group' => 'Security',

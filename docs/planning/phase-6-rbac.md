@@ -51,7 +51,7 @@ Sources: Spatie official docs v6 (package installed is `spatie/laravel-permissio
 - `App\Policies\UserPolicy` — unlock/activate/deactivate/lock, all already
   calling `$user->can('users.*')` (`app/Policies/UserPolicy.php:31,65,83`)
 - `App\View\Composers\AppMenuComposer` — static menu groups, already contains
-  `Roles`, `Permissions`, `Activity Logs`, `Settings`, `Translations` items
+  `Roles`, `Permissions`, `Activity Logs`, `Settings` items
   pointing at route names that **do not exist yet** (`Route::has()` falls back
   to `'#'`)
 - `UserUpdateAction` already syncs roles with `array_key_exists` guard

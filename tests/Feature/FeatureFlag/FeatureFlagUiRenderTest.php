@@ -533,8 +533,8 @@ class FeatureFlagUiRenderTest extends TestCase
         $this->assertStringContainsString('from all roles and users', $single);
         $this->assertStringContainsString('assign it again', $single);
 
-        // A flag that owns none — `translations`, `sessions` — claims nothing.
-        $this->assertStringNotContainsString('revoked', $this->toggleMessage('translations', []));
+        // A flag that owns none — `sessions` — claims nothing.
+        $this->assertStringNotContainsString('revoked', $this->toggleMessage('sessions', []));
 
         // Ceiling, not a target. The modal is read in one glance: what the switch
         // takes away, then the way back. It grew to four sentences once — the

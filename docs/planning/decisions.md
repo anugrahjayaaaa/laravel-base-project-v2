@@ -598,7 +598,7 @@ control that exists at the edge of a module and not inside it.
 resource is mapped or on `UNMAPPED_RESOURCES`, every mapped flag is declared, and
 the sidebar's own `feature` keys must agree with it. `features` is deliberately
 unmapped: the page that re-enables a flag cannot be behind a flag.
-`translations` and `sessions` own no permissions. The revoke writes the pivots
+`sessions` own no permissions. The revoke writes the pivots
 directly rather than through `detach()`, so a soft-deleted role cannot come back
 holding permissions for a module that was switched off while it was gone
 (`config('permission.teams')` is false here; with teams on, a delete keyed on

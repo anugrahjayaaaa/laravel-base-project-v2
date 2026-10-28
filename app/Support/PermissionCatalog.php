@@ -187,8 +187,7 @@ class PermissionCatalog
      * routes are not gated on it either (see routes/web.php) — the page that
      * re-enables a flag cannot be one of the flags it re-enables.
      *
-     * `translations` and `sessions` own no permissions, so they have no entry
-     * either.
+     * `sessions` own no permissions, so they have no entry either.
      *
      * @var array<string, string> resource prefix => flag slug
      */

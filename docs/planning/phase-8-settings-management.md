@@ -414,7 +414,7 @@ All four places now agree that Phase 8 is built. None of this was code.
 | `docs/planning/progress.md` | Phase 8 `AUDIT COMPLETE` | `DONE` — Groups A–E, full suite 1015/3874 |
 | `docs/planning/task-tracker.md` | `SET-001`…`SET-005` all `PLANNED` | `DONE` with notes (schema, CRUD, validation, audit, cache) |
 | `docs/planning/task-tracker.md` | `RATE-001` depends on `SET-001` | already satisfied — `RATE-001` is DONE |
-| `docs/planning/feature-tracker.md` | row 24 notes `translations` / `activity_logs` have no routes until Phase 8 | those two flags still gate nothing; Phase 8 does not add them |
+| `docs/planning/feature-tracker.md` | row 24 notes `activity_logs` have no routes until Phase 8 | those two flags still gate nothing; Phase 8 does not add them |
 | `docs/base/features/settings.md` | "canonical keys" listed 9 of 37 and named dotted `security.*` / `registration.*` names no code reads | rewritten against `SystemSettingSeeder` — all 37 keys, all 37 bounds, plus caching, security and performance sections |
 
 ---

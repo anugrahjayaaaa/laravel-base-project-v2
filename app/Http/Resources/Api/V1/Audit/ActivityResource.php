@@ -13,8 +13,7 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * `causerLabel()` and `subjectLabel()` are the same methods the viewer and the
  * CSV call, which is the point: a deleted actor is named by id rather than
  * rendered "Anonymous", and a subject-less event is `null` rather than a zero —
- * in all three surfaces, because there is one resolver rather than three
- * translations of it.
+ * in all two surfaces.
  *
  * ## No badge colours
  *

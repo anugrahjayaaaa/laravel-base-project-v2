@@ -351,12 +351,12 @@ class AdministrativeEventDispatchTest extends TestCase
 
         $operator = $this->holderOf('features.manage');
 
-        $result = app(FeatureToggleAction::class)->run('translations', false, $operator);
+        $result = app(FeatureToggleAction::class)->run('sessions', false, $operator);
 
         // The toggle happened.
         $this->assertFalse($result['to'], 'precondition: the flag is off');
         $this->assertFalse(
-            Feature::active('translations'),
+            Feature::active('sessions'),
             'the flag change was rolled back by a mail failure'
         );
     }
