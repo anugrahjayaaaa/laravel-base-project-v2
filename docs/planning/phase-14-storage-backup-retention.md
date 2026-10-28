@@ -37,11 +37,29 @@ UI file browser beyond the storage management page.
    - Dynamic storage driver: read primary storage disk from `SystemSetting`
      (`storage_default_disk` = `local` | `s3`), falling back to
      `config/filesystems.php`.
+   - System Setting UI: a Storage Management card in the main content area
+     (`col-lg-8`) of `resources/views/pages/settings/index.blade.php` with a
+     reactive driver dropdown (`local` | `s3`); selecting `local` expands
+     local root/permission fields, selecting `s3` expands AWS credentials &
+     bucket configuration fields (Key, Secret, Region, Bucket, Endpoint, URL).
+   - Runtime driver binding: `AppServiceProvider::bindStorageConfig()` overrides
+     `config('filesystems.default')` and `config('filesystems.disks.s3')` from
+     `SystemSetting` rows at boot, falling back to `.env` / `config/filesystems.php`.
+   - Sensitive S3 keys/secrets stored in `SystemSetting` are encrypted via
+     `encrypt()`/`decrypt()`; `SystemSetting::bustCache()` invalidated on update.
+   - Conditional validation: `UpdateSystemSettingsRequest` validates local/s3
+     fields with `required_if:storage_default_disk,s3`.
    - Capacity limit enforcement (`storage_max_capacity_mb` &
      `db_max_capacity_mb` in `SystemSetting`): check available disk/S3 space
      before processing new uploads; when the limit is reached (threshold met),
      return a standard error response / prevent the upload and trigger an
      administrative alert.
+   - Storage capacity & health metrics: a visual progress bar in the Storage
+     Management card showing Used Bytes, Free Bytes, and Total Bytes
+     (`disk_free_space()` / `disk_total_space()` for local, or S3 probe).
+   - Capacity guard: enforce `storage_max_capacity_mb` before file uploads,
+     throwing `StorageCapacityExceededException` when usage exceeds the
+     threshold (default 95%).
    - Private/secure file access handler via signed URLs or authorization gates.
 
 2. **Group B — Backup Strategy, Background Engine & Storage Safety**
@@ -71,13 +89,18 @@ UI file browser beyond the storage management page.
 
 ## 3. Group A — Storage Architecture, SystemSetting Control & Capacity Limits
 
-### P14-A1 — Storage Disk Configuration
+### P14-A1 — Storage Disk Configuration & Runtime Binding
 
 - **Task**: Add/adjust `config/filesystems.php` with S3-ready drivers for
   `local`, `public`, `tmp`, and `secure_documents` disks, all driven by `.env`
   keys. Bind the primary disk at runtime from `SystemSetting`
-  (`storage_default_disk` = `local` | `s3`), falling back to the config default
-  when unset.
+  (`storage_default_disk` = `local` | `s3`) via
+  `AppServiceProvider::bindStorageConfig()`, overriding
+  `config('filesystems.default')` and `config('filesystems.disks.s3')`,
+  falling back to the config default when unset.
+- **UI**: Storage Management card in `col-lg-8` main content area of
+  `resources/views/pages/settings/index.blade.php` with driver select dropdown
+  and reactive local/S3 field toggling.
 - **Acceptance**:
   - Default disk resolves to `local` when no setting/env override is set.
   - Switching `storage_default_disk=s3` (with valid AWS env) routes all disks
@@ -85,7 +108,8 @@ UI file browser beyond the storage management page.
   - `tmp` and `secure_documents` are declared and reachable via
     `Storage::disk()`.
   - No hard-coded bucket/region in `app/` or `config/`.
-- **Tests**: `StorageDiskTest` (disk resolution, env/setting switch).
+  - S3 credentials encrypted at rest in `SystemSetting`.
+- **Tests**: `StorageDiskTest` (disk resolution, env/setting switch, binding).
 - **Docs**: `docs/base/infrastructure/storage.md` (if exists) or ADR note.
 
 ### P14-A2 — Storage Capacity Limit Shield & Middleware
@@ -95,10 +119,13 @@ UI file browser beyond the storage management page.
   the limit is reached, throw `StorageCapacityExceededException`, return a
   standard error response, prevent the upload, and trigger an administrative
   alert (audit row `storage.capacity_warning`).
+- **UI**: Storage capacity health gauge in the Storage Management card —
+  progress bar showing Used Bytes, Free Bytes, and Total Bytes.
 - **Acceptance**:
   - Upload is refused with a standard error when capacity threshold is met.
   - Alert/notification fired on threshold breach.
   - No silent partial writes.
+  - Threshold defaults to 95% (`storage_warning_threshold_percent`).
 - **Tests**: `StorageDiskTest` (capacity shield).
 - **Docs**: `docs/base/features/storage.md`.
 
@@ -117,8 +144,8 @@ UI file browser beyond the storage management page.
 ### P14-A4 — Automated Storage Disk & Capacity Limit Test
 
 - **Task**: `tests/Feature/Storage/StorageDiskTest.php` covering disk
-  resolution, env/setting-driven switch, capacity shield, and secure access
-  gating.
+  resolution, env/setting-driven switch, runtime binding, capacity shield, and
+  secure access gating.
 - **Acceptance**: All assertions green; no inline FQCN; no queries in views.
 
 ---
@@ -173,7 +200,7 @@ UI file browser beyond the storage management page.
   and `storage_warning_threshold_percent` (e.g., 95). Audit logs and
   soft-deleted models are explicitly **excluded** from any cleanup.
 - **Acceptance**:
-  - Settings readable via `SystemSetting::get()` and validated.
+  - Settings readable via `SystemSetting` getters and validated.
   - No setting exists that prunes audit logs or soft-deleted models.
 - **Tests**: `DataRetentionTest`.
 - **Docs**: `docs/operations/retention.md`.
@@ -261,9 +288,11 @@ Phase 14 row in `docs/planning/progress.md` set to `PLANNED`.
    `secure_documents`.
 6. Capacity limits enforced before uploads/backups; breach triggers alert +
    audit row.
-7. Dynamic disk driver read from `SystemSetting` with config fallback.
+7. Dynamic disk driver read from `SystemSetting` with config fallback; binding
+   via `AppServiceProvider::bindStorageConfig()`.
 8. All jobs follow the queue convention; `JobConventionTest` must pass.
 9. Audit rows written inside the transaction by the Action layer only.
+10. S3 credentials encrypted at rest; cache busted on setting update.
 
 ---
 
