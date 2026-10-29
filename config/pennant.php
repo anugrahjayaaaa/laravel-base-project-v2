@@ -63,6 +63,14 @@ return [
             'description' => 'Mail transport configuration and the in-app notification inbox.',
             'settings' => ['send_test_mail_rate_limit_per_minute'],
         ],
+        'storage_management' => [
+            'label' => 'Storage Management',
+            'group' => 'Settings',
+            'description' => 'Storage driver configuration, capacity metrics and secure file access.',
+            // Deliberately no `settings` list: the disk driver is read at boot
+            // by the storage binder, so the flag gates the management surface
+            // (card, metrics, secure route, cleanup), not the storage itself.
+        ],
         'sessions' => [
             'label' => 'Sessions',
             'group' => 'Security',
