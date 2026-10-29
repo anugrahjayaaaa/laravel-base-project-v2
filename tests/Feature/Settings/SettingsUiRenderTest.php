@@ -113,6 +113,22 @@ class SettingsUiRenderTest extends TestCase
             'roles' => collect(['admin', 'editor', 'user'])->mapWithKeys(
                 fn (string $name): array => [$name => $name]
             ),
+            // Phase 14 Group A. The same shape `StorageCapacityGuard::metrics()`
+            // returns plus the controller's formatted labels.
+            'storage' => [
+                'disk' => 'local',
+                'used' => 1073741824,
+                'available' => 3221225472,
+                'total' => 4294967296,
+                'quota' => null,
+                'percent' => 25.0,
+                'known' => true,
+                'used_label' => '1 GB',
+                'available_label' => '3 GB',
+                'total_label' => '4 GB',
+            ],
+            'storageEnabled' => true,
+            'hasStorageSecret' => false,
             'settingGroups' => FeatureCatalog::settingGroups(),
         ];
     }
@@ -223,7 +239,7 @@ class SettingsUiRenderTest extends TestCase
         $this->login();
         $html = $this->render();
 
-        preg_match_all('/<input[^>]*type="checkbox"[^>]*name="([a-z_]+)"/', $html, $boxes);
+        preg_match_all('/<input[^>]*type="checkbox"[^>]*name="([a-z0-9_]+)"/', $html, $boxes);
 
         $this->assertNotSame([], $boxes[1], 'no checkbox rendered');
 
@@ -283,7 +299,7 @@ class SettingsUiRenderTest extends TestCase
         $this->login();
         $html = $this->render();
 
-        preg_match_all('/<input[^>]*name="([a-z_]+)"[^>]*>/', $html, $inputs);
+        preg_match_all('/<input[^>]*name="([a-z0-9_]+)"[^>]*>/', $html, $inputs);
 
         $this->assertNotSame([], $inputs[1], 'no input rendered');
 
@@ -302,7 +318,7 @@ class SettingsUiRenderTest extends TestCase
         }
 
         // Every emitted feedback div carries the id the aria pair points at.
-        preg_match_all('/<div class="invalid-feedback[^"]*" id="([a-z_]+)">/', $html, $feedback);
+        preg_match_all('/<div class="invalid-feedback[^"]*" id="([a-z0-9_]+)">/', $html, $feedback);
 
         foreach ($feedback[1] as $id) {
             $this->assertStringContainsString('aria-describedby="' . $id . '"', $html, "nothing points at #{$id}");
@@ -391,7 +407,7 @@ class SettingsUiRenderTest extends TestCase
         $this->login();
         $html = $this->render();
 
-        preg_match_all('/name="([a-z_]+)"/', $html, $fields);
+        preg_match_all('/name="([a-z0-9_]+)"/', $html, $fields);
         $rendered = array_unique($fields[1]);
 
         // Rendered from the `foreach` over the password-policy switches.
@@ -425,7 +441,7 @@ class SettingsUiRenderTest extends TestCase
 
         $rules = (new SystemSettingRequest())->rules();
 
-        preg_match_all('/<input[^>]*type="number"[^>]*name="([a-z_]+)"[^>]*min="(\d+)" max="(\d+)"/', $html, $inputs, PREG_SET_ORDER);
+        preg_match_all('/<input[^>]*type="number"[^>]*name="([a-z0-9_]+)"[^>]*min="(\d+)" max="(\d+)"/', $html, $inputs, PREG_SET_ORDER);
 
         $this->assertNotSame([], $inputs, 'no bounded number input rendered');
 

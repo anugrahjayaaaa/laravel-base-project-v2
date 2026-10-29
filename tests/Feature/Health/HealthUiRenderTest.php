@@ -75,6 +75,11 @@ class HealthUiRenderTest extends TestCase
                 ? ['database' => 'ok', 'cache' => 'ok', 'queue' => 'ok', 'storage' => 'ok']
                 : ['database' => 'ok', 'cache' => 'ok', 'queue' => 'fail', 'storage' => 'ok'],
             'isHealthy' => $healthy,
+            'storageMetrics' => [
+                'used_label' => '1 GB',
+                'available_label' => '3 GB',
+                'total_label' => '4 GB',
+            ],
         ];
     }
 
@@ -142,6 +147,21 @@ class HealthUiRenderTest extends TestCase
             substr_count($html, 'card-body p-4'),
             'expected exactly one status card per check'
         );
+    }
+
+    /**
+     * The storage card answers with the same used/used-and-available shape the
+     * settings gauge renders: what is stored, against what total, how much is
+     * left — not just an ok/fail badge.
+     */
+    public function test_the_storage_card_shows_used_and_total(): void
+    {
+        $this->login();
+        $html = $this->render();
+
+        $this->assertStringContainsString('Used <strong>1 GB</strong>', $html);
+        $this->assertStringContainsString('of <strong>4 GB</strong>', $html);
+        $this->assertStringContainsString('3 GB available', $html);
     }
 
     /**
