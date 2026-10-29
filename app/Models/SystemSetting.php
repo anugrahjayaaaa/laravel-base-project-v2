@@ -124,7 +124,13 @@ class SystemSetting extends Model
      *
      * @var array<int, string>
      */
-    private const SECRET_KEYS = ['mail_password'];
+    private const SECRET_KEYS = [
+        'mail_password',
+        // Phase 14 Group A: the S3 credentials are the second and third
+        // settings whose stored form is not their usable form.
+        'storage_s3_key',
+        'storage_s3_secret',
+    ];
 
     /**
      * Get all settings as key-value pairs, minus the credentials.

@@ -47,6 +47,34 @@ return [
             'report' => false,
         ],
 
+        // Uploads land here first and are promoted on save. Anything left past
+        // the TTL is therefore unattached by definition — see
+        // `docs/base/operations/retention.md`.
+        'tmp' => [
+            'driver' => 'local',
+            'root' => storage_path('app/tmp'),
+            'throw' => false,
+            'report' => false,
+        ],
+
+        // Never linked into `public/`. Read through the signed route only.
+        'secure_documents' => [
+            'driver' => 'local',
+            'root' => storage_path('app/secure'),
+            'throw' => false,
+            'report' => false,
+        ],
+
+        // Backup destination. Kept separate from the disks it backs up: an
+        // archive on the same disk as its source survives an accidental delete
+        // and nothing else.
+        'backups' => [
+            'driver' => 'local',
+            'root' => storage_path('app/backups'),
+            'throw' => false,
+            'report' => false,
+        ],
+
         's3' => [
             'driver' => 's3',
             'key' => env('AWS_ACCESS_KEY_ID'),

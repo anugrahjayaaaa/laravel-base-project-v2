@@ -11,6 +11,7 @@ use App\Http\Controllers\Web\V1\NotificationInboxController;
 use App\Http\Controllers\Web\V1\PermissionController;
 use App\Http\Controllers\Web\V1\ProfileController;
 use App\Http\Controllers\Web\V1\RoleController;
+use App\Http\Controllers\Web\V1\StorageController;
 use App\Http\Controllers\Web\V1\SystemSettingController;
 use App\Http\Controllers\Web\V1\UserStateController;
 use App\Http\Controllers\Web\V1\UserController;
@@ -83,6 +84,15 @@ Route::middleware(['auth:web,sanctum', 'verified', 'password.change.required', '
     Route::middleware('feature:settings')->group(function () {
         Route::get('/settings', [SystemSettingController::class, 'index'])->name('settings.index')->can('settings.view');
         Route::post('/settings', [SystemSettingController::class, 'update'])->name('settings.update')->can('settings.manage');
+    });
+
+    // Private media — Phase 14 Group A. Both gates are required: `storage.view`
+    // is who may read private files at all, and `signed` bounds one path to a
+    // time window so a leaked link dies without rotating the permission.
+    Route::middleware(['feature:storage_management', 'can:storage.view', 'signed'])->group(function () {
+        Route::get('/storage/secure/{path}', [StorageController::class, 'show'])
+            ->where('path', '.*')
+            ->name('storage.secure');
     });
 
     // Profile

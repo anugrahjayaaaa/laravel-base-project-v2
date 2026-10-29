@@ -24,6 +24,26 @@ use Illuminate\Support\Facades\DB;
  */
 class SystemSettingsUpdateAction
 {
+    /**
+     * Every key owned by the storage card. Used to decide whether the storage
+     * audit row and the runtime rebind are needed — not as a second whitelist.
+     *
+     * @var array<int, string>
+     */
+    private const STORAGE_KEYS = [
+        'storage_default_disk',
+        'storage_local_root',
+        'storage_local_permission',
+        'storage_s3_key',
+        'storage_s3_secret',
+        'storage_s3_region',
+        'storage_s3_bucket',
+        'storage_s3_endpoint',
+        'storage_s3_url',
+        'storage_max_capacity_mb',
+        'storage_warning_threshold_percent',
+    ];
+
     public function __construct(
         private readonly NotificationAdminEventAction $notifyAction,
     ) {
@@ -159,8 +179,38 @@ class SystemSettingsUpdateAction
             // Phase 11 §13. Same three-way agreement as the health key above:
             // limiter fallback, seeder and this default all say 10.
             'queue_retry_rate_limit_per_minute' => (string) ($data['queue_retry_rate_limit_per_minute'] ?? 10),
+
+            // Phase 14 Group A — storage driver and capacity. The credentials
+            // are handled below, because their stored form is ciphertext and a
+            // blank field means "keep the stored value", never "clear it".
+            'storage_default_disk' => in_array($data['storage_default_disk'] ?? null, ['local', 's3'], true)
+                ? $data['storage_default_disk']
+                : 'local',
+            'storage_local_root' => (string) ($data['storage_local_root'] ?? ''),
+            'storage_local_permission' => (string) ($data['storage_local_permission'] ?? ''),
+            'storage_s3_region' => (string) ($data['storage_s3_region'] ?? ''),
+            'storage_s3_bucket' => (string) ($data['storage_s3_bucket'] ?? ''),
+            'storage_s3_endpoint' => (string) ($data['storage_s3_endpoint'] ?? ''),
+            'storage_s3_url' => (string) ($data['storage_s3_url'] ?? ''),
+            'storage_max_capacity_mb' => (string) ($data['storage_max_capacity_mb'] ?? 0),
+            'storage_warning_threshold_percent' => (string) ($data['storage_warning_threshold_percent'] ?? 80),
         ];
 
+        foreach (['storage_s3_key', 'storage_s3_secret'] as $secretKey) {
+            $secret = $data[$secretKey] ?? null;
+
+            if ($secret !== null && $secret !== '') {
+                $updates[$secretKey] = encrypt((string) $secret);
+            }
+
+            // Also removed from `$data`, which is the `system_setting.updated`
+            // audit payload: a credential in activity_log is readable by every
+            // `audit.view` holder, a wider audience than the one the credential
+            // exists for.
+            unset($data[$secretKey]);
+        }
+
+        $storageChanged = array_intersect_key($updates, array_flip(self::STORAGE_KEYS)) !== [];
         $graceEnabled = $updates['inactivity_lock_grace_enabled'] === 'true';
 
         // A setting whose module is off feeds a route that 403s before the
@@ -187,13 +237,22 @@ class SystemSettingsUpdateAction
         // stop half way — a failure on key 30 left the password policy updated
         // and the registration toggle not, with nothing to roll back and an audit
         // row (written later, by the controller) claiming the save succeeded.
-        DB::transaction(function () use ($updates, $data, $causer): void {
+        DB::transaction(function () use ($updates, $data, $causer, $storageChanged): void {
             foreach ($updates as $key => $value) {
                 SystemSetting::set($key, $value);
             }
 
             if ($causer !== null) {
                 SystemSetting::query()->firstOrFail()->audit('system_setting.updated', $causer, $data);
+
+                // A second, storage-specific row so the storage module has its
+                // own event history and `storage.view` holders can read what
+                // changed without parsing the whole settings payload.
+                if ($storageChanged) {
+                    SystemSetting::query()->firstOrFail()->audit('storage_setting.updated', $causer, [
+                        'keys' => array_keys(array_intersect_key($updates, array_flip(self::STORAGE_KEYS))),
+                    ]);
+                }
             }
         });
 
@@ -207,6 +266,7 @@ class SystemSettingsUpdateAction
         // rollback then discards would leave the process enforcing a lifetime
         // the database never accepted.
         AppServiceProvider::bindExpirations();
+        AppServiceProvider::bindStorageConfig();
 
         // Every `settings.manage` holder. The message names how many keys changed,
         // never their values: a settings notification quoting the new value hands a

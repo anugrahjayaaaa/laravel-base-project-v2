@@ -4,7 +4,9 @@ namespace App\Http\Requests\V1\System;
 
 use App\Models\RoleLookup;
 use App\Http\Requests\BaseFormRequest;
+use App\Providers\AppServiceProvider;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Validator;
 
 /**
  * Validates system setting update payloads.
@@ -153,6 +155,71 @@ class SystemSettingRequest extends BaseFormRequest
             // rather than the health route's 600: this key can only be one
             // account on one address, which is not a whole carrier.
             'queue_retry_rate_limit_per_minute' => ['integer', 'min:1', 'max:120'],
+
+            // Phase 14 Group A — storage driver and capacity.
+            //
+            // The S3 credential rules are conditional on "no secret stored yet"
+            // rather than a bare `required_if`: the form renders a blank field
+            // once a credential exists, and a blank field must mean "keep it",
+            // not "clear it". Region and bucket have no such escape hatch.
+            'storage_default_disk' => ['nullable', 'in:local,s3'],
+            'storage_local_root' => ['nullable', 'string', 'max:255'],
+            'storage_local_permission' => ['nullable', 'string', 'regex:/^0[0-7]{3}$/'],
+            'storage_s3_key' => [
+                'nullable',
+                'string',
+                'max:255',
+                Rule::requiredIf(fn (): bool => $this->input('storage_default_disk') === 's3'
+                    && ! AppServiceProvider::hasStorageSecret('storage_s3_key')),
+            ],
+            'storage_s3_secret' => [
+                'nullable',
+                'string',
+                'max:255',
+                Rule::requiredIf(fn (): bool => $this->input('storage_default_disk') === 's3'
+                    && ! AppServiceProvider::hasStorageSecret('storage_s3_secret')),
+            ],
+            'storage_s3_region' => ['nullable', 'string', 'max:64', 'required_if:storage_default_disk,s3'],
+            'storage_s3_bucket' => ['nullable', 'string', 'max:255', 'required_if:storage_default_disk,s3'],
+            'storage_s3_endpoint' => ['nullable', 'url', 'max:255'],
+            'storage_s3_url' => ['nullable', 'url', 'max:255'],
+
+            // 0 means "no quota"; the hard guard then measures the disk itself.
+            'storage_max_capacity_mb' => ['integer', 'min:0', 'max:10485760'],
+            'storage_warning_threshold_percent' => ['integer', 'min:1', 'max:99'],
+        ];
+    }
+
+    /**
+     * Keep a configurable local root inside the application's storage tree.
+     *
+     * The field is edited by an administrator, which is exactly the trust
+     * boundary worth checking: an absolute path anywhere on the host would let a
+     * settings save point the private disk at `/etc` and turn every later read
+     * into a file-disclosure primitive.
+     *
+     * @return array<int, callable>
+     */
+    public function after(): array
+    {
+        return [
+            function (Validator $validator): void {
+                $root = $this->input('storage_local_root');
+
+                if (! is_string($root) || $root === '') {
+                    return;
+                }
+
+                $prefix = rtrim(storage_path(), '/').'/';
+                $normalized = rtrim($root, '/').'/';
+
+                if (! str_starts_with($normalized, $prefix)) {
+                    $validator->errors()->add(
+                        'storage_local_root',
+                        'The storage root must be inside '.storage_path().'.'
+                    );
+                }
+            },
         ];
     }
 

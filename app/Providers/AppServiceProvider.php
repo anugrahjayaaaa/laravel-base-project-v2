@@ -68,6 +68,11 @@ class AppServiceProvider extends ServiceProvider
         // and `config:cache`, where the table does not exist yet.
         self::bindExpirations();
 
+        // Phase 14 Group A. Same shape and same reason as `bindExpirations()`:
+        // the disk an operator chose in the UI has to be the disk this process
+        // writes to, or the setting saves 200 and changes nothing.
+        self::bindStorageConfig();
+
         // The correlation id travels with the job, carried in the payload.
         //
         // `GenerateRequestCorrelationId` binds `request_id` on the REQUEST;
@@ -631,6 +636,100 @@ class AppServiceProvider extends ServiceProvider
     public static function hasMailPassword(): bool
     {
         return SystemSetting::getString('mail_password') !== '';
+    }
+
+    /**
+     * Push the stored storage driver onto the runtime config.
+     *
+     * `config/filesystems.php` reads `.env` values that no admin can change
+     * from the UI. This applies the settings rows on top of them: the default
+     * disk, the local root/permissions, and the S3 credentials. An empty row
+     * falls through to config, so an install that never saved anything behaves
+     * exactly as it did before.
+     *
+     * The try/catch is the same one `bindExpirations()` needs: boot runs during
+     * `migrate` and `config:cache`, before the settings table necessarily
+     * exists, and a failed read must mean "use config", never "app cannot boot".
+     *
+     * Called at boot for every process, and again after a settings save so the
+     * admin who saved sees it enforced in the same process.
+     */
+    public static function bindStorageConfig(): void
+    {
+        try {
+            $default = SystemSetting::getString(
+                'storage_default_disk',
+                (string) config('filesystems.default', 'local')
+            );
+            $default = in_array($default, ['local', 's3'], true) ? $default : 'local';
+
+            // Only non-empty values override config: an empty credential row
+            // means "keep using .env", not "connect with a blank key".
+            $s3 = array_replace((array) config('filesystems.disks.s3', []), array_filter([
+                'key' => self::storedSecret('storage_s3_key'),
+                'secret' => self::storedSecret('storage_s3_secret'),
+                'region' => SystemSetting::getString('storage_s3_region', ''),
+                'bucket' => SystemSetting::getString('storage_s3_bucket', ''),
+                'endpoint' => SystemSetting::getString('storage_s3_endpoint', ''),
+                'url' => SystemSetting::getString('storage_s3_url', ''),
+            ], static fn (?string $value): bool => $value !== null && $value !== ''));
+
+            $local = (array) config('filesystems.disks.local', []);
+
+            $root = SystemSetting::getString('storage_local_root', '');
+            if ($root !== '') {
+                $local['root'] = $root;
+            }
+
+            // A single file mode in the UI; a directory gets execute wherever it
+            // already gets read, so 0644 means files 0644 / dirs 0755 and 0600
+            // means 0700 rather than 0711.
+            $mode = SystemSetting::getString('storage_local_permission', '');
+            if (preg_match('/^0[0-7]{3}$/', $mode) === 1) {
+                $file = (int) octdec($mode);
+                $local['permissions'] = ['file' => $file, 'dir' => $file | (($file & 0444) >> 2)];
+            }
+
+            config()->set([
+                'filesystems.default' => $default,
+                'filesystems.disks.s3' => $s3,
+                'filesystems.disks.local' => $local,
+            ]);
+        } catch (Throwable) {
+            // No settings table yet — leave the config defaults in place.
+        }
+    }
+
+    /**
+     * A stored credential, decrypted, or null when there is none.
+     *
+     * `decrypt()` throws on a value written before encryption existed, which is
+     * the right answer: a value we cannot read is not a value we should send.
+     */
+    public static function storedSecret(string $key): ?string
+    {
+        $stored = SystemSetting::getString($key, '');
+
+        if ($stored === '') {
+            return null;
+        }
+
+        try {
+            return decrypt($stored);
+        } catch (Throwable) {
+            return null;
+        }
+    }
+
+    /**
+     * Whether a storage credential is stored, without revealing it.
+     *
+     * The form renders a blank secret field plus this flag, so the page never
+     * echoes ciphertext or plaintext into markup.
+     */
+    public static function hasStorageSecret(string $key): bool
+    {
+        return self::storedSecret($key) !== null;
     }
 
     /**

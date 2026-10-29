@@ -710,6 +710,183 @@
                     </div>
                 </div>
 
+                {{-- Card 7: Storage Management (Phase 14 Group A) --}}
+                @if ($storageEnabled)
+                    <div class="card border-0 shadow-sm mb-4" id="section-storage">
+                        <div class="card-header bg-transparent border-bottom py-3">
+                            <h5 class="card-title mb-0 fw-semibold">Storage Management</h5>
+                        </div>
+                        <div class="card-body p-4">
+                            @if ($storage['percent'] !== null && $storage['percent'] >= ($settings['storage_warning_threshold_percent'] ?? 80))
+                                <div class="alert alert-warning d-flex align-items-center gap-2 py-2" role="alert">
+                                    <i class="bi bi-exclamation-triangle-fill"></i>
+                                    <span>Storage is almost full. Temporary files will be cleaned up automatically.</span>
+                                </div>
+                            @endif
+
+                            <div class="mb-2 d-flex justify-content-between align-items-center">
+                                <span class="text-muted small">
+                                    Used <strong>{{ $storage['used_label'] }}</strong>
+                                    of <strong>{{ $storage['total_label'] }}</strong>
+                                </span>
+                                <span class="text-muted small">{{ $storage['available_label'] }} available</span>
+                            </div>
+                            <div class="progress mb-4" role="progressbar"
+                                 aria-label="Storage capacity"
+                                 aria-valuenow="{{ (int) ($storage['percent'] ?? 0) }}"
+                                 aria-valuemin="0" aria-valuemax="100" style="height: 10px;">
+                                @php($percent = min(100, (int) ($storage['percent'] ?? 0)))
+                                <div class="progress-bar {{ $percent >= 95 ? 'bg-danger' : ($percent >= ($settings['storage_warning_threshold_percent'] ?? 80) ? 'bg-warning' : 'bg-success') }}"
+                                     style="width: {{ $percent }}%"></div>
+                            </div>
+                            <p class="text-muted small">
+                                Disk <code>{{ $storage['disk'] }}</code>.
+                                @if (! $storage['known'])
+                                    Capacity could not be measured; uploads are not refused on this disk.
+                                @elseif ($storage['quota'] === null)
+                                    No quota is set, so the gauge measures the physical disk.
+                                @endif
+                            </p>
+
+                            <hr class="my-4">
+
+                            <h6 class="text-uppercase text-muted small fw-semibold mb-3">Driver</h6>
+                            <div class="mb-3">
+                                <label for="storage_default_disk" class="form-label">
+                                    Default Storage Disk
+                                    <i class="bi bi-info-circle text-muted fs-7 ms-1" data-bs-toggle="tooltip" data-bs-placement="top"
+                                       data-bs-title="Where new files are written. S3 requires the credentials below or the matching AWS_* environment values."></i>
+                                </label>
+                                <select name="storage_default_disk" id="storage_default_disk"
+                                        class="form-select form-select-sm @error('storage_default_disk') is-invalid @enderror">
+                                    <option value="local" {{ ($settings['storage_default_disk'] ?? 'local') === 'local' ? 'selected' : '' }}>Local instance storage</option>
+                                    <option value="s3" {{ ($settings['storage_default_disk'] ?? 'local') === 's3' ? 'selected' : '' }}>S3-compatible object storage</option>
+                                </select>
+                                @error('storage_default_disk')
+                                    <div class="invalid-feedback d-block">{{ $message }}</div>
+                                @enderror
+                            </div>
+
+                            <div id="storage-local-fields">
+                                <div class="mb-3">
+                                    <label for="storage_local_root" class="form-label">Local Root Path</label>
+                                    <input type="text" name="storage_local_root" id="storage_local_root"
+                                           class="form-control form-control-sm @error('storage_local_root') is-invalid @enderror"
+                                           value="{{ old('storage_local_root', $settings['storage_local_root'] ?? '') }}"
+                                           placeholder="{{ storage_path('app/private') }}">
+                                    <div class="form-text">Leave blank to use the configured default. Must stay inside <code>{{ storage_path() }}</code>.</div>
+                                    @error('storage_local_root')
+                                        <div class="invalid-feedback d-block">{{ $message }}</div>
+                                    @enderror
+                                </div>
+                                <div class="mb-3">
+                                    <label for="storage_local_permission" class="form-label">File Permission Mode</label>
+                                    <input type="text" name="storage_local_permission" id="storage_local_permission"
+                                           class="form-control form-control-sm @error('storage_local_permission') is-invalid @enderror"
+                                           value="{{ old('storage_local_permission', $settings['storage_local_permission'] ?? '') }}"
+                                           placeholder="0644" inputmode="numeric" pattern="0[0-7]{3}">
+                                    <div class="form-text">Octal mode for new files; directories get the execute bit. Blank keeps the system default.</div>
+                                    @error('storage_local_permission')
+                                        <div class="invalid-feedback d-block">{{ $message }}</div>
+                                    @enderror
+                                </div>
+                            </div>
+
+                            <div id="storage-s3-fields" hidden>
+                                <div class="mb-3">
+                                    <label for="storage_s3_key" class="form-label">Access Key</label>
+                                    <input type="text" name="storage_s3_key" id="storage_s3_key" autocomplete="off"
+                                           class="form-control form-control-sm @error('storage_s3_key') is-invalid @enderror"
+                                           value="{{ old('storage_s3_key') }}">
+                                    @if ($hasStorageSecret)
+                                        <div class="form-text">A credential is stored. Leave blank to keep it.</div>
+                                    @endif
+                                    @error('storage_s3_key')
+                                        <div class="invalid-feedback d-block">{{ $message }}</div>
+                                    @enderror
+                                </div>
+                                <div class="mb-3">
+                                    <label for="storage_s3_secret" class="form-label">Secret Key</label>
+                                    <input type="password" name="storage_s3_secret" id="storage_s3_secret" autocomplete="new-password"
+                                           class="form-control form-control-sm @error('storage_s3_secret') is-invalid @enderror"
+                                           value="{{ old('storage_s3_secret') }}">
+                                    <div class="form-text">Stored encrypted. Leave blank to keep the stored value.</div>
+                                    @error('storage_s3_secret')
+                                        <div class="invalid-feedback d-block">{{ $message }}</div>
+                                    @enderror
+                                </div>
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <label for="storage_s3_region" class="form-label">Region</label>
+                                        <input type="text" name="storage_s3_region" id="storage_s3_region"
+                                               class="form-control form-control-sm @error('storage_s3_region') is-invalid @enderror"
+                                               value="{{ old('storage_s3_region', $settings['storage_s3_region'] ?? '') }}" placeholder="us-east-1">
+                                        @error('storage_s3_region')
+                                            <div class="invalid-feedback d-block">{{ $message }}</div>
+                                        @enderror
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="storage_s3_bucket" class="form-label">Bucket</label>
+                                        <input type="text" name="storage_s3_bucket" id="storage_s3_bucket"
+                                               class="form-control form-control-sm @error('storage_s3_bucket') is-invalid @enderror"
+                                               value="{{ old('storage_s3_bucket', $settings['storage_s3_bucket'] ?? '') }}">
+                                        @error('storage_s3_bucket')
+                                            <div class="invalid-feedback d-block">{{ $message }}</div>
+                                        @enderror
+                                    </div>
+                                </div>
+                                <div class="mb-3 mt-3">
+                                    <label for="storage_s3_endpoint" class="form-label">Endpoint (optional)</label>
+                                    <input type="url" name="storage_s3_endpoint" id="storage_s3_endpoint"
+                                           class="form-control form-control-sm @error('storage_s3_endpoint') is-invalid @enderror"
+                                           value="{{ old('storage_s3_endpoint', $settings['storage_s3_endpoint'] ?? '') }}"
+                                           placeholder="https://s3.example.com">
+                                    @error('storage_s3_endpoint')
+                                        <div class="invalid-feedback d-block">{{ $message }}</div>
+                                    @enderror
+                                </div>
+                                <div class="mb-3">
+                                    <label for="storage_s3_url" class="form-label">Public URL (optional)</label>
+                                    <input type="url" name="storage_s3_url" id="storage_s3_url"
+                                           class="form-control form-control-sm @error('storage_s3_url') is-invalid @enderror"
+                                           value="{{ old('storage_s3_url', $settings['storage_s3_url'] ?? '') }}">
+                                    @error('storage_s3_url')
+                                        <div class="invalid-feedback d-block">{{ $message }}</div>
+                                    @enderror
+                                </div>
+                            </div>
+
+                            <hr class="my-4">
+
+                            <h6 class="text-uppercase text-muted small fw-semibold mb-3">Capacity Limit</h6>
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label for="storage_max_capacity_mb" class="form-label">Maximum Capacity (MB)</label>
+                                    <input type="number" name="storage_max_capacity_mb" id="storage_max_capacity_mb"
+                                           class="form-control form-control-sm @error('storage_max_capacity_mb') is-invalid @enderror"
+                                           value="{{ old('storage_max_capacity_mb', $settings['storage_max_capacity_mb'] ?? 0) }}"
+                                           min="0" max="10485760">
+                                    <div class="form-text">0 means no quota: the disk's own size is the limit.</div>
+                                    @error('storage_max_capacity_mb')
+                                        <div class="invalid-feedback d-block">{{ $message }}</div>
+                                    @enderror
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="storage_warning_threshold_percent" class="form-label">Warning Threshold (%)</label>
+                                    <input type="number" name="storage_warning_threshold_percent" id="storage_warning_threshold_percent"
+                                           class="form-control form-control-sm @error('storage_warning_threshold_percent') is-invalid @enderror"
+                                           value="{{ old('storage_warning_threshold_percent', $settings['storage_warning_threshold_percent'] ?? 80) }}"
+                                           min="1" max="99">
+                                    <div class="form-text">Cleanup runs above this. Writes are refused at 95%.</div>
+                                    @error('storage_warning_threshold_percent')
+                                        <div class="invalid-feedback d-block">{{ $message }}</div>
+                                    @enderror
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                @endif
+
             </div>
 
             {{-- Sidebar Area --}}
@@ -853,7 +1030,8 @@
                     </div>
                 </div>
 
-                {{-- Card 7: Sticky Save Actions Card --}}
+
+                {{-- Card 8: Sticky Save Actions Card --}}
                 <div class="card border-0 shadow-sm mb-4 sticky-top" style="top: 80px;">
                     <div class="card-header bg-transparent border-bottom py-3">
                         <h5 class="card-title mb-0 fw-semibold">Save Settings</h5>
@@ -936,6 +1114,21 @@
                 toggle.addEventListener('change', syncField);
                 syncField();
             });
+
+            // Storage driver: show only the fieldset the chosen driver reads.
+            const storageDriver = document.getElementById('storage_default_disk');
+            const storageLocal = document.getElementById('storage-local-fields');
+            const storageS3 = document.getElementById('storage-s3-fields');
+
+            if (storageDriver && storageLocal && storageS3) {
+                const syncStorageFields = () => {
+                    const isS3 = storageDriver.value === 's3';
+                    storageLocal.hidden = isS3;
+                    storageS3.hidden = !isS3;
+                };
+                storageDriver.addEventListener('change', syncStorageFields);
+                syncStorageFields();
+            }
         });
     </script>
 @endsection

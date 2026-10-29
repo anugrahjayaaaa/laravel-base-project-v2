@@ -66,6 +66,30 @@ class PermissionCatalog
     ];
 
     /**
+     * Storage management — Phase 14 Group A.
+     *
+     * `manage` covers driver configuration and cleanup; `view` reads the
+     * capacity metrics.
+     *
+     * @var array<int, string>
+     */
+    private const STORAGE = [
+        'storage.view',
+        'storage.manage',
+    ];
+
+    /**
+     * Backup execution — its own resource so the role matrix offers a distinct
+     * heading. Triggering a backup consumes disk and IO, which reading a gauge
+     * does not, so it is not folded into `storage.manage`.
+     *
+     * @var array<int, string>
+     */
+    private const BACKUP = [
+        'backup.execute',
+    ];
+
+    /**
      * Notifications & mail — the transport every outgoing message uses, plus
      * the send-test escape hatch.
      *
@@ -205,6 +229,8 @@ class PermissionCatalog
         'pulse' => 'pulse',
         'health' => 'health',
         'queues' => 'vantage',
+        'storage' => 'storage_management',
+        'backup' => 'storage_management',
     ];
 
     /**
@@ -239,6 +265,8 @@ class PermissionCatalog
             ...self::ROLES,
             ...self::PERMISSIONS,
             ...self::SETTINGS,
+            ...self::STORAGE,
+            ...self::BACKUP,
             ...self::NOTIFICATIONS,
             ...self::FEATURES,
             ...self::AUDIT,

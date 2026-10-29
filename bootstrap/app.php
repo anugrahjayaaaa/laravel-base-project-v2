@@ -1,6 +1,7 @@
 <?php
 
 use App\Exceptions\LastSuperadminException;
+use App\Exceptions\StorageCapacityExceededException;
 use App\Http\Middleware\AddSecurityHeaders;
 use App\Http\Middleware\CheckAccountState;
 use App\Http\Middleware\EnsureFeatureIsEnabled;
@@ -102,6 +103,21 @@ return Application::configure(basePath: dirname(__DIR__))
             if ($e instanceof LastSuperadminException) {
                 if ($request->is('api/*') || $request->expectsJson()) {
                     return ApiError::make($e->getMessage(), 'LAST_SUPERADMIN', 409, $detail());
+                }
+
+                return back()->with('error', $e->getMessage());
+            }
+
+            // The disk is full, not broken: 507 tells an API client to free
+            // space or raise the quota rather than retry the same request. Web
+            // forms get the message they can act on. `storage` lives under
+            // `meta` (see error-contract.md), not as a sibling of `code`.
+            if ($e instanceof StorageCapacityExceededException) {
+                if ($request->is('api/*') || $request->expectsJson()) {
+                    return ApiError::make($e->getMessage(), 'STORAGE_FULL', 507, array_merge(
+                        $detail(),
+                        ['meta' => array_merge(ApiError::meta(), ['storage' => $e->metrics])],
+                    ));
                 }
 
                 return back()->with('error', $e->getMessage());

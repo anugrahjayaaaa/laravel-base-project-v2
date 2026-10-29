@@ -2,6 +2,7 @@
 
 namespace App\Services\HealthCheck;
 
+use App\Services\Storage\StorageCapacityGuard;
 use Illuminate\Contracts\Cache\Repository;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -37,6 +38,11 @@ class HealthCheckService
      * executions a minute per server however many callers arrive.
      */
     private const CACHE_TTL_SECONDS = 10;
+
+    public function __construct(
+        private readonly StorageCapacityGuard $capacity,
+    ) {
+    }
 
     /**
      * Run all health checks and return the results.
@@ -159,7 +165,7 @@ class HealthCheckService
     /**
      * Check if all checks passed (no failures).
      *
-     * @return bool
+     * @param  array<string, string>  $checks
      */
     public function isHealthy(array $checks): bool
     {
@@ -232,7 +238,14 @@ class HealthCheckService
     }
 
     /**
-     * Check storage read/write via a test file.
+     * Check storage read/write via a test file, and refuse the disk as down
+     * once the operator's capacity ceiling is crossed.
+     *
+     * The round trip answering `ok` is not the whole health answer: the guard
+     * already knows the condition that takes writes down (`HARD_LIMIT_PERCENT`
+     * of the configured capacity), and a disk sitting past it has to read as
+     * failing here too — the health page then names the subsystem instead of
+     * calling a full disk healthy.
      *
      * @return string 'ok' or 'fail'
      */
@@ -243,6 +256,10 @@ class HealthCheckService
             Storage::disk($disk)->put('__health_check__', 'ok');
             $read = Storage::disk($disk)->get('__health_check__');
             Storage::disk($disk)->delete('__health_check__');
+
+            if (($this->capacity->metrics($disk)['percent'] ?? 0) >= StorageCapacityGuard::HARD_LIMIT_PERCENT) {
+                return 'fail';
+            }
 
             return $read === 'ok' ? 'ok' : 'fail';
         } catch (\Throwable $e) {

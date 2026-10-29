@@ -1,0 +1,111 @@
+<?php
+
+namespace App\Jobs;
+
+use App\Jobs\Concerns\ReadsCorrelationId;
+use App\Models\SystemSetting;
+use App\Support\QueueName;
+use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Foundation\Bus\Dispatchable;
+use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
+use Throwable;
+
+/**
+ * Delete unattached files on the `tmp` disk past the retention window.
+ *
+ * Uploads land on `tmp` first and are promoted on save — anything still here
+ * past the TTL is orphaned by definition. The capacity guard dispatches this
+ * on a warning-threshold crossing (hourly throttle); Group C adds the daily
+ * schedule. Never touches `local` / `public` / `secure_documents`: an unattached
+ * file there cannot be proven orphaned.
+ */
+class CleanTemporaryStorageJob implements ShouldQueue
+{
+    use Dispatchable;
+    use InteractsWithQueue;
+    use Queueable;
+    use ReadsCorrelationId;
+    use SerializesModels;
+
+    public function __construct()
+    {
+        $this->onQueue(QueueName::SWEEPS);
+    }
+
+    /** @var int */
+    public $tries = 3;
+
+    /** @var int */
+    public $timeout = 150;
+
+    /** @var int */
+    public $maxExceptions = 3;
+
+    /**
+     * @return array<int, int>
+     */
+    public function backoff(): array
+    {
+        return [60, 300];
+    }
+
+    public function failed(?Throwable $exception): void
+    {
+        Log::error('Temporary storage cleanup failed', [
+            'attempts' => $this->tries,
+            'request_id' => $this->requestId(),
+            'exception' => $exception?->getMessage(),
+        ]);
+    }
+
+    /**
+     * Delete every `tmp` object strictly older than the retention window.
+     *
+     * A second run finds nothing and writes no audit row — the empty pass is
+     * the idempotence proof Group C pins.
+     */
+    public function handle(): void
+    {
+        $hours = max(1, SystemSetting::getInt('temp_file_retention_hours', 24));
+        $cutoff = now()->subHours($hours)->getTimestamp();
+
+        $disk = Storage::disk('tmp');
+        $deleted = 0;
+        $bytes = 0;
+
+        foreach ($disk->allFiles() as $path) {
+            try {
+                if ($disk->lastModified($path) >= $cutoff) {
+                    continue;
+                }
+
+                $size = (int) $disk->size($path);
+                if ($disk->delete($path)) {
+                    $deleted++;
+                    $bytes += $size;
+                }
+            } catch (Throwable $e) {
+                Log::warning('Temporary storage cleanup skipped a file', [
+                    'path' => $path,
+                    'exception' => $e->getMessage(),
+                    'request_id' => $this->requestId(),
+                ]);
+            }
+        }
+
+        if ($deleted === 0) {
+            return;
+        }
+
+        SystemSetting::query()->firstOrFail()->audit('temp_storage.cleaned', auth()->user(), [
+            'source' => 'system',
+            'deleted_count' => $deleted,
+            'bytes_freed' => $bytes,
+            'retention_hours' => $hours,
+        ]);
+    }
+}

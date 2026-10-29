@@ -144,6 +144,31 @@ class SystemSettingSeeder extends Seeder
         // after an incident can raise it without a deploy.
         SystemSetting::set('queue_retry_rate_limit_per_minute', '10');
 
+        // Storage — Phase 14 Group A.
+        //
+        // `local` and an empty root/permission mean "use config/filesystems.php
+        // exactly as it ships". A path seeded here would be machine-specific and
+        // would travel into every database dump, so the row stays empty until an
+        // operator chooses a different location.
+        //
+        // Credentials are seeded empty for the same reason as `mail_password`:
+        // an install that never configured S3 must fall back to `.env`, and a
+        // `db:seed` must never copy a live key into a row.
+        SystemSetting::set('storage_default_disk', 'local');
+        SystemSetting::set('storage_local_root', '');
+        SystemSetting::set('storage_local_permission', '');
+        SystemSetting::set('storage_s3_key', '');
+        SystemSetting::set('storage_s3_secret', '');
+        SystemSetting::set('storage_s3_region', '');
+        SystemSetting::set('storage_s3_bucket', '');
+        SystemSetting::set('storage_s3_endpoint', '');
+        SystemSetting::set('storage_s3_url', '');
+        // 0 = no quota: the guard measures the disk itself. The warning sits at
+        // 80% so cleanup has room to work before the 95% hard guard refuses
+        // writes.
+        SystemSetting::set('storage_max_capacity_mb', '0');
+        SystemSetting::set('storage_warning_threshold_percent', '80');
+
         // Mail transport — Phase 9 Group B.
         //
         // Seeded from the .env values this app already boots with, so an install

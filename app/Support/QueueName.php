@@ -29,8 +29,8 @@ class QueueName
     public const EXPORTS = 'exports';
 
     /**
-     * Scheduled security sweeps — idempotent, dispatched by the scheduler,
-     * never urgent (PasswordExpirySweep, InactivityLockSweep).
+     * Scheduled / threshold sweeps — idempotent, never urgent
+     * (PasswordExpirySweep, InactivityLockSweep, CleanTemporaryStorageJob).
      */
     public const SWEEPS = 'sweeps';
 }
