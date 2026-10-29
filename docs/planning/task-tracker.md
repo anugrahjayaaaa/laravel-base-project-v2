@@ -357,30 +357,32 @@ one. The test factory no longer repeats a username. Detail:
 
 ### Phase 14 — Storage, Backup & Retention
 
-> Breakdown written 2026-10-28, status **PLANNED**. Fifteen tasks in five groups
-> (A storage disks/S3 readiness → B backup strategy/async engine → C temporary
-> retention/cleanup → D security/RBAC/feature flags/audit → E tests/verification/docs).
+> Breakdown revised 2026-10-29, status **PLANNED**. Sixteen tasks in five groups
+> (A storage card/driver binding/capacity guard/S3 readiness → B backup
+> strategy/async engine → C temporary retention/cleanup → D security/RBAC/feature
+> flags/audit → E tests/verification/docs).
 > Detail: `docs/planning/phase-14-storage-backup-retention.md`.
 
 | ID | Task | Phase | Priority | Depends On | Status |
 |----|------|-------|----------|-----------|--------|
-| P14-A1 | Storage Disk Configuration (`config/filesystems.php` + runtime driver binding via `SystemSetting` key `storage_default_disk`) | 14 | P1 | FOUND-003 | PLANNED |
-| P14-A2 | Storage Capacity Limit Shield & Middleware (validate disk usage vs `storage_max_capacity_mb`, throw `StorageCapacityExceededException`) | 14 | P1 | P14-A1 | PLANNED |
-| P14-A3 | Secure Private Media Route & Signed URL Handler | 14 | P1 | P14-A1 | PLANNED |
-| P14-A4 | Automated Storage Disk & Capacity Limit Test (`tests/Feature/Storage/StorageDiskTest.php`) | 14 | P1 | P14-A1, P14-A2, P14-A3 | PLANNED |
-| P14-B1 | Spatie Backup Integration & Dynamic `SystemSetting` Control (MySQL DB + `storage/app`) | 14 | P1 | P14-A1 | PLANNED |
-| P14-B2 | Pre-Backup Storage Check & Asynchronous Backup Execution (`ExecuteSystemBackupJob`), abort on full storage | 14 | P1 | P14-B1 | PLANNED |
-| P14-B3 | Automated Backup Strategy & Full Storage Test (`tests/Feature/Storage/BackupStrategyTest.php`) | 14 | P1 | P14-B1, P14-B2 | PLANNED |
-| P14-C1 | Retention & Threshold Policy Configuration (`SystemSetting` keys `temp_file_retention_hours`, `storage_warning_threshold_percent`) | 14 | P1 | DB-001 | PLANNED |
-| P14-C2 | Scheduled & Triggered Temporary Cleanup Job (`CleanTemporaryStorageJob`) | 14 | P1 | P14-C1 | PLANNED |
-| P14-C3 | Automated Retention Test (`tests/Feature/Storage/DataRetentionTest.php`) | 14 | P1 | P14-C1, P14-C2 | PLANNED |
+| P14-A1 | Storage Management Card UI (`resources/views/pages/settings/index.blade.php`, `col-lg-8`) — reactive `local`/`s3` fieldset + capacity gauge | 14 | P1 | FOUND-003 | PLANNED |
+| P14-A2 | Dynamic Driver Runtime Binding & Conditional Validation (`AppServiceProvider::bindStorageConfig()`, `SystemSettingRequest`, `SystemSettingsUpdateAction`, encrypted S3 credentials, `SECRET_KEYS`) | 14 | P1 | P14-A1 | PLANNED |
+| P14-A3 | Storage Capacity Guard & Exception Handler (`StorageCapacityExceededException` → 507 `STORAGE_FULL`, `storage_max_capacity_mb`, warning threshold) | 14 | P1 | P14-A2 | PLANNED |
+| P14-A4 | Secure Private Media Route & Signed URL Handler (`secure_documents`, `storage.view`, signed URL expiry) | 14 | P1 | P14-A3 | PLANNED |
+| P14-A5 | Automated Storage Disk, UI & Capacity Test (`tests/Feature/Storage/StorageDiskTest.php`) | 14 | P1 | P14-A1, P14-A2, P14-A3, P14-A4 | PLANNED |
+| P14-B1 | Spatie Backup Integration & Dynamic `SystemSetting` Control (MySQL DB + `storage/app`, dedicated `backups` disk, ADR first) | 14 | P1 | P14-A2 | PLANNED |
+| P14-B2 | Pre-Backup Capacity Check & Asynchronous Execution (`ExecuteSystemBackupJob`, `QueueName::BACKUPS`), abort on full target | 14 | P1 | P14-B1, P14-A3 | PLANNED |
+| P14-B3 | Automated Backup Strategy & Capacity Test (`tests/Feature/Storage/BackupStrategyTest.php`) | 14 | P1 | P14-B1, P14-B2 | PLANNED |
+| P14-C1 | Retention & Threshold Policy Configuration (`temp_file_retention_hours`, `storage_warning_threshold_percent`) | 14 | P1 | DB-001 | PLANNED |
+| P14-C2 | Scheduled & Capacity-Triggered Cleanup Job (`CleanTemporaryStorageJob`, `tmp` disk only, hourly dispatch throttle) | 14 | P1 | P14-C1, P14-A3 | PLANNED |
+| P14-C3 | Automated Retention Test (`tests/Feature/Storage/DataRetentionTest.php`, audit logs + soft deletes preserved) | 14 | P1 | P14-C1, P14-C2 | PLANNED |
 | P14-D1 | RBAC Authorization (`storage.view`, `storage.manage`, `backup.execute`) | 14 | P1 | RBAC-004 | PLANNED |
-| P14-D2 | Feature Flag Middleware (`feature:storage_management`) | 14 | P1 | P14-D1 | PLANNED |
-| P14-D3 | Action-First Audit Trail Logging (`backup.triggered`, `backup.aborted_storage_full`, `temp_storage.cleaned`, `storage.capacity_warning`) | 14 | P1 | P14-B2, P14-C2 | PLANNED |
-| P14-E1 | Comprehensive Test Run (`php artisan test --filter=Storage`) | 14 | P0 | P14-A4, P14-B3, P14-C3 | PLANNED |
-| P14-E2 | Update Documentation (`retention.md`, `backup-disaster-recovery.md`, `progress.md`) | 14 | P2 | P14-E1 | PLANNED |
+| P14-D2 | Feature Flag Middleware (`feature:storage_management` — management surface only, guard stays active) | 14 | P1 | P14-D1 | PLANNED |
+| P14-D3 | Action-First Audit Trail Logging (`storage_setting.updated`, `backup.triggered`, `backup.aborted_storage_full`, `temp_storage.cleaned`, `storage.capacity_warning`) | 14 | P1 | P14-B2, P14-C2 | PLANNED |
+| P14-E1 | Comprehensive Test Run (`php artisan test --filter=Storage`, full suite, Pint) | 14 | P0 | P14-A5, P14-B3, P14-C3, P14-D3 | PLANNED |
+| P14-E2 | Update Documentation (`docs/base/infrastructure/storage.md`, `docs/base/operations/retention.md`, `docs/base/infrastructure/backup-disaster-recovery.md`, `docs/base/infrastructure/queue.md`, `docs/base/api/error-contract.md`, `progress.md`) | 14 | P2 | P14-E1 | PLANNED |
 
-**Invariants (non-negotiable):** Audit Trail / Activity Logs are never deleted; soft-deleted models are never force-deleted automatically; only `tmp`/unattached uploads are cleaned by TTL; backup runs asynchronously; storage access gated by RBAC + feature flag; all jobs follow queue convention; audit rows written inside the transaction by the Action layer.
+**Invariants (non-negotiable):** Audit Trail / Activity Logs are never deleted; soft-deleted models are never force-deleted automatically; only the `tmp` disk is cleaned by TTL; backup runs asynchronously and never lands on the disk it backs up; storage access gated by RBAC + feature flag; the flag gates the management surface only, not the upload guard; disk binding falls back to config and never blocks boot; all jobs follow queue convention; audit rows written inside the transaction by the Action layer.
 
 ---
 
