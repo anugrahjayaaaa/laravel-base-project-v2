@@ -1,6 +1,6 @@
 # Phase 14 — Storage, Backup & Retention
 
-> Date: 2026-10-29 (breakdown revised) | Status: **PLANNED** | Branch: `feature/phase-14-storage-backup-retention`
+> Date: 2026-10-29 (breakdown revised) | Status: **IN_PROGRESS** (Group A **REVIEW**) | Branch: `feature/phase-14-storage-backup-retention`
 > Purpose: make the base project storage-aware and backup-capable, with strict
 > retention that protects audit trails and soft-deleted models, enforces
 > capacity limits via `SystemSetting`, and cleans only temporary/unattached
@@ -53,10 +53,12 @@ quotas.
      `decrypt()` on read) and listed in `SystemSetting::SECRET_KEYS`, so
      `getAll()` / `getLive()` (the read-only table and
      `GET /api/v1/settings`) never return them.
-   - Capacity: local metrics come from `disk_free_space()` /
-     `disk_total_space()`; S3 has **no total-capacity API**, so the gauge uses
-     the configured quota (`storage_max_capacity_mb`) as its denominator and
-     reports Available as "n/a" when no quota is set.
+   - Capacity: local `metrics()` `used` counts the bytes stored under the
+     disk root via the storage listing; the physical ceiling still comes from
+     `disk_total_space`, or the configured quota when set. S3 has **no
+     total-capacity API**, so the gauge uses the configured quota
+     (`storage_max_capacity_mb`) as its denominator and reports Available as
+     "n/a" when no quota is set.
    - Hard guard: refuse an upload when used ≥ 95% of the effective quota, or
      when the incoming file would cross it. Refusal is
      `StorageCapacityExceededException` → HTTP **507** with a new
@@ -379,8 +381,8 @@ quotas.
 
 ## 8. Task tracker registration
 
-All P14-* tasks registered in `docs/planning/task-tracker.md` as `PLANNED`.
-Phase 14 row in `docs/planning/progress.md` set to `PLANNED`.
+P14-A1..A5 registered as **REVIEW** (2026-10-29). P14-B*..E* remain `PLANNED`.
+Phase 14 row in `docs/planning/progress.md` set to `IN_PROGRESS`.
 
 ---
 

@@ -30,7 +30,7 @@ is written).
 | Constant | Queue | Jobs |
 |---|---|---|
 | `QueueName::EXPORTS` | `exports` | `GenerateAuditExport` — heavy, IO-bound, user-initiated |
-| `QueueName::SWEEPS` | `sweeps` | `PasswordExpirySweep`, `InactivityLockSweep` — scheduled, idempotent, never urgent |
+| `QueueName::SWEEPS` | `sweeps` | `PasswordExpirySweep`, `InactivityLockSweep`, `CleanTemporaryStorageJob` — scheduled / threshold-triggered, idempotent, never urgent |
 
 The queue is set **on the instance** (`$this->onQueue(...)` in the constructor),
 never as a `public $queue` property: `Queueable` already declares `$queue`, and

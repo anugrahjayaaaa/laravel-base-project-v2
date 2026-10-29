@@ -357,19 +357,21 @@ one. The test factory no longer repeats a username. Detail:
 
 ### Phase 14 — Storage, Backup & Retention
 
-> Breakdown revised 2026-10-29, status **PLANNED**. Sixteen tasks in five groups
-> (A storage card/driver binding/capacity guard/S3 readiness → B backup
-> strategy/async engine → C temporary retention/cleanup → D security/RBAC/feature
-> flags/audit → E tests/verification/docs).
+> Breakdown revised 2026-10-29. Group A **REVIEW** (2026-10-29) — owner review
+> pending, uncommitted on `feature/phase-14-storage-backup-retention`. Groups
+> B–E still PLANNED. Sixteen tasks in five groups (A storage card/driver
+> binding/capacity guard/S3 readiness → B backup strategy/async engine → C
+> temporary retention/cleanup → D security/RBAC/feature flags/audit → E
+> tests/verification/docs).
 > Detail: `docs/planning/phase-14-storage-backup-retention.md`.
 
 | ID | Task | Phase | Priority | Depends On | Status |
 |----|------|-------|----------|-----------|--------|
-| P14-A1 | Storage Management Card UI (`resources/views/pages/settings/index.blade.php`, `col-lg-8`) — reactive `local`/`s3` fieldset + capacity gauge | 14 | P1 | FOUND-003 | PLANNED |
-| P14-A2 | Dynamic Driver Runtime Binding & Conditional Validation (`AppServiceProvider::bindStorageConfig()`, `SystemSettingRequest`, `SystemSettingsUpdateAction`, encrypted S3 credentials, `SECRET_KEYS`) | 14 | P1 | P14-A1 | PLANNED |
-| P14-A3 | Storage Capacity Guard & Exception Handler (`StorageCapacityExceededException` → 507 `STORAGE_FULL`, `storage_max_capacity_mb`, warning threshold) | 14 | P1 | P14-A2 | PLANNED |
-| P14-A4 | Secure Private Media Route & Signed URL Handler (`secure_documents`, `storage.view`, signed URL expiry) | 14 | P1 | P14-A3 | PLANNED |
-| P14-A5 | Automated Storage Disk, UI & Capacity Test (`tests/Feature/Storage/StorageDiskTest.php`) | 14 | P1 | P14-A1, P14-A2, P14-A3, P14-A4 | PLANNED |
+| P14-A1 | Storage Management Card UI (`resources/views/pages/settings/index.blade.php`, `col-lg-8`) — reactive `local`/`s3` fieldset + capacity gauge | 14 | P1 | FOUND-003 | REVIEW |
+| P14-A2 | Dynamic Driver Runtime Binding & Conditional Validation (`AppServiceProvider::bindStorageConfig()`, `SystemSettingRequest`, `SystemSettingsUpdateAction`, encrypted S3 credentials, `SECRET_KEYS`) | 14 | P1 | P14-A1 | REVIEW |
+| P14-A3 | Storage Capacity Guard & Exception Handler (`StorageCapacityExceededException` → 507 `STORAGE_FULL`, `storage_max_capacity_mb`, warning threshold) | 14 | P1 | P14-A2 | REVIEW |
+| P14-A4 | Secure Private Media Route & Signed URL Handler (`secure_documents`, `storage.view`, signed URL expiry) | 14 | P1 | P14-A3 | REVIEW |
+| P14-A5 | Automated Storage Disk, UI & Capacity Test (`tests/Feature/Storage/StorageDiskTest.php`) | 14 | P1 | P14-A1, P14-A2, P14-A3, P14-A4 | REVIEW |
 | P14-B1 | Spatie Backup Integration & Dynamic `SystemSetting` Control (MySQL DB + `storage/app`, dedicated `backups` disk, ADR first) | 14 | P1 | P14-A2 | PLANNED |
 | P14-B2 | Pre-Backup Capacity Check & Asynchronous Execution (`ExecuteSystemBackupJob`, `QueueName::BACKUPS`), abort on full target | 14 | P1 | P14-B1, P14-A3 | PLANNED |
 | P14-B3 | Automated Backup Strategy & Capacity Test (`tests/Feature/Storage/BackupStrategyTest.php`) | 14 | P1 | P14-B1, P14-B2 | PLANNED |
