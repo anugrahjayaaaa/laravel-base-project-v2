@@ -168,7 +168,8 @@ quotas.
 
 - **Task**: `StorageCapacityGuard` service used at every upload boundary:
   - `metrics()` → used / available / total / quota bytes for the active disk
-    (local: `disk_free_space` / `disk_total_space`; S3: cached ListObjectsV2
+    (local: bytes stored under the disk root, with `disk_total_space` as the
+    physical ceiling; S3: cached ListObjectsV2
     size probe, 300 s TTL — the probe costs a request per page load
     otherwise);
   - `assertCanStore(int $bytes)` → throws

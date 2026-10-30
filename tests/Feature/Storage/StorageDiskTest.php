@@ -19,6 +19,7 @@ use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\URL;
 use Laravel\Pennant\Feature;
@@ -78,6 +79,22 @@ class StorageDiskTest extends TestCase
         AppServiceProvider::bindStorageConfig();
 
         $this->assertSame('local', config('filesystems.default'));
+    }
+
+    /**
+     * A boot that runs before the settings table exists (`migrate`, first
+     * install) must keep the config it was given, not throw: a failed read
+     * means "use config", never "app cannot boot".
+     */
+    public function test_boot_keeps_the_config_when_the_settings_table_is_missing(): void
+    {
+        config(['filesystems.default' => 's3']);
+        Schema::drop('system_settings');
+        SystemSetting::bustCache();
+
+        AppServiceProvider::bindStorageConfig();
+
+        $this->assertSame('s3', config('filesystems.default'));
     }
 
     public function test_stored_disk_rebinds_the_runtime_config(): void

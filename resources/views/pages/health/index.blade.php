@@ -61,7 +61,7 @@
                         </div>
                         <p class="text-muted fs-7 mb-0">{{ $descriptions[$name] ?? 'Service status check.' }}</p>
 
-                        @if ($name === 'storage' && $status === 'ok')
+                        @if ($name === 'storage')
                             <div class="mb-2">
                                 <div class="d-flex justify-content-between align-items-center mb-1">
                                     <span class="text-muted small">
@@ -71,13 +71,15 @@
                                     <span class="text-muted small">{{ $storage['available_label'] }} available</span>
                                 </div>
 
-                                @php($percent = min(100, (int) ($storage['percent'] ?? 0)))
-                                <div class="progress" role="progressbar" aria-label="Storage capacity"
-                                    aria-valuenow="{{ (int) ($storage['percent'] ?? 0) }}" aria-valuemin="0"
-                                    aria-valuemax="100" style="height: 10px;">
-                                    <div class="progress-bar {{ $percent >= 95 ? 'bg-danger' : ($percent >= ($settings['storage_warning_threshold_percent'] ?? 80) ? 'bg-warning' : 'bg-success') }}"
-                                        style="width: {{ $percent }}%"></div>
-                                </div>
+                                @if ($storage['percent'] !== null)
+                                    @php($percent = min(100, (int) $storage['percent']))
+                                    <div class="progress" role="progressbar" aria-label="Storage capacity"
+                                        aria-valuenow="{{ (int) $storage['percent'] }}" aria-valuemin="0"
+                                        aria-valuemax="100" style="height: 10px;">
+                                        <div class="progress-bar {{ $percent >= 95 ? 'bg-danger' : ($percent >= ($settings['storage_warning_threshold_percent'] ?? 80) ? 'bg-warning' : 'bg-success') }}"
+                                            style="width: {{ $percent }}%"></div>
+                                    </div>
+                                @endif
                             </div>
                         @endif
                     </div>

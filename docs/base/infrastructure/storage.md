@@ -80,6 +80,10 @@ Settings → Storage Management card (`feature:storage_management`):
 
 - Driver select `local` \| `s3` with reactive fieldsets (plain `change` listener)
 - Capacity gauge from `StorageCapacityGuard::metrics()` (no Blade arithmetic)
+- The same gauge on `/health`, on the storage card: used / total / available
+  plus the progress bar, shown even while the check is failing. The check
+  itself reads `fail` at `StorageCapacityGuard::HARD_LIMIT_PERCENT`. A null
+  `percent` (unknown total) renders no bar rather than a fabricated 0%.
 - Warning alert when percent ≥ threshold
 - Secret inputs always blank; “leave blank to keep the stored value”
 

@@ -68,26 +68,28 @@ class HealthUiRenderTest extends TestCase
      *
      * @return array<string, mixed>
      */
-    private function viewData(bool $healthy = true): array
+    private function viewData(bool $healthy = true, array $checks = [], array $storage = []): array
     {
         return [
-            'checks' => $healthy
+            'checks' => $checks ?: ($healthy
                 ? ['database' => 'ok', 'cache' => 'ok', 'queue' => 'ok', 'storage' => 'ok']
-                : ['database' => 'ok', 'cache' => 'ok', 'queue' => 'fail', 'storage' => 'ok'],
+                : ['database' => 'ok', 'cache' => 'ok', 'queue' => 'fail', 'storage' => 'ok']),
             'isHealthy' => $healthy,
-            'storageMetrics' => [
+            'storage' => array_merge([
                 'used_label' => '1 GB',
                 'available_label' => '3 GB',
                 'total_label' => '4 GB',
-            ],
+                'percent' => 25.0,
+            ], $storage),
+            'settings' => ['storage_warning_threshold_percent' => '80'],
         ];
     }
 
-    private function render(bool $healthy = true): string
+    private function render(bool $healthy = true, array $checks = [], array $storage = []): string
     {
         return view('pages.health.index', array_merge(
             ['errors' => new ViewErrorBag()],
-            $this->viewData($healthy),
+            $this->viewData($healthy, $checks, $storage),
         ))->render();
     }
 
@@ -150,6 +152,19 @@ class HealthUiRenderTest extends TestCase
     }
 
     /**
+     * An unknown total (S3 without a quota) has no percentage: a 0% green bar
+     * would state a fact the platform never measured.
+     */
+    public function test_the_bar_is_omitted_when_capacity_cannot_be_measured(): void
+    {
+        $this->login();
+        $html = $this->render(true, [], ['percent' => null]);
+
+        $this->assertStringContainsString('Used <strong>1 GB</strong>', $html);
+        $this->assertStringNotContainsString('aria-label="Storage capacity"', $html);
+    }
+
+    /**
      * The storage card answers with the same used/used-and-available shape the
      * settings gauge renders: what is stored, against what total, how much is
      * left — not just an ok/fail badge.
@@ -162,6 +177,22 @@ class HealthUiRenderTest extends TestCase
         $this->assertStringContainsString('Used <strong>1 GB</strong>', $html);
         $this->assertStringContainsString('of <strong>4 GB</strong>', $html);
         $this->assertStringContainsString('3 GB available', $html);
+        $this->assertStringContainsString('aria-valuenow="25"', $html);
+        $this->assertStringContainsString('width: 25%', $html);
+    }
+
+    /**
+     * The numbers and the bar stay visible when the check is failing: a full
+     * disk is the one case an operator opens this page for, and hiding the
+     * measurement behind the badge hides the answer.
+     */
+    public function test_the_storage_card_keeps_its_numbers_when_the_check_fails(): void
+    {
+        $this->login();
+        $html = $this->render(false, ['storage' => 'fail']);
+
+        $this->assertStringContainsString('Used <strong>1 GB</strong>', $html);
+        $this->assertStringContainsString('aria-valuenow="25"', $html);
     }
 
     /**

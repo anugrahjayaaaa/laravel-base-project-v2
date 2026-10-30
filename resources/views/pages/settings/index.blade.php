@@ -731,14 +731,16 @@
                                 </span>
                                 <span class="text-muted small">{{ $storage['available_label'] }} available</span>
                             </div>
-                            <div class="progress mb-4" role="progressbar"
-                                 aria-label="Storage capacity"
-                                 aria-valuenow="{{ (int) ($storage['percent'] ?? 0) }}"
-                                 aria-valuemin="0" aria-valuemax="100" style="height: 10px;">
-                                @php($percent = min(100, (int) ($storage['percent'] ?? 0)))
-                                <div class="progress-bar {{ $percent >= 95 ? 'bg-danger' : ($percent >= ($settings['storage_warning_threshold_percent'] ?? 80) ? 'bg-warning' : 'bg-success') }}"
-                                     style="width: {{ $percent }}%"></div>
-                            </div>
+                            @if ($storage['percent'] !== null)
+                                <div class="progress mb-4" role="progressbar"
+                                     aria-label="Storage capacity"
+                                     aria-valuenow="{{ (int) $storage['percent'] }}"
+                                     aria-valuemin="0" aria-valuemax="100" style="height: 10px;">
+                                    @php($percent = min(100, (int) $storage['percent']))
+                                    <div class="progress-bar {{ $percent >= 95 ? 'bg-danger' : ($percent >= ($settings['storage_warning_threshold_percent'] ?? 80) ? 'bg-warning' : 'bg-success') }}"
+                                         style="width: {{ $percent }}%"></div>
+                                </div>
+                            @endif
                             <p class="text-muted small">
                                 Disk <code>{{ $storage['disk'] }}</code>.
                                 @if (! $storage['known'])
