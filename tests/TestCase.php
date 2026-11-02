@@ -69,6 +69,13 @@ abstract class TestCase extends BaseTestCase
     {
         SystemSetting::bustCache();
 
+        // `AppServiceProvider::bindTimezone()` calls PHP's process-wide
+        // `date_default_timezone_set()`, which neither `RefreshDatabase` nor the
+        // cache reset can undo. A test that saved a zone would otherwise leave
+        // every later test parsing timestamps in it.
+        date_default_timezone_set('UTC');
+        config(['app.timezone' => 'UTC']);
+
         parent::tearDown();
     }
 

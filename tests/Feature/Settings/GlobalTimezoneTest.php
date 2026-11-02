@@ -1,0 +1,134 @@
+<?php
+
+namespace Tests\Feature\Settings;
+
+use App\Http\Resources\Api\V1\HealthCheck\HealthCheckResource;
+use App\Http\Middleware\VerifyCsrfToken;
+use App\Models\RoleLookup;
+use App\Models\SystemSetting;
+use App\Models\Timezone;
+use App\Models\User;
+use App\Providers\AppServiceProvider;
+use App\Services\Backup\SystemBackupSchedule;
+use Database\Seeders\PermissionSeeder;
+use Database\Seeders\RoleSeeder;
+use Database\Seeders\SystemSettingSeeder;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\TestCase;
+
+/**
+ * Phase 14 follow-up: one stored timezone governs the whole process.
+ *
+ * The setting is not a display flag — `bindTimezone()` calls PHP's default
+ * timezone, which is what `now()`, Eloquent date parsing and every
+ * `toIso8601String()` derive from.
+ */
+class GlobalTimezoneTest extends TestCase
+{
+    use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->seed(RoleSeeder::class);
+        $this->seed(PermissionSeeder::class);
+        $this->seed(SystemSettingSeeder::class);
+        $this->withoutMiddleware(VerifyCsrfToken::class);
+
+        Timezone::create([
+            'name' => 'Asia/Jakarta',
+            'label' => 'Jakarta (GMT+7)',
+            'utc_offset' => '+0700',
+            'is_active' => true,
+        ]);
+    }
+
+    private function admin(): User
+    {
+        $user = User::factory()->create(['email_verified_at' => now()]);
+        $user->assignRole(RoleLookup::find('admin'));
+
+        return $user;
+    }
+
+    private function apply(string $timezone): void
+    {
+        SystemSetting::set('app_timezone', $timezone);
+        AppServiceProvider::bindTimezone();
+    }
+
+    public function test_the_mysql_session_zone_is_pinned_to_utc(): void
+    {
+        // Without this the session zone is whatever the server's `time_zone`
+        // is, so `CURRENT_TIMESTAMP` defaults and `NOW()` comparisons differ
+        // between hosts. See ADR-027.
+        $this->assertSame('+00:00', config('database.connections.mysql.timezone'));
+    }
+
+    public function test_saving_the_timezone_applies_it_to_the_process(): void
+    {
+        $this->actingAs($this->admin())
+            ->post(route('settings.update'), ['app_timezone' => 'Asia/Jakarta'])
+            ->assertRedirect()
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame('Asia/Jakarta', SystemSetting::getString('app_timezone'));
+        $this->assertSame('Asia/Jakarta', config('app.timezone'));
+        $this->assertSame('Asia/Jakarta', now()->getTimezone()->getName());
+    }
+
+    public function test_an_empty_timezone_falls_back_to_the_shipped_default(): void
+    {
+        $this->apply('Asia/Jakarta');
+        $this->assertSame('Asia/Jakarta', now()->getTimezone()->getName());
+
+        $this->actingAs($this->admin())
+            ->post(route('settings.update'), ['app_timezone' => ''])
+            ->assertRedirect()
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame('', SystemSetting::getString('app_timezone'));
+        $this->assertSame('UTC', now()->getTimezone()->getName());
+    }
+
+    public function test_api_timestamps_carry_the_configured_offset(): void
+    {
+        $this->apply('Asia/Jakarta');
+
+        $resource = new HealthCheckResource(['app' => 'ok']);
+
+        $this->assertStringEndsWith('+07:00', $resource->toArray(request())['timestamp']);
+        $this->assertStringEndsWith('+07:00', now()->toIso8601String());
+    }
+
+    public function test_an_inactive_timezone_is_rejected(): void
+    {
+        Timezone::create([
+            'name' => 'Asia/Makassar',
+            'label' => 'Makassar (GMT+8)',
+            'utc_offset' => '+0800',
+            'is_active' => false,
+        ]);
+
+        $this->actingAs($this->admin())
+            ->post(route('settings.update'), ['app_timezone' => 'Asia/Makassar'])
+            ->assertRedirect()
+            ->assertSessionHasErrors('app_timezone');
+
+        $this->assertNotSame('Asia/Makassar', SystemSetting::getString('app_timezone'));
+        $this->assertSame('UTC', now()->getTimezone()->getName());
+    }
+
+    public function test_the_backup_schedule_follows_the_global_timezone(): void
+    {
+        SystemSetting::set('backup_enabled', 'true');
+        SystemSetting::set('backup_schedule', '02:00');
+        $this->apply('Asia/Jakarta');
+
+        $schedule = app(SystemBackupSchedule::class);
+
+        $this->assertTrue($schedule->isDue(now()->setTime(2, 0)));
+        $this->assertFalse($schedule->isDue(now()->setTime(2, 1)));
+    }
+}

@@ -184,6 +184,11 @@ class ChannelParityTest extends TestCase
         ],
 
         // ---- Storage ----
+        'backup execute' => [
+            'only' => 'web',
+            'web' => ['storage.backup.store'],
+            'why' => 'The primary trigger is the scheduler — no route at all. The manual POST is an operator action from the settings page that queues the same job an API twin would queue; a backup has no fact a client needs to read back beyond the notification, which is already cross-channel.',
+        ],
         'private media' => [
             'only' => 'web',
             'web' => ['storage.secure'],

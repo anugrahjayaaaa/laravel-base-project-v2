@@ -100,13 +100,16 @@ class SettingsUiRenderTest extends TestCase
                 'password_expiry_enabled' => true,
                 'inactivity_lock_enabled' => true,
                 'inactivity_lock_grace_enabled' => true,
-                'password_security_sweep_timezone' => 'Asia/Jakarta',
+                'app_timezone' => 'Asia/Jakarta',
                 'allow_username_change' => true,
                 'allow_email_change' => true,
                 'registration_enabled' => true,
                 'registration_default_role' => 'user',
             ],
             'timezones' => $timezones,
+            // The shipped default the empty option names; the controller reads it
+            // from the provider because `config('app.timezone')` is the applied zone.
+            'baseTimezone' => 'UTC',
             // `mapWithKeys`, not `pluck('name', 'name')`: pluck reads a `name`
             // property off each element and a list of strings has none, so it
             // returns an empty map and the roles <select> renders bare.
@@ -273,8 +276,25 @@ class SettingsUiRenderTest extends TestCase
         // its own logout form, so a bare submit assertion fails on every page.
         $this->assertStringNotContainsString('Save Settings', $html, 'a read-only viewer was given a save button');
         $this->assertStringNotContainsString(route('settings.update'), $html, 'a read-only viewer was given the settings form');
+        $this->assertStringNotContainsString('Run Backup Now', $html, 'a read-only viewer was given the backup trigger');
         // The values are still readable — read-only means visible, not blank.
         $this->assertStringContainsString('login_max_attempts', $html);
+    }
+
+    /**
+     * The manual backup trigger is a form of its own: HTML cannot nest forms, so
+     * the button in the Backup card carries `form="backup-trigger-form"` and the
+     * form itself sits after the settings form closes.
+     */
+    public function test_the_backup_trigger_is_a_separate_form(): void
+    {
+        $this->login();
+        $html = $this->render();
+
+        $this->assertStringContainsString('form="backup-trigger-form"', $html);
+        $this->assertStringContainsString('id="backup-trigger-form"', $html);
+        $this->assertStringContainsString(route('storage.backup.store'), $html);
+        $this->assertStringContainsString('Run Backup Now', $html);
     }
 
     public function test_a_manager_is_not_shown_the_read_only_banner(): void
@@ -500,6 +520,6 @@ class SettingsUiRenderTest extends TestCase
         $this->assertStringContainsString('value="editor"', $html);
         // The empty option is "application default" / "no role", not a blank
         // row the admin has to guess about.
-        $this->assertStringContainsString('Application timezone', $html);
+        $this->assertStringContainsString('Application default', $html);
     }
 }
