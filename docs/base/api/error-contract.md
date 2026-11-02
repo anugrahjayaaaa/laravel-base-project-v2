@@ -18,6 +18,8 @@ Every error answered on `api/*` uses one body:
 `errors` is added on 422 only. `meta` is always present — the same block a
 successful response carries, so an error and the call beside it can be
 correlated from the body alone rather than from a header a client may not log.
+`meta.timestamp` is ISO 8601 in the global system timezone, so the offset is
+`+00:00` only while `app_timezone` is unset (`response-contract.md`, ADR-027).
 
 Built in `App\Support\ApiError`, which the exception handler
 (`bootstrap/app.php`), `Controller::respondError()` and `FormatsApiErrors` (the

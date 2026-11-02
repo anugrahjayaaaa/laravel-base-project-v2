@@ -666,3 +666,156 @@ a broken file.
 `docs/base/api/documentation.md` § *Availability and access*,
 `.github/workflows/ci-cd.yml`, `bin/deploy-rollback.sh`, `OpenApiExportTest`,
 `ApiDocsUiRenderTest`
+
+## ADR-026: backups use spatie/laravel-backup, queued, on a dedicated disk
+
+**Status**: Accepted
+**Date**: 2026-10-30
+**Context**: Phase 14 Group B needs a real backup of MySQL and `storage/app`,
+not a hand-rolled dumper. This change adds `spatie/laravel-backup` (`^10.3`) to
+`composer.json` — the package was **not** a dependency before Phase 14 — and its
+config is a full `backup.php` file. Two properties drive the design: the package
+reads its config through a `Config` object built when a command is constructed,
+and its default source is the whole project while its default destination is the
+`local` disk — the disk it would be backing up.
+
+**Decision**:
+
+- **Source**: MySQL (the configured connection) plus `storage/app`, excluding
+  `storage/app/backups` and `storage/app/backup-temp` — an archive that
+  contains its own predecessors grows without bound.
+- **Destination**: the dedicated `backups` disk (`storage/app/backups`). Never
+  the default/local disk.
+- **Execution**: `ExecuteSystemBackupJob` on the `backups` queue **and the
+  `backups` connection**. The connection exists because a backup runs for
+  minutes while every other job finishes in seconds: both queue drivers
+  re-select a job whose reservation is older than `retry_after`, and the retry
+  window is read from the consuming connection. On the shared connection a
+  second worker would re-reserve the row mid-run, increment `attempts` and —
+  because the job declares `$tries = 1` — fail a backup that is still writing.
+  `bin/run-workers.sh backups` is the worker that consumes it
+  (`BACKUP_QUEUE_RETRY_AFTER` 2000 > `$timeout` 1800). The scheduler and the
+  `POST /storage/backup` trigger both dispatch it; no synchronous backup runs
+  inside a request.
+- **Schedule**: `routes/console.php` ticks every minute and asks
+  `SystemBackupSchedule`, which reads `backup_enabled` and `backup_schedule`
+  at run time. It does **not** register `backup:run` from a config value:
+  the package would freeze that value at build time.
+- **Retention**: `backup_retention_daily|weekly|monthly` (defaults 7/4/12) are
+  applied by `SystemBackupRunner::applyRetention()` immediately before the
+  command runs, then the package's scoped `Config` instance is forgotten so the
+  next command rebuilds it. Same reason: the object is scoped, so a second job
+  in one worker would otherwise keep the first run's windows.
+- **Pre-check**: the raw source estimate (files plus MySQL
+  `data_length + index_length`) must fit in the destination's free space with a
+  10% reserve. Compression only shrinks the real artifact, so the estimate is
+  an upper bound: it may refuse a backup that would have fit, never start one
+  that would not.
+- **Notifications**: the package's own channels stay disabled
+  (`backup.notifications.notifications = []`). Outcomes go through
+  `NotificationAdminEventAction` to holders of `backup.execute`, the people who
+  can act on them.
+
+**Alternatives considered**: `mysqldump` + `tar` in a custom command —
+rejected: the package already models sources, destinations, retention and
+verification, and a custom implementation would re-derive all four.
+Configuring `Schedule::command('backup:run')` from a boot-time setting —
+rejected: the scheduler process keeps the value it registered, so changing the
+time would need a restart, exactly what the phase forbids. Registering the
+package's mail notifier — rejected: it mails a hardcoded config address, not
+the operators holding the permission.
+
+**Consequences**: The package is a new production dependency, recorded here and
+in `docs/planning/changelog.md`. The pre-check and retention are exercised by
+`BackupStrategyTest` with the runner mocked, so the suite never shells out to
+`mysqldump`. A backup is one attempt (`$tries = 1`) — a retry after a partial
+artifact is an operator decision, not a queue default — which is why the job
+must run on a connection whose `retry_after` exceeds its own timeout. The
+`backups` disk sits inside `storage/app`, so the source set must keep excluding
+it; that exclusion is asserted by the estimator's tests rather than assumed.
+The disk shares the application's physical volume: a host or volume loss takes
+the database and its backups together, so an off-host copy stays an operator
+responsibility (`docs/base/infrastructure/backup-disaster-recovery.md`).
+
+**Related**: P14-B1..B3, `docs/base/infrastructure/backup-disaster-recovery.md`,
+`docs/base/infrastructure/queue.md`,
+`docs/base/infrastructure/storage.md`, `docs/base/operations/retention.md`,
+`tests/Feature/Storage/BackupStrategyTest.php`
+
+## ADR-027: one global timezone, applied to the process at boot
+
+**Status**: Accepted
+**Date**: 2026-10-31
+**Context**: Phase 14 found the timezone fragmented. `password_security_sweep_timezone`
+scoped only the password/inactivity sweep, `backup_schedule` was compared against
+`now()` locked to `config('app.timezone') = 'UTC'`, and everything else — audit
+trail, health/meta payloads, API resource timestamps, settings page clocks —
+rendered in the process zone. An operator could set a sweep time in Jakarta and
+watch a backup fire at the UTC equivalent. Three surfaces pretending to know the
+time, and only one of them configurable.
+
+**Decision**:
+
+- **One setting**: `app_timezone` (empty string = application default). The
+  legacy `password_security_sweep_timezone` row is migrated and deleted by
+  `2026_10_30_000000_move_sweep_timezone_to_app_timezone.php`.
+- **Applied, not displayed**: `AppServiceProvider::bindTimezone()` reads the
+  setting and calls `date_default_timezone_set()` plus
+  `config(['app.timezone' => …])`. It runs at the end of `boot()` and again
+  after a settings save, so an admin sees the change on the next page load
+  instead of the next deploy.
+- **The shipped base zone is captured once** in a static before any mutation.
+  Reading `config('app.timezone')` as the fallback would, in a process that had
+  already applied a zone, treat the previously applied zone as the default and
+  drift further on every boot.
+- **Try/catch around the read**: `boot()` also runs during `migrate` and
+  `config:cache`, before `system_settings` exists. An unreadable setting
+  applies the base zone explicitly rather than leaving whatever the previous
+  process set.
+- **Validation**: `nullable|string|timezone` plus an `exists` on active
+  `timezones` rows — the same rule the dropdown offers.
+
+**Alternatives considered**: display-only formatting per resource — rejected:
+every new timestamp surface would have to remember the setting, and the
+scheduler would still compare UTC clock time to a wall-clock setting. Keeping
+the per-sweep timezone — rejected: two zones in one application means a backup
+and a password sweep can be scheduled at the same "time" and fire hours apart.
+
+**Consequences**:
+
+- `now()`, Eloquent date parsing, `toIso8601String()`, Blade `->format()`, the
+  health/meta API, the audit trail, and the CSV export all follow the zone with
+  no per-surface code.
+- **Existing rows are not rewritten.** A row written under UTC keeps its UTC
+  digits; after the switch it reads shifted by the offset. `timezone:rebase`
+  converts them once, and the documented cutover order is: enter maintenance →
+  rebase (setting still old) → save the new `app_timezone` → resume. Rows
+  written after the switch must not be rebased again.
+- **Long-lived processes keep the old zone** until restarted: `queue:work` and
+  `schedule:work` need `queue:restart` / a supervisor restart. `schedule:run`
+  from cron bootstraps per tick and is safe.
+- **`failed_jobs.failed_at`** is written by MySQL `useCurrent()`, i.e. the
+  database session zone, and does not follow this setting. That zone is pinned
+  to UTC (`DB_TIMEZONE`, default `+00:00`), so the value is a UTC wall clock on
+  every host instead of whatever the server's `time_zone` happened to be.
+- **DST**: the sweep compares `H:i` every minute, so a transition that repeats
+  or skips an hour can run the sweep twice or not at all that day. Zones
+  without DST are unaffected; the password sweeps are idempotent, so a repeat
+  costs a query, not correctness.
+- **The database session zone is pinned** (`config/database.php` → `timezone`,
+  `DB_TIMEZONE`, default `+00:00`). Without it the session zone was whatever
+  the server's `time_zone` was, so `CURRENT_TIMESTAMP` defaults, `NOW()`
+  comparisons and `TIMESTAMP` conversion differed between hosts. Application
+  digits are unaffected — they are sent as wall-clock strings — but a host
+  whose server zone was not UTC will read its **existing** `TIMESTAMP` rows
+  shifted by the difference once, at deploy. `DATETIME` columns are not
+  converted by MySQL and do not shift.
+- **`config:cache` still contains `UTC`**; the runtime value comes from the
+  provider, never from the cached file. Clearing the cache does not reset the
+  applied zone.
+
+**Related**: `docs/base/features/settings.md` § *System timezone*,
+`docs/base/api/response-contract.md`, `docs/base/infrastructure/queue.md`,
+`docs/base/security/password-security.md`,
+`tests/Feature/Settings/GlobalTimezoneTest.php`,
+`tests/Feature/Console/RebaseTimezonesCommandTest.php`

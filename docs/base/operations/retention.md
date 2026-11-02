@@ -20,8 +20,8 @@ Define retention separately for each data type. Do NOT apply one global retentio
 || Password history count | Configurable count (default: 5) | Balance security vs usability |
 || Notifications | 90 days | Inbox cleanup |
 || Ad-hoc temporary exports | 1 day (`storage/tmp`) | Cleanup after download. **Not used by this base** — nothing writes there; see the note below |
-|| Database backups | 7 daily, 4 weekly, 12 monthly | Standard backup rotation |
-|| File backups | 7 daily, 4 weekly | Sync with database |
+|| Database backups | `backup_retention_daily` daily, `backup_retention_weekly` weekly, `backup_retention_monthly` monthly (7/4/12 default) | Standard backup rotation; applied by `SystemBackupRunner` per run |
+|| File backups | same run, same retention | Sync with database |
 || Failed jobs | 7 days | Investigation window |
 || Password reset tokens | 60 minutes (default) | Security — short window |
 
@@ -57,10 +57,19 @@ retention.tmp_exports.hours       (default: 24)
 retention.failed_jobs.days        (default: 7)
 retention.password_reset.minutes  (default: 60)
 
-retention.backup.daily.count      (default: 7)
-retention.backup.weekly.count     (default: 4)
-retention.backup.monthly.count    (default: 12)
+backup_retention_daily            (default: 7,  SystemSetting, validated 1..90)
+backup_retention_weekly           (default: 4,  SystemSetting, validated 1..52)
+backup_retention_monthly          (default: 12, SystemSetting, validated 1..60)
 ```
+
+**Backups have a second, hard ceiling.** `config/backup.php` sets
+`delete_oldest_backups_when_using_more_megabytes_than = 5000`, so after the three
+windows are applied the oldest artifacts are deleted until the `backups` disk
+holds at most 5 GB. It is not configurable from the UI and `SystemBackupRunner`
+does not rewrite it: an install whose dailies alone exceed 5 GB keeps fewer
+artifacts than `backup_retention_*` asks for. The counts are the policy, the cap
+is the guard rail that keeps the destination from filling the volume the
+application also writes logs to.
 
 ## Enforcement
 

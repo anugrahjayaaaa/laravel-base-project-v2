@@ -14,10 +14,15 @@ carries:
   "data": { "message": "Human-readable confirmation" },
   "meta": {
     "request_id": "uuid",
-    "timestamp": "2026-10-20T00:00:00+00:00"
+    "timestamp": "2026-10-20T00:00:00+07:00"
   }
 }
 ```
+
+Timestamps are ISO 8601 and carry the **offset of the global system timezone**
+(`app_timezone`, default `UTC` → `+00:00`). See ADR-027: the process timezone is
+set at boot, so `toIso8601String()` follows the configured zone without any
+per-resource formatting.
 
 `respond($message)` with no `$data` puts the message in `data.message`.
 `respond('', 200, $data)` puts `$data` under `data` — the empty message is

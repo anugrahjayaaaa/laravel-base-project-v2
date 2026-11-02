@@ -190,7 +190,7 @@ email-verification-notice, password-change pages using AdminLTE auth layout.
 - Storage disks (local, public, tmp)
 - Backup strategy
 - Retention jobs
-- Status: PLANNED
+- Status: IN_PROGRESS — Groups A, B and F1 in REVIEW (2026-11-01); C–E planned
 
 ### Phase 15: Comprehensive Testing
 - All test types from [testing-matrix.md](../base/testing/testing-matrix.md)

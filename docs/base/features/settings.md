@@ -9,7 +9,7 @@ covered by tests.
 
 ## Canonical keys
 
-45 keys, validated by `App\Http\Requests\V1\System\SystemSettingRequest` and
+67 keys, validated by `App\Http\Requests\V1\System\SystemSettingRequest` and
 seeded by `SystemSettingSeeder`. This list is regenerated from the request's
 `rules()` — a key that is validated but missing from
 `SystemSettingsUpdateAction::$updates` saves and changes nothing, so the request
@@ -25,8 +25,14 @@ allow_username_change
 api_docs_public
 api_token_expire_unit
 api_token_expire_value
+app_timezone
 audit_export_max_manual_retries
 audit_export_rate_limit_per_hour
+backup_enabled
+backup_retention_daily
+backup_retention_monthly
+backup_retention_weekly
+backup_schedule
 bulk_action_rate_limit_per_minute
 email_change_cooldown_days
 email_verification_expire_minutes
@@ -60,13 +66,23 @@ password_reset_expire_minutes
 password_reset_rate_limit
 password_reset_token_expire_minutes
 password_security_sweep_time
-password_security_sweep_timezone
 password_uncompromised
 queue_retry_rate_limit_per_minute
 registration_default_role
 registration_enabled
 registration_rate_limit_per_minute
 send_test_mail_rate_limit_per_minute
+storage_default_disk
+storage_local_permission
+storage_local_root
+storage_max_capacity_mb
+storage_s3_bucket
+storage_s3_endpoint
+storage_s3_key
+storage_s3_region
+storage_s3_secret
+storage_s3_url
+storage_warning_threshold_percent
 user_state_actions_rate_limit_per_minute
 username_change_cooldown_days
 web_session_expire_unit
@@ -82,13 +98,16 @@ has no category column.
 |-------|------|
 | Login rate limiting & lockout | `login_max_attempts`, `lockout_base_minutes`, `lockout_increment_minutes`, `login_rate_limit_per_minute`, `login_ip_rate_limit_per_minute` |
 | Password reset / verification rate limits | `password_forgot_rate_limit`, `password_reset_rate_limit`, `password_change_rate_limit_per_minute`, `password_reset_token_expire_minutes`, `email_verification_rate_limit`, `email_verification_token_expire_minutes` |
-| Password policy & lifecycle | `password_min_length`, `password_require_*`, `password_reject_username`, `password_uncompromised`, `password_history_*`, `password_expiry_*`, `password_security_sweep_*`, `inactivity_lock_*` |
+| Password policy & lifecycle | `password_min_length`, `password_require_*`, `password_reject_username`, `password_uncompromised`, `password_history_*`, `password_expiry_*`, `password_security_sweep_time`, `inactivity_lock_*` |
+| System timezone | `app_timezone` — applied to the process at boot (ADR-027) |
 | Email verification | `email_verification_expire_minutes`, `email_verification_mode` |
 | Identity / account rules | `allow_username_change`, `username_change_cooldown_days`, `allow_email_change`, `email_change_cooldown_days` |
 | Self-registration | `registration_enabled`, `registration_default_role`, `registration_rate_limit_per_minute` |
 | API documentation | `api_docs_public` |
 | API token lifetime | `api_token_expire_value`, `api_token_expire_unit` |
 | Web session lifetime | `web_session_expire_value`, `web_session_expire_unit` |
+| Storage | `storage_default_disk`, `storage_local_root`, `storage_local_permission`, `storage_max_capacity_mb`, `storage_warning_threshold_percent`, `storage_s3_*` |
+| Backup | `backup_enabled`, `backup_schedule`, `backup_retention_daily`, `backup_retention_weekly`, `backup_retention_monthly` |
 
 ### Login security defaults
 
@@ -146,7 +165,7 @@ of truth. `P8-E1a` proves every numeric bound rejects a value outside it.
 | `password_expiry_days` | integer, min:0, max:365 |
 | `password_expiry_warn_days` | integer, min:1, max:90 |
 | `password_security_sweep_time` | `nullable`, date_format:H:i |
-| `password_security_sweep_timezone` | `nullable`, timezone, must exist in `timezones` where `is_active` |
+| `app_timezone` | `nullable`, timezone, must exist in `timezones` where `is_active`; `''` keeps the application default |
 | `inactivity_lock_enabled` | boolean |
 | `inactivity_lock_days` | integer, min:1, max:365 |
 | `inactivity_lock_grace_enabled` | boolean |
@@ -165,6 +184,19 @@ of truth. `P8-E1a` proves every numeric bound rejects a value outside it.
 | `api_token_expire_unit` | in:minutes,hours,days |
 | `web_session_expire_value` | integer, min:1, max:3650 |
 | `web_session_expire_unit` | in:minutes,hours,days |
+| `storage_default_disk` | `nullable`, in:local,s3 |
+| `storage_local_root` | `nullable`, string, max:255, and must resolve inside `storage_path()` (checked in `after()`) |
+| `storage_local_permission` | `nullable`, string, regex `/^0[0-7]{3}$/` |
+| `storage_s3_key` / `storage_s3_secret` | `nullable`, string, max:255, required when the disk is `s3` and no secret is already stored |
+| `storage_s3_region` / `storage_s3_bucket` | `nullable`, string, max:64 / max:255, `required_if:storage_default_disk,s3` |
+| `storage_s3_endpoint` / `storage_s3_url` | `nullable`, url, max:255 |
+| `storage_max_capacity_mb` | integer, min:0, max:10485760 (0 = no quota) |
+| `storage_warning_threshold_percent` | integer, min:1, max:99 |
+| `backup_enabled` | boolean |
+| `backup_schedule` | `nullable`, date_format:H:i |
+| `backup_retention_daily` | `nullable`, integer, min:1, max:90 |
+| `backup_retention_weekly` | `nullable`, integer, min:1, max:52 |
+| `backup_retention_monthly` | `nullable`, integer, min:1, max:60 |
 
 Both lifetime pairs are a number plus its unit, stored separately because the
 sane answers span minutes to days. `AppServiceProvider::bindExpirations()`
@@ -179,6 +211,20 @@ install picks it up by re-running
 `registration_default_role` is scoped to the viewer rather than merely checked
 for existence. An earlier `Rule::exists('roles','name')` let a non-superadmin
 post `superadmin` directly and make every self-registrant an admin.
+
+### System timezone
+
+`app_timezone` is not a display preference. Empty means "use the application
+default" (`config('app.timezone')`, shipped as `UTC`); any other value must be an
+active row in `timezones`. `AppServiceProvider::bindTimezone()` reads it at boot
+and again after a save, then calls `date_default_timezone_set()` and
+`config(['app.timezone' => …])`. Everything that derives a time from PHP follows
+it: `now()`, Eloquent's date parsing, `toIso8601String()` on API resources, the
+health/meta payloads, the auditors' `->format()` calls, the CSV export, and the
+minute-by-minute scheduler comparisons.
+
+Consequences and the migration path for existing rows are in **ADR-027** and
+`php artisan timezone:rebase`.
 
 ## Security
 

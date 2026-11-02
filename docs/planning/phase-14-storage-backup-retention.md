@@ -1,11 +1,12 @@
 # Phase 14 — Storage, Backup & Retention
 
-> Date: 2026-10-29 (breakdown revised) | Status: **IN_PROGRESS** (Group A **REVIEW**) | Branch: `feature/phase-14-storage-backup-retention`
+> Date: 2026-10-29 (breakdown revised; Group F added 2026-10-31) | Status: **IN_PROGRESS** (Groups A, B & F **REVIEW**) | Branch: `feature/phase-14-storage-backup-retention`
 > Purpose: make the base project storage-aware and backup-capable, with strict
 > retention that protects audit trails and soft-deleted models, enforces
 > capacity limits via `SystemSetting`, and cleans only temporary/unattached
 > uploads.
 > Dependency chain: **A → B → C → D → E**. Inside A: `A1 → A2 → A3 → A4 → A5`.
+> **F** is a follow-up with no dependency on the others.
 > Detail authority: this document. `task-tracker.md` holds the summary rows only.
 > Design authority: `docs/base/infrastructure/storage.md`,
 > `docs/base/operations/retention.md`, and
@@ -17,7 +18,7 @@
 
 ## 1. Scope
 
-Sixteen tasks in five groups:
+Seventeen tasks in six groups:
 
 | Group | Subject | Nature |
 |---|---|---|
@@ -26,6 +27,7 @@ Sixteen tasks in five groups:
 | C | Temporary data retention & triggered cleanup | **Build** |
 | D | Security enforcement, RBAC, feature flags, audit trail | **Build** |
 | E | Automated tests, verification suite & documentation | **Verify + docs** |
+| F | Global timezone (follow-up) — `app_timezone`, rebase command | **Build** |
 
 Not in scope: multi-region replication, backup encryption beyond the disk's own
 defaults, a general media library or file browser, and per-tenant storage
@@ -68,7 +70,8 @@ quotas.
      guard so cleanup has somewhere to work before uploads start failing.
 
 2. **Group B — Backup strategy & async engine**
-   - `spatie/laravel-backup` (not installed) backs up MySQL and `storage/app`.
+   - `spatie/laravel-backup` (ADR-026, installed with `^10.3`) backs up MySQL
+     and `storage/app`.
      Destinations use a dedicated `backups` disk: backing up onto the disk
      being backed up is not a backup. ADR + `changelog.md` entry precede the
      install.
@@ -380,9 +383,44 @@ quotas.
 
 ---
 
+## 7b. Group F — Global timezone (follow-up)
+
+> Added 2026-10-31 after Group B exposed the fragmentation: the backup schedule
+> compared a wall clock against UTC, the password sweep honoured its own zone,
+> and every other timestamp rendered in the process zone.
+
+### P14-F1 — One global timezone, applied to the process
+
+- **Task**: replace `password_security_sweep_timezone` with `app_timezone`;
+  apply it to the process via `AppServiceProvider::bindTimezone()` at boot and
+  after a save; expose it on a System Timezone card; add `timezone:rebase` for
+  existing rows. Details and consequences: **ADR-027**.
+- **Acceptance**:
+  - saving `Asia/Jakarta` moves `now()`, `config('app.timezone')`, the API
+    `meta.timestamp` offset, the audit trail and the settings clock to `+07:00`
+    (`GlobalTimezoneTest`);
+  - `backup_schedule` and `password_security_sweep_time` are due at that wall
+    clock, not UTC;
+  - an invalid or inactive zone is rejected by validation with the stored value
+    untouched;
+  - `''` falls back to the shipped base zone, and the fallback does not drift
+    after the process zone has been mutated once;
+  - `php artisan timezone:rebase --dry-run` reports tables/columns without
+    writing, `--from` = `--to` is a no-op, and every written value is the
+    expected shifted wall clock (`RebaseTimezonesCommandTest`);
+  - a fresh `php artisan migrate` does not fail when `system_settings` does not
+    exist yet.
+- **Docs**: ADR-027, `changelog.md`, `docs/base/features/settings.md`,
+  `docs/base/security/password-security.md`,
+  `docs/base/infrastructure/queue.md`, `docs/base/api/response-contract.md`.
+
+---
+
 ## 8. Task tracker registration
 
-P14-A1..A5 registered as **REVIEW** (2026-10-29). P14-B*..E* remain `PLANNED`.
+P14-A1..A5 registered as **REVIEW** (2026-10-29). P14-B1..B3
+registered as **REVIEW** (2026-10-30). P14-F1 registered as **REVIEW**
+(2026-10-31). P14-C*..E* remain `PLANNED`.
 Phase 14 row in `docs/planning/progress.md` set to `IN_PROGRESS`.
 
 ---

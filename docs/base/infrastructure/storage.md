@@ -113,7 +113,9 @@ AWS_BUCKET=...
 ## Backup Strategy
 
 See [backup-disaster-recovery.md](./backup-disaster-recovery.md). Phase 14 Group B
-adds `spatie/laravel-backup` writing to the `backups` disk asynchronously.
+runs `spatie/laravel-backup` through `ExecuteSystemBackupJob` on
+`QueueName::BACKUPS`, writing to the `backups` disk asynchronously with a
+pre-flight capacity check and retention from `backup_retention_daily|weekly|monthly`.
 
 ## ADR References
 
