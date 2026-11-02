@@ -69,7 +69,7 @@ class SystemSettingUpdateTest extends TestCase
         $this->assertEquals(15, SystemSetting::getInt('username_change_cooldown_days'));
         $this->assertEquals(10, SystemSetting::getInt('email_change_cooldown_days'));
         $this->assertEquals('00:00', SystemSetting::getString('password_security_sweep_time'));
-        $this->assertSame('', SystemSetting::getString('password_security_sweep_timezone'));
+        $this->assertSame('', SystemSetting::getString('app_timezone'));
 
         $activity = Activity::query()
             ->where('description', 'system_setting.updated')
@@ -90,12 +90,12 @@ class SystemSettingUpdateTest extends TestCase
 
         $response = $this->from('/settings')->post(route('settings.update'), [
             'password_security_sweep_time' => '07:30',
-            'password_security_sweep_timezone' => 'Asia/Jakarta',
+            'app_timezone' => 'Asia/Jakarta',
         ]);
 
         $response->assertRedirect();
         $this->assertSame('07:30', SystemSetting::getString('password_security_sweep_time'));
-        $this->assertSame('Asia/Jakarta', SystemSetting::getString('password_security_sweep_timezone'));
+        $this->assertSame('Asia/Jakarta', SystemSetting::getString('app_timezone'));
     }
 
     public function test_sweep_schedule_rejects_invalid_timezone(): void
@@ -105,11 +105,11 @@ class SystemSettingUpdateTest extends TestCase
         $this->actingAs($user, 'web');
 
         $response = $this->from('/settings')->post(route('settings.update'), [
-            'password_security_sweep_timezone' => 'Not/A_Timezone',
+            'app_timezone' => 'Not/A_Timezone',
         ]);
 
         $response->assertRedirect();
-        $response->assertSessionHasErrors('password_security_sweep_timezone');
+        $response->assertSessionHasErrors('app_timezone');
     }
 
     public function test_grace_toggle_disables_and_does_not_store_disabled_days(): void
@@ -171,7 +171,7 @@ class SystemSettingUpdateTest extends TestCase
     /**
      * Every numeric bound in the rules is proven to reject a value outside it.
      *
-     * One bound in 37 was ever exercised (`password_security_sweep_timezone`,
+     * One bound in 37 was ever exercised (`app_timezone`,
      * which is not numeric), so a mistyped bound is invisible: `max:1440`
      * written as `max:140` passes every test in the suite and silently caps a
      * rate limit a quarter of the way it should be. The rule is the contract;

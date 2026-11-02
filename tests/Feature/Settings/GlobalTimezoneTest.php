@@ -14,6 +14,8 @@ use Database\Seeders\PermissionSeeder;
 use Database\Seeders\RoleSeeder;
 use Database\Seeders\SystemSettingSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Database\Connection;
+use Mockery;
 use Tests\TestCase;
 
 /**
@@ -58,12 +60,32 @@ class GlobalTimezoneTest extends TestCase
         AppServiceProvider::bindTimezone();
     }
 
-    public function test_the_mysql_session_zone_is_pinned_to_utc(): void
+    /**
+     * The session zone follows the stored setting, not an env value: the zone
+     * an operator reads the data in is the one the database should answer in.
+     * `config/database.php` carries no `timezone` key, so no env can override
+     * it and `applySessionTimezone()` is the only writer.
+     */
+    public function test_the_session_zone_follows_the_applied_timezone(): void
     {
-        // Without this the session zone is whatever the server's `time_zone`
-        // is, so `CURRENT_TIMESTAMP` defaults and `NOW()` comparisons differ
-        // between hosts. See ADR-027.
-        $this->assertSame('+00:00', config('database.connections.mysql.timezone'));
+        $this->assertArrayNotHasKey('timezone', config('database.connections.mysql'));
+
+        $this->apply('Asia/Jakarta');
+
+        $this->assertSame('+07:00', AppServiceProvider::sessionTimezoneOffset());
+    }
+
+    /**
+     * `SET time_zone` is MySQL syntax. Every other driver — sqlite in the
+     * suite — must be left alone, and must not even be connected to.
+     */
+    public function test_a_non_mysql_connection_is_left_alone(): void
+    {
+        $connection = Mockery::mock(Connection::class);
+        $connection->shouldReceive('getDriverName')->once()->andReturn('sqlite');
+        $connection->shouldNotReceive('getPdo');
+
+        AppServiceProvider::applySessionTimezone($connection);
     }
 
     public function test_saving_the_timezone_applies_it_to_the_process(): void
