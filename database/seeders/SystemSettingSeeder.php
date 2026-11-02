@@ -19,6 +19,14 @@ class SystemSettingSeeder extends Seeder
 
     public function run(): void
     {
+        // System timezone — Phase 14 follow-up.
+        //
+        // Empty means "use the application default in config/app.php". Applied
+        // at boot by `AppServiceProvider::bindTimezone()`, so it governs
+        // `now()`, the scheduler, audit timestamps and every API timestamp —
+        // not one module's sweep.
+        SystemSetting::set('app_timezone', '');
+
         // Login rate limiting & progressive lockout
         SystemSetting::set('login_max_attempts', '5');
         SystemSetting::set('lockout_base_minutes', '5');
@@ -49,7 +57,6 @@ class SystemSettingSeeder extends Seeder
         SystemSetting::set('password_expiry_days', '90');
         SystemSetting::set('password_expiry_warn_days', '14');
         SystemSetting::set('password_security_sweep_time', '00:00');
-        SystemSetting::set('password_security_sweep_timezone', '');
         SystemSetting::set('inactivity_lock_enabled', 'true');
         SystemSetting::set('inactivity_lock_days', '30');
         SystemSetting::set('inactivity_lock_grace_enabled', 'true');
@@ -168,6 +175,21 @@ class SystemSettingSeeder extends Seeder
         // writes.
         SystemSetting::set('storage_max_capacity_mb', '0');
         SystemSetting::set('storage_warning_threshold_percent', '80');
+
+        // Backup — Phase 14 Group B.
+        //
+        // Off by default: a fresh install has no backup destination chosen and
+        // an automatic `mysqldump` it never asked for is a load an operator
+        // should opt into. The manual trigger works regardless; this key only
+        // gates the scheduler.
+        //
+        // Retention defaults are the documented policy — 7 daily, 4 weekly,
+        // 12 monthly (`docs/base/operations/retention.md`).
+        SystemSetting::set('backup_enabled', 'false');
+        SystemSetting::set('backup_schedule', '02:00');
+        SystemSetting::set('backup_retention_daily', '7');
+        SystemSetting::set('backup_retention_weekly', '4');
+        SystemSetting::set('backup_retention_monthly', '12');
 
         // Mail transport — Phase 9 Group B.
         //

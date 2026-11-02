@@ -25,6 +25,14 @@
         </div>
     @endif
 
+    @if (session('error'))
+        <div class="alert alert-danger alert-dismissible fade show mb-3" role="alert">
+            <i class="fas fa-circle-exclamation me-1"></i>
+            {{ session('error') }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    @endif
+
     {{-- The route is gated on settings.view, so someone holding only that gets a
          READ-ONLY page rather than a 403 — they can see what is configured but
          cannot change it. Wrapping the whole form (inputs AND the save button in
@@ -37,6 +45,38 @@
         <div class="row g-4">
             {{-- Main Content Area --}}
             <div class="col-lg-8 col-12">
+
+                {{-- Card 0: System Timezone --}}
+                <div class="card border-0 shadow-sm mb-4" id="section-system">
+                    <div class="card-header bg-transparent border-bottom py-3">
+                        <h5 class="card-title mb-0 fw-semibold">System Timezone</h5>
+                    </div>
+                    <div class="card-body p-4">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label for="app_timezone" class="form-label">
+                                    System Timezone
+                                    <i class="bi bi-info-circle text-muted fs-7 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Applied to the whole application: scheduler, audit trail, UI clock and API timestamps. Leave on the default to use the application configuration."></i>
+                                </label>
+                                <select name="app_timezone" id="app_timezone"
+                                        class="form-select form-select-sm @error('app_timezone') is-invalid @enderror" @error('app_timezone') aria-invalid="true" aria-describedby="app_timezone_error" @enderror>
+                                    <option value="" {{ old('app_timezone', $settings['app_timezone'] ?? '') === '' ? 'selected' : '' }}>
+                                        Application default ({{ $baseTimezone }})
+                                    </option>
+                                    @foreach ($timezones as $timezone)
+                                        <option value="{{ $timezone->name }}" {{ old('app_timezone', $settings['app_timezone'] ?? '') === $timezone->name ? 'selected' : '' }}>
+                                            {{ $timezone->label }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                                <div class="form-text">Currently applied: {{ config('app.timezone') }}.</div>
+                                @error('app_timezone')
+                                    <div class="invalid-feedback d-block" id="app_timezone_error">{{ $message }}</div>
+                                @enderror
+                            </div>
+                        </div>
+                    </div>
+                </div>
 
                 {{-- Card 1: Login Security & Progressive Lockout --}}
                 <div class="card border-0 shadow-sm mb-4" id="section-login">
@@ -223,33 +263,14 @@
                             <div class="col-md-6">
                                 <label for="password_security_sweep_time" class="form-label">
                                     Daily Sweep Time
-                                    <i class="bi bi-info-circle text-muted fs-7 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Local time when automated password expiration and account inactivity sweep jobs run."></i>
+                                    <i class="bi bi-info-circle text-muted fs-7 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Local time when automated password expiration and account inactivity sweep jobs run. Uses the system timezone."></i>
                                 </label>
                                 <input type="time" name="password_security_sweep_time" id="password_security_sweep_time"
                                        class="form-control form-control-sm @error('password_security_sweep_time') is-invalid @enderror" @error('password_security_sweep_time') aria-invalid="true" aria-describedby="password_security_sweep_time_error" @enderror
                                        value="{{ old('password_security_sweep_time', $settings['password_security_sweep_time'] ?? '00:00') }}">
+                                <div class="form-text">System timezone: {{ config('app.timezone') }}.</div>
                                 @error('password_security_sweep_time')
                                     <div class="invalid-feedback d-block" id="password_security_sweep_time_error">{{ $message }}</div>
-                                @enderror
-                            </div>
-                            <div class="col-md-6">
-                                <label for="password_security_sweep_timezone" class="form-label">
-                                    Sweep Timezone
-                                    <i class="bi bi-info-circle text-muted fs-7 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Timezone used for the sweep time. Leave on application timezone to use the server/application setting."></i>
-                                </label>
-                                <select name="password_security_sweep_timezone" id="password_security_sweep_timezone"
-                                        class="form-select form-select-sm @error('password_security_sweep_timezone') is-invalid @enderror" @error('password_security_sweep_timezone') aria-invalid="true" aria-describedby="password_security_sweep_timezone_error" @enderror>
-                                    <option value="" {{ old('password_security_sweep_timezone', $settings['password_security_sweep_timezone'] ?? '') === '' ? 'selected' : '' }}>
-                                        Application timezone ({{ config('app.timezone') }})
-                                    </option>
-                                    @foreach ($timezones as $timezone)
-                                        <option value="{{ $timezone->name }}" {{ old('password_security_sweep_timezone', $settings['password_security_sweep_timezone'] ?? '') === $timezone->name ? 'selected' : '' }}>
-                                            {{ $timezone->label }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                                @error('password_security_sweep_timezone')
-                                    <div class="invalid-feedback d-block" id="password_security_sweep_timezone_error">{{ $message }}</div>
                                 @enderror
                             </div>
                         </div>
@@ -889,6 +910,93 @@
                     </div>
                 @endif
 
+                {{-- Card 8: Backup (Phase 14 Group B) --}}
+                @if ($storageEnabled)
+                    <div class="card border-0 shadow-sm mb-4" id="section-backup">
+                        <div class="card-header bg-transparent border-bottom py-3">
+                            <h5 class="card-title mb-0 fw-semibold">Backup</h5>
+                        </div>
+                        <div class="card-body p-4">
+                            <div class="form-check form-switch mb-3">
+                                <input type="hidden" name="backup_enabled" value="0">
+                                <input class="form-check-input" type="checkbox" name="backup_enabled" id="backup_enabled"
+                                    @checked($settings['backup_enabled'] ?? false)>
+                                <label class="form-check-label" for="backup_enabled">
+                                    Scheduled Backup
+                                    <i class="bi bi-info-circle text-muted fs-7 ms-1" data-bs-toggle="tooltip" data-bs-placement="top"
+                                       data-bs-title="Runs a queued backup of the database and storage/app once a day. Off by default; the manual trigger still works while this is off."></i>
+                                </label>
+                            </div>
+
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label for="backup_schedule" class="form-label">Daily Run Time</label>
+                                    <input type="time" name="backup_schedule" id="backup_schedule"
+                                           class="form-control form-control-sm @error('backup_schedule') is-invalid @enderror"
+                                           value="{{ old('backup_schedule', $settings['backup_schedule'] ?? '02:00') }}">
+                                    <div class="form-text">System timezone: {{ config('app.timezone') }}.</div>
+                                    @error('backup_schedule')
+                                        <div class="invalid-feedback d-block">{{ $message }}</div>
+                                    @enderror
+                                </div>
+                            </div>
+
+                            <h6 class="text-uppercase text-muted small fw-semibold mb-3 mt-4">Retention</h6>
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <label for="backup_retention_daily" class="form-label">Daily Kept</label>
+                                    <input type="number" name="backup_retention_daily" id="backup_retention_daily"
+                                           class="form-control form-control-sm @error('backup_retention_daily') is-invalid @enderror"
+                                           value="{{ old('backup_retention_daily', $settings['backup_retention_daily'] ?? 7) }}"
+                                           min="1" max="90">
+                                    @error('backup_retention_daily')
+                                        <div class="invalid-feedback d-block">{{ $message }}</div>
+                                    @enderror
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="backup_retention_weekly" class="form-label">Weekly Kept</label>
+                                    <input type="number" name="backup_retention_weekly" id="backup_retention_weekly"
+                                           class="form-control form-control-sm @error('backup_retention_weekly') is-invalid @enderror"
+                                           value="{{ old('backup_retention_weekly', $settings['backup_retention_weekly'] ?? 4) }}"
+                                           min="1" max="52">
+                                    @error('backup_retention_weekly')
+                                        <div class="invalid-feedback d-block">{{ $message }}</div>
+                                    @enderror
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="backup_retention_monthly" class="form-label">Monthly Kept</label>
+                                    <input type="number" name="backup_retention_monthly" id="backup_retention_monthly"
+                                           class="form-control form-control-sm @error('backup_retention_monthly') is-invalid @enderror"
+                                           value="{{ old('backup_retention_monthly', $settings['backup_retention_monthly'] ?? 12) }}"
+                                           min="1" max="60">
+                                    @error('backup_retention_monthly')
+                                        <div class="invalid-feedback d-block">{{ $message }}</div>
+                                    @enderror
+                                </div>
+                            </div>
+
+                            <p class="text-muted small mb-0 mt-3">
+                                Backups are written to the <code>backups</code> disk, never the disk being backed up.
+                            </p>
+
+                            {{-- A form cannot nest inside the settings form, so the
+                                 button points at `#backup-trigger-form`, rendered
+                                 after `</form>`. --}}
+                            @can('backup.execute')
+                                <div class="d-flex align-items-center gap-2 mt-3">
+                                    <button type="submit" form="backup-trigger-form" class="btn btn-outline-primary btn-sm">
+                                        <i class="bi bi-cloud-arrow-up me-1"></i> Run Backup Now
+                                    </button>
+                                    <span class="text-muted small">
+                                        Queues a backup immediately, whether or not the schedule is on.
+                                        The outcome arrives as a notification.
+                                    </span>
+                                </div>
+                            @endcan
+                        </div>
+                    </div>
+                @endif
+
             </div>
 
             {{-- Sidebar Area --}}
@@ -1054,6 +1162,17 @@
             </div>
         </div>
     </form>
+
+    {{-- The manual backup trigger's own form. HTML cannot nest forms, so the
+         button inside the Backup card points here with `form=`. --}}
+    @if ($storageEnabled)
+        @can('backup.execute')
+            <form id="backup-trigger-form" method="POST" action="{{ route('storage.backup.store') }}">
+                @csrf
+            </form>
+        @endcan
+    @endif
+
     @else
         {{-- settings.view without settings.manage. The editable form is NOT
              rendered: leaving inputs on screen and hiding only Save would let

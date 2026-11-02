@@ -29,6 +29,17 @@ class SystemSettingRequest extends BaseFormRequest
     public function rules(): array
     {
         return [
+            // System timezone — Phase 14 follow-up. Empty means "use the
+            // application default"; otherwise it must be a zone an operator can
+            // actually pick. `timezone` rejects a malformed string, the exists
+            // rule rejects a valid-but-inactive row the dropdown never offers.
+            'app_timezone' => [
+                'nullable',
+                'string',
+                'timezone',
+                Rule::exists('timezones', 'name')->where('is_active', true),
+            ],
+
             // Login rate limiting & progressive lockout
             'login_max_attempts' => ['integer', 'min:1', 'max:99'],
             'lockout_base_minutes' => ['integer', 'min:1', 'max:60'],
@@ -58,12 +69,6 @@ class SystemSettingRequest extends BaseFormRequest
             'password_expiry_days' => ['integer', 'min:0', 'max:365'],
             'password_expiry_warn_days' => ['integer', 'min:1', 'max:90'],
             'password_security_sweep_time' => ['nullable', 'date_format:H:i'],
-            'password_security_sweep_timezone' => [
-                'nullable',
-                'string',
-                'timezone',
-                Rule::exists('timezones', 'name')->where('is_active', true),
-            ],
             'inactivity_lock_enabled' => ['boolean'],
             'inactivity_lock_days' => ['integer', 'min:1', 'max:365'],
             'inactivity_lock_grace_enabled' => ['boolean'],
@@ -187,6 +192,20 @@ class SystemSettingRequest extends BaseFormRequest
             // 0 means "no quota"; the hard guard then measures the disk itself.
             'storage_max_capacity_mb' => ['integer', 'min:0', 'max:10485760'],
             'storage_warning_threshold_percent' => ['integer', 'min:1', 'max:99'],
+
+            // Phase 14 Group B — scheduled backup. `backup_enabled` gates the
+            // scheduler only; the manual trigger stays reachable while it is
+            // off. All four are nullable for the API's partial payload, where
+            // an absent key means "leave the stored value alone".
+            'backup_enabled' => ['boolean'],
+            'backup_schedule' => ['nullable', 'date_format:H:i'],
+            // Bounds: a quarter of dailies, a year of weeklies, five years of
+            // monthlies. Past these a "retention" number is really "never
+            // delete", which the audit trail already owns for a different
+            // reason.
+            'backup_retention_daily' => ['nullable', 'integer', 'min:1', 'max:90'],
+            'backup_retention_weekly' => ['nullable', 'integer', 'min:1', 'max:52'],
+            'backup_retention_monthly' => ['nullable', 'integer', 'min:1', 'max:60'],
         ];
     }
 
@@ -244,6 +263,7 @@ class SystemSettingRequest extends BaseFormRequest
                 'allow_email_change',
                 'registration_enabled',
                 'api_docs_public',
+                'backup_enabled',
             ] as $key
         ) {
             if ($this->has($key)) {

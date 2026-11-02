@@ -78,6 +78,11 @@ class SystemSettingsUpdateAction
         }
 
         $updates = [
+            // System timezone — Phase 14 follow-up. Empty means "use the
+            // application default". It drives the whole process at boot, not
+            // one module's sweep.
+            'app_timezone' => $data['app_timezone'] ?? '',
+
             // Login rate limiting & progressive lockout
             'login_max_attempts' => (string) ($data['login_max_attempts'] ?? 5),
             'lockout_base_minutes' => (string) ($data['lockout_base_minutes'] ?? 5),
@@ -110,7 +115,6 @@ class SystemSettingsUpdateAction
             'password_expiry_days' => (string) ($data['password_expiry_days'] ?? 90),
             'password_expiry_warn_days' => (string) ($data['password_expiry_warn_days'] ?? 14),
             'password_security_sweep_time' => $data['password_security_sweep_time'] ?? '00:00',
-            'password_security_sweep_timezone' => $data['password_security_sweep_timezone'] ?? '',
             'inactivity_lock_enabled' => ($data['inactivity_lock_enabled'] ?? false) ? 'true' : 'false',
             'inactivity_lock_days' => (string) ($data['inactivity_lock_days'] ?? 30),
             'inactivity_lock_grace_enabled' => (
@@ -194,6 +198,16 @@ class SystemSettingsUpdateAction
             'storage_s3_url' => (string) ($data['storage_s3_url'] ?? ''),
             'storage_max_capacity_mb' => (string) ($data['storage_max_capacity_mb'] ?? 0),
             'storage_warning_threshold_percent' => (string) ($data['storage_warning_threshold_percent'] ?? 80),
+
+            // Phase 14 Group B — scheduled backup. Defaults match the seeder
+            // and `SystemBackupSchedule`/`SystemBackupRunner`, so a payload
+            // that omits them (an API client that never heard of the keys)
+            // leaves the documented policy in place.
+            'backup_enabled' => ($data['backup_enabled'] ?? false) ? 'true' : 'false',
+            'backup_schedule' => $data['backup_schedule'] ?? '02:00',
+            'backup_retention_daily' => (string) ($data['backup_retention_daily'] ?? 7),
+            'backup_retention_weekly' => (string) ($data['backup_retention_weekly'] ?? 4),
+            'backup_retention_monthly' => (string) ($data['backup_retention_monthly'] ?? 12),
         ];
 
         foreach (['storage_s3_key', 'storage_s3_secret'] as $secretKey) {
@@ -262,11 +276,16 @@ class SystemSettingsUpdateAction
         // holding `config('auth.passwords.users.expire')` in memory keeps the old
         // value. Rebinding here closes that window for the rest of this process.
         //
+        // The timezone is rebound for the same reason: `date_default_timezone_set()`
+        // is process-global, so without this the request that saved Asia/Jakarta
+        // keeps rendering UTC until the next request.
+        //
         // After the transaction, not inside: binding a config from values a
         // rollback then discards would leave the process enforcing a lifetime
         // the database never accepted.
         AppServiceProvider::bindExpirations();
         AppServiceProvider::bindStorageConfig();
+        AppServiceProvider::bindTimezone();
 
         // Every `settings.manage` holder. The message names how many keys changed,
         // never their values: a settings notification quoting the new value hands a

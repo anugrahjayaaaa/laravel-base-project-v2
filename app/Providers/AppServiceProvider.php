@@ -25,12 +25,15 @@ use Dedoc\Scramble\Generator;
 use Dedoc\Scramble\Scramble;
 use Dedoc\Scramble\Support\RouteInfo;
 use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Database\Connection;
 use Illuminate\Database\Eloquent\Relations\Relation;
+use Illuminate\Database\Events\ConnectionEstablished;
 use Illuminate\Queue\Events\Looping;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Pagination\Paginator;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Blade;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Queue;
@@ -47,6 +50,15 @@ use Throwable;
  */
 class AppServiceProvider extends ServiceProvider
 {
+    /**
+     * The timezone config shipped with, captured before any mutation.
+     *
+     * `bindTimezone()` overwrites `config('app.timezone')` at boot, so reading
+     * that key later would answer with the applied zone instead of the default
+     * an empty `app_timezone` row means.
+     */
+    private static ?string $baseTimezone = null;
+
     /**
      * Bootstrap any application services.
      *
@@ -72,6 +84,11 @@ class AppServiceProvider extends ServiceProvider
         // the disk an operator chose in the UI has to be the disk this process
         // writes to, or the setting saves 200 and changes nothing.
         self::bindStorageConfig();
+
+        // Phase 14 follow-up. The stored timezone has to be the zone this
+        // process actually runs in, or the scheduler, audit trail and API
+        // timestamps disagree with the setting that claims to govern them.
+        self::bindTimezone();
 
         // The correlation id travels with the job, carried in the payload.
         //
@@ -436,6 +453,23 @@ class AppServiceProvider extends ServiceProvider
                     'Too many job retries in a row. Please wait a moment and try again.'
                 ));
         });
+
+        // A manual backup writes a full database dump plus a copy of
+        // storage/app onto the `backups` disk. `backup.execute` answers "may
+        // this person" and not "how often": without a ceiling, a compromised
+        // operator account can fill the disk the app needs for logs and the
+        // destination the next backup needs for itself. Three an hour is well
+        // past an operator re-running a failed backup by hand and far below
+        // what a script needs to matter.
+        RateLimiter::for('system-backup', function ($request) use ($throttle) {
+            $key = $throttle->key('system-backup', (string) $request->user()?->id, $request->ip());
+
+            return Limit::perHour(3)
+                ->by($key)
+                ->response($throttle->flashResponseFor(
+                    'Too many backup requests in a row. Please wait before queueing another.'
+                ));
+        });
     }
 
     /**
@@ -490,6 +524,112 @@ class AppServiceProvider extends ServiceProvider
         } catch (Throwable $e) {
             // No settings table yet — leave the config defaults in place.
         }
+    }
+
+    /**
+     * Apply the stored timezone to the whole process.
+     *
+     * One key, not one per module: `now()`, every Eloquent date read, the
+     * every-minute scheduler callback, the audit trail's rendered timestamps
+     * and every `toIso8601String()` in an API resource all derive from PHP's
+     * default timezone. Setting it here is what makes the setting true rather
+     * than a label.
+     *
+     * ## Storage follows the same zone
+     *
+     * Eloquent writes `$dateFormat` with no offset, so a `created_at` is stored
+     * as the wall clock of whatever zone is applied. Rows written before the
+     * switch are still UTC wall clocks; `timezone:rebase` is the migration path
+     * and the ADR records the consequence.
+     *
+     * ## Empty means the shipped default
+     *
+     * `''` is a real answer — the operator has not chosen a zone — and it falls
+     * back to the value captured before this method ever ran. Re-reading
+     * `config('app.timezone')` here would return the previously applied zone and
+     * make clearing the setting a no-op.
+     *
+     * The try/catch matches `bindExpirations()`: boot also runs during
+     * `migrate` and `config:cache`, before the settings table exists. On that
+     * path the base zone is applied explicitly rather than leaving whatever a
+     * previous process left behind.
+     */
+    public static function bindTimezone(): void
+    {
+        // Seeded before any mutation, so `baseTimezone()` is always the shipped
+        // value even when the stored zone is valid and applied immediately.
+        $base = self::baseTimezone();
+
+        try {
+            $configured = SystemSetting::getString('app_timezone', '');
+
+            $timezone = $configured !== '' && in_array($configured, timezone_identifiers_list(), true)
+                ? $configured
+                : $base;
+        } catch (Throwable) {
+            $timezone = $base;
+        }
+
+        self::applyTimezone($timezone);
+
+        // A connection opened before this point keeps the zone it was given.
+        // Only already-resolved connections are touched — boot must not open
+        // one, and a settings save has to reach the connection this process is
+        // using.
+        foreach (DB::getConnections() as $connection) {
+            self::applySessionTimezone($connection);
+        }
+    }
+
+    /**
+     * Point the MySQL session clock at the applied application timezone.
+     *
+     * The setting is the zone an operator reads the data in, so the database
+     * should agree with it instead of with whatever the server's `time_zone`
+     * is. Sent as an offset (`+07:00`) rather than a zone name so it does not
+     * depend on the server's `mysql.time_zone*` tables being populated.
+     *
+     * Runs on the raw PDO, not `Connection::statement()`: this fires while the
+     * connection is being resolved, and a failing Laravel query there re-enters
+     * `reconnect()` → `ConnectionEstablished` → this method, forever. A
+     * database that is not reachable yet is also not this hook's problem — the
+     * caller's own query reports it with a better message.
+     */
+    public static function applySessionTimezone(Connection $connection): void
+    {
+        if (! in_array($connection->getDriverName(), ['mysql', 'mariadb'], true)) {
+            return;
+        }
+
+        try {
+            $pdo = $connection->getPdo();
+            $pdo->exec('SET time_zone = '.$pdo->quote(self::sessionTimezoneOffset()));
+        } catch (Throwable) {
+            // Never let the zone statement become the failure that hides the
+            // real one.
+        }
+    }
+
+    /**
+     * The applied timezone as a MySQL offset, e.g. `+07:00`.
+     */
+    public static function sessionTimezoneOffset(): string
+    {
+        return now()->format('P');
+    }
+
+    /**
+     * The shipped application timezone, before `bindTimezone()` mutates config.
+     */
+    public static function baseTimezone(): string
+    {
+        return self::$baseTimezone ??= (string) (config('app.timezone') ?: 'UTC');
+    }
+
+    private static function applyTimezone(string $timezone): void
+    {
+        date_default_timezone_set($timezone);
+        config()->set('app.timezone', $timezone);
     }
 
     /**
@@ -737,6 +877,17 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        // MySQL's session zone is per connection, and it is what
+        // `CURRENT_TIMESTAMP` defaults (`failed_jobs.failed_at`), `NOW()` and
+        // TIMESTAMP conversion read. Left at the server default, the same row
+        // reads shifted on a host whose server zone differs. It cannot be set
+        // in `config/database.php`: the zone is a system setting, stored in the
+        // database itself. So every connection follows the applied process
+        // zone — the zone an operator reads the data in.
+        Event::listen(ConnectionEstablished::class, function (ConnectionEstablished $event): void {
+            self::applySessionTimezone($event->connection);
+        });
+
         // Vantage's retry re-dispatch lives inside its own controller and is
         // built from `vantage_jobs.payload`, a column `config/vantage.php`
         // keeps empty on purpose (`store_payload => false`, ADR-022). The
