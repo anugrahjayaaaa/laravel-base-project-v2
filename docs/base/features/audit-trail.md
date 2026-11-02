@@ -336,6 +336,13 @@ the subject as the causer. `causer_id IS NULL` on those rows is only correct whe
 nobody was acting: a failed login, a scheduled sweep, an `InactivityLock` from
 the timer. `AuditActorTest` enumerates them.
 
+**A null causer written by the system says so.** When nobody was acting because
+the system was — a scheduled backup, the capacity guard, the automatic lock, the
+temp-storage cleanup — the row carries `properties.causer = 'SYSTEM'` and reads
+as `System` in the viewer. A bare `null` renders as `Anonymous`, which reads as a
+person who was never identified. `auth.login_failed` stays unmarked on purpose:
+a person did try, the identifier in the row is who.
+
 **Record what a destructive event destroyed.** `user.force_deleted` whose row
 points at an id that no longer resolves is unactionable — the identity left the
 database, so it has to be in the audit row. The delete, force-delete, restore and

@@ -15,7 +15,7 @@ Defined for:
 |------|-----------|------|-----|
 | `local` | private | `storage/app/private` (overridable via `storage_local_root`) | Default application files; audit exports |
 | `public` | public | `storage/app/public` | Explicitly public assets only (`storage:link`) |
-| `tmp` | private | `storage/app/tmp` | Unattached uploads; TTL-cleaned by `CleanTemporaryStorageJob` |
+| `tmp` | private | `storage/app/tmp` | Unattached uploads; TTL-cleaned by `CleanTemporaryStorageJob` (`temp_file_retention_hours`, default 24) |
 | `secure_documents` | private | `storage/app/secure` | Private media; **never** linked into `public/` |
 | `backups` | private | `storage/app/backups` | Backup destination (separate from sources) |
 | `s3` | private (cloud) | bucket | Optional default disk when `storage_default_disk=s3` |

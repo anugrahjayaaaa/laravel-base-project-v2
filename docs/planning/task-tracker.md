@@ -376,9 +376,9 @@ one. The test factory no longer repeats a username. Detail:
 | P14-B1 | Spatie Backup Integration & Dynamic `SystemSetting` Control (MySQL DB + `storage/app`, dedicated `backups` disk, ADR first) | 14 | P1 | P14-A2 | DONE |
 | P14-B2 | Pre-Backup Capacity Check & Asynchronous Execution (`ExecuteSystemBackupJob`, `QueueName::BACKUPS`), abort on full target | 14 | P1 | P14-B1, P14-A3 | DONE |
 | P14-B3 | Automated Backup Strategy & Capacity Test (`tests/Feature/Storage/BackupStrategyTest.php`) | 14 | P1 | P14-B1, P14-B2 | DONE |
-| P14-C1 | Retention & Threshold Policy Configuration (`temp_file_retention_hours`, `storage_warning_threshold_percent`) | 14 | P1 | DB-001 | PLANNED |
-| P14-C2 | Scheduled & Capacity-Triggered Cleanup Job (`CleanTemporaryStorageJob`, `tmp` disk only, hourly dispatch throttle) | 14 | P1 | P14-C1, P14-A3 | PLANNED |
-| P14-C3 | Automated Retention Test (`tests/Feature/Storage/DataRetentionTest.php`, audit logs + soft deletes preserved) | 14 | P1 | P14-C1, P14-C2 | PLANNED |
+| P14-C1 | Retention & Threshold Policy Configuration (`temp_file_retention_hours`, `storage_warning_threshold_percent`) | 14 | P1 | DB-001 | DONE |
+| P14-C2 | Scheduled & Capacity-Triggered Cleanup Job (`CleanTemporaryStorageJob`, `tmp` disk only, hourly dispatch throttle) | 14 | P1 | P14-C1, P14-A3 | DONE |
+| P14-C3 | Automated Retention Test (`tests/Feature/Storage/DataRetentionTest.php`, audit logs + soft deletes preserved) | 14 | P1 | P14-C1, P14-C2 | DONE |
 | P14-D1 | RBAC Authorization (`storage.view`, `storage.manage`, `backup.execute`) | 14 | P1 | RBAC-004 | PLANNED |
 | P14-D2 | Feature Flag Middleware (`feature:storage_management` — management surface only, guard stays active) | 14 | P1 | P14-D1 | PLANNED |
 | P14-D3 | Action-First Audit Trail Logging (`storage_setting.updated`, `backup.triggered`, `backup.aborted_storage_full`, `temp_storage.cleaned`, `storage.capacity_warning`) | 14 | P1 | P14-B2, P14-C2 | PLANNED |

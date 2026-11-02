@@ -193,6 +193,11 @@ class SystemSettingRequest extends BaseFormRequest
             'storage_max_capacity_mb' => ['integer', 'min:0', 'max:10485760'],
             'storage_warning_threshold_percent' => ['integer', 'min:1', 'max:99'],
 
+            // Phase 14 Group C — temporary-file retention. One hour to one
+            // year: anything longer is a policy for files nothing promotes out
+            // of `tmp`, and the job would never delete them anyway.
+            'temp_file_retention_hours' => ['integer', 'min:1', 'max:8760'],
+
             // Phase 14 Group B — scheduled backup. `backup_enabled` gates the
             // scheduler only; the manual trigger stays reachable while it is
             // off. All four are nullable for the API's partial payload, where

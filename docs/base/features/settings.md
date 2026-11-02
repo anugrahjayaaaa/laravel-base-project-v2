@@ -83,6 +83,7 @@ storage_s3_region
 storage_s3_secret
 storage_s3_url
 storage_warning_threshold_percent
+temp_file_retention_hours
 user_state_actions_rate_limit_per_minute
 username_change_cooldown_days
 web_session_expire_unit
@@ -106,7 +107,7 @@ has no category column.
 | API documentation | `api_docs_public` |
 | API token lifetime | `api_token_expire_value`, `api_token_expire_unit` |
 | Web session lifetime | `web_session_expire_value`, `web_session_expire_unit` |
-| Storage | `storage_default_disk`, `storage_local_root`, `storage_local_permission`, `storage_max_capacity_mb`, `storage_warning_threshold_percent`, `storage_s3_*` |
+| Storage | `storage_default_disk`, `storage_local_root`, `storage_local_permission`, `storage_max_capacity_mb`, `storage_warning_threshold_percent`, `temp_file_retention_hours`, `storage_s3_*` |
 | Backup | `backup_enabled`, `backup_schedule`, `backup_retention_daily`, `backup_retention_weekly`, `backup_retention_monthly` |
 
 ### Login security defaults
@@ -192,6 +193,7 @@ of truth. `P8-E1a` proves every numeric bound rejects a value outside it.
 | `storage_s3_endpoint` / `storage_s3_url` | `nullable`, url, max:255 |
 | `storage_max_capacity_mb` | integer, min:0, max:10485760 (0 = no quota) |
 | `storage_warning_threshold_percent` | integer, min:1, max:99 |
+| `temp_file_retention_hours` | integer, min:1, max:8760 |
 | `backup_enabled` | boolean |
 | `backup_schedule` | `nullable`, date_format:H:i |
 | `backup_retention_daily` | `nullable`, integer, min:1, max:90 |

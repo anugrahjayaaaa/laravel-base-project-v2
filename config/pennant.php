@@ -67,9 +67,15 @@ return [
             'label' => 'Storage Management',
             'group' => 'Settings',
             'description' => 'Storage driver configuration, capacity metrics and secure file access.',
-            // Deliberately no `settings` list: the disk driver is read at boot
+            // The disk keys are deliberately absent: the driver is read at boot
             // by the storage binder, so the flag gates the management surface
             // (card, metrics, secure route, cleanup), not the storage itself.
+            // Retention policy IS listed — it is only edited from that card, so
+            // a write while the flag is off would be a change nothing displays.
+            'settings' => [
+                'storage_warning_threshold_percent',
+                'temp_file_retention_hours',
+            ],
         ],
         'sessions' => [
             'label' => 'Sessions',

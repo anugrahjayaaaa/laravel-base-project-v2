@@ -175,6 +175,10 @@ class SystemSettingSeeder extends Seeder
         // writes.
         SystemSetting::set('storage_max_capacity_mb', '0');
         SystemSetting::set('storage_warning_threshold_percent', '80');
+        // A file still on `tmp` past this window is unattached: uploads are
+        // promoted out of `tmp` on save, so nothing else can prove an old file
+        // is still wanted. Cleaned daily by `CleanTemporaryStorageJob`.
+        SystemSetting::set('temp_file_retention_hours', '24');
 
         // Backup — Phase 14 Group B.
         //

@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\AuditExportStatus;
+use App\Jobs\CleanTemporaryStorageJob;
 use App\Jobs\InactivityLockSweep;
 use App\Jobs\PasswordExpirySweep;
 use App\Jobs\QueueFailureProbe;
@@ -141,7 +142,20 @@ Schedule::call(function (SystemBackupSchedule $schedule): void {
 })->everyMinute()->name('system-backup')->onOneServer()->withoutOverlapping();
 
 /**
-* Prune read notifications past the retention window.
+ * Daily temporary-file cleanup.
+ *
+ * Uploads land on `tmp` and are promoted on save, so a file still there past
+ * `temp_file_retention_hours` is orphaned. The capacity guard dispatches the
+ * same job when usage crosses the warning threshold; this is the daily floor
+ * that runs even on an install that never gets close to full.
+ */
+Schedule::job(new CleanTemporaryStorageJob())
+    ->daily()
+    ->name('temp-storage-cleanup')
+    ->withoutOverlapping();
+
+/**
+ * Prune read notifications past the retention window.
 *
 * The `notifications` table grows one row per delivery, forever. Nothing in the
 * app deletes from it, so an install that receives administrative events accrues

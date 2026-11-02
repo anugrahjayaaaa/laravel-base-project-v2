@@ -905,6 +905,17 @@
                                         <div class="invalid-feedback d-block">{{ $message }}</div>
                                     @enderror
                                 </div>
+                                <div class="col-md-6">
+                                    <label for="temp_file_retention_hours" class="form-label">Temporary File Retention (hours)</label>
+                                    <input type="number" name="temp_file_retention_hours" id="temp_file_retention_hours"
+                                           class="form-control form-control-sm @error('temp_file_retention_hours') is-invalid @enderror"
+                                           value="{{ old('temp_file_retention_hours', $settings['temp_file_retention_hours'] ?? 24) }}"
+                                           min="1" max="8760">
+                                    <div class="form-text">Files left on the <code>tmp</code> disk longer than this are deleted daily.</div>
+                                    @error('temp_file_retention_hours')
+                                        <div class="invalid-feedback d-block">{{ $message }}</div>
+                                    @enderror
+                                </div>
                             </div>
                         </div>
                     </div>

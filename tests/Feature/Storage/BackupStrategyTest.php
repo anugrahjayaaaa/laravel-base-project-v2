@@ -226,6 +226,32 @@ class BackupStrategyTest extends TestCase
         Notification::assertSentTo($admin, ConfigurationChangedNotification::class);
     }
 
+    public function test_a_scheduled_backup_with_no_operator_is_audited_as_system(): void
+    {
+        Notification::fake();
+
+        $this->mock(SystemBackupSizeEstimator::class, function (MockInterface $mock): void {
+            $mock->shouldReceive('estimate')->once()->andReturn([
+                'files' => 900,
+                'database' => 100,
+                'total' => 1000,
+            ]);
+            $mock->shouldReceive('availableBytes')->once()->with('backups')->andReturn(100);
+        });
+
+        $this->mock(SystemBackupRunner::class, function (MockInterface $mock): void {
+            $mock->shouldReceive('run')->never();
+        });
+
+        app(SystemBackupRunAction::class)->run();
+
+        $row = DB::table('activity_log')->where('event', 'backup.aborted_storage_full')->first();
+
+        $this->assertNotNull($row);
+        $this->assertNull($row->causer_id);
+        $this->assertSame('SYSTEM', json_decode((string) $row->properties, true)['causer'] ?? null);
+    }
+
     public function test_a_successful_backup_is_audited_and_announced(): void
     {
         Notification::fake();

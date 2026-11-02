@@ -42,6 +42,7 @@ class SystemSettingsUpdateAction
         'storage_s3_url',
         'storage_max_capacity_mb',
         'storage_warning_threshold_percent',
+        'temp_file_retention_hours',
     ];
 
     public function __construct(
@@ -198,6 +199,7 @@ class SystemSettingsUpdateAction
             'storage_s3_url' => (string) ($data['storage_s3_url'] ?? ''),
             'storage_max_capacity_mb' => (string) ($data['storage_max_capacity_mb'] ?? 0),
             'storage_warning_threshold_percent' => (string) ($data['storage_warning_threshold_percent'] ?? 80),
+            'temp_file_retention_hours' => (string) ($data['temp_file_retention_hours'] ?? 24),
 
             // Phase 14 Group B — scheduled backup. Defaults match the seeder
             // and `SystemBackupSchedule`/`SystemBackupRunner`, so a payload

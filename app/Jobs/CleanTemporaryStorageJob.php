@@ -18,10 +18,10 @@ use Throwable;
  * Delete unattached files on the `tmp` disk past the retention window.
  *
  * Uploads land on `tmp` first and are promoted on save — anything still here
- * past the TTL is orphaned by definition. The capacity guard dispatches this
- * on a warning-threshold crossing (hourly throttle); Group C adds the daily
- * schedule. Never touches `local` / `public` / `secure_documents`: an unattached
- * file there cannot be proven orphaned.
+ * past the TTL is orphaned by definition. Scheduled daily, and dispatched by
+ * the capacity guard on a warning-threshold crossing (hourly throttle). Never
+ * touches `local` / `public` / `secure_documents`: an unattached file there
+ * cannot be proven orphaned.
  */
 class CleanTemporaryStorageJob implements ShouldQueue
 {
@@ -101,7 +101,12 @@ class CleanTemporaryStorageJob implements ShouldQueue
             return;
         }
 
-        SystemSetting::query()->firstOrFail()->audit('temp_storage.cleaned', auth()->user(), [
+        // No causer: a cleanup is the system's own action, also when a web
+        // request happened to cross the threshold and dispatched it. The
+        // `SYSTEM` marker is what the viewer reads; a null alone renders as
+        // "Anonymous".
+        SystemSetting::query()->firstOrFail()->audit('temp_storage.cleaned', null, [
+            'causer' => 'SYSTEM',
             'source' => 'system',
             'deleted_count' => $deleted,
             'bytes_freed' => $bytes,

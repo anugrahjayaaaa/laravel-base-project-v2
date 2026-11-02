@@ -19,28 +19,30 @@ Define retention separately for each data type. Do NOT apply one global retentio
 || Password history | Configurable (`security.password_history.count`) | Prevent reuse (IM8 policy) |
 || Password history count | Configurable count (default: 5) | Balance security vs usability |
 || Notifications | 90 days | Inbox cleanup |
-|| Ad-hoc temporary exports | 1 day (`storage/tmp`) | Cleanup after download. **Not used by this base** — nothing writes there; see the note below |
+|| Temporary uploads (`tmp` disk) | `temp_file_retention_hours` (default 24, validated 1–8760) | Uploads are promoted out of `tmp` on save, so anything left past the window is unattached; cleaned daily by `CleanTemporaryStorageJob` |
 || Database backups | `backup_retention_daily` daily, `backup_retention_weekly` weekly, `backup_retention_monthly` monthly (7/4/12 default) | Standard backup rotation; applied by `SystemBackupRunner` per run |
 || File backups | same run, same retention | Sync with database |
 || Failed jobs | 7 days | Investigation window |
 || Password reset tokens | 60 minutes (default) | Security — short window |
 
-### Two export rows, two different things
-
-"Audit export files" (7 days) and "Ad-hoc temporary exports" (1 day) read as one
-policy stated twice, which is how the audit trail got shipped with two numbers
-attached to it and neither settled. They are not the same artifact:
+### Audit exports and `tmp` are two different things
 
 - **Audit export files** are written by `GenerateAuditExport` to the private
   disk under `audit-exports/`, keyed by `audit_exports.expires_at`, and swept
   nightly by `routes/console.php`. `AuditExport::RETENTION_DAYS` is the single
   source of that number.
-- **Ad-hoc temporary exports** are a generic slot for a future artifact that
-  writes to `storage/tmp`. **Nothing in this base writes there**, so the row
-  describes a policy that has no implementation behind it yet.
+- **Temporary uploads** are written to the `tmp` disk first and promoted on
+  save. `temp_file_retention_hours` is the only TTL for them, enforced by
+  `CleanTemporaryStorageJob` — daily, plus a threshold-triggered dispatch from
+  `StorageCapacityGuard` when usage crosses
+  `storage_warning_threshold_percent` (throttled to one dispatch per hour, so
+  an upload storm cannot enqueue one job per upload). A file still there past
+  the window is unattached by definition; no media registry is needed to know
+  that. The job never enumerates `local`, `public` or `secure_documents` — an
+  unattached file there cannot be proven orphaned.
 
-If an artifact ever does use `storage/tmp`, the row above is where its retention
-is declared — and the audit export's number must not be changed to match it.
+Neither number may be changed to match the other: they answer different
+questions about different artifacts.
 
 ## Configuration
 
@@ -53,7 +55,7 @@ pulse retention                   (Pulse's own config, not this project)
 retention.sessions.minutes        (default: 120*60)
 retention.tokens.revoked.days     (default: 30)
 retention.notifications.days      (default: 90)
-retention.tmp_exports.hours       (default: 24)
+temp_file_retention_hours         (default: 24, SystemSetting, validated 1..8760)
 retention.failed_jobs.days        (default: 7)
 retention.password_reset.minutes  (default: 60)
 
@@ -74,12 +76,24 @@ application also writes logs to.
 ## Enforcement
 
 - Application-level garbage collection jobs (scheduled daily).
+- `CleanTemporaryStorageJob` on the `sweeps` queue: daily, plus a
+  threshold-triggered run from the capacity guard (one dispatch per hour).
 - Database-level TTL where supported (MySQL event scheduler, PostgreSQL TTL).
 - File-level cleanup jobs for storage exports.
 - Session cleanup handled by Laravel's session driver.
 
+## Invariants
+
+- Audit Trail / activity log rows are **never** deleted by any retention job.
+- Soft-deleted models are **never** force-deleted automatically. No setting
+  exists for either policy, so nothing can be switched on to do it.
+- Only the `tmp` disk is TTL-cleaned.
+
 ## Audit
 
 - Retention configuration changes are audited.
-- Retention job execution logged.
+- `temp_storage.cleaned` is written only when files were deleted, carrying
+  `deleted_count`, `bytes_freed` and `retention_hours`; an empty run writes no
+  row, which is what makes a second run idempotent rather than a duplicate log.
+- Retention job execution logged (job `failed()` hook).
 - Alert on retention job failure.

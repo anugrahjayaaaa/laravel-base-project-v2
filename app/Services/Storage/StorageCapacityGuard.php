@@ -211,6 +211,9 @@ class StorageCapacityGuard
             }
 
             SystemSetting::query()->firstOrFail()->audit('storage.capacity_warning', auth()->user(), [
+                // A crossing detected outside a request (a worker or a console
+                // command) has no actor to name; it is the guard acting.
+                ...(auth()->user() === null ? ['causer' => 'SYSTEM'] : []),
                 'disk' => $metrics['disk'],
                 'used_bytes' => $metrics['used'],
                 'total_bytes' => $metrics['total'],

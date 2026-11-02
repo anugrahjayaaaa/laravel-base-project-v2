@@ -114,8 +114,13 @@ class SystemBackupRunAction
      */
     private function audit(string $event, ?User $causer, array $properties): void
     {
-        DB::transaction(function () use ($event, $causer, $properties): void {
-            SystemSetting::query()->firstOrFail()->audit($event, $causer, $properties + [
+        // The scheduled run has no operator; the manual one does. Only the
+        // former is the system acting, so only it carries the SYSTEM marker —
+        // a null causer alone would render as "Anonymous".
+        $marker = $causer === null ? ['causer' => 'SYSTEM'] : [];
+
+        DB::transaction(function () use ($event, $causer, $properties, $marker): void {
+            SystemSetting::query()->firstOrFail()->audit($event, $causer, $properties + $marker + [
                 'source' => 'system',
             ]);
         });

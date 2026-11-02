@@ -222,6 +222,11 @@ class StorageDiskTest extends TestCase
         }
 
         $this->assertDatabaseHas('activity_log', ['event' => 'storage.capacity_warning']);
+        $this->assertSame(
+            'SYSTEM',
+            json_decode((string) DB::table('activity_log')->where('event', 'storage.capacity_warning')->value('properties'), true)['causer'] ?? null,
+            'a crossing detected with no logged-in actor is the guard acting, not an anonymous person'
+        );
         Bus::assertDispatched(CleanTemporaryStorageJob::class);
     }
 

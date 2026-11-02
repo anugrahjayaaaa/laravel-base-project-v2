@@ -43,7 +43,7 @@ capability, two addresses).
 | 32 | API v1 (versioned) | — | ✅ | — | api/api-architecture.md | done — Phase 12 DONE 2026-10-21. Web/API capability parity is pinned by `ChannelParityTest`; the contract checklist and the conformance audit live in `api/api-architecture.md`. The 2026-10-24 post-close audit made the generated document state the real error envelope and each route's `can:`/`feature:` |
 | 33 | Scramble API docs | — | — | — | api/documentation.md | done — `/docs/api` + `/docs/api.json` exist in every deployment (ADR-025), gated by `api_docs_public` (off by default) or `api_docs.view`; the document is exported at deploy and served from `storage/app/openapi.<APP_ENV>.json`. `ApiDocumentationTest` is the drift gate |
 | 34 | Storage abstraction | — | — | — | infrastructure/storage.md | done |
-| 35 | Data retention | — | — | — | operations/retention.md | planned |
+| 35 | Data retention | — | — | — | operations/retention.md | done — Phase 14 Group C (2026-11-02): `temp_file_retention_hours` + `CleanTemporaryStorageJob` on the `sweeps` queue, daily and threshold-triggered, `tmp` disk only; audit rows and soft-deleted models are never pruned |
 | 36 | Backup/DR | — | — | — | infrastructure/backup-disaster-recovery.md | done — Phase 14 Group B (2026-11-02): `spatie/laravel-backup` (ADR-026), queued `ExecuteSystemBackupJob` on its own `backups` queue/connection, dedicated `backups` disk, pre-flight size check, retention from `backup_retention_daily|weekly|monthly` |
 | 37 | Correlation ID tracing | ✅ | ✅ | — | infrastructure/logging.md | done |
 | 38 | Password history | — | — | — | security/password-security.md | planned |
