@@ -226,7 +226,6 @@ class SystemSettingsUpdateAction
             unset($data[$secretKey]);
         }
 
-        $storageChanged = array_intersect_key($updates, array_flip(self::STORAGE_KEYS)) !== [];
         $graceEnabled = $updates['inactivity_lock_grace_enabled'] === 'true';
 
         // A setting whose module is off feeds a route that 403s before the
@@ -243,6 +242,10 @@ class SystemSettingsUpdateAction
                 unset($updates[$key], $data[$key]);
             }
         }
+
+        // After the strip: a storage key removed above is not a storage change,
+        // and auditing it would recant the same lie the strip exists to avoid.
+        $storageChanged = array_intersect_key($updates, array_flip(self::STORAGE_KEYS)) !== [];
 
         if ($graceEnabled && array_key_exists('inactivity_lock_grace_days', $data)) {
             $updates['inactivity_lock_grace_days'] = (string) $data['inactivity_lock_grace_days'];
