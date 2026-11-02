@@ -44,7 +44,7 @@ capability, two addresses).
 | 33 | Scramble API docs | — | — | — | api/documentation.md | done — `/docs/api` + `/docs/api.json` exist in every deployment (ADR-025), gated by `api_docs_public` (off by default) or `api_docs.view`; the document is exported at deploy and served from `storage/app/openapi.<APP_ENV>.json`. `ApiDocumentationTest` is the drift gate |
 | 34 | Storage abstraction | — | — | — | infrastructure/storage.md | done |
 | 35 | Data retention | — | — | — | operations/retention.md | planned |
-| 36 | Backup/DR | — | — | — | infrastructure/backup-disaster-recovery.md | planned |
+| 36 | Backup/DR | — | — | — | infrastructure/backup-disaster-recovery.md | done — Phase 14 Group B (2026-11-02): `spatie/laravel-backup` (ADR-026), queued `ExecuteSystemBackupJob` on its own `backups` queue/connection, dedicated `backups` disk, pre-flight size check, retention from `backup_retention_daily|weekly|monthly` |
 | 37 | Correlation ID tracing | ✅ | ✅ | — | infrastructure/logging.md | done |
 | 38 | Password history | — | — | — | security/password-security.md | planned |
 | 39 | Password expiration | — | — | — | security/password-security.md | planned |

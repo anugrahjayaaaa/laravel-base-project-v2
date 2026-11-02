@@ -373,9 +373,9 @@ one. The test factory no longer repeats a username. Detail:
 | P14-A3 | Storage Capacity Guard & Exception Handler (`StorageCapacityExceededException` → 507 `STORAGE_FULL`, `storage_max_capacity_mb`, warning threshold) | 14 | P1 | P14-A2 | REVIEW |
 | P14-A4 | Secure Private Media Route & Signed URL Handler (`secure_documents`, `storage.view`, signed URL expiry) | 14 | P1 | P14-A3 | REVIEW |
 | P14-A5 | Automated Storage Disk, UI & Capacity Test (`tests/Feature/Storage/StorageDiskTest.php`) | 14 | P1 | P14-A1, P14-A2, P14-A3, P14-A4 | REVIEW |
-| P14-B1 | Spatie Backup Integration & Dynamic `SystemSetting` Control (MySQL DB + `storage/app`, dedicated `backups` disk, ADR first) | 14 | P1 | P14-A2 | REVIEW |
-| P14-B2 | Pre-Backup Capacity Check & Asynchronous Execution (`ExecuteSystemBackupJob`, `QueueName::BACKUPS`), abort on full target | 14 | P1 | P14-B1, P14-A3 | REVIEW |
-| P14-B3 | Automated Backup Strategy & Capacity Test (`tests/Feature/Storage/BackupStrategyTest.php`) | 14 | P1 | P14-B1, P14-B2 | REVIEW |
+| P14-B1 | Spatie Backup Integration & Dynamic `SystemSetting` Control (MySQL DB + `storage/app`, dedicated `backups` disk, ADR first) | 14 | P1 | P14-A2 | DONE |
+| P14-B2 | Pre-Backup Capacity Check & Asynchronous Execution (`ExecuteSystemBackupJob`, `QueueName::BACKUPS`), abort on full target | 14 | P1 | P14-B1, P14-A3 | DONE |
+| P14-B3 | Automated Backup Strategy & Capacity Test (`tests/Feature/Storage/BackupStrategyTest.php`) | 14 | P1 | P14-B1, P14-B2 | DONE |
 | P14-C1 | Retention & Threshold Policy Configuration (`temp_file_retention_hours`, `storage_warning_threshold_percent`) | 14 | P1 | DB-001 | PLANNED |
 | P14-C2 | Scheduled & Capacity-Triggered Cleanup Job (`CleanTemporaryStorageJob`, `tmp` disk only, hourly dispatch throttle) | 14 | P1 | P14-C1, P14-A3 | PLANNED |
 | P14-C3 | Automated Retention Test (`tests/Feature/Storage/DataRetentionTest.php`, audit logs + soft deletes preserved) | 14 | P1 | P14-C1, P14-C2 | PLANNED |

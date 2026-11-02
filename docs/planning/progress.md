@@ -50,9 +50,11 @@ verification only — the HTML 500 masking branch and the composite throttle key
 **Phase 13 is complete; the branch awaits merge.**
 Detail: `docs/planning/phase-13-security-hardening.md`.
 
-**Phase 14 Groups A & B are REVIEW (2026-10-30)** on
-`feature/phase-14-storage-backup-retention` — uncommitted, awaiting owner
-review. A1–A5 implemented: Storage Management card, `bindStorageConfig()`,
+**Phase 14 Group B is DONE (owner-accepted 2026-11-02)** on
+`feature/phase-14-storage-backup-retention`, committed. Owner has not exercised
+the backup flow by hand yet; runtime verification is deferred, the automated
+suite is the current evidence. Group A remains REVIEW.
+A1–A5 implemented: Storage Management card, `bindStorageConfig()`,
 encrypted S3 credentials, `StorageCapacityGuard` → 507 `STORAGE_FULL` + hourly
 `CleanTemporaryStorageJob` dispatch, signed `storage.secure` behind
 `can:storage.view` + `feature:storage_management`, `StorageDiskTest` green.

@@ -19,7 +19,7 @@
 | 11 | Monitoring/observability | P1 | PLANNED |
 | 12 | API V1 | P0 | PLANNED |
 | 13 | Security hardening | P0 | PLANNED |
-| 14 | Storage/backup/retention | P1 | PLANNED |
+| 14 | Storage/backup/retention | P1 | IN_PROGRESS |
 | 15 | Comprehensive testing | P0 | PLANNED |
 | 16 | Documentation verification | P0 | PLANNED |
 | 17 | Full regression / final review | P0 | PLANNED |
