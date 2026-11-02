@@ -46,6 +46,7 @@ class SystemSettingController extends Controller
         'allow_email_change',
         'registration_enabled',
         'api_docs_public',
+        'backup_enabled',
     ];
 
     /**
@@ -79,6 +80,9 @@ class SystemSettingController extends Controller
         return view('pages.settings.index', [
             'settings' => $settings,
             'timezones' => $timezones,
+            // The shipped default, not `config('app.timezone')` — the provider
+            // has already replaced that with the applied zone by now.
+            'baseTimezone' => AppServiceProvider::baseTimezone(),
             'roles' => $roles,
             'storage' => $storage,
             'storageEnabled' => FeatureCatalog::isActive('storage_management'),
