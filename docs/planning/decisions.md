@@ -764,6 +764,12 @@ time, and only one of them configurable.
   `config(['app.timezone' => …])`. It runs at the end of `boot()` and again
   after a settings save, so an admin sees the change on the next page load
   instead of the next deploy.
+- **The database agrees with it**: `applySessionTimezone()` sets
+  `SET time_zone = <offset>` on every MySQL connection (on
+  `ConnectionEstablished`, and again in `bindTimezone()` for connections
+  already open), so `CURRENT_TIMESTAMP` defaults and `TIMESTAMP` conversion read
+  the same wall clock the UI renders. It cannot be a `config/database.php` value
+  — the zone lives in the database it configures.
 - **The shipped base zone is captured once** in a static before any mutation.
   Reading `config('app.timezone')` as the fallback would, in a process that had
   already applied a zone, treat the previously applied zone as the default and
@@ -795,21 +801,27 @@ and a password sweep can be scheduled at the same "time" and fire hours apart.
   `schedule:work` need `queue:restart` / a supervisor restart. `schedule:run`
   from cron bootstraps per tick and is safe.
 - **`failed_jobs.failed_at`** is written by MySQL `useCurrent()`, i.e. the
-  database session zone, and does not follow this setting. That zone is pinned
-  to UTC (`DB_TIMEZONE`, default `+00:00`), so the value is a UTC wall clock on
-  every host instead of whatever the server's `time_zone` happened to be.
+  database session zone — which now follows this setting too (below), so it is
+  the same wall clock the UI shows.
 - **DST**: the sweep compares `H:i` every minute, so a transition that repeats
   or skips an hour can run the sweep twice or not at all that day. Zones
   without DST are unaffected; the password sweeps are idempotent, so a repeat
   costs a query, not correctness.
-- **The database session zone is pinned** (`config/database.php` → `timezone`,
-  `DB_TIMEZONE`, default `+00:00`). Without it the session zone was whatever
-  the server's `time_zone` was, so `CURRENT_TIMESTAMP` defaults, `NOW()`
-  comparisons and `TIMESTAMP` conversion differed between hosts. Application
-  digits are unaffected — they are sent as wall-clock strings — but a host
-  whose server zone was not UTC will read its **existing** `TIMESTAMP` rows
-  shifted by the difference once, at deploy. `DATETIME` columns are not
-  converted by MySQL and do not shift.
+- **The database session zone follows the setting.** `applySessionTimezone()`
+  runs on `ConnectionEstablished` and again in `bindTimezone()` for connections
+  already open, sending `SET time_zone = <offset>`. It cannot live in
+  `config/database.php`: the zone is a system setting, stored in the database
+  itself. This is deliberate — the point is that a row inspected with a SQL
+  client reads in the same wall clock the application renders, instead of
+  requiring the reader to convert from UTC. It is not a per-user preference and
+  not something a normal user can change; `app_timezone` is set once at
+  installation by someone holding `settings.manage`.
+  Sent as an offset (`+07:00`) rather than a zone name so it does not depend on
+  the server's `mysql.time_zone*` tables being populated. Application digits are
+  unaffected — they are sent as wall-clock strings — but a host that changes the
+  setting will read its **existing** `TIMESTAMP` rows shifted by the difference
+  once, because MySQL converts them. `DATETIME` columns are not converted and do
+  not shift; `timezone:rebase` is the conversion path.
 - **`config:cache` still contains `UTC`**; the runtime value comes from the
   provider, never from the cached file. Clearing the cache does not reset the
   applied zone.

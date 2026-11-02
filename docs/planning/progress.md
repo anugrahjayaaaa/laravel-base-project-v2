@@ -64,8 +64,9 @@ timeout; `bin/run-workers.sh backups` is its worker), pre-flight size check →
 `backup.aborted_storage_full` or `backup.triggered`, notifications to
 `backup.execute`, `POST /storage/backup` trigger (throttled `system-backup`,
 "Run Backup Now" on the settings card), `BackupStrategyTest` green (16 tests).
-Audit follow-up 2026-11-01 also pinned the MySQL session zone to UTC
-(`DB_TIMEZONE`, ADR-027) and fixed the migration's `down()`. Groups C–E remain
+Audit follow-up 2026-11-01/02 also made the MySQL session zone follow
+`app_timezone` (every connection, so a SQL client reads the same wall clock the
+UI shows) and fixed the migration's `down()`. Groups C–E remain
 PLANNED. Detail: `docs/planning/phase-14-storage-backup-retention.md`.
 `feature/phase-11-monitoring-observability` carries Phase 11 (Groups A–F, full suite 2078/7265,
 Pint clean) — committed through the Vantage queue monitor
