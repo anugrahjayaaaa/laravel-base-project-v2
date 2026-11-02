@@ -68,8 +68,10 @@ class PermissionCatalog
     /**
      * Storage management — Phase 14 Group A.
      *
-     * `manage` covers driver configuration and cleanup; `view` reads the
-     * capacity metrics.
+     * `view` reads the capacity metrics and the secure media route. `manage`
+     * is the write side of storage operations; the Storage card itself is part
+     * of the settings form and stays under `settings.manage` (P14-D1), so no
+     * route checks `storage.manage` yet.
      *
      * @var array<int, string>
      */
