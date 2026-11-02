@@ -79,6 +79,9 @@ class ConfigurationChangedNotification extends Notification implements ShouldQue
         'role.deleted' => 'Role deleted',
         'user.deleted' => 'User account deleted',
         'user.updated' => 'User profile updated',
+        'backup.completed' => 'Backup completed',
+        'backup.failed' => 'Backup failed',
+        'backup.aborted' => 'Backup aborted',
     ];
 
     /**
@@ -100,6 +103,9 @@ class ConfigurationChangedNotification extends Notification implements ShouldQue
         'role.deleted' => 'Review the remaining roles on the Roles page.',
         'user.deleted' => 'The full record is in the activity log.',
         'user.updated' => 'Review the profile from the Users page.',
+        'backup.completed' => 'Check the backups disk and the activity log.',
+        'backup.failed' => 'Check the worker log, then retry from the backup trigger.',
+        'backup.aborted' => 'Free space on the backups disk, then retry.',
     ];
 
     /**
@@ -186,9 +192,13 @@ class ConfigurationChangedNotification extends Notification implements ShouldQue
         $lines = [
             // Never a bare nothing: a system job or an API call without an actor
             // still happened, and "changed by no one" reads as a bug in the app.
-            $this->causer !== null
-                ? sprintf('Changed by %s.', $this->causer->name)
-                : 'Changed by another operator.',
+            match (true) {
+                $this->causer !== null => sprintf('Changed by %s.', $this->causer->name),
+                // A scheduled backup has no actor, and "changed by another
+                // operator" would send an incident review looking for one.
+                str_starts_with($this->event, 'backup.') => 'Triggered by the scheduler.',
+                default => 'Changed by another operator.',
+            },
         ];
 
         if ($this->event === 'setting.changed' && $this->detail !== null) {

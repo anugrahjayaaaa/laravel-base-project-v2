@@ -6,12 +6,16 @@ use App\Jobs\PasswordExpirySweep;
 use App\Jobs\QueueFailureProbe;
 use App\Models\AuditExport;
 use App\Models\SystemSetting;
+use App\Providers\AppServiceProvider;
+use App\Services\Backup\SystemBackupSchedule;
+use App\Services\Timezone\RebaseTimezones;
 use App\Support\QueueName;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schedule;
 use Illuminate\Support\Facades\Storage;
+use Symfony\Component\Console\Command\Command;
 
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
@@ -35,19 +39,106 @@ Artisan::command('queue:probe-failure', function () {
     $this->line('Then open /vantage (or /pulse) for the failed row and press Retry.');
 })->purpose('Dispatch one deliberately failing job (queue monitoring + Vantage retry check)');
 
+/**
+ * Shift stored wall clocks when the system timezone changes.
+ *
+ * `app_timezone` changes how a stored value is INTERPRETED, not the value. This
+ * is the one-time migration for rows written under the previous zone; run it
+ * during maintenance, BEFORE saving the new timezone, or rows written after the
+ * switch will be shifted a second time.
+ *
+ * `--from` must describe the wall clocks actually in the columns. On MySQL the
+ * server session timezone is the reference: if it is not UTC, pass that zone.
+ * Tables with no single-column primary key are reported, never guessed at.
+ */
+Artisan::command('timezone:rebase
+    {--from=UTC : Timezone the stored wall clocks are currently in}
+    {--to= : Timezone to convert them to (defaults to app_timezone)}
+    {--dry-run : Report what would change without writing}
+    {--force : Skip the confirmation prompt}
+    {--chunk=500 : Rows per chunk}', function (RebaseTimezones $rebase): int {
+    $from = (string) $this->option('from');
+    $to = (string) ($this->option('to') ?: SystemSetting::getString('app_timezone') ?: AppServiceProvider::baseTimezone());
+
+    foreach (['--from' => $from, '--to' => $to] as $flag => $timezone) {
+        if (! in_array($timezone, timezone_identifiers_list(), true)) {
+            $this->error($flag.' is not a valid IANA timezone: '.$timezone);
+
+            return Command::FAILURE;
+        }
+    }
+
+    if ($from === $to) {
+        $this->info('Source and target timezone are the same; nothing to do.');
+
+        return Command::SUCCESS;
+    }
+
+    $dryRun = (bool) $this->option('dry-run');
+
+    if (! $dryRun && ! $this->option('force') && ! $this->confirm(
+        "Shift every timestamp column from {$from} to {$to}? This rewrites data and cannot be undone."
+    )) {
+        $this->warn('Aborted.');
+
+        return Command::FAILURE;
+    }
+
+    $report = $rebase->rebase($from, $to, $dryRun, (int) $this->option('chunk'));
+
+    if ($report['tables'] === []) {
+        $this->info('No timestamp rows found to shift.');
+
+        return Command::SUCCESS;
+    }
+
+    $this->table(
+        ['Table', 'Columns', 'Rows'],
+        array_map(
+            static fn (array $row, string $table): array => [$table, implode(', ', $row['columns']), (string) $row['rows']],
+            $report['tables'],
+            array_keys($report['tables']),
+        ),
+    );
+
+    foreach ($report['skipped'] as $table => $reason) {
+        $this->warn("Skipped {$table}: {$reason}");
+    }
+
+    $this->info($dryRun ? 'Dry run — no rows were written.' : 'Rebase complete.');
+
+    return Command::SUCCESS;
+})->purpose('Convert stored timestamp columns from one timezone to another');
+
 // Password/security lifecycle sweeps. The schedule runs each minute; the
 // callback dispatches both jobs only at the configured local time.
+//
+// `now()` is already in the operator's zone: `AppServiceProvider::bindTimezone()`
+// applies the global `app_timezone` at boot, so there is no second timezone to
+// read here — one setting governs this and the backup schedule alike.
 Schedule::call(function (): void {
-    $timezone = SystemSetting::getString('password_security_sweep_timezone') ?: config('app.timezone');
     $scheduledTime = SystemSetting::getString('password_security_sweep_time', '00:00');
 
-    if (now($timezone)->format('H:i') !== $scheduledTime) {
+    if (now()->format('H:i') !== $scheduledTime) {
         return;
     }
 
     PasswordExpirySweep::dispatch();
     InactivityLockSweep::dispatch();
 })->everyMinute()->name('password-security-sweeps')->withoutOverlapping();
+
+/**
+ * Daily system backup.
+ *
+ * The callback ticks every minute and asks `SystemBackupSchedule`, rather than
+ * registering `backup:run` from a config value: the package reads its config
+ * when its commands are built, so a stored schedule would need a scheduler
+ * restart to take effect. `backup_enabled` is the switch; the manual trigger
+ * has its own route and permission.
+ */
+Schedule::call(function (SystemBackupSchedule $schedule): void {
+    $schedule->dispatchIfDue();
+})->everyMinute()->name('system-backup')->onOneServer()->withoutOverlapping();
 
 /**
 * Prune read notifications past the retention window.

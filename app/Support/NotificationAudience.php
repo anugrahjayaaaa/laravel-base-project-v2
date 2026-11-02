@@ -24,6 +24,11 @@ class NotificationAudience
         'setting.changed' => 'settings.manage',
         'mail_setting.changed' => 'notifications.manage',
         'channel.changed' => 'notifications.manage',
+        // Phase 14 Group B. Backup outcomes reach the people who may run a
+        // backup, which is the set that can act on one.
+        'backup.completed' => 'backup.execute',
+        'backup.failed' => 'backup.execute',
+        'backup.aborted' => 'backup.execute',
     ];
 
     public static function administratorsFor(string $event): Collection

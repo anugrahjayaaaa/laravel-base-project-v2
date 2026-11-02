@@ -29,6 +29,12 @@ class QueueName
     public const EXPORTS = 'exports';
 
     /**
+     * System backups — heavy, IO-bound, scheduled or operator-triggered
+     * (ExecuteSystemBackupJob).
+     */
+    public const BACKUPS = 'backups';
+
+    /**
      * Scheduled / threshold sweeps — idempotent, never urgent
      * (PasswordExpirySweep, InactivityLockSweep, CleanTemporaryStorageJob).
      */

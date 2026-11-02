@@ -12,6 +12,7 @@ use App\Http\Controllers\Web\V1\PermissionController;
 use App\Http\Controllers\Web\V1\ProfileController;
 use App\Http\Controllers\Web\V1\RoleController;
 use App\Http\Controllers\Web\V1\StorageController;
+use App\Http\Controllers\Web\V1\SystemBackupController;
 use App\Http\Controllers\Web\V1\SystemSettingController;
 use App\Http\Controllers\Web\V1\UserStateController;
 use App\Http\Controllers\Web\V1\UserController;
@@ -93,6 +94,15 @@ Route::middleware(['auth:web,sanctum', 'verified', 'password.change.required', '
         Route::get('/storage/secure/{path}', [StorageController::class, 'show'])
             ->where('path', '.*')
             ->name('storage.secure');
+    });
+
+    // Manual backup trigger — Phase 14 Group B. These two gates are the ones
+    // the phase names: `backup.execute` is who may spend the IO, and the flag
+    // hides the management surface. The scheduled run reads `backup_enabled`
+    // instead; this route works while that is off.
+    Route::middleware(['feature:storage_management', 'can:backup.execute'])->group(function () {
+        Route::post('/storage/backup', [SystemBackupController::class, 'store'])
+            ->name('storage.backup.store')->middleware('throttle:system-backup');
     });
 
     // Profile
