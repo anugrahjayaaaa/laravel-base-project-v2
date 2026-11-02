@@ -1,6 +1,6 @@
 # Phase 14 — Storage, Backup & Retention
 
-> Date: 2026-10-29 (breakdown revised; Group F added 2026-10-31) | Status: **IN_PROGRESS** (Groups B & C **DONE**, Groups A & F **REVIEW**) | Branch: `feature/phase-14-storage-backup-retention`
+> Date: 2026-10-29 (breakdown revised; Group F added 2026-10-31) | Status: **IN_PROGRESS** (Groups B, C, D & E **DONE**, Groups A & F **REVIEW**) | Branch: `feature/phase-14-storage-backup-retention`
 > Purpose: make the base project storage-aware and backup-capable, with strict
 > retention that protects audit trails and soft-deleted models, enforces
 > capacity limits via `SystemSetting`, and cleans only temporary/unattached
@@ -422,8 +422,16 @@ P14-A1..A5 registered as **REVIEW** (2026-10-29). P14-B1..B3
 registered as **DONE** (2026-11-02 — owner-accepted; manual runtime
 verification deferred, the automated `BackupStrategyTest` is green). P14-C1..C3
 registered as **DONE** (2026-11-02 — owner-accepted; `DataRetentionTest` 8 tests
-green, full suite 2338/8439, Pint clean). P14-F1
-registered as **REVIEW** (2026-10-31). P14-D*..E* remain `PLANNED`.
+green, full suite 2338/8439, Pint clean). P14-D1..D3 registered as **DONE**
+(2026-11-02 — audit-and-close: the RBAC, flag and audit wiring already shipped
+with Groups A–C; `StorageAuthorizationTest` 7 tests pins the acceptance items,
+full suite 2346/8451, Pint clean). P14-E1..E2
+registered as **DONE** (2026-11-02 — verification gate: `--filter=Storage`
+65 tests/178 assertions, `JobConventionTest` + `SettingsPersistenceTest`
+12 tests/107 assertions, full suite 2346/8451, Pint clean; the doc pass added
+the `## Permissions` table and corrected the flag-scope sentence in
+`docs/base/infrastructure/storage.md`). P14-F1
+registered as **REVIEW** (2026-10-31).
 Phase 14 row in `docs/planning/progress.md` set to `IN_PROGRESS`.
 
 ---

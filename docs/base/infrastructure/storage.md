@@ -60,8 +60,10 @@ S3 credentials (`storage_s3_key`, `storage_s3_secret`) live in
 Handler: HTTP **507** / code `STORAGE_FULL`, with `meta.storage` carrying the
 measurement. See `docs/base/api/error-contract.md`.
 
-The management feature flag (`storage_management`) gates the settings card and
-secure route only — the guard stays active when the flag is off.
+The management feature flag (`storage_management`) gates the management surface
+— both Settings cards (Storage and Backup), the secure route and the backup
+trigger — not the storage itself: disk binding and the upload guard stay active
+when the flag is off.
 
 ## Secure private media
 
@@ -86,6 +88,16 @@ Settings → Storage Management card (`feature:storage_management`):
   `percent` (unknown total) renders no bar rather than a fabricated 0%.
 - Warning alert when percent ≥ threshold
 - Secret inputs always blank; “leave blank to keep the stored value”
+
+## Permissions
+
+| Permission | Gates |
+|---|---|
+| `storage.view` | `storage.secure` (private media). The capacity gauge is part of the settings page and reads under `settings.view` |
+| `storage.manage` | Seeded for storage operations; the Storage card is edited under `settings.manage` (P14-D1), so no route checks it yet |
+| `backup.execute` | `POST /storage/backup`, the "Run Backup Now" button, and backup outcome notifications |
+
+All three map to the `storage_management` flag in `PermissionCatalog`.
 
 ## Rules
 
