@@ -77,6 +77,16 @@ Artisan::command('timezone:rebase
 
     $dryRun = (bool) $this->option('dry-run');
 
+    // In production the flag replaces the prompt, not supplements it: a
+    // maintenance window is usually unattended, and an interactive confirm()
+    // there would hang or be piped an accidental newline. Anything that rewrites
+    // every timestamp column should name its intent explicitly.
+    if (! $dryRun && app()->isProduction() && ! $this->option('force')) {
+        $this->error('Refusing to rewrite timestamps in production without --force.');
+
+        return Command::FAILURE;
+    }
+
     if (! $dryRun && ! $this->option('force') && ! $this->confirm(
         "Shift every timestamp column from {$from} to {$to}? This rewrites data and cannot be undone."
     )) {

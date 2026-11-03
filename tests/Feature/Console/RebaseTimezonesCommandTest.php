@@ -82,4 +82,36 @@ class RebaseTimezonesCommandTest extends TestCase
             '--force' => true,
         ])->assertFailed();
     }
+
+    /**
+     * Production replaces the confirmation prompt with an explicit flag: the
+     * command is a bulk rewrite of every timestamp column, and there the intent
+     * should never be satisfiable by an accidental empty stdin.
+     */
+    public function test_production_refuses_the_rebase_without_force(): void
+    {
+        $user = $this->userAt('2026-01-01 10:00:00');
+        $this->app->detectEnvironment(fn (): string => 'production');
+
+        $this->artisan('timezone:rebase', [
+            '--from' => 'UTC',
+            '--to' => 'Asia/Jakarta',
+        ])->assertFailed();
+
+        $this->assertSame('2026-01-01 10:00:00', $this->storedCreatedAt($user));
+    }
+
+    public function test_production_runs_with_force(): void
+    {
+        $user = $this->userAt('2026-01-01 10:00:00');
+        $this->app->detectEnvironment(fn (): string => 'production');
+
+        $this->artisan('timezone:rebase', [
+            '--from' => 'UTC',
+            '--to' => 'Asia/Jakarta',
+            '--force' => true,
+        ])->assertSuccessful();
+
+        $this->assertSame('2026-01-01 17:00:00', $this->storedCreatedAt($user));
+    }
 }
