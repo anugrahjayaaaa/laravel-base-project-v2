@@ -38,6 +38,7 @@ use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
 use Laravel\Pennant\Feature;
@@ -69,26 +70,16 @@ class AppServiceProvider extends ServiceProvider
         Paginator::useBootstrap();
         LengthAwarePaginator::useBootstrap();
 
-        // Every process enforces the stored token lifetimes, not only the one
-        // that saved them: `config/auth.php` and `config/sanctum.php` read env
-        // values, and a settings row nothing binds is a field that saves 200 and
-        // changes nothing. Boot is the one moment early enough to cover the HTTP
-        // request, the queue worker and `sanctum:prune-expired` alike.
+        // Every process enforces the stored values, not only the one that saved
+        // them: config reads env values, and a settings row nothing binds is a
+        // field that saves 200 and changes nothing. Boot is the one moment early
+        // enough to cover the HTTP request, the queue worker and
+        // `sanctum:prune-expired` alike.
         //
         // Cheap: `SystemSetting::loadSettings()` is one cache read for the whole
-        // map, and the try/catch inside is what makes it safe during `migrate`
-        // and `config:cache`, where the table does not exist yet.
-        self::bindExpirations();
-
-        // Phase 14 Group A. Same shape and same reason as `bindExpirations()`:
-        // the disk an operator chose in the UI has to be the disk this process
-        // writes to, or the setting saves 200 and changes nothing.
-        self::bindStorageConfig();
-
-        // Phase 14 follow-up. The stored timezone has to be the zone this
-        // process actually runs in, or the scheduler, audit trail and API
-        // timestamps disagree with the setting that claims to govern them.
-        self::bindTimezone();
+        // map, and the try/catch inside each binder is what makes it safe during
+        // `migrate` and `config:cache`, where the table does not exist yet.
+        self::applyRuntimeSettings();
 
         // The correlation id travels with the job, carried in the payload.
         //
@@ -473,6 +464,23 @@ class AppServiceProvider extends ServiceProvider
     }
 
     /**
+     * Apply every stored setting that mirrors a `config()` key.
+     *
+     * Called from `boot()` so a fresh process enforces what the database says,
+     * and from the save actions so the process that saved sees it too. One
+     * method rather than four loose calls, because a binder missing from this
+     * list is exactly the bug it fixes: `mail_*` had no boot caller and every
+     * request after the save fell back to `.env`.
+     */
+    public static function applyRuntimeSettings(): void
+    {
+        self::bindExpirations();
+        self::bindStorageConfig();
+        self::bindMailConfig();
+        self::bindTimezone();
+    }
+
+    /**
      * Push the stored expire times onto the runtime config.
      *
      * `config/auth.php`, `config/sanctum.php` and `config/session.php` read env
@@ -676,12 +684,20 @@ class AppServiceProvider extends ServiceProvider
      * `.env` is the fallback for every read, so an install that never saved a
      * row behaves exactly as it did before this existed.
      *
-     * ## Called at the same moment as bindExpirations(), for the same reason
+     * ## Called at boot, and again after a save commits
      *
-     * Not from boot(): boot runs before the settings table exists on a fresh
-     * install and before `RefreshDatabase` migrates in tests, and the query
-     * failure takes the whole boot down. Binding happens after a save commits,
-     * so the admin who saved sees it enforced in the same process.
+     * Boot is what makes a stored transport real for a process that did not save
+     * it — a fresh request, and every queue worker, which is where the mail
+     * actually leaves from. Without that call the row only applied to the
+     * request that saved it and every later send fell back to `.env`.
+     *
+     * The after-save call stays for the same reason `bindExpirations()` has one:
+     * a config value already read is not re-read, so the admin who saved would
+     * otherwise keep the old transport until the process exits.
+     *
+     * Boot also runs during `migrate` and `config:cache`, before the table
+     * exists. That failure is expected and stays quiet; anything else is a real
+     * bug and is logged (see the catch below).
      *
      * `scheme`, not `encryption`: `config/mail.php` declares no `encryption` key
      * on the smtp mailer, so a stored value written under that name would be a
@@ -735,15 +751,32 @@ class AppServiceProvider extends ServiceProvider
                 ],
             ]);
         } catch (Throwable $e) {
-            // Logged, not swallowed. A silent catch here makes a broken binding
-            // indistinguishable from a transport nobody configured: the admin saves
-            // a host, the page reloads showing the old one, and nothing says why.
-            // `bindExpirations()` may swallow because its failure means "no
-            // table yet", which is expected during migrate. This one would be a real
-            // bug, so it has to be visible.
-            Log::warning('Could not bind the stored mail configuration', [
-                'exception' => $e->getMessage(),
-            ]);
+            // Quiet only when there is no table to read: boot runs during
+            // `migrate` and `config:cache` on a fresh install, where that is the
+            // expected answer. Anything else is a real binding bug and has to be
+            // visible — a silent catch here once made a broken binding look
+            // exactly like a transport nobody configured.
+            if (self::settingsTableExists()) {
+                Log::warning('Could not bind the stored mail configuration', [
+                    'exception' => $e->getMessage(),
+                ]);
+            }
+        }
+    }
+
+    /**
+     * Whether the settings table exists, without letting the check itself throw.
+     *
+     * Only asked on the failure path, where "no table yet" is the expected
+     * reason a read failed and a database that is not reachable yet is not this
+     * hook's problem.
+     */
+    private static function settingsTableExists(): bool
+    {
+        try {
+            return Schema::hasTable('system_settings');
+        } catch (Throwable) {
+            return false;
         }
     }
 
