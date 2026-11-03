@@ -55,7 +55,6 @@ class SystemSettingKeyConsistencyTest extends TestCase
             'email_verification_expire_minutes',
             'email_verification_mode',
             'email_verification_rate_limit',
-            'email_verification_token_expire_minutes',
             'lockout_base_minutes',
             'lockout_increment_minutes',
             'login_ip_rate_limit_per_minute',
@@ -82,7 +81,6 @@ class SystemSettingKeyConsistencyTest extends TestCase
             'password_require_upper',
             'password_reset_expire_minutes',
             'password_reset_rate_limit',
-            'password_reset_token_expire_minutes',
             'username_change_cooldown_days',
         ];
 
@@ -188,9 +186,7 @@ class SystemSettingKeyConsistencyTest extends TestCase
             'password_forgot_rate_limit',
             'password_reset_rate_limit',
             'password_change_rate_limit_per_minute',
-            'password_reset_token_expire_minutes',
             'email_verification_rate_limit',
-            'email_verification_token_expire_minutes',
             'password_min_length',
             'password_require_upper',
             'password_require_lower',

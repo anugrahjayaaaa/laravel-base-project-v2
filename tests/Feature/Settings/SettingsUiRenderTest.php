@@ -417,10 +417,9 @@ class SettingsUiRenderTest extends TestCase
      *
      * The inverse of `SettingsPersistenceTest`: that one catches a validated key
      * the action drops, this one catches a validated key the form never sends —
-     * `email_verification_token_expire_minutes` and
-     * `password_reset_expire_minutes` were seeded, validated and whitelisted
-     * with no field anywhere, so no admin could set them. The loop-rendered
-     * policy switches are listed because their `name` is `{{ $key }}`.
+     * `password_reset_expire_minutes` was seeded, validated and whitelisted with
+     * no field anywhere, so no admin could set it. The loop-rendered policy
+     * switches are listed because their `name` is `{{ $key }}`.
      */
     public function test_every_validated_setting_has_a_form_field(): void
     {
