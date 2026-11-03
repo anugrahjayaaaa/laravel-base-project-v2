@@ -222,6 +222,10 @@ class SystemSettingRequest extends BaseFormRequest
      * settings save point the private disk at `/etc` and turn every later read
      * into a file-disclosure primitive.
      *
+     * A string prefix is not enough: `/…/storage/../etc` starts with the prefix
+     * and resolves outside it, and a symlink planted inside the tree resolves
+     * outside it as well. Both are resolved before the comparison.
+     *
      * @return array<int, callable>
      */
     public function after(): array
@@ -234,10 +238,7 @@ class SystemSettingRequest extends BaseFormRequest
                     return;
                 }
 
-                $prefix = rtrim(storage_path(), '/').'/';
-                $normalized = rtrim($root, '/').'/';
-
-                if (! str_starts_with($normalized, $prefix)) {
+                if (! $this->isInsideStorageTree($root)) {
                     $validator->errors()->add(
                         'storage_local_root',
                         'The storage root must be inside '.storage_path().'.'
@@ -245,6 +246,67 @@ class SystemSettingRequest extends BaseFormRequest
                 }
             },
         ];
+    }
+
+    /**
+     * Does this path resolve inside `storage_path()`?
+     *
+     * `realpath()` only answers for a path that exists, and the configured root
+     * is usually created on first write. So the candidate is normalised
+     * lexically first (`..` resolved without touching disk), then the deepest
+     * existing ancestor is resolved through the filesystem — which is what
+     * turns a symlink into its target — and the missing tail is re-attached.
+     */
+    private function isInsideStorageTree(string $root): bool
+    {
+        $storage = realpath(storage_path());
+
+        if ($storage === false) {
+            return false;
+        }
+
+        $candidate = $this->normalizePath($root);
+        $existing = $candidate;
+        $tail = [];
+
+        while (realpath($existing) === false && dirname($existing) !== $existing) {
+            array_unshift($tail, basename($existing));
+            $existing = dirname($existing);
+        }
+
+        $resolved = realpath($existing);
+
+        if ($resolved === false) {
+            return false;
+        }
+
+        $candidate = rtrim($resolved, '/').($tail === [] ? '' : '/'.implode('/', $tail));
+
+        return $candidate === $storage || str_starts_with($candidate.'/', rtrim($storage, '/').'/');
+    }
+
+    /**
+     * Resolve `.` and `..` segments against the absolute root, no disk access.
+     */
+    private function normalizePath(string $path): string
+    {
+        $segments = [];
+
+        foreach (explode('/', str_replace('\\', '/', $path)) as $segment) {
+            if ($segment === '' || $segment === '.') {
+                continue;
+            }
+
+            if ($segment === '..') {
+                array_pop($segments);
+
+                continue;
+            }
+
+            $segments[] = $segment;
+        }
+
+        return '/'.implode('/', $segments);
     }
 
     /**
