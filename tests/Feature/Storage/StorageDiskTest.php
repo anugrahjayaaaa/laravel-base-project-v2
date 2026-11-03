@@ -394,6 +394,58 @@ class StorageDiskTest extends TestCase
         Storage::disk('local')->delete('capacity-probe.txt');
     }
 
+    public function test_the_display_gauge_reuses_a_measurement_while_the_guard_reads_fresh(): void
+    {
+        Storage::fake('local');
+        Storage::disk('local')->put('gauge-a.txt', str_repeat('a', 2048));
+
+        $guard = app(StorageCapacityGuard::class);
+        $displayed = $guard->cachedMetrics('local');
+
+        Storage::disk('local')->put('gauge-b.txt', str_repeat('b', 1024));
+
+        $this->assertSame(
+            $displayed['used'],
+            $guard->cachedMetrics('local')['used'],
+            'the gauge reuses its walk for a minute instead of walking on every poll'
+        );
+        $this->assertSame(
+            3072,
+            $guard->metrics('local')['used'],
+            'the guard must never read the cached figure — a minute-old number can pass a full disk'
+        );
+
+        $this->travel(61)->seconds();
+
+        $this->assertSame(3072, $guard->cachedMetrics('local')['used']);
+    }
+
+    public function test_resubmitting_an_unchanged_secret_does_not_rewrite_its_ciphertext(): void
+    {
+        $payload = $this->storagePayload();
+
+        $this->actingAs($this->admin())
+            ->from('/settings')
+            ->post(route('settings.update'), $payload)
+            ->assertSessionHasNoErrors();
+
+        $first = DB::table('system_settings')->where('key', 'storage_s3_secret')->value('value');
+
+        // `encrypt()` uses a fresh IV, so every save rewrites the row with
+        // different ciphertext that decrypts to the same secret.
+        $this->actingAs($this->admin())
+            ->from('/settings')
+            ->post(route('settings.update'), $payload)
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame(
+            $first,
+            DB::table('system_settings')->where('key', 'storage_s3_secret')->value('value'),
+            'an unchanged credential must not be re-encrypted'
+        );
+        $this->assertSame('super-secret-value', decrypt($first));
+    }
+
     public function test_storage_full_renders_the_documented_json_envelope(): void
     {
         config(['app.debug' => false]);
