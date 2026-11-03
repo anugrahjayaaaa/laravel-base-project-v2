@@ -831,3 +831,49 @@ and a password sweep can be scheduled at the same "time" and fire hours apart.
 `docs/base/security/password-security.md`,
 `tests/Feature/Settings/GlobalTimezoneTest.php`,
 `tests/Feature/Console/RebaseTimezonesCommandTest.php`
+
+## ADR-028: the S3 driver ships with its adapter installed
+
+**Status**: Accepted
+**Date**: 2026-11-03
+**Context**: Phase 14 Group A shipped S3 as a storage driver — the `s3` disk in
+`config/filesystems.php`, the encrypted `storage_s3_*` settings, the capacity
+probe's S3 branch, and a driver fieldset in the settings UI — but
+`league/flysystem-aws-s3-v3` was never added to `composer.json`.
+`laravel/framework` only *suggests* it, so the gap is invisible until someone
+picks S3: `Storage::disk('s3')` then throws
+`Class "League\Flysystem\AwsS3V3\PortableVisibilityConverter" not found` and
+every storage operation fails. The docs advertised S3-ready the whole time.
+
+**Decision**: require `league/flysystem-aws-s3-v3` (`^3.0`, resolved 3.35.3
+against the installed `league/flysystem` 3.36.0). It pulls
+`aws/aws-sdk-php` transitively; the adapter version tracks the Flysystem major,
+so it moves with the framework rather than with our code.
+
+**Alternatives considered**: removing the S3 option until someone needs it —
+rejected: the disk, the encrypted settings, the guard branch, the UI and their
+tests already exist, so removal is a deletion of a Group A deliverable rather
+than a smaller change, and the base project is meant to be usable against object
+storage without edits. Leaving the option and failing with a clear message —
+rejected: still no capability, just a nicer error. Environment-only S3 without
+the settings card — rejected: the driver is a runtime setting by design
+(ADR-027's reasoning applies to the disk too).
+
+**Consequences**:
+
+- **`composer.lock` grows** by the AWS SDK. It is a production dependency now,
+  so `composer install --no-dev` on deploy must be allowed to fetch it and
+  `composer audit` will cover it from here on.
+- **No behaviour change for local installs.** Building the adapter makes no
+  network call; only operations against the `s3` disk do, and only when the
+  admin has selected that driver.
+- **Credentials still come from `storage_s3_key` / `storage_s3_secret`**
+  (encrypted, never rendered) with `AWS_*` env as the fallback the binder
+  already reads.
+- The `storage_management` flag still gates the management surface only; the
+  disk binding and the capacity guard behave as before.
+
+**Related**: P14-A1..A5, `docs/base/infrastructure/storage.md`,
+`config/filesystems.php`, `app/Providers/AppServiceProvider.php`
+(`bindStorageConfig`), `app/Services/Storage/StorageCapacityGuard.php`,
+`tests/Feature/Storage/StorageDiskTest.php`

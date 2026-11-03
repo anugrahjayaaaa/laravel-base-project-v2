@@ -125,6 +125,11 @@ AWS_DEFAULT_REGION=...
 AWS_BUCKET=...
 ```
 
+The driver needs `league/flysystem-aws-s3-v3` (ADR-028), which ships in
+`composer.json` and pulls `aws/aws-sdk-php`. Laravel only *suggests* it, so
+removing it makes every operation on the `s3` disk throw a class-not-found —
+`StorageDiskTest::test_the_s3_driver_package_is_installed` fails instead.
+
 ## Backup Strategy
 
 See [backup-disaster-recovery.md](./backup-disaster-recovery.md). Phase 14 Group B

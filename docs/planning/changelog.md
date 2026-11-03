@@ -492,3 +492,13 @@ Each entry contains:
 | **Reason** | Group D moved `$storageChanged` after the strip and noted the strip map was incomplete ("a no-op under today's strip map — and a guard for the day that map grows"). This is that day: the map was the one place a full-form save could silently discard the production storage and backup configuration, and nothing failed because the existing test only checked the single key the map already named. |
 | **Impact** | **Runtime write behaviour changes only while the flag is off.** A settings save no longer touches storage/backup keys in that state; with the flag on the write path is unchanged. `getLive()` (and therefore `GET /api/v1/settings`) hides those keys while the flag is off — the cards are hidden then too. Disk binding and the upload guard still read the database directly and stay active, as before. |
 | **Related** | P14-D1..D3, `config/pennant.php`, `app/Support/FeatureCatalog.php`, `tests/Feature/Storage/StorageAuthorizationTest.php`, `docs/base/infrastructure/storage.md`, `docs/base/api/response-contract.md` |
+
+## 2026-11-03 — Phase 14 fix: the S3 driver gets the adapter it was missing
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-11-03 |
+| **Change** | `league/flysystem-aws-s3-v3` (`^3.0`, resolved 3.35.3) is now a production dependency, per ADR-028; it pulls `aws/aws-sdk-php`, `aws/aws-crt-php`, `mtdowling/jmespath.php` and `symfony/filesystem` transitively — five packages added, no existing version moved. `Storage::disk('s3')` now resolves to `AwsS3V3Adapter`. `StorageDiskTest::test_the_s3_driver_package_is_installed` pins it. `storage.md` records the package requirement next to the `AWS_*` block. |
+| **Reason** | Group A shipped S3 as a selectable driver — disk config, encrypted settings, capacity probe, UI fieldset, docs — but the adapter was never required. `laravel/framework` only suggests it, so the gap stayed invisible until someone selected S3, at which point the first operation threw `Class "League\Flysystem\AwsS3V3\PortableVisibilityConverter" not found`. |
+| **Impact** | **No behaviour change for local installs**: building the adapter makes no network call, and only operations against the `s3` disk touch AWS. `composer.lock` grows; deploys running `composer install --no-dev` must be allowed to fetch the SDK, and `composer audit` now covers it. The two advisories `composer audit` reports (livewire/livewire, symfony/mime) predate this change and are untouched. |
+| **Related** | ADR-028, P14-A1..A5, `composer.json`, `composer.lock`, `docs/base/infrastructure/storage.md`, `tests/Feature/Storage/StorageDiskTest.php` |
