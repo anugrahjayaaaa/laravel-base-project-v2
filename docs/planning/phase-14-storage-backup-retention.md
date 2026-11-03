@@ -349,7 +349,7 @@ quotas.
 
 | Event | Written by | When |
 |---|---|---|
-| `storage_setting.updated` | `SystemSettingsUpdateAction` | a storage key changes; inside the transaction |
+| `storage_setting.updated` | `SystemSettingsUpdateAction` | a storage key's stored value changes (payload names only those keys); inside the transaction |
 | `storage.capacity_warning` | capacity guard/action | warning threshold crossed, once per crossing |
 | `backup.triggered` | `ExecuteSystemBackupJob`'s action | before the backup command runs |
 | `backup.aborted_storage_full` | same | pre-check refuses the backup |
