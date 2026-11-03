@@ -23,6 +23,7 @@ use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\URL;
 use Laravel\Pennant\Feature;
+use League\Flysystem\AwsS3V3\AwsS3V3Adapter;
 use Tests\TestCase;
 
 /**
@@ -69,6 +70,21 @@ class StorageDiskTest extends TestCase
             'storage_s3_region' => 'us-east-1',
             'storage_s3_bucket' => 'base-project',
         ], $overrides);
+    }
+
+    /**
+     * The card offers S3 as a driver, so the adapter package must be present.
+     * laravel/framework only suggests it: without it the first operation on a
+     * disk the admin just selected throws a class-not-found.
+     */
+    public function test_the_s3_driver_package_is_installed(): void
+    {
+        config([
+            'filesystems.disks.s3.bucket' => 'base-project',
+            'filesystems.disks.s3.region' => 'us-east-1',
+        ]);
+
+        $this->assertInstanceOf(AwsS3V3Adapter::class, Storage::disk('s3')->getAdapter());
     }
 
     public function test_default_disk_resolves_to_local_without_a_setting(): void
