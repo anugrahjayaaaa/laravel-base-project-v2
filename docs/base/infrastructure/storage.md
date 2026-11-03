@@ -63,7 +63,10 @@ measurement. See `docs/base/api/error-contract.md`.
 The management feature flag (`storage_management`) gates the management surface
 — both Settings cards (Storage and Backup), the secure route and the backup
 trigger — not the storage itself: disk binding and the upload guard stay active
-when the flag is off.
+when the flag is off. Every key the two cards own is listed under the flag in
+`config/pennant.php`, so a save while the flag is off skips them instead of
+writing defaults over the stored configuration, and they are absent from
+`getLive()` until the flag is back on.
 
 ## Secure private media
 

@@ -482,3 +482,13 @@ Each entry contains:
 | **Reason** | Group D exposed the same doc error twice (catalog docblock and `storage.md`), which means the permission story was written from intent rather than from the routes. E is the point where the doc is checked against the route table, not the design sketch. |
 | **Impact** | **Docs only.** No code change, so no new test. |
 | **Related** | P14-E1..E2, `docs/base/infrastructure/storage.md`, `docs/base/operations/retention.md`, `docs/base/infrastructure/backup-disaster-recovery.md`, `docs/base/infrastructure/queue.md`, `docs/base/api/error-contract.md` |
+
+## 2026-11-03 — Phase 14 fix: a flag-off settings save no longer resets the storage and backup config
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-11-03 |
+| **Change** | `config/pennant.php` now lists every key the Storage and Backup cards own under `storage_management` — disk, S3, capacity, retention and backup keys — instead of only the two retention keys. With the flag off the cards are hidden and post nothing, and the web form's "absent means reset to the default" contract wrote `local`, empty S3 fields, `backup_enabled = false`, `02:00` and the default retention counts on every save. The existing strip map now covers those keys, so the write is skipped and the stored configuration survives; the same map also keeps them out of `getLive()` while the flag is off, closing the read-side inconsistency. `StorageAuthorizationTest` pins the reset with non-default values for a disk key and a backup key. |
+| **Reason** | Group D moved `$storageChanged` after the strip and noted the strip map was incomplete ("a no-op under today's strip map — and a guard for the day that map grows"). This is that day: the map was the one place a full-form save could silently discard the production storage and backup configuration, and nothing failed because the existing test only checked the single key the map already named. |
+| **Impact** | **Runtime write behaviour changes only while the flag is off.** A settings save no longer touches storage/backup keys in that state; with the flag on the write path is unchanged. `getLive()` (and therefore `GET /api/v1/settings`) hides those keys while the flag is off — the cards are hidden then too. Disk binding and the upload guard still read the database directly and stay active, as before. |
+| **Related** | P14-D1..D3, `config/pennant.php`, `app/Support/FeatureCatalog.php`, `tests/Feature/Storage/StorageAuthorizationTest.php`, `docs/base/infrastructure/storage.md`, `docs/base/api/response-contract.md` |

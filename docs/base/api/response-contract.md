@@ -123,8 +123,8 @@ resources:
   (`SystemSetting::getLive()`), not a `settings` wrapper. Both the read and the
   update answer with the live map after the write, so a form can re-render from
   the response instead of a follow-up GET. `getLive()` excludes settings whose
-  owning feature flag is off — those feed routes that 403 before the setting is
-  read, so exposing them would leak a limiter value nobody can reach.
+  owning feature flag is off — the management surface they are edited from is
+  gone, so returning them would show a value the caller cannot change.
 
 ## Query parameters
 
