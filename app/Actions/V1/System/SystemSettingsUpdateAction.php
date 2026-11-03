@@ -212,11 +212,17 @@ class SystemSettingsUpdateAction
             'backup_retention_monthly' => (string) ($data['backup_retention_monthly'] ?? 12),
         ];
 
+        // `encrypt()` draws a fresh IV on every call, so a resubmitted
+        // credential never matches its own ciphertext. Compare the plaintext
+        // instead and keep the verdict for the storage audit below.
+        $secretChanged = [];
+
         foreach (['storage_s3_key', 'storage_s3_secret'] as $secretKey) {
             $secret = $data[$secretKey] ?? null;
 
             if ($secret !== null && $secret !== '') {
                 $updates[$secretKey] = encrypt((string) $secret);
+                $secretChanged[$secretKey] = (string) $secret !== AppServiceProvider::storedSecret($secretKey);
             }
 
             // Also removed from `$data`, which is the `system_setting.updated`
@@ -245,7 +251,13 @@ class SystemSettingsUpdateAction
 
         // After the strip: a storage key removed above is not a storage change,
         // and auditing it would recant the same lie the strip exists to avoid.
-        $storageChanged = array_intersect_key($updates, array_flip(self::STORAGE_KEYS)) !== [];
+        // Presence is not a change either — the web form posts every field on
+        // every save — so the row has to be earned by a value that differs from
+        // the stored one.
+        $changedStorageKeys = array_values(array_filter(
+            array_intersect(array_keys($updates), self::STORAGE_KEYS),
+            fn (string $key): bool => $secretChanged[$key] ?? $updates[$key] !== SystemSetting::getString($key, ''),
+        ));
 
         if ($graceEnabled && array_key_exists('inactivity_lock_grace_days', $data)) {
             $updates['inactivity_lock_grace_days'] = (string) $data['inactivity_lock_grace_days'];
@@ -256,7 +268,7 @@ class SystemSettingsUpdateAction
         // stop half way — a failure on key 30 left the password policy updated
         // and the registration toggle not, with nothing to roll back and an audit
         // row (written later, by the controller) claiming the save succeeded.
-        DB::transaction(function () use ($updates, $data, $causer, $storageChanged): void {
+        DB::transaction(function () use ($updates, $data, $causer, $changedStorageKeys): void {
             foreach ($updates as $key => $value) {
                 SystemSetting::set($key, $value);
             }
@@ -267,9 +279,9 @@ class SystemSettingsUpdateAction
                 // A second, storage-specific row so the storage module has its
                 // own event history and `storage.view` holders can read what
                 // changed without parsing the whole settings payload.
-                if ($storageChanged) {
+                if ($changedStorageKeys !== []) {
                     SystemSetting::query()->firstOrFail()->audit('storage_setting.updated', $causer, [
-                        'keys' => array_keys(array_intersect_key($updates, array_flip(self::STORAGE_KEYS))),
+                        'keys' => $changedStorageKeys,
                     ]);
                 }
             }
