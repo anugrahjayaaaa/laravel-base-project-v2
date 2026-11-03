@@ -214,15 +214,20 @@ class SystemSettingsUpdateAction
 
         // `encrypt()` draws a fresh IV on every call, so a resubmitted
         // credential never matches its own ciphertext. Compare the plaintext
-        // instead and keep the verdict for the storage audit below.
+        // instead and keep the verdict for the storage audit below. The row is
+        // only re-encrypted when the plaintext differs; rewriting it on every
+        // save would churn ciphertext that decrypts to the same secret.
         $secretChanged = [];
 
         foreach (['storage_s3_key', 'storage_s3_secret'] as $secretKey) {
             $secret = $data[$secretKey] ?? null;
 
             if ($secret !== null && $secret !== '') {
-                $updates[$secretKey] = encrypt((string) $secret);
                 $secretChanged[$secretKey] = (string) $secret !== AppServiceProvider::storedSecret($secretKey);
+
+                if ($secretChanged[$secretKey]) {
+                    $updates[$secretKey] = encrypt((string) $secret);
+                }
             }
 
             // Also removed from `$data`, which is the `system_setting.updated`
@@ -249,25 +254,34 @@ class SystemSettingsUpdateAction
             }
         }
 
-        // After the strip: a storage key removed above is not a storage change,
-        // and auditing it would recant the same lie the strip exists to avoid.
-        // Presence is not a change either — the web form posts every field on
-        // every save — so the row has to be earned by a value that differs from
-        // the stored one.
-        $changedStorageKeys = array_values(array_filter(
-            array_intersect(array_keys($updates), self::STORAGE_KEYS),
-            fn (string $key): bool => $secretChanged[$key] ?? $updates[$key] !== SystemSetting::getString($key, ''),
-        ));
-
         if ($graceEnabled && array_key_exists('inactivity_lock_grace_days', $data)) {
             $updates['inactivity_lock_grace_days'] = (string) $data['inactivity_lock_grace_days'];
         }
 
-        // One transaction for all ~40 keys. `SystemSetting::set()` writes a single row
-        // per key with no transaction of its own, so before this the loop could
-        // stop half way — a failure on key 30 left the password policy updated
-        // and the registration toggle not, with nothing to roll back and an audit
-        // row (written later, by the controller) claiming the save succeeded.
+        // The web form posts every field on every save, so most of these writes
+        // would rewrite a value that is already stored — one SELECT plus one
+        // UPDATE each (~67 queries per save, measured). Keep only what differs.
+        // Secrets are absent from the snapshot (`SECRET_KEYS`); their plaintext
+        // was compared above, so one is only in `$updates` when it changed.
+        $stored = SystemSetting::getAll();
+
+        $updates = array_filter(
+            $updates,
+            fn ($value, string $key): bool => ! array_key_exists($key, $stored) || $stored[$key] !== $value,
+            ARRAY_FILTER_USE_BOTH
+        );
+
+        // After the strip and the diff: a storage key removed by either is not a
+        // storage change, and auditing it would recant the same lie the strip
+        // exists to avoid.
+        $changedStorageKeys = array_values(array_intersect(array_keys($updates), self::STORAGE_KEYS));
+
+        // One transaction for every changed key. `SystemSetting::set()` writes a
+        // single row per key with no transaction of its own, so before this the
+        // loop could stop half way — a failure on key 30 left the password policy
+        // updated and the registration toggle not, with nothing to roll back and
+        // an audit row (written later, by the controller) claiming the save
+        // succeeded.
         DB::transaction(function () use ($updates, $data, $causer, $changedStorageKeys): void {
             foreach ($updates as $key => $value) {
                 SystemSetting::set($key, $value);
