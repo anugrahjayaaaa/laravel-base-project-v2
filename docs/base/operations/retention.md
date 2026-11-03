@@ -6,24 +6,24 @@ Define retention separately for each data type. Do NOT apply one global retentio
 
 ## Retention Schedule
 
-|| Data Type | Default Retention | Rationale |
-||----------|------------------|-----------|
-|| Audit logs | Indefinite (until manual review) | Legal/security compliance |
-|| Audit export files | 7 days after generation (`App\Models\AuditExport::RETENTION_DAYS`) | Temporary download window, private disk `audit-exports/` |
-|| Application logs | 30 days | Debug/operational troubleshooting |
-|| Security logs | 90 days | Incident response, security investigation |
-|| Server logs | Configured by infra team | Infrastructure monitoring |
+| Data Type | Default Retention | Rationale |
+|----------|------------------|-----------|
+| Audit logs | Indefinite (until manual review) | Legal/security compliance |
+| Audit export files | 7 days after generation (`App\Models\AuditExport::RETENTION_DAYS`) | Temporary download window, private disk `audit-exports/` |
+| Application logs | 30 days | Debug/operational troubleshooting |
+| Security logs | 90 days | Incident response, security investigation |
+| Server logs | Configured by infra team | Infrastructure monitoring |
 | Pulse data | Pulse's own retention config | Runtime metrics, ingested on a schedule |
-|| Sessions | Until expiration (`web_session_expire_*` setting) | Automatic cleanup |
-|| Revoked tokens | 30 days after revocation | Allow investigation window |
-|| Password history | Configurable (`security.password_history.count`) | Prevent reuse (IM8 policy) |
-|| Password history count | Configurable count (default: 5) | Balance security vs usability |
-|| Notifications | 90 days | Inbox cleanup |
-|| Temporary uploads (`tmp` disk) | `temp_file_retention_hours` (default 24, validated 1–8760) | Uploads are promoted out of `tmp` on save, so anything left past the window is unattached; cleaned daily by `CleanTemporaryStorageJob` |
-|| Database backups | `backup_retention_daily` daily, `backup_retention_weekly` weekly, `backup_retention_monthly` monthly (7/4/12 default) | Standard backup rotation; applied by `SystemBackupRunner` per run |
-|| File backups | same run, same retention | Sync with database |
-|| Failed jobs | 7 days | Investigation window |
-|| Password reset tokens | 60 minutes (default) | Security — short window |
+| Sessions | Until expiration (`web_session_expire_*` setting) | Automatic cleanup |
+| Revoked tokens | 30 days after revocation | Allow investigation window |
+| Password history | Configurable (`security.password_history.count`) | Prevent reuse (IM8 policy) |
+| Password history count | Configurable count (default: 5) | Balance security vs usability |
+| Notifications | 90 days | Inbox cleanup |
+| Temporary uploads (`tmp` disk) | `temp_file_retention_hours` (default 24, validated 1–8760) | Uploads are promoted out of `tmp` on save, so anything left past the window is unattached; cleaned daily by `CleanTemporaryStorageJob` |
+| Database backups | `backup_retention_daily` daily, `backup_retention_weekly` weekly, `backup_retention_monthly` monthly (7/4/12 default) | Standard backup rotation; applied by `SystemBackupRunner` per run |
+| File backups | same run, same retention | Sync with database |
+| Failed jobs | 7 days | Investigation window |
+| Password reset tokens | 60 minutes (default) | Security — short window |
 
 ### Audit exports and `tmp` are two different things
 

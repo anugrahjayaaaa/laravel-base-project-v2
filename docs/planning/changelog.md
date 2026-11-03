@@ -512,3 +512,33 @@ Each entry contains:
 | **Reason** | The guard existed but a prefix comparison is not containment: `/…/storage/../etc` started with the prefix and resolved to `/etc`, and a symlink inside `storage/` did the same through the filesystem. Both let an administrator point the private disk outside the storage tree, which is the disclosure primitive the check was written to prevent. |
 | **Impact** | **Only the `storage_local_root` rule changes.** A path that really resolves inside `storage_path()` is still accepted, including one that does not exist yet (the adapter creates it on first write). Unrelated keys are untouched. `StorageDiskTest` 26 tests / 65 assertions. |
 | **Related** | P14-A1..A5, `app/Http/Requests/V1/System/SystemSettingRequest.php`, `tests/Feature/Storage/StorageDiskTest.php`, `docs/base/infrastructure/storage.md`, `docs/base/features/settings.md` |
+
+## 2026-11-03 — Phase 14 fix: the storage audit row is earned by a change, not by a save
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-11-03 |
+| **Change** | `SystemSettingsUpdateAction` now compares each storage key in the payload against its stored value before writing `storage_setting.updated`, and the row's `keys` payload lists only the keys whose value differs. Credentials are compared as plaintext, because `encrypt()` draws a fresh IV on every call so a resubmitted secret never matches its own ciphertext. |
+| **Reason** | The web form posts every field on every save, so a presence check made the row fire on saves that touched nothing in the storage module — and its `keys` payload named all twelve storage keys each time, which turns the module's event history into a log of page views. P14-D3 documents the trigger as "a storage key changes". |
+| **Impact** | **Only the storage audit row changes.** A save that alters nothing writes `system_setting.updated` alone; a save that changes one storage value writes `storage_setting.updated` naming that one key. The row is skipped whenever the changed list is empty, including after the flag-off strip removes the keys. |
+| **Related** | P14-D3, `app/Actions/V1/System/SystemSettingsUpdateAction.php`, `tests/Feature/Storage/StorageDiskTest.php`, `docs/planning/phase-14-storage-backup-retention.md` |
+
+## 2026-11-03 — Phase 14 docs: correct the storage, retention and phase claims
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-11-03 |
+| **Change** | `docs/base/infrastructure/storage.md`: local `used` no longer claims to include backups (they sit in `storage/app/backups`, outside the measured root `storage/app/private`); the permission table now says the capacity gauge lives inside the editable Storage card, so it reads under `settings.manage`, while `storage.view` covers the secure route and the read-only table; a line records that both storage routes are web-only. `docs/base/operations/retention.md`: the schedule table was malformed (`\|\|` on most rows, `\|` on one) and rendered as two broken tables; it is one table again. `docs/planning/phase-14-storage-backup-retention.md`: the no-quota wording matches the rendered string ("could not be measured", not "n/a"); P14-D2 no longer promises a sidebar entry that does not exist; the phase records that API endpoints are deliberately out of scope. `docs/planning/progress.md`: Group F1's review date corrected to 2026-10-31, the date the phase doc and tracker already carry. |
+| **Reason** | Each claim described a surface or measurement that the code does not have. A reader planning an upload quota would have under-counted available space by the size of the backups; a reader granting `storage.view` would have expected a gauge they cannot see; the malformed table hid three retention rows inside a broken render. |
+| **Impact** | **Documentation only** — no runtime behaviour changes. |
+| **Related** | P14-D1, P14-D2, `docs/base/infrastructure/storage.md`, `docs/base/operations/retention.md`, `docs/planning/phase-14-storage-backup-retention.md`, `docs/planning/progress.md` |
+
+## 2026-11-03 — Phase 14 fixes: settings API teardown, env template, after-commit cleanup
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-11-03 |
+| **Change** | `SettingsApiTest` pins that every key owned by `storage_management` disappears from `GET /api/v1/settings` when the flag is off, not just the one key the existing test named. `.env.example` gains `FILESYSTEM_DISK`, the `AWS_*` keys, `BACKUP_QUEUE`, `BACKUP_QUEUE_RETRY_AFTER` and `BACKUP_ARCHIVE_PASSWORD` — all of which `config/filesystems.php`, `config/queue.php` and `config/backup.php` already read. `StorageCapacityGuard` dispatches `CleanTemporaryStorageJob` with `afterCommit()`, so a save that rolls back no longer queues a sweep for a `tmp` it never used. |
+| **Reason** | The API read was already fixed by completing the flag's key list in `config/pennant.php` (P14 finding #1); nothing pinned it, so a later edit could reopen the leak silently. The env template is the only place an operator learns which overrides exist, and the three backup keys were undocumented there. Every other job in the repo dispatches after commit (AGENTS.md), and the guard's own comment already said the caller may be inside a transaction. |
+| **Impact** | **No behaviour change in the request path.** The cleanup job now reaches the queue after the surrounding transaction commits; the throttle test fakes the bus, so its assertion is unaffected. |
+| **Related** | `tests/Feature/Api/V1/Settings/SettingsApiTest.php`, `.env.example`, `app/Services/Storage/StorageCapacityGuard.php` |

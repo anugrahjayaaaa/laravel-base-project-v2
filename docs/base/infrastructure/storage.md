@@ -45,10 +45,12 @@ S3 credentials (`storage_s3_key`, `storage_s3_secret`) live in
 `App\Services\Storage\StorageCapacityGuard`:
 
 - `metrics()` — used / available / total / quota for the active disk. Local `used`
-  counts the bytes stored under the disk root (uploads, logs, exports, backups);
-  the physical ceiling still comes from `disk_total_space`, or from the configured
-  quota when set (smaller of the two). S3 probes `ListObjectsV2` (300 s cache) for
-  used bytes; without a quota there is **no fabricated total**.
+  counts the bytes stored under the disk root (`storage/app/private`: uploads,
+  logs, audit exports); backups live in `storage/app/backups`, outside that root,
+  and are not counted. The physical ceiling still comes from `disk_total_space`,
+  or from the configured quota when set (smaller of the two). S3 probes
+  `ListObjectsV2` (300 s cache) for used bytes; without a quota there is **no
+  fabricated total**.
 - `assertCanStore($bytes)` — throws `StorageCapacityExceededException` when the
   write would exceed quota or the disk is already ≥ 95% full. Call at every
   write boundary **before** bytes land (today: `GenerateAuditExport`).
@@ -96,11 +98,15 @@ Settings → Storage Management card (`feature:storage_management`):
 
 | Permission | Gates |
 |---|---|
-| `storage.view` | `storage.secure` (private media). The capacity gauge is part of the settings page and reads under `settings.view` |
-| `storage.manage` | Seeded for storage operations; the Storage card is edited under `settings.manage` (P14-D1), so no route checks it yet |
+| `storage.view` | `storage.secure` (private media), plus the read-only settings table on `/settings` |
+| `storage.manage` | Seeded for storage operations; the Storage card is edited under `settings.manage` (P14-D1), so no route checks it yet. The capacity gauge sits inside that editable card, so reading it needs `settings.manage`; a `settings.view`-only holder sees the read-only table, not the gauge |
 | `backup.execute` | `POST /storage/backup`, the "Run Backup Now" button, and backup outcome notifications |
 
 All three map to the `storage_management` flag in `PermissionCatalog`.
+
+Both storage routes are web-only: `routes/api.php` has no storage or backup
+endpoint in this phase, so an API-only client cannot request a backup or fetch
+private media.
 
 ## Rules
 

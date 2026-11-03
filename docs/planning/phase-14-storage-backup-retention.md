@@ -59,8 +59,9 @@ quotas.
      disk root via the storage listing; the physical ceiling still comes from
      `disk_total_space`, or the configured quota when set. S3 has **no
      total-capacity API**, so the gauge uses the configured quota
-     (`storage_max_capacity_mb`) as its denominator and reports Available as
-     "n/a" when no quota is set.
+     (`storage_max_capacity_mb`) as its denominator and reports capacity as
+     "could not be measured" when no quota is set — the same wording the card
+     renders for a null total.
    - Hard guard: refuse an upload when used ≥ 95% of the effective quota, or
      when the incoming file would cross it. Refusal is
      `StorageCapacityExceededException` → HTTP **507** with a new
@@ -338,12 +339,22 @@ quotas.
 
 - **Task**: declare `storage_management` in `config/pennant.php`, seed it in
   `FeatureFlagSeeder`, add `feature:storage_management` to the storage routes,
-  and hide the settings card + sidebar entry when
+  and hide the settings cards (Storage and Backup) when
   `FeatureCatalog::isActive()` is false.
 - **Acceptance**:
-  - flag off → 403 for every role including superadmin, card and menu gone;
+  - flag off → 403 for every role including superadmin, and both cards are gone
+    from `/settings`;
   - flag off does **not** disable runtime disk binding or the upload guard;
   - flag on but permissions missing → still 403.
+- **Note**: there is no separate storage menu entry to hide — the whole
+  management surface is the Settings card, so the menu half of the gate has
+  nothing to act on and the flag's route middleware is what enforces the
+  kill-switch.
+- **Not in scope**: this phase adds no API endpoints. `storage.secure` and
+  `POST /storage/backup` are web-only, so an API client cannot fetch private
+  media or request a run. The scheduled and manual triggers both dispatch the
+  same `ExecuteSystemBackupJob`, so an API surface would reuse it — but it is
+  its own piece of work, not a gap this phase left half-built.
 
 ### P14-D3 — Action-First Audit Trail Logging
 
