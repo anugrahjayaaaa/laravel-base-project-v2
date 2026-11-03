@@ -27,17 +27,27 @@ class RoleAssignAction
     /**
      * Replace a user's roles and record what changed.
      *
-     * @param  array<int, string>  $roleNames  Names to sync; unknown names are skipped
-     * @param  User|null           $causer     Who to attribute the audit record to
-     * @param  bool                $confirmed  The payload carried `confirm_superadmin`
+     * @param  array<int, string>  $roleNames   Names to sync; unknown names are skipped
+     * @param  User|null           $causer      Who to attribute the audit record to
+     * @param  bool                $confirmed   The payload carried `confirm_superadmin`
+     * @param  bool                $notifyUser  False on account creation, where the
+     *                                          welcome mail already states the roles.
+     *                                          Telling a brand-new account its roles
+     *                                          "changed" describes a change that
+     *                                          never happened.
      * @return User
      *
      * @throws LastSuperadminException When the sync would leave zero superadmins
      * @throws AuthorizationException When superadmin is added or removed without confirmation
      */
-    public function run(User $user, array $roleNames, ?User $causer = null, bool $confirmed = false): User
-    {
-        DB::transaction(function () use ($user, $roleNames, $causer, $confirmed): User {
+    public function run(
+        User $user,
+        array $roleNames,
+        ?User $causer = null,
+        bool $confirmed = false,
+        bool $notifyUser = true,
+    ): User {
+        DB::transaction(function () use ($user, $roleNames, $causer, $confirmed, $notifyUser): User {
             $before = $user->roles->pluck('name')->all();
 
             // A name with no role on this guard is skipped rather than thrown on:
@@ -88,16 +98,23 @@ class RoleAssignAction
             // anyone, or "I opened the form and pressed Save" becomes everyone's
             // inbox.
             if ($before !== $after) {
-                $this->notifyAction->rolesChanged(
-                    $user->fresh(),
-                    $causer,
-                    array_values(array_diff($after, $before)),
-                    array_values(array_diff($before, $after))
-                );
+                // The account's own copy is skipped on creation — the welcome
+                // mail (a separate notification, sent after this transaction) is
+                // the one that states the roles, because for an account with no
+                // previous roles "your roles changed" is a change that never
+                // happened. Administrators are still told: the grant is real.
+                if ($notifyUser) {
+                    $this->notifyAction->rolesChanged(
+                        $user->fresh(),
+                        $causer,
+                        array_values(array_diff($after, $before)),
+                        array_values(array_diff($before, $after))
+                    );
+                }
 
-                // The personal half: the person whose access changed. The admin
-                // half: everyone who can edit a role is told. Both audiences of
-                // the Target Audience Rule, resolved in one place.
+                // The administrative half: everyone who can edit a role is told,
+                // on creation as well — the grant is real even when the account
+                // is new.
                 $this->notifyAction->configurationChanged('role.changed', null, $causer);
             }
 

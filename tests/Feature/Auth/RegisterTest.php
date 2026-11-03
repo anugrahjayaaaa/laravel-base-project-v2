@@ -6,6 +6,7 @@ use App\Models\SystemSetting;
 use App\Models\User;
 use App\Notifications\RegisterNotification;
 use App\Notifications\UserCreatedNotification;
+use App\Notifications\UserRegisteredNotification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Notification;
@@ -118,6 +119,10 @@ class RegisterTest extends TestCase
             return str_contains($rendered, 'Verify')
                 && ! str_contains($rendered, 'ChosenP@ss1!');
         });
+
+        // One mail, not two: the administrative registration copy does not reach
+        // the account, because this one already carries the action.
+        Notification::assertNotSentTo($user, UserRegisteredNotification::class);
     }
 
     public function test_an_admin_created_user_still_gets_a_temporary_password(): void

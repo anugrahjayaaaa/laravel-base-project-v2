@@ -192,9 +192,68 @@ class AdministrativeEventDispatchTest extends TestCase
         Notification::assertSentTo($operator, UserRegisteredNotification::class);
         Notification::assertNotSentTo($bystander, UserRegisteredNotification::class);
 
+        // The account itself is not a recipient: it already got the mail with the
+        // temporary password and the verification link. The status-only
+        // "Registration received" copy was removed by owner decision.
+        Notification::assertNotSentTo(
+            User::where('username', 'newcomer')->firstOrFail(),
+            UserRegisteredNotification::class
+        );
+
         // The distinguishing assertion: the notification that went out is NOT the
         // one carrying the password.
         Notification::assertNotSentTo($operator, UserCreatedNotification::class);
+    }
+
+    /**
+     * A new account is told its roles in the welcome mail — and is not told
+     * they "changed".
+     *
+     * The roles are assigned in the same act that creates the account, so a
+     * brand-new account has no before-state for them to change from; the
+     * separate "Your account roles changed" mail described a change that never
+     * happened. The welcome mail states them instead, and creation must not send
+     * both.
+     */
+    #
+    public function test_a_new_account_hears_its_roles_in_the_welcome_mail_not_in_a_roles_changed_mail(): void
+    {
+        // Both permissions: `users.create` to create the account,
+        // `users.assign_roles` for the sync the payload asks for.
+        $role = Role::create(['name' => 'creator-'.uniqid(), 'guard_name' => RoleLookup::guard()]);
+        $role->givePermissionTo(
+            Permission::whereIn('name', ['users.create', 'users.assign_roles'])
+                ->where('guard_name', RoleLookup::guard())
+                ->get()
+        );
+
+        $operator = User::factory()->create(['email_verified_at' => now()]);
+        $operator->assignRole($role);
+
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
+
+        Notification::fake();
+
+        $user = app(UserCreateAction::class)->run(
+            [
+                'name' => 'New Comer',
+                'username' => 'newcomer',
+                'email' => 'newcomer@example.test',
+                'roles' => ['admin'],
+            ],
+            null,
+            $operator
+        );
+
+        Notification::assertSentTo($user, UserCreatedNotification::class, function ($notification) use ($user): bool {
+            $lines = $notification->toArray($user)['lines'];
+            $mail = $notification->toMail($user)->render();
+
+            return in_array('Your account has the admin role.', $lines, true)
+                && str_contains($mail, 'admin');
+        });
+
+        Notification::assertNotSentTo($user, RolesChangedNotification::class);
     }
 
     /**

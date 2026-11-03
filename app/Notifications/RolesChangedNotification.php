@@ -20,6 +20,11 @@ use Illuminate\Notifications\Notification;
  *
  * (Owner decision, 2026-10-06.)
  *
+ * Not sent when the account is being created. Creation assigns the initial roles
+ * in the same act, so there is no before-state to change from; the welcome mail
+ * (`UserCreatedNotification`) states those roles instead. `RoleAssignAction`
+ * takes `notifyUser: false` from `UserCreateAction` for that case.
+ *
  * The one exception is DELETION of the role itself: a role that no longer exists
  * changed nobody's access at that moment, and the accounts that referenced it are
  * left in a state an administrator needs to see. That goes to `roles.delete`
