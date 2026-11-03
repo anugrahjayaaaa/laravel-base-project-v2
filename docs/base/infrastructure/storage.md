@@ -65,6 +65,25 @@ S3 credentials (`storage_s3_key`, `storage_s3_secret`) live in
   hour (`Cache::add` throttle).
 - `storage_max_capacity_mb = 0` means unlimited (no divide-by-zero).
 
+### Guard coverage
+
+The guard is not global: each check names one disk, and a disk nobody checks is
+unguarded. The quota governs the disk it is measured on, never `backups`.
+
+| Write boundary | Disk | Check | Refuses when |
+|---|---|---|---|
+| `GenerateAuditExport` | `local` | `assertCanStore(0, 'local')` after the CSV is built, before `writeStream` | quota reached, or the disk is already ≥ 95% used (byte count unknown at that point, so the percentage decides) |
+| `SystemBackupRunAction` | `backups` | `fits(estimate, free)` with a 10% reserve | the raw-source estimate plus the reserve does not fit the destination's free space (the quota does not apply here) |
+| `HealthCheckService::checkStorage()` | default disk | **unguarded by design** | a 2-byte probe that fails closed: a full disk makes `put()` throw → the check reports `fail`, and the same method reports `fail` at ≥ 95% via `cachedMetrics()` without writing |
+
+Nothing else in the application writes user-controlled bytes to a disk.
+
+**Rule for new boundaries:** a feature that writes files to any disk calls
+`assertCanStore($bytes, $disk)` first, for the disk it is about to write, and
+grows a row in this table. Upload endpoints do not exist yet; when one lands it
+opens with the guard — invariant 7 in the phase document means this, not a
+global check.
+
 Handler: HTTP **507** / code `STORAGE_FULL`, with `meta.storage` carrying the
 measurement. See `docs/base/api/error-contract.md`.
 

@@ -582,3 +582,13 @@ Each entry contains:
 | **Reason** | `secure_documents` holds arbitrary files and the default disposition renders them on the application origin: a stored `.html` or `.svg` would execute with the viewer's session for every `storage.view` holder. The route has no writer yet, so this closes the gap before an upload feature can open it. Inline preview stays unimplemented until a MIME allowlist exists. |
 | **Impact** | **The secure route now downloads instead of displaying.** No consumer exists today; a future preview needs an allowlist, not a revert of this line. |
 | **Related** | `app/Http/Controllers/Web/V1/StorageController.php`, `docs/base/infrastructure/storage.md`, `tests/Feature/Storage/StorageDiskTest.php` |
+
+## 2026-11-03 — Phase 14 pentest #3: the capacity guard's coverage is per disk, and now it says so
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-11-03 |
+| **Change** | `docs/base/infrastructure/storage.md` gains § Guard coverage: a per-boundary table (audit export → `local` via `assertCanStore`, backup pre-check → `backups` free space + reserve, health probe → default disk, unguarded by design and failing closed), plus the rule that any new disk-writing feature calls `assertCanStore($bytes, $disk)` and grows a row. Phase invariant 7 now describes enforcement at today's boundaries instead of promising uploads that do not exist. `HealthCheckService::checkStorage()` and the guard's docblock carry pointers so the probe is not "fixed" into the guard later. |
+| **Reason** | Invariant 7 read as if a global capacity check existed; in fact each check names one disk and the probe is deliberately outside the guard. An upload endpoint built on the invariant's old wording would have skipped the guard. |
+| **Impact** | **Documentation and comments only** — no runtime behaviour changes. |
+| **Related** | Phase 14 invariant 7, `docs/base/infrastructure/storage.md`, `docs/planning/phase-14-storage-backup-retention.md`, `app/Services/HealthCheck/HealthCheckService.php`, `app/Services/Storage/StorageCapacityGuard.php` |

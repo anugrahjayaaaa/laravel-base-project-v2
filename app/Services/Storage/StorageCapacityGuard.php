@@ -22,6 +22,12 @@ use Throwable;
  * called where the bytes are about to be written, which is the only place that
  * knows how large they are.
  *
+ * ## Coverage is per boundary
+ *
+ * It checks only the disk it is handed, and only where a caller invokes it —
+ * there is no global check. The per-boundary map and the rule for new write
+ * boundaries live in `docs/base/infrastructure/storage.md` § Guard coverage.
+ *
  * ## Local and S3 are not the same measurement
  *
  * A local disk has a real total (`disk_total_space`), and its used bytes are

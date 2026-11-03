@@ -456,8 +456,12 @@ Phase 14 row in `docs/planning/progress.md` set to `IN_PROGRESS`.
 5. Backup artifacts never land on the disk being backed up.
 6. Storage access is gated by RBAC + feature flag; `secure_documents` has no
    public direct URL.
-7. Capacity is enforced before uploads and backups; a breach triggers an alert
-   and an audit row; no silent partial write.
+7. Capacity is enforced at every disk write boundary — today the audit export
+   (`local`, `assertCanStore`) and the backup pre-check (`backups`, free space
+   + reserve); there are no upload endpoints yet, and the first one must open
+   with `assertCanStore()` before its first byte. A breach triggers an alert
+   and an audit row; no silent partial write. The per-boundary map lives in
+   `docs/base/infrastructure/storage.md` § Guard coverage.
 8. Disk binding reads `SystemSetting` with a config fallback and must never
    prevent boot when the table is missing or unreachable.
 9. The `storage_management` flag gates the management surface only — the

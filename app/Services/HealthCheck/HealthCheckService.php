@@ -253,6 +253,11 @@ class HealthCheckService
     {
         try {
             $disk = config('filesystems.default');
+
+            // Deliberately not through the capacity guard: the probe must stay
+            // answerable at high usage, a full disk throws right here (caught
+            // below as `fail`), and the hard-limit branch after the read
+            // reports >= 95% without writing.
             Storage::disk($disk)->put('__health_check__', 'ok');
             $read = Storage::disk($disk)->get('__health_check__');
             Storage::disk($disk)->delete('__health_check__');
