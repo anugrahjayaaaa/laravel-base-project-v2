@@ -95,11 +95,14 @@ value as each key's fallback.
 behaves exactly as before; a saved row simply overrides the same value.
 
 **Rebinding** — `AppServiceProvider::bindMailConfig()` pushes the stored values
-onto `config('mail')`. It is called from the save action **after commit**, not
-from `boot()`: boot runs before the settings table exists on a fresh install and
-before `RefreshDatabase` migrates, and the query failure takes the whole boot
-down. A long-lived queue worker keeps its bound transport until
-`queue:restart` — accepted, for the same reason token lifetimes accept it.
+onto `config('mail')`. It runs from `boot()` (via `applyRuntimeSettings()`), so
+every request and every queue worker — the process that actually sends — uses
+the stored transport rather than `.env`, and it runs again after a save commits
+so the admin who saved sees the change without a restart. Boot also runs before
+the settings table exists on a fresh install; that failure is the only one
+silenced, because anything else is a binding bug and is logged. A long-lived
+queue worker keeps its bound transport until `queue:restart` — accepted, for the
+same reason token lifetimes accept it.
 
 **Access** — `/notifications`, gated on the `notifications` feature flag plus
 `notifications.view` to read and `notifications.manage` to write. Sending a test

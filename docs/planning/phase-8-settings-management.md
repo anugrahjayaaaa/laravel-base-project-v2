@@ -165,6 +165,14 @@ tooltips say so rather than implying an effect that is not there. Pinned by
 `every_validated_setting_has_a_form_field` — the inverse of
 `SettingsPersistenceTest`, which catches the other direction.
 
+**Correction (2026-11-03).** Both keys were removed from the seeder, the rules,
+the action and the page (migration
+`2026_11_03_000000_remove_duplicate_expiry_settings.php`). Each flow already
+takes its one enforced lifetime from `password_reset_expire_minutes` /
+`email_verification_expire_minutes`, so these were a second control for the same
+number that no consumer read — the tooltips described an effect that never
+existed.
+
 **Gap 8 — the rate fields in *Rate Limits & Expirations* said what was limited
 without saying per what.** "Forgot Password Limit" and "Reset Submit Limit"
 never named the window, and "Verify Request Limit" was per-hour while its two

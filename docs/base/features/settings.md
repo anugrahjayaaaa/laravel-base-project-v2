@@ -9,7 +9,7 @@ covered by tests.
 
 ## Canonical keys
 
-67 keys, validated by `App\Http\Requests\V1\System\SystemSettingRequest` and
+66 keys, validated by `App\Http\Requests\V1\System\SystemSettingRequest` and
 seeded by `SystemSettingSeeder`. This list is regenerated from the request's
 `rules()` — a key that is validated but missing from
 `SystemSettingsUpdateAction::$updates` saves and changes nothing, so the request
@@ -17,7 +17,11 @@ is the list that matters. The seeder also writes the mail transport (`mail_*`,
 validated by `UpdateMailSettingsRequest`) and the notification-channel keys,
 which are managed by their own screens. An earlier version of this file listed
 nine keys and named three others (`security.*`, `registration.*`) that no code
-has ever read.
+has ever read. Two expiry keys were removed for the same reason:
+`password_reset_token_expire_minutes` and
+`email_verification_token_expire_minutes` were a second control for a lifetime
+each flow already takes from `password_reset_expire_minutes` /
+`email_verification_expire_minutes`, and nothing read them.
 
 ```text
 allow_email_change
@@ -38,7 +42,6 @@ email_change_cooldown_days
 email_verification_expire_minutes
 email_verification_mode
 email_verification_rate_limit
-email_verification_token_expire_minutes
 health_rate_limit_per_minute
 inactivity_lock_days
 inactivity_lock_enabled
@@ -64,7 +67,6 @@ password_require_symbol
 password_require_upper
 password_reset_expire_minutes
 password_reset_rate_limit
-password_reset_token_expire_minutes
 password_security_sweep_time
 password_uncompromised
 queue_retry_rate_limit_per_minute
@@ -98,7 +100,7 @@ has no category column.
 | Group | Keys |
 |-------|------|
 | Login rate limiting & lockout | `login_max_attempts`, `lockout_base_minutes`, `lockout_increment_minutes`, `login_rate_limit_per_minute`, `login_ip_rate_limit_per_minute` |
-| Password reset / verification rate limits | `password_forgot_rate_limit`, `password_reset_rate_limit`, `password_change_rate_limit_per_minute`, `password_reset_token_expire_minutes`, `email_verification_rate_limit`, `email_verification_token_expire_minutes` |
+| Password reset / verification rate limits | `password_forgot_rate_limit`, `password_reset_rate_limit`, `password_change_rate_limit_per_minute`, `email_verification_rate_limit` |
 | Password policy & lifecycle | `password_min_length`, `password_require_*`, `password_reject_username`, `password_uncompromised`, `password_history_*`, `password_expiry_*`, `password_security_sweep_time`, `inactivity_lock_*` |
 | System timezone | `app_timezone` — applied to the process at boot (ADR-027) |
 | Email verification | `email_verification_expire_minutes`, `email_verification_mode` |
@@ -153,9 +155,7 @@ of truth. `P8-E1a` proves every numeric bound rejects a value outside it.
 | `password_forgot_rate_limit` | integer, min:1, max:30 |
 | `password_reset_rate_limit` | integer, min:1, max:30 |
 | `password_change_rate_limit_per_minute` | integer, min:1, max:30 |
-| `password_reset_token_expire_minutes` | integer, min:1, max:1440 |
 | `email_verification_rate_limit` | integer, min:1, max:100 |
-| `email_verification_token_expire_minutes` | integer, min:1, max:1440 |
 | `password_min_length` | integer, min:4, max:128 |
 | `password_require_upper` / `_lower` / `_digit` / `_symbol` | boolean |
 | `password_reject_username` | boolean |
