@@ -186,8 +186,13 @@ class SystemSettingRequest extends BaseFormRequest
             ],
             'storage_s3_region' => ['nullable', 'string', 'max:64', 'required_if:storage_default_disk,s3'],
             'storage_s3_bucket' => ['nullable', 'string', 'max:255', 'required_if:storage_default_disk,s3'],
-            'storage_s3_endpoint' => ['nullable', 'url', 'max:255'],
-            'storage_s3_url' => ['nullable', 'url', 'max:255'],
+            // https only: SigV4 keeps the credentials off the wire, but a plain
+            // http endpoint would still carry every object body in cleartext.
+            // The field is admin-only (settings.manage), so the residual — an
+            // admin aiming it at an internal host over https — is an accepted
+            // trust boundary (docs/base/infrastructure/storage.md).
+            'storage_s3_endpoint' => ['nullable', 'url', 'max:255', 'starts_with:https://'],
+            'storage_s3_url' => ['nullable', 'url', 'max:255', 'starts_with:https://'],
 
             // 0 means "no quota"; the hard guard then measures the disk itself.
             'storage_max_capacity_mb' => ['integer', 'min:0', 'max:10485760'],
@@ -242,6 +247,24 @@ class SystemSettingRequest extends BaseFormRequest
                     $validator->errors()->add(
                         'storage_local_root',
                         'The storage root must be inside '.storage_path().'.'
+                    );
+                }
+            },
+            function (Validator $validator): void {
+                $mode = $this->input('storage_local_permission');
+
+                if (! is_string($mode) || $mode === '') {
+                    return;
+                }
+
+                // Group/other write bits would let every local user or process
+                // rewrite the private disk's contents. `0644` — the form's
+                // placeholder — stays valid; only world/group-writable modes
+                // are refused.
+                if ((octdec($mode) & 0022) !== 0) {
+                    $validator->errors()->add(
+                        'storage_local_permission',
+                        'The permission mode must not grant write access to group or others.'
                     );
                 }
             },

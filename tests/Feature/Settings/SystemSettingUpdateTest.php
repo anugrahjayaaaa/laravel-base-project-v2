@@ -224,6 +224,41 @@ class SystemSettingUpdateTest extends TestCase
     }
 
     /**
+     * Group/other write bits would let any local user rewrite files on the
+     * private disk. `0644` — the form's own placeholder — must stay accepted.
+     */
+    public function test_a_world_writable_permission_mode_is_rejected(): void
+    {
+        foreach (['0777', '0666', '0277'] as $mode) {
+            $this->apiUpdate(['storage_local_permission' => $mode])
+                ->assertStatus(422)
+                ->assertJsonValidationErrors('storage_local_permission');
+        }
+    }
+
+    public function test_a_group_readable_permission_mode_is_accepted(): void
+    {
+        $this->apiUpdate(['storage_local_permission' => '0644'])
+            ->assertOk();
+
+        $this->assertSame('0644', SystemSetting::getString('storage_local_permission'));
+    }
+
+    public function test_s3_urls_must_be_https(): void
+    {
+        $this->apiUpdate(['storage_s3_endpoint' => 'http://minio.internal:9000'])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('storage_s3_endpoint');
+
+        $this->apiUpdate(['storage_s3_url' => 'http://cdn.example.com'])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('storage_s3_url');
+
+        $this->apiUpdate(['storage_s3_endpoint' => 'https://minio.example.com:9000'])
+            ->assertOk();
+    }
+
+    /**
      * POST one payload through the API settings endpoint as an admin.
      *
      * The API channel rather than the web form because a web failure redirects

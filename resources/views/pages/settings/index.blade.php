@@ -808,7 +808,7 @@
                                            class="form-control form-control-sm @error('storage_local_permission') is-invalid @enderror"
                                            value="{{ old('storage_local_permission', $settings['storage_local_permission'] ?? '') }}"
                                            placeholder="0644" inputmode="numeric" pattern="0[0-7]{3}">
-                                    <div class="form-text">Octal mode for new files; directories get the execute bit. Blank keeps the system default.</div>
+                                    <div class="form-text">Octal mode for new files; directories get the execute bit. Must not grant write access to group or others (e.g. <code>0777</code> is refused). Blank keeps the system default.</div>
                                     @error('storage_local_permission')
                                         <div class="invalid-feedback d-block">{{ $message }}</div>
                                     @enderror
