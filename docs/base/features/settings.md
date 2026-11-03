@@ -186,7 +186,7 @@ of truth. `P8-E1a` proves every numeric bound rejects a value outside it.
 | `web_session_expire_value` | integer, min:1, max:3650 |
 | `web_session_expire_unit` | in:minutes,hours,days |
 | `storage_default_disk` | `nullable`, in:local,s3 |
-| `storage_local_root` | `nullable`, string, max:255, and must resolve inside `storage_path()` (checked in `after()`) |
+| `storage_local_root` | `nullable`, string, max:255, and must resolve inside `storage_path()` — `..` segments and symlinks are resolved before the check (`after()`) |
 | `storage_local_permission` | `nullable`, string, regex `/^0[0-7]{3}$/` |
 | `storage_s3_key` / `storage_s3_secret` | `nullable`, string, max:255, required when the disk is `s3` and no secret is already stored |
 | `storage_s3_region` / `storage_s3_bucket` | `nullable`, string, max:64 / max:255, `required_if:storage_default_disk,s3` |

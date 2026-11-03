@@ -502,3 +502,13 @@ Each entry contains:
 | **Reason** | Group A shipped S3 as a selectable driver — disk config, encrypted settings, capacity probe, UI fieldset, docs — but the adapter was never required. `laravel/framework` only suggests it, so the gap stayed invisible until someone selected S3, at which point the first operation threw `Class "League\Flysystem\AwsS3V3\PortableVisibilityConverter" not found`. |
 | **Impact** | **No behaviour change for local installs**: building the adapter makes no network call, and only operations against the `s3` disk touch AWS. `composer.lock` grows; deploys running `composer install --no-dev` must be allowed to fetch the SDK, and `composer audit` now covers it. The two advisories `composer audit` reports (livewire/livewire, symfony/mime) predate this change and are untouched. |
 | **Related** | ADR-028, P14-A1..A5, `composer.json`, `composer.lock`, `docs/base/infrastructure/storage.md`, `tests/Feature/Storage/StorageDiskTest.php` |
+
+## 2026-11-03 — Phase 14 fix: the local root check resolves the path before comparing
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-11-03 |
+| **Change** | `SystemSettingRequest::after()` no longer compares `storage_local_root` against `storage_path()` as a string prefix. It normalises the path lexically (`.` / `..` resolved without disk access), resolves the deepest existing ancestor through `realpath()` — which turns a symlink into its target — and re-attaches the part that does not exist yet, then compares. Three tests added: a `..` escape, a symlink planted inside the tree pointing out of it, and a valid root that has not been created yet. |
+| **Reason** | The guard existed but a prefix comparison is not containment: `/…/storage/../etc` started with the prefix and resolved to `/etc`, and a symlink inside `storage/` did the same through the filesystem. Both let an administrator point the private disk outside the storage tree, which is the disclosure primitive the check was written to prevent. |
+| **Impact** | **Only the `storage_local_root` rule changes.** A path that really resolves inside `storage_path()` is still accepted, including one that does not exist yet (the adapter creates it on first write). Unrelated keys are untouched. `StorageDiskTest` 26 tests / 65 assertions. |
+| **Related** | P14-A1..A5, `app/Http/Requests/V1/System/SystemSettingRequest.php`, `tests/Feature/Storage/StorageDiskTest.php`, `docs/base/infrastructure/storage.md`, `docs/base/features/settings.md` |

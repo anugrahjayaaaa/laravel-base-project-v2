@@ -109,6 +109,10 @@ All three map to the `storage_management` flag in `PermissionCatalog`.
 - User-uploaded files default to private; explicit public only when needed.
 - Only the `tmp` disk is TTL-cleaned. Audit logs and soft-deleted models are
   never pruned by retention jobs.
+- `storage_local_root` must **resolve** inside `storage_path()`. The check
+  normalises `..` and resolves the deepest existing ancestor through the
+  filesystem, so neither `/…/storage/../etc` nor a symlink pointing out of the
+  tree is accepted.
 - Prefer Laravel's `Storage` facade — local and S3 stay interchangeable.
 
 ## Cloud Storage
