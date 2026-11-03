@@ -542,3 +542,13 @@ Each entry contains:
 | **Reason** | The API read was already fixed by completing the flag's key list in `config/pennant.php` (P14 finding #1); nothing pinned it, so a later edit could reopen the leak silently. The env template is the only place an operator learns which overrides exist, and the three backup keys were undocumented there. Every other job in the repo dispatches after commit (AGENTS.md), and the guard's own comment already said the caller may be inside a transaction. |
 | **Impact** | **No behaviour change in the request path.** The cleanup job now reaches the queue after the surrounding transaction commits; the throttle test fakes the bus, so its assertion is unaffected. |
 | **Related** | `tests/Feature/Api/V1/Settings/SettingsApiTest.php`, `.env.example`, `app/Services/Storage/StorageCapacityGuard.php` |
+
+## 2026-11-03 — Phase 14 performance: the measured hot paths
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-11-03 |
+| **Change** | `StorageCapacityGuard` gained `cachedMetrics()` (60 s per disk root, for `/settings`, `/health` and `HealthCheckService`) and now walks the disk root with a raw `RecursiveIteratorIterator`; `metrics()` stays fresh and remains the only input to `assertCanStore()`. `SystemSettingsUpdateAction` compares the normalized payload against one `SystemSetting::getAll()` snapshot and writes only the keys whose value differs, and re-encrypts an S3 credential only when its plaintext changed. `RebaseTimezones` commits one transaction per chunk. `CleanTemporaryStorageJob` reads mtime and size from one local iterator instead of three disk-API calls per file. |
+| **Reason** | Measured over 1 000 files: the gauge walk 25.5 → 3.1 ms, a full settings save 62.6 ms / 70 queries → 10.7 ms / 4 queries, the settings page 87.4 → 45.2 ms, the `tmp` cleanup 491 → 154 ms, a 1 128-row rebase 1 546 → 854 ms. The gauge is polled by every health check, and the settings form posts all ~40 keys on every save. |
+| **Impact** | **The display gauge can lag by up to a minute** — the guard's refusal never uses it. A settings save that changes nothing now writes no row (and no cache bust); its audit row and notification still fire. A resubmitted S3 credential keeps its ciphertext instead of being re-encrypted. `docs/base/infrastructure/storage.md` no longer claims logs are inside the measured root. |
+| **Related** | ADR-029, P14-A5, `app/Services/Storage/StorageCapacityGuard.php`, `app/Actions/V1/System/SystemSettingsUpdateAction.php`, `app/Services/Timezone/RebaseTimezones.php`, `app/Jobs/CleanTemporaryStorageJob.php`, `tests/Feature/Storage/StorageDiskTest.php`, `tests/Feature/Storage/StorageBenchmarkTest.php` |

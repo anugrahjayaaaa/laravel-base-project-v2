@@ -877,3 +877,82 @@ the settings card — rejected: the driver is a runtime setting by design
 `config/filesystems.php`, `app/Providers/AppServiceProvider.php`
 (`bindStorageConfig`), `app/Services/Storage/StorageCapacityGuard.php`,
 `tests/Feature/Storage/StorageDiskTest.php`
+
+## ADR-029: the hot paths measured in Phase 14 get the cheaper shape
+
+**Status**: Accepted
+**Date**: 2026-11-03
+**Context**: A Phase 14 performance pass over the storage and settings paths
+found four costs that the feature itself did not need: the capacity gauge walked
+the whole disk root through Flysystem on every call (one object and one extra
+`stat()` per file, and it is called by `/api/v1/health` on every monitor poll),
+a settings save wrote all ~40 keys whether or not their values changed
+(70 queries per save, 67 of them SELECTs from `updateOrCreate`), the timezone
+rebase committed one row at a time, and the `tmp` cleanup asked the disk API
+three times per file for three answers the filesystem already had.
+
+**Decision**:
+
+- **`StorageCapacityGuard` has two entry points.** `metrics()` measures now and
+  is the only one the guard may use; `cachedMetrics()` caches the walk for 60 s
+  per disk root and is for display (`/settings`, `/health`,
+  `HealthCheckService::checkStorage()`). The quota is read on every call, so
+  lowering it shows on the next poll. `storedBytes()` walks the root with a raw
+  `RecursiveIteratorIterator` instead of `Storage::allFiles()`.
+- **A settings save writes only what differs.** One cached `getAll()` snapshot,
+  then `array_filter` against it; a resubmitted secret is compared as plaintext
+  and its ciphertext is only re-encrypted when the plaintext changed. The
+  storage audit row is now derived from the filtered list, so it names exactly
+  the keys that were written.
+- **`timezone:rebase` runs one transaction per chunk.** Not one per row (the
+  measured cost) and not one for the whole table: the command runs against a
+  live database, where a long lock is the bigger risk. Dry-run opens none.
+- **`CleanTemporaryStorageJob` reads metadata from the filesystem.** `tmp` is
+  always a local disk, so one iterator yields mtime and size without the two
+  extra adapter calls per file; the delete still goes through the disk API.
+
+**Measured** (same machine, test harness — SQLite `:memory:`, so the times are
+indicative and the query count is not):
+
+| Path | Before | After |
+| --- | --- | --- |
+| `metrics()` over 1 000 files | 25.5 ms | 3.1 ms |
+| `assertCanStore()` over 1 000 files | 30.3 ms | 10.4 ms |
+| Settings save (full form) | 62.6 ms / 70 queries | 10.7 ms / 4 queries |
+| Settings page render (1 000 files) | 87.4 ms | 45.2 ms |
+| `tmp` cleanup over 1 000 files | 491 ms | 154 ms |
+| `timezone:rebase`, 1 128 rows | 1 546 ms | 854 ms |
+
+**Alternatives considered**: caching used bytes for the guard too — rejected:
+the 95 % refusal is the one number that must be fresh, and a minute of lag is
+exactly how an upload slips past a full disk. An upsert for the settings save —
+rejected: the cost was the per-key `SELECT` from `updateOrCreate`, not the
+round-trip count, so an upsert would still write every row and still bust the
+cache for values that did not change. A batched `DATE_ADD`/`CASE` rebase —
+rejected: dialect-specific SQL for a one-off command, against a per-row loop
+that stays correct per row across a DST boundary. `Storage::allFiles()` for the
+cleanup — rejected: it is the slower path, and the measured delta is in the
+iterator, not in the delete.
+
+**Consequences**:
+
+- **The display gauge can lag by up to a minute.** An upload landing right after
+  a poll does not move the bar until the next poll after the TTL. The guard is
+  unaffected.
+- **A save that changes nothing writes nothing** — including no cache bust. The
+  values are unchanged, so a cached read is still correct; the audit row and the
+  notification still fire, because those describe the save, not the rows.
+- **A resubmitted S3 credential no longer rewrites its ciphertext.** Any reader
+  that expected the ciphertext to change on every save was relying on the IV
+  bug, not on a contract.
+- **`timezone:rebase` holds a write lock for at most one chunk** (500 rows by
+  default). A crash mid-table leaves the completed chunks converted and the
+  rest not, which re-running from the same `--from`/`--to` completes.
+
+**Related**: `app/Services/Storage/StorageCapacityGuard.php`,
+`app/Actions/V1/System/SystemSettingsUpdateAction.php`,
+`app/Services/Timezone/RebaseTimezones.php`,
+`app/Jobs/CleanTemporaryStorageJob.php`,
+`docs/base/infrastructure/storage.md`,
+`tests/Feature/Storage/StorageDiskTest.php`,
+`tests/Feature/Storage/StorageBenchmarkTest.php`

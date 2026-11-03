@@ -44,16 +44,22 @@ S3 credentials (`storage_s3_key`, `storage_s3_secret`) live in
 
 `App\Services\Storage\StorageCapacityGuard`:
 
-- `metrics()` — used / available / total / quota for the active disk. Local `used`
-  counts the bytes stored under the disk root (`storage/app/private`: uploads,
-  logs, audit exports); backups live in `storage/app/backups`, outside that root,
-  and are not counted. The physical ceiling still comes from `disk_total_space`,
-  or from the configured quota when set (smaller of the two). S3 probes
-  `ListObjectsV2` (300 s cache) for used bytes; without a quota there is **no
-  fabricated total**.
+- `metrics()` — used / available / total / quota for the active disk, measured
+  now. Local `used` counts the bytes stored under the disk root
+  (`storage/app/private`: uploads, audit exports) by walking the tree with a
+  raw `RecursiveIteratorIterator`; backups live in `storage/app/backups` and
+  logs in `storage/logs`, both outside that root, so neither is counted. The
+  physical ceiling still comes from `disk_total_space`, or from the configured
+  quota when set (smaller of the two). S3 probes `ListObjectsV2` (300 s cache)
+  for used bytes; without a quota there is **no fabricated total**.
+- `cachedMetrics()` — the same figures at most 60 s old, for display paths
+  (`/settings`, `/health`, `HealthCheckService`). The walk is cached per disk
+  root; the quota is still read on every call. **Never** use it for a write
+  decision: a minute-old number can pass a disk that is already past the limit.
 - `assertCanStore($bytes)` — throws `StorageCapacityExceededException` when the
   write would exceed quota or the disk is already ≥ 95% full. Call at every
-  write boundary **before** bytes land (today: `GenerateAuditExport`).
+  write boundary **before** bytes land (today: `GenerateAuditExport`). It
+  always measures through `metrics()`, never the cached figure.
 - Warning threshold (`storage_warning_threshold_percent`, default 80) writes
   `storage.capacity_warning` and dispatches `CleanTemporaryStorageJob` once per
   hour (`Cache::add` throttle).
@@ -86,7 +92,7 @@ Middleware: `feature:storage_management` + `can:storage.view` + `signed`.
 Settings → Storage Management card (`feature:storage_management`):
 
 - Driver select `local` \| `s3` with reactive fieldsets (plain `change` listener)
-- Capacity gauge from `StorageCapacityGuard::metrics()` (no Blade arithmetic)
+- Capacity gauge from `StorageCapacityGuard::cachedMetrics()` (no Blade arithmetic)
 - The same gauge on `/health`, on the storage card: used / total / available
   plus the progress bar, shown even while the check is failing. The check
   itself reads `fail` at `StorageCapacityGuard::HARD_LIMIT_PERCENT`. A null
