@@ -70,6 +70,8 @@ class RebaseTimezones
             DB::table($table)->orderBy($primary)->chunk(
                 $chunk,
                 function ($rows) use ($table, $primary, $names, $from, $to, $dryRun, &$touched): void {
+                    $pending = [];
+
                     foreach ($rows as $row) {
                         $update = [];
 
@@ -92,11 +94,23 @@ class RebaseTimezones
                         }
 
                         $touched++;
-
-                        if (! $dryRun) {
-                            DB::table($table)->where($primary, $row->{$primary})->update($update);
-                        }
+                        $pending[] = [$row->{$primary}, $update];
                     }
+
+                    if ($dryRun || $pending === []) {
+                        return;
+                    }
+
+                    // One commit per chunk, measured at roughly a third of the
+                    // per-row autocommit cost, and a chunk that dies half way
+                    // leaves no half-shifted range behind. Deliberately not one
+                    // transaction for the whole table: this runs against a live
+                    // database, where the lock is the bigger risk.
+                    DB::transaction(function () use ($table, $primary, $pending): void {
+                        foreach ($pending as [$id, $update]) {
+                            DB::table($table)->where($primary, $id)->update($update);
+                        }
+                    });
                 },
             );
 
