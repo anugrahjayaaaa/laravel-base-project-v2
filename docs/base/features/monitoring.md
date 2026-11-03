@@ -177,6 +177,16 @@ The fallback store is the local disk, so the ceiling is per server: the same
 status answer ten seconds apart on one host, which is all this endpoint
 promises.
 
+The storage probe is itself a write: `checkStorage()` puts a two-byte
+`__health_check__` file on the **default disk** and deletes it. That is the
+feature, not a leak — the question is "can the disk this application writes to
+still take a write?", which a dedicated probe disk cannot answer. The anonymous
+cost is bounded by the two bullets above (one probe per 10 s check-set window,
+`throttle:health` on top of that), and the probe deliberately bypasses the
+capacity guard: at ≥ 95% full it must still be able to try, fail, and report
+`fail` ([storage.md](../infrastructure/storage.md) § Guard coverage). Accepted
+residual under F3/ADR-023.
+
 ## System Health Dashboard (web)
 
 `GET /health` — the read-only admin page over the **same** `HealthCheckService`

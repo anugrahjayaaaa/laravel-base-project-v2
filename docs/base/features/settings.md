@@ -187,10 +187,10 @@ of truth. `P8-E1a` proves every numeric bound rejects a value outside it.
 | `web_session_expire_unit` | in:minutes,hours,days |
 | `storage_default_disk` | `nullable`, in:local,s3 |
 | `storage_local_root` | `nullable`, string, max:255, and must resolve inside `storage_path()` — `..` segments and symlinks are resolved before the check (`after()`) |
-| `storage_local_permission` | `nullable`, string, regex `/^0[0-7]{3}$/` |
+| `storage_local_permission` | `nullable`, string, regex `/^0[0-7]{3}$/`, and must not grant write access to group or others (`after()` refuses `0777`/`0666`/`0277`) |
 | `storage_s3_key` / `storage_s3_secret` | `nullable`, string, max:255, required when the disk is `s3` and no secret is already stored |
 | `storage_s3_region` / `storage_s3_bucket` | `nullable`, string, max:64 / max:255, `required_if:storage_default_disk,s3` |
-| `storage_s3_endpoint` / `storage_s3_url` | `nullable`, url, max:255 |
+| `storage_s3_endpoint` / `storage_s3_url` | `nullable`, url, max:255, `https://` only |
 | `storage_max_capacity_mb` | integer, min:0, max:10485760 (0 = no quota) |
 | `storage_warning_threshold_percent` | integer, min:1, max:99 |
 | `temp_file_retention_hours` | integer, min:1, max:8760 |
@@ -226,7 +226,8 @@ health/meta payloads, the auditors' `->format()` calls, the CSV export, and the
 minute-by-minute scheduler comparisons.
 
 Consequences and the migration path for existing rows are in **ADR-027** and
-`php artisan timezone:rebase`.
+`php artisan timezone:rebase` (which refuses to rewrite anything in production
+without `--force`).
 
 ## Security
 

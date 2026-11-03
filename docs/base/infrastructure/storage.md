@@ -36,6 +36,18 @@ Any read failure (no DB yet, migrate, `config:cache`) falls back to
 `config/filesystems.php` / `.env` — boot must never fail because settings are
 missing.
 
+Trust boundaries of the two fields an administrator types freely:
+
+- `storage_local_permission` must **not** set the group/other write bits
+  (`0777`, `0666`, `0277` are refused by the request's `after()`); every local
+  user would otherwise be able to rewrite private-disk contents. `0644` is the
+  normal answer.
+- `storage_s3_endpoint` / `storage_s3_url` must be `https://` (request rule).
+  Only `settings.manage` reaches these fields, so the residual — an admin
+  aiming a valid https URL at an internal host — is an accepted admin-only
+  trust boundary, not a public attack surface. SigV4 keeps the credentials off
+  the wire either way.
+
 S3 credentials (`storage_s3_key`, `storage_s3_secret`) live in
 `SystemSetting::SECRET_KEYS`: encrypted at rest, absent from `getAll()` /
 `getLive()`, blank form fields keep the stored ciphertext.

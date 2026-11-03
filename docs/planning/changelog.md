@@ -592,3 +592,43 @@ Each entry contains:
 | **Reason** | Invariant 7 read as if a global capacity check existed; in fact each check names one disk and the probe is deliberately outside the guard. An upload endpoint built on the invariant's old wording would have skipped the guard. |
 | **Impact** | **Documentation and comments only** — no runtime behaviour changes. |
 | **Related** | Phase 14 invariant 7, `docs/base/infrastructure/storage.md`, `docs/planning/phase-14-storage-backup-retention.md`, `app/Services/HealthCheck/HealthCheckService.php`, `app/Services/Storage/StorageCapacityGuard.php` |
+
+## 2026-11-03 — Phase 14 pentest #4 + #5: the two storage fields that accepted too much
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-11-03 |
+| **Change** | `SystemSettingRequest::after()` gains a second closure refusing `storage_local_permission` modes with the group/other write bits (`0777`, `0666`, `0277` → 422); `storage_s3_endpoint` / `storage_s3_url` gain `starts_with:https://`. The settings form hint names the refusal; `docs/base/infrastructure/storage.md` records both as admin-only trust boundaries; `docs/base/features/settings.md` rule table matches. |
+| **Reason** | A world-writable private disk lets any local user rewrite its contents, and a plain-http S3 endpoint carries every object body in cleartext (SigV4 only protects the credentials). Both fields are reachable solely through `settings.manage`, so the residual — an admin aiming a valid https URL at an internal host — is documented as accepted rather than blocked. |
+| **Impact** | **A save that previously persisted `0777` (or an `http://` endpoint) now returns 422 on that field.** `0644`, the form's placeholder, stays valid. Values already stored before this change keep applying at runtime — validation guards the entrance, not the stored row. |
+| **Related** | `app/Http/Requests/V1/System/SystemSettingRequest.php`, `resources/views/pages/settings/index.blade.php`, `docs/base/infrastructure/storage.md`, `docs/base/features/settings.md`, `tests/Feature/Settings/SystemSettingUpdateTest.php` |
+
+## 2026-11-03 — Phase 14 pentest #6: the backup job is single-flight by lock
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-11-03 |
+| **Change** | `ExecuteSystemBackupJob` carries `WithoutOverlapping('system-backup')` with `expireAfter(3600)` — twice `$timeout`. |
+| **Reason** | Single-flight previously held only because `bin/run-workers.sh backups` starts one worker — an operational accident, not a contract. Adding a second worker, or a supervisor restart racing the scheduler's `onOneServer()` window, would have overlapped two backups onto one destination and a half-written archive. |
+| **Impact** | An overlapping dispatch is released back to the queue until the lock frees; the lock expiry (3600s) outlives `$timeout` (1800s) so it cannot free mid-run. Needs a lock-capable default cache store (Redis in production). |
+| **Related** | `app/Jobs/ExecuteSystemBackupJob.php`, `docs/base/infrastructure/backup-disaster-recovery.md`, `tests/Feature/Storage/BackupStrategyTest.php` |
+
+## 2026-11-03 — Phase 14 pentest #7: the health probe's anonymous write is now on record
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-11-03 |
+| **Change** | `docs/base/features/monitoring.md` § Health Check Endpoint states the residual: `checkStorage()` writes and deletes a two-byte probe on the default disk, unauthenticated by design (F3/ADR-023), cost-bounded by the 10 s check-set cache and `throttle:health`, deliberately outside the capacity guard. |
+| **Reason** | The proposed mitigation — probing a cheap dedicated disk — would answer the wrong question, and a longer probe TTL is a no-op while the whole check set is already cached for 10 s. What remained was to write the accepted residual down so a later reader does not "fix" the probe into the guard or onto a scratch disk. |
+| **Impact** | **Documentation only** — no runtime behaviour changes. |
+| **Related** | `docs/base/features/monitoring.md`, `docs/base/infrastructure/storage.md` § Guard coverage, ADR-023 |
+
+## 2026-11-03 — Phase 14 pentest #8: timezone:rebase names its intent in production
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-11-03 |
+| **Change** | `timezone:rebase` refuses to write outside `--dry-run` when the environment is `production` and `--force` is absent. |
+| **Reason** | The command rewrites every timestamp column and cannot be undone; in production an interactive `confirm()` either hangs an unattended maintenance window or passes on an accidental newline from stdin. The cutover order (maintenance → rebase → save `app_timezone` → resume) was already documented in the command docblock and ADR-027; the explicit flag closes the invocation side. |
+| **Impact** | **Production runs now require `--force`.** Non-production keeps the plain confirmation prompt. `settings.md` mentions the refusal next to the ADR-027 link. |
+| **Related** | `routes/console.php`, `docs/base/features/settings.md`, `tests/Feature/Console/RebaseTimezonesCommandTest.php` |

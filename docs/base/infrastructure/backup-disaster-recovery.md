@@ -20,7 +20,10 @@ code rather than the package's own scheduler wiring:
   worker that consumes it. The scheduler (`SystemBackupSchedule`, ticked from
   `routes/console.php` with `onOneServer()`) and the operator trigger
   (`POST /storage/backup`, `can:backup.execute` + `feature:storage_management`,
-  throttled `system-backup`) both dispatch the same job.
+  throttled `system-backup`) both dispatch the same job. The job also carries a
+  `WithoutOverlapping('system-backup')` middleware (expiry 3600s > `$timeout`),
+  so the single-flight property holds by lock, not only by the accident of one
+  worker process.
   `SystemBackupRunAction` owns the pre-check, the audit rows and the outcome
   notifications.
 - **Dedicated destination.** Artifacts land on the `backups` disk only — never
