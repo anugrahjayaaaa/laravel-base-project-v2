@@ -201,6 +201,39 @@ class EmailVerificationModeTest extends TestCase
         $this->assertStringContainsString('Email not verified', $body);
     }
 
+    /**
+     * The index is where an administrator works through the list, so the resend
+     * action belongs there too — unverified accounts only, and hidden in
+     * `disabled` mode for the same reason as the detail page.
+     */
+    #[DataProvider('modeMatrix')]
+    public function test_the_index_offers_resend_only_for_unverified_accounts(string $mode, bool $adminCanSend, bool $userCanRequest): void
+    {
+        SystemSetting::set('email_verification_mode', $mode);
+
+        $admin = User::factory()->create();
+        $admin->assignRole(RoleLookup::find('admin'));
+        $admin->assignRole(Role::findOrCreate('admin', 'web'));
+        $this->actingAs($admin);
+
+        $unverified = $this->user();
+        $verified = User::factory()->create(['email_verified_at' => now()]);
+
+        $body = $this->get(route('users.index'))->assertOk()->getContent();
+
+        $this->assertSame(
+            $adminCanSend,
+            str_contains($body, route('users.resend-verification', $unverified)),
+            "index resend button visibility wrong in {$mode} mode"
+        );
+
+        $this->assertStringNotContainsString(
+            route('users.resend-verification', $verified),
+            $body,
+            'a verified account was offered a resend'
+        );
+    }
+
     public function test_the_notice_page_tells_the_user_when_no_one_can_resend(): void
     {
         SystemSetting::set('email_verification_mode', 'disabled');

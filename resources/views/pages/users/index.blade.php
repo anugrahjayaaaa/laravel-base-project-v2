@@ -224,6 +224,19 @@
                                                 </x-ui.confirm-action>
                                             @endcan
                                         @else
+                                            @if ($canResendVerification && !$user->hasVerifiedEmail())
+                                                @can('users.update')
+                                                    <form method="POST"
+                                                        action="{{ route('users.resend-verification', $user) }}"
+                                                        class="d-inline">
+                                                        @csrf
+                                                        <button type="submit" class="btn btn-sm btn-outline-warning"
+                                                            title="Resend Verification">
+                                                            <i class="fas fa-envelope"></i>
+                                                        </button>
+                                                    </form>
+                                                @endcan
+                                            @endif
                                             @if ($currentStatus === 'active' && $status->value === 'active')
                                                 @can('users.deactivate')
                                                     <x-ui.confirm-action :action="route('users.deactivate', $user)" method="POST"

@@ -104,6 +104,7 @@ class UserController extends Controller
             'filters' => $request->only('search', 'status', 'sort', 'direction'),
             'counts' => $counts,
             'statuses' => UserStatusEnum::cases(),
+            'canResendVerification' => SystemSetting::getString('email_verification_mode', 'public') !== 'disabled',
         ]);
     }
 
