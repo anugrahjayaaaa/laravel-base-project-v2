@@ -1,6 +1,6 @@
 # Phase 14 — Storage, Backup & Retention
 
-> Date: 2026-10-29 (breakdown revised; Group F added 2026-10-31) | Status: **IN_PROGRESS** (Groups B, C, D & E **DONE**, Groups A & F **REVIEW**) | Branch: `feature/phase-14-storage-backup-retention`
+> Date: 2026-10-29 (breakdown revised; Group F added 2026-10-31) | Status: **DONE (owner-closed 2026-11-03; runtime verification — real backup/restore, real S3, live rebase — deferred to real-world use)** | Branch: `feature/phase-14-storage-backup-retention`
 > Purpose: make the base project storage-aware and backup-capable, with strict
 > retention that protects audit trails and soft-deleted models, enforces
 > capacity limits via `SystemSetting`, and cleans only temporary/unattached
@@ -481,3 +481,13 @@ Phase 14 row in `docs/planning/progress.md` set to `IN_PROGRESS`.
 - Sabotage checks red for the guard and the retention test.
 - Docs updated and consistent with code.
 - No regression in shared code paths.
+
+**Gate result (2026-11-03, at close):** Pint clean; full suite 2366 passed /
+8524 assertions (incl. `--filter=Storage` and the sabotage/pentest suites);
+docs reconciled through the E2 pass plus the #1–#8 remediation pass of the
+same day. **Deferred by owner decision** — the items this gate cannot prove on
+SQLite/fakes: a real `mysqldump` → restore round-trip, a real S3 bucket
+(credential binding, SigV4, `ListObjectsV2` gauge), `timezone:rebase` on live
+data, and the production archive-encryption flow (`BACKUP_ARCHIVE_PASSWORD` +
+`config:cache` + `queue:restart`). These become evidence when the phase meets
+real infrastructure.
