@@ -220,7 +220,9 @@ class StorageCapacityGuard
                 'percent' => $metrics['percent'],
             ]);
 
-            CleanTemporaryStorageJob::dispatch();
+            // The caller may be inside its own transaction; a sweep dispatched
+            // from a rollback would clean a `tmp` the save never used.
+            CleanTemporaryStorageJob::dispatch()->afterCommit();
         } catch (Throwable) {
             // Reporting must never block the write path or replace its error.
         }
