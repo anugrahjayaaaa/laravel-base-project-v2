@@ -40,7 +40,7 @@ class HealthController extends Controller
         $isHealthy = $health->isHealthy($checks);
         $settings = SystemSetting::getLive();
 
-        $storage = $capacity->metrics();
+        $storage = $capacity->cachedMetrics();
         foreach (['used', 'available', 'total'] as $key) {
             $storage[$key.'_label'] = $this->bytesLabel($storage[$key]);
         }

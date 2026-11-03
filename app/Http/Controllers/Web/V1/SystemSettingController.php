@@ -71,7 +71,7 @@ class SystemSettingController extends Controller
 
         // The view renders labels, never arithmetic: measuring belongs to the
         // service that also refuses the write.
-        $storage = $capacity->metrics();
+        $storage = $capacity->cachedMetrics();
 
         foreach (['used', 'available', 'total'] as $key) {
             $storage[$key.'_label'] = $this->bytesLabel($storage[$key]);

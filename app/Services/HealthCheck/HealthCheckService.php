@@ -257,7 +257,7 @@ class HealthCheckService
             $read = Storage::disk($disk)->get('__health_check__');
             Storage::disk($disk)->delete('__health_check__');
 
-            if (($this->capacity->metrics($disk)['percent'] ?? 0) >= StorageCapacityGuard::HARD_LIMIT_PERCENT) {
+            if (($this->capacity->cachedMetrics($disk)['percent'] ?? 0) >= StorageCapacityGuard::HARD_LIMIT_PERCENT) {
                 return 'fail';
             }
 

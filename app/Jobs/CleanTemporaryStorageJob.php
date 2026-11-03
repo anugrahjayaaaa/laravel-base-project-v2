@@ -5,6 +5,7 @@ namespace App\Jobs;
 use App\Jobs\Concerns\ReadsCorrelationId;
 use App\Models\SystemSetting;
 use App\Support\QueueName;
+use FilesystemIterator;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -12,6 +13,8 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use RecursiveDirectoryIterator;
+use RecursiveIteratorIterator;
 use Throwable;
 
 /**
@@ -77,13 +80,32 @@ class CleanTemporaryStorageJob implements ShouldQueue
         $deleted = 0;
         $bytes = 0;
 
-        foreach ($disk->allFiles() as $path) {
+        // `path('')` ends with a separator, which the relative-path slice below
+        // would otherwise count twice.
+        $root = rtrim($disk->path(''), '/');
+
+        if (! is_dir($root)) {
+            return;
+        }
+
+        // `tmp` is always a local disk, so the metadata comes straight off the
+        // filesystem: `allFiles()` + `lastModified()` + `size()` cost three API
+        // round trips per file for three `stat()` answers.
+        $files = new RecursiveIteratorIterator(
+            new RecursiveDirectoryIterator($root, FilesystemIterator::SKIP_DOTS),
+            RecursiveIteratorIterator::LEAVES_ONLY
+        );
+
+        foreach ($files as $file) {
+            // The disk API takes the path relative to its root.
+            $path = str_replace('\\', '/', substr($file->getPathname(), strlen($root) + 1));
+
             try {
-                if ($disk->lastModified($path) >= $cutoff) {
+                if ($file->getMTime() >= $cutoff) {
                     continue;
                 }
 
-                $size = (int) $disk->size($path);
+                $size = (int) $file->getSize();
                 if ($disk->delete($path)) {
                     $deleted++;
                     $bytes += $size;

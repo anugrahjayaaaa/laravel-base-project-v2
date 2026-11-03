@@ -5,8 +5,11 @@ namespace App\Services\Storage;
 use App\Exceptions\StorageCapacityExceededException;
 use App\Jobs\CleanTemporaryStorageJob;
 use App\Models\SystemSetting;
+use FilesystemIterator;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
+use RecursiveDirectoryIterator;
+use RecursiveIteratorIterator;
 use Throwable;
 
 /**
@@ -38,29 +41,57 @@ class StorageCapacityGuard
     /** S3 has no cheap usage endpoint; one probe per five minutes is enough. */
     private const S3_PROBE_TTL_SECONDS = 300;
 
+    /** The gauge is polled by every health check; a walk per minute is enough. */
+    private const USED_BYTES_CACHE_SECONDS = 60;
+
     /** One warning per hour, not one per upload. */
     private const WARNING_THROTTLE_SECONDS = 3600;
 
     /**
-     * Used / available / total bytes for the active disk.
+     * Used / available / total bytes for the active disk, measured now.
      *
      * `used` counts the bytes actually stored under the disk's root (uploads,
-     * logs, exports) for local disks; `total` is the physical total or the
-     * configured quota, whichever is smaller. S3 has no local root, so its used
-     * bytes come from the bucket probe. `used` and `total` are null when the
-     * platform cannot answer (an S3 probe without credentials, a local root that
-     * does not exist yet). Callers must render "unknown" rather than treat null
-     * as zero.
+     * exports; backups and logs live outside it) for local disks; `total` is
+     * the physical total or the configured quota, whichever is smaller. S3 has
+     * no local root, so its used bytes come from the bucket probe. `used` and
+     * `total` are null when the platform cannot answer (an S3 probe without
+     * credentials, a local root that does not exist yet). Callers must render
+     * "unknown" rather than treat null as zero.
      *
      * @return array{disk: string, used: int|null, available: int|null, total: int|null, quota: int|null, percent: float|null, known: bool}
      */
     public function metrics(?string $disk = null): array
     {
+        return $this->build($disk ?? (string) config('filesystems.default', 'local'));
+    }
+
+    /**
+     * The same figures for a gauge, at most a minute old.
+     *
+     * The health endpoint and the settings page both call this on every poll,
+     * and a walk over the disk root per poll is the expensive part. Never use
+     * this for a write decision: a minute-old number can be under the limit
+     * while the disk is already past it.
+     *
+     * @return array{disk: string, used: int|null, available: int|null, total: int|null, quota: int|null, percent: float|null, known: bool}
+     */
+    public function cachedMetrics(?string $disk = null): array
+    {
         $disk ??= (string) config('filesystems.default', 'local');
+
+        return $this->build($disk, $this->cachedUsage($disk));
+    }
+
+    /**
+     * @param  array{0: int|null, 1: int|null}|null  $usage
+     * @return array{disk: string, used: int|null, available: int|null, total: int|null, quota: int|null, percent: float|null, known: bool}
+     */
+    private function build(string $disk, ?array $usage = null): array
+    {
         $quotaMb = max(0, SystemSetting::getInt('storage_max_capacity_mb', 0));
         $quota = $quotaMb > 0 ? $quotaMb * 1024 * 1024 : null;
 
-        [$used, $physicalTotal] = $this->usage($disk);
+        [$used, $physicalTotal] = $usage ?? $this->usage($disk);
 
         $total = $quota ?? $physicalTotal;
         if ($quota !== null && $physicalTotal !== null) {
@@ -119,10 +150,10 @@ class StorageCapacityGuard
     /**
      * Bytes used and the physical total for one disk.
      *
-     * Local `used` is the bytes stored under the disk root — uploads, logs,
-     * exports, backups — so the gauge answers "what is in /storage" rather than
-     * the whole volume the project happens to sit on. The physical total comes
-     * from `disk_total_space` and still feeds the quota as its ceiling.
+     * Local `used` is the bytes stored under the disk root — uploads, exports,
+     * backups — so the gauge answers "what is in /storage" rather than the whole
+     * volume the project happens to sit on. The physical total comes from
+     * `disk_total_space` and still feeds the quota as its ceiling.
      *
      * @return array{0: int|null, 1: int|null}
      */
@@ -147,16 +178,55 @@ class StorageCapacityGuard
     }
 
     /**
+     * Cache the walk, not the arithmetic: the quota still comes from settings
+     * on every call, so lowering it shows up on the next poll.
+     *
+     * @return array{0: int|null, 1: int|null}
+     */
+    private function cachedUsage(string $disk): array
+    {
+        if ($disk === 's3') {
+            return $this->usage($disk);
+        }
+
+        try {
+            $root = Storage::disk($disk)->path('');
+        } catch (Throwable) {
+            return [null, null];
+        }
+
+        // Hashed because the root is an absolute path; two deployments can share
+        // one cache store without colliding or leaking a server path as a key.
+        return Cache::remember(
+            'storage.used.'.$disk.':'.md5($root),
+            self::USED_BYTES_CACHE_SECONDS,
+            fn (): array => $this->usage($disk)
+        );
+    }
+
+    /**
      * Sum the file sizes under the disk root.
      *
-     * @return int
+     * A raw iterator, not `Storage::allFiles()`: the Flysystem path builds one
+     * string per file and adds a `size()` call each (`stat()` again), which
+     * measured at over five times the cost of walking the same tree directly.
      */
     private function storedBytes(string $disk): int
     {
-        $bytes = 0;
+        $root = Storage::disk($disk)->path('');
 
-        foreach (Storage::disk($disk)->allFiles() as $path) {
-            $bytes += (int) Storage::disk($disk)->size($path);
+        if (! is_dir($root)) {
+            return 0;
+        }
+
+        $bytes = 0;
+        $files = new RecursiveIteratorIterator(
+            new RecursiveDirectoryIterator($root, FilesystemIterator::SKIP_DOTS),
+            RecursiveIteratorIterator::LEAVES_ONLY
+        );
+
+        foreach ($files as $file) {
+            $bytes += (int) $file->getSize();
         }
 
         return $bytes;
