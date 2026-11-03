@@ -495,21 +495,6 @@
                                 @enderror
                             </div>
                             <div class="col-md-6">
-                                <label for="password_reset_token_expire_minutes" class="form-label">
-                                    Reset Link Lifetime
-                                    <i class="bi bi-info-circle text-muted fs-7 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Duration in minutes a password reset link remains usable before expiring."></i>
-                                </label>
-                                <div class="input-group">
-                                    <input type="number" name="password_reset_token_expire_minutes" id="password_reset_token_expire_minutes"
-                                           class="form-control form-control-sm @error('password_reset_token_expire_minutes') is-invalid @enderror" @error('password_reset_token_expire_minutes') aria-invalid="true" aria-describedby="password_reset_token_expire_minutes_error" @enderror
-                                           value="{{ old('password_reset_token_expire_minutes', $settings['password_reset_token_expire_minutes'] ?? 15) }}" min="1" max="1440">
-                                    <span class="input-group-text bg-body-tertiary">min</span>
-                                </div>
-                                @error('password_reset_token_expire_minutes')
-                                    <div class="invalid-feedback d-block" id="password_reset_token_expire_minutes_error">{{ $message }}</div>
-                                @enderror
-                            </div>
-                            <div class="col-md-6">
                                 <label for="password_reset_expire_minutes" class="form-label">
                                     Reset Token Lifetime
                                     <i class="bi bi-info-circle text-muted fs-7 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Duration in minutes the internal security token behind the reset link stays valid."></i>
@@ -552,21 +537,6 @@
                                 </div>
                                 @error('email_verification_expire_minutes')
                                     <div class="invalid-feedback d-block" id="email_verification_expire_minutes_error">{{ $message }}</div>
-                                @enderror
-                            </div>
-                            <div class="col-md-6">
-                                <label for="email_verification_token_expire_minutes" class="form-label">
-                                    Verification Token Lifetime
-                                    <i class="bi bi-info-circle text-muted fs-7 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Duration in minutes the internal token behind the verification link stays valid."></i>
-                                </label>
-                                <div class="input-group">
-                                    <input type="number" name="email_verification_token_expire_minutes" id="email_verification_token_expire_minutes"
-                                           class="form-control form-control-sm @error('email_verification_token_expire_minutes') is-invalid @enderror" @error('email_verification_token_expire_minutes') aria-invalid="true" aria-describedby="email_verification_token_expire_minutes_error" @enderror
-                                           value="{{ old('email_verification_token_expire_minutes', $settings['email_verification_token_expire_minutes'] ?? 60) }}" min="1" max="1440">
-                                    <span class="input-group-text bg-body-tertiary">min</span>
-                                </div>
-                                @error('email_verification_token_expire_minutes')
-                                    <div class="invalid-feedback d-block" id="email_verification_token_expire_minutes_error">{{ $message }}</div>
                                 @enderror
                             </div>
 

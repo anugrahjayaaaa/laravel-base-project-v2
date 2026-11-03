@@ -51,9 +51,7 @@ class SystemSettingRequest extends BaseFormRequest
             'password_forgot_rate_limit' => ['integer', 'min:1', 'max:30'],
             'password_reset_rate_limit' => ['integer', 'min:1', 'max:30'],
             'password_change_rate_limit_per_minute' => ['integer', 'min:1', 'max:30'],
-            'password_reset_token_expire_minutes' => ['integer', 'min:1', 'max:1440'],
             'email_verification_rate_limit' => ['integer', 'min:1', 'max:100'],
-            'email_verification_token_expire_minutes' => ['integer', 'min:1', 'max:1440'],
 
             // Password policy & lifecycle
             'password_min_length' => ['integer', 'min:4', 'max:128'],

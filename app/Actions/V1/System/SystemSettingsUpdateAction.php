@@ -95,9 +95,7 @@ class SystemSettingsUpdateAction
             'password_forgot_rate_limit' => (string) ($data['password_forgot_rate_limit'] ?? 3),
             'password_reset_rate_limit' => (string) ($data['password_reset_rate_limit'] ?? 3),
             'password_change_rate_limit_per_minute' => (string) ($data['password_change_rate_limit_per_minute'] ?? 5),
-            'password_reset_token_expire_minutes' => (string) ($data['password_reset_token_expire_minutes'] ?? 15),
             'email_verification_rate_limit' => (string) ($data['email_verification_rate_limit'] ?? 5),
-            'email_verification_token_expire_minutes' => (string) ($data['email_verification_token_expire_minutes'] ?? 60),
 
             // Password policy & lifecycle
             // 12 is the floor, not a preference: the seeder writes 12 and
