@@ -18,6 +18,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
@@ -209,6 +210,64 @@ class StorageDiskTest extends TestCase
                 'storage_local_root' => '/etc',
             ])
             ->assertSessionHasErrors('storage_local_root');
+    }
+
+    /**
+     * A prefix comparison accepts this: the string starts with storage_path()
+     * and still resolves outside it.
+     */
+    public function test_the_local_root_rejects_a_parent_directory_escape(): void
+    {
+        $this->actingAs($this->admin())
+            ->from('/settings')
+            ->post(route('settings.update'), [
+                'storage_default_disk' => 'local',
+                'storage_local_root' => storage_path().'/../etc',
+            ])
+            ->assertSessionHasErrors('storage_local_root');
+    }
+
+    /**
+     * Same hole through the filesystem: the string sits inside the tree, the
+     * link does not.
+     */
+    public function test_the_local_root_rejects_a_symlink_out_of_the_tree(): void
+    {
+        $outside = sys_get_temp_dir().'/lbp-storage-'.uniqid();
+        File::ensureDirectoryExists($outside);
+
+        $link = storage_path('app/escape-'.uniqid());
+        File::link($outside, $link);
+
+        try {
+            $this->actingAs($this->admin())
+                ->from('/settings')
+                ->post(route('settings.update'), [
+                    'storage_default_disk' => 'local',
+                    'storage_local_root' => $link.'/files',
+                ])
+                ->assertSessionHasErrors('storage_local_root');
+        } finally {
+            File::delete($link);
+            File::deleteDirectory($outside);
+        }
+    }
+
+    public function test_a_local_root_inside_the_storage_tree_is_accepted(): void
+    {
+        $root = storage_path('app/private/custom-'.uniqid());
+
+        $this->actingAs($this->admin())
+            ->from('/settings')
+            ->post(route('settings.update'), [
+                'storage_default_disk' => 'local',
+                'storage_local_root' => $root,
+            ])
+            ->assertSessionHasNoErrors();
+
+        SystemSetting::bustCache();
+
+        $this->assertSame($root, SystemSetting::getString('storage_local_root'));
     }
 
     public function test_the_capacity_guard_refuses_a_write_over_the_quota(): void
