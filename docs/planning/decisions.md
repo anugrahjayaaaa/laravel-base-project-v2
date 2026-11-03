@@ -715,6 +715,10 @@ and its default source is the whole project while its default destination is the
   (`backup.notifications.notifications = []`). Outcomes go through
   `NotificationAdminEventAction` to holders of `backup.execute`, the people who
   can act on them.
+- **Encryption**: production runs refuse to start without
+  `BACKUP_ARCHIVE_PASSWORD` (`SystemBackupRunner::run()`), `verify_backup` is
+  on so a corrupt archive fails the run, and a failed run deletes
+  `backup-temp`, where the dump is written in plaintext.
 
 **Alternatives considered**: `mysqldump` + `tar` in a custom command —
 rejected: the package already models sources, destinations, retention and
@@ -735,7 +739,10 @@ must run on a connection whose `retry_after` exceeds its own timeout. The
 it; that exclusion is asserted by the estimator's tests rather than assumed.
 The disk shares the application's physical volume: a host or volume loss takes
 the database and its backups together, so an off-host copy stays an operator
-responsibility (`docs/base/infrastructure/backup-disaster-recovery.md`).
+responsibility (`docs/base/infrastructure/backup-disaster-recovery.md`). A
+production install that never set the archive password stops taking backups —
+loudly, through `backup.failed` — rather than writing readable artifacts with
+the database and `secure_documents` inside.
 
 **Related**: P14-B1..B3, `docs/base/infrastructure/backup-disaster-recovery.md`,
 `docs/base/infrastructure/queue.md`,

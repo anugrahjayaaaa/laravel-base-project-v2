@@ -562,3 +562,13 @@ Each entry contains:
 | **Reason** | Measured over 1 000 files: the gauge walk 25.5 → 3.1 ms, a full settings save 62.6 ms / 70 queries → 10.7 ms / 4 queries, the settings page 87.4 → 45.2 ms, the `tmp` cleanup 491 → 154 ms, a 1 128-row rebase 1 546 → 854 ms. The gauge is polled by every health check, and the settings form posts all ~40 keys on every save. |
 | **Impact** | **The display gauge can lag by up to a minute** — the guard's refusal never uses it. A settings save that changes nothing now writes no row (and no cache bust); its audit row and notification still fire. A resubmitted S3 credential keeps its ciphertext instead of being re-encrypted. `docs/base/infrastructure/storage.md` no longer claims logs are inside the measured root. |
 | **Related** | ADR-029, P14-A5, `app/Services/Storage/StorageCapacityGuard.php`, `app/Actions/V1/System/SystemSettingsUpdateAction.php`, `app/Services/Timezone/RebaseTimezones.php`, `app/Jobs/CleanTemporaryStorageJob.php`, `tests/Feature/Storage/StorageDiskTest.php`, `tests/Feature/Storage/StorageBenchmarkTest.php` |
+
+## 2026-11-03 — Phase 14 pentest #1: production refuses a plaintext backup archive
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-11-03 |
+| **Change** | `SystemBackupRunner::run()` refuses to run when `backup.backup.password` is empty and the environment is `production`; a failed run deletes `backup.backup.temporary_directory` (confined to `storage/`); `backup.verify_backup` is now `true`. |
+| **Reason** | `spatie/laravel-backup` only calls `ZipArchive::setPassword()` when the password is not null, and the archive holds the whole database plus `storage/app` — including `secure_documents`. A default install therefore wrote readable artifacts and reported success. The plaintext dump also sits in `backup-temp` during the run, which the package leaves behind when the process is killed. |
+| **Impact** | **Production installs without `BACKUP_ARCHIVE_PASSWORD` stop taking backups** and surface it as `backup.failed`; set the variable, run `config:cache`, then `queue:restart`. Non-production and already-encrypted installs are unchanged. A corrupt archive now fails the run instead of being announced as completed. |
+| **Related** | ADR-026, `docs/base/infrastructure/backup-disaster-recovery.md`, `config/backup.php`, `app/Services/Backup/SystemBackupRunner.php`, `tests/Feature/Storage/BackupStrategyTest.php` |

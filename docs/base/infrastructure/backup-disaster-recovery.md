@@ -25,6 +25,15 @@ code rather than the package's own scheduler wiring:
   notifications.
 - **Dedicated destination.** Artifacts land on the `backups` disk only — never
   the disk being backed up. The destination is excluded from the source set.
+- **Encryption is mandatory in production.** `SystemBackupRunner::run()` refuses
+  to start when `backup.backup.password` is empty and the environment is
+  `production`: the archive contains the whole database and `storage/app`,
+  including `secure_documents`, and the package only encrypts when the password
+  is set. `backup.verify_backup` is on, so a corrupt archive fails the run
+  instead of being announced as completed. A failed run deletes
+  `backup-temp`, where the dump is written in plaintext — a process killed by a
+  timeout or `SIGKILL` cannot, and the next run empties the directory before
+  writing.
 - **Pre-flight capacity check.** `SystemBackupSizeEstimator` measures the raw
   `storage/app` size (minus the excluded directories) plus MySQL
   `data_length + index_length`. `SystemBackupRunAction` refuses when the
@@ -130,8 +139,11 @@ mounted volume) before treating any of this as DR.
 
 ## Security
 
-- Backup archives are not encrypted beyond the disk's own defaults
-  (`BACKUP_ARCHIVE_PASSWORD` env is available when that is not enough).
+- Backup archives are encrypted with `BACKUP_ARCHIVE_PASSWORD`, and
+  **production refuses to run without it** (`SystemBackupRunner`, ADR-026).
+  The value lives in config, not in the settings table: set the variable, run
+  `php artisan config:cache`, then `php artisan queue:restart` so the worker
+  picks it up.
 - Access control on backup files: read through the storage permissions, not a
   public URL.
 - Backup/abort operations are audited (see Audit Events above).
