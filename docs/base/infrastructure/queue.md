@@ -67,7 +67,7 @@ BACKUP_QUEUE_RETRY_AFTER (2000)  >  ExecuteSystemBackupJob::$timeout (1800)
 ```
 
 ```bash
-bin/run-workers.sh backups   # queue:work --connection=backups --queue=backups
+bin/run-workers.sh backups   # queue:work backups --queue=backups
 ```
 
 Both processes are in `deploy/supervisor/laravel-base-project.conf`
