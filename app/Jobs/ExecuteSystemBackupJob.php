@@ -10,6 +10,7 @@ use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Queue\Middleware\WithoutOverlapping;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
 use Throwable;
@@ -67,6 +68,19 @@ class ExecuteSystemBackupJob implements ShouldQueue
     public function backoff(): array
     {
         return [300];
+    }
+
+    /**
+     * Single-flight even if the queue stops being one worker. `bin/run-workers.sh
+     * backups` serializes today, but nothing in the connection enforces that —
+     * the lock does. Expiry must outlive `$timeout` or a lock freed mid-run
+     * would admit a second backup over the first one's half-written archive.
+     *
+     * @return array<int, object>
+     */
+    public function middleware(): array
+    {
+        return [(new WithoutOverlapping('system-backup'))->expireAfter(3600)];
     }
 
     public function handle(SystemBackupRunAction $action): void

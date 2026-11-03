@@ -19,6 +19,7 @@ use Database\Seeders\RoleSeeder;
 use Database\Seeders\SystemSettingSeeder;
 use Illuminate\Console\Command;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Queue\Middleware\WithoutOverlapping;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\DB;
@@ -183,6 +184,22 @@ class BackupStrategyTest extends TestCase
         $this->assertSame('backups', $job->connection);
         $this->assertSame(QueueName::BACKUPS, $connection['queue']);
         $this->assertGreaterThan($job->timeout, $connection['retry_after']);
+    }
+
+    /**
+     * The single `backups` worker serializes by accident, not by contract. The
+     * overlap lock is the contract, and its expiry must outlive `$timeout` or
+     * a lock freed mid-run admits a second backup over a half-written archive.
+     */
+    public function test_the_job_locks_out_an_overlapping_run(): void
+    {
+        $job = new ExecuteSystemBackupJob();
+
+        [$middleware] = $job->middleware();
+
+        $this->assertInstanceOf(WithoutOverlapping::class, $middleware);
+        $this->assertSame('system-backup', $middleware->key);
+        $this->assertGreaterThan($job->timeout, $middleware->expiresAfter);
     }
 
     public function test_the_manual_trigger_is_rate_limited(): void
