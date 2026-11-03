@@ -513,6 +513,16 @@ Each entry contains:
 | **Impact** | **Only the `storage_local_root` rule changes.** A path that really resolves inside `storage_path()` is still accepted, including one that does not exist yet (the adapter creates it on first write). Unrelated keys are untouched. `StorageDiskTest` 26 tests / 65 assertions. |
 | **Related** | P14-A1..A5, `app/Http/Requests/V1/System/SystemSettingRequest.php`, `tests/Feature/Storage/StorageDiskTest.php`, `docs/base/infrastructure/storage.md`, `docs/base/features/settings.md` |
 
+## 2026-11-03 — Security: two advisories reported by `composer audit` are patched
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-11-03 |
+| **Change** | `livewire/livewire` 4.4.7 → 4.4.8 (GHSA-mhf7-xp6r-6qrc, authorization bypass in `#[Authorize]` via reordered parameter keys, affected `<4.4.8`) and `symfony/mime` 7.4.18 → 7.4.22 (CVE-2026-45070, header injection via non-token characters, affected `<7.4.22`). Patch-level only; `composer audit` is now clean. |
+| **Reason** | `composer audit` reported both after the S3 adapter install. Neither comes from the AWS packages — livewire arrives through `laravel/pulse`, `symfony/mime` through `laravel/framework` / `symfony/mailer` — but both are reachable code in this application. |
+| **Impact** | **Patch-level vendor change only**: two packages moved, no constraints in `composer.json` changed, no application code touched. 437 tests across notification, Vantage, Pulse and feature-flag suites pass on the updated vendor tree. |
+| **Related** | `composer.lock`, `laravel/pulse`, `laravel/framework` |
+
 ## 2026-11-03 — Phase 14 fix: the storage audit row is earned by a change, not by a save
 
 | Field | Value |
