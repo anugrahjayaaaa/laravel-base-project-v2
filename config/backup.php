@@ -194,8 +194,12 @@ return [
         /*
          * After creating the zip, verify it can be opened and contains files.
          * Recommended for critical backups but adds a small overhead.
+         *
+         * On: a corrupt archive fails the run instead of being announced as a
+         * completed backup. The archive is the last copy and the only artifact
+         * that leaves this host.
          */
-        'verify_backup' => false,
+        'verify_backup' => true,
 
         /*
          * The number of attempts, in case the backup command encounters an exception

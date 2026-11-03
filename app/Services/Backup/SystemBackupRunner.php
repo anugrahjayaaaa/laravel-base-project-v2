@@ -5,9 +5,11 @@ namespace App\Services\Backup;
 use App\Models\SystemSetting;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
 use RuntimeException;
 use Spatie\Backup\Config\Config;
+use Throwable;
 
 /**
  * The only place that invokes `spatie/laravel-backup`.
@@ -27,6 +29,14 @@ use Spatie\Backup\Config\Config;
  * `SystemBackupRunAction` owns the outcome notification, resolved from
  * `backup.execute` holders. The package's notifier would mail a hardcoded
  * address instead. `--disable-notifications` is passed on both commands.
+ *
+ * ## Production refuses an unencrypted archive
+ *
+ * The archive holds the whole database plus `storage/app` — including
+ * `secure_documents` — and `BACKUP_ARCHIVE_PASSWORD` is the only encryption the
+ * package applies. `Zip` only calls `setPassword()` when the password is not
+ * null, so an install that never set it writes plaintext and says nothing.
+ * Refusing is louder than warning in a settings card nobody reopens.
  */
 class SystemBackupRunner
 {
@@ -42,22 +52,78 @@ class SystemBackupRunner
      * A cleanup failure is logged rather than thrown: the backup itself
      * succeeded, and a failed rotation must not report the backup as failed.
      *
-     * @throws RuntimeException when the backup command exits non-zero.
+     * @throws RuntimeException when production has no archive password, or
+     *                          when the backup command exits non-zero.
      */
     public function run(): void
     {
-        $this->applyRetention();
+        $this->assertEncryptedInProduction();
 
-        $exit = Artisan::call('backup:run', ['--disable-notifications' => true]);
+        try {
+            $this->applyRetention();
 
-        if ($exit !== Command::SUCCESS) {
-            throw new RuntimeException('Backup command failed with exit code '.$exit.'.');
+            $exit = Artisan::call('backup:run', ['--disable-notifications' => true]);
+
+            if ($exit !== Command::SUCCESS) {
+                throw new RuntimeException('Backup command failed with exit code '.$exit.'.');
+            }
+
+            $cleanup = Artisan::call('backup:clean', ['--disable-notifications' => true]);
+
+            if ($cleanup !== Command::SUCCESS) {
+                Log::warning('Backup cleanup failed', ['exit_code' => $cleanup]);
+            }
+        } catch (Throwable $e) {
+            $this->cleanTemporaryDirectory();
+
+            throw $e;
+        }
+    }
+
+    /**
+     * Refuse a plaintext artifact in production.
+     *
+     * `Zip` reads the password once and only encrypts when it is not null, so
+     * an empty env value produces a readable archive with no other signal.
+     */
+    private function assertEncryptedInProduction(): void
+    {
+        if (! app()->isProduction() || filled(config('backup.backup.password'))) {
+            return;
         }
 
-        $cleanup = Artisan::call('backup:clean', ['--disable-notifications' => true]);
+        throw new RuntimeException(
+            'Refusing to create an unencrypted backup in production: set BACKUP_ARCHIVE_PASSWORD and restart the queue worker.'
+        );
+    }
 
-        if ($cleanup !== Command::SUCCESS) {
-            Log::warning('Backup cleanup failed', ['exit_code' => $cleanup]);
+    /**
+     * Remove the package's scratch directory after a failed run.
+     *
+     * The database dump is written there in plaintext. The package deletes it
+     * after its own exceptions, not after a `Throwable` it never catches, and
+     * a killed process runs nothing at all — the next run empties the
+     * directory before writing.
+     *
+     * The path comes from config and this deletes recursively, so it is
+     * confined to `storage/`: a misconfigured directory must not turn this
+     * into a delete anywhere on the host.
+     */
+    private function cleanTemporaryDirectory(): void
+    {
+        $temp = rtrim((string) config('backup.backup.temporary_directory'), '/');
+
+        if ($temp === '' || ! str_starts_with($temp.'/', rtrim(storage_path(), '/').'/') || ! is_dir($temp)) {
+            return;
+        }
+
+        try {
+            File::deleteDirectory($temp);
+        } catch (Throwable $e) {
+            Log::warning('Backup temporary directory could not be removed', [
+                'path' => $temp,
+                'exception' => $e->getMessage(),
+            ]);
         }
     }
 

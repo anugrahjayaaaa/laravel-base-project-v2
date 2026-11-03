@@ -17,7 +17,9 @@ use Database\Seeders\FeatureFlagSeeder;
 use Database\Seeders\PermissionSeeder;
 use Database\Seeders\RoleSeeder;
 use Database\Seeders\SystemSettingSeeder;
+use Illuminate\Console\Command;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
@@ -58,6 +60,7 @@ class BackupStrategyTest extends TestCase
     {
         File::delete(storage_path('app/'.self::SOURCE_FILE));
         File::delete(storage_path('app/backups/'.self::DESTINATION_FILE));
+        File::deleteDirectory(storage_path('app/testing-backup-temp'));
 
         parent::tearDown();
     }
@@ -303,6 +306,55 @@ class BackupStrategyTest extends TestCase
 
         $this->assertDatabaseHas('activity_log', ['event' => 'backup.triggered']);
         Notification::assertSentTo($admin, ConfigurationChangedNotification::class);
+    }
+
+    public function test_production_refuses_an_unencrypted_backup(): void
+    {
+        $this->app->detectEnvironment(fn (): string => 'production');
+        config(['backup.backup.password' => null]);
+
+        Artisan::shouldReceive('call')->never();
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('BACKUP_ARCHIVE_PASSWORD');
+
+        app(SystemBackupRunner::class)->run();
+    }
+
+    public function test_production_runs_when_an_archive_password_is_configured(): void
+    {
+        $this->app->detectEnvironment(fn (): string => 'production');
+        config(['backup.backup.password' => 'secret']);
+
+        Artisan::shouldReceive('call')->twice()->andReturn(Command::SUCCESS);
+
+        app(SystemBackupRunner::class)->run();
+    }
+
+    public function test_a_failed_backup_removes_the_plaintext_temporary_directory(): void
+    {
+        $temp = storage_path('app/testing-backup-temp');
+        config([
+            'backup.backup.password' => 'secret',
+            'backup.backup.temporary_directory' => $temp,
+        ]);
+
+        File::ensureDirectoryExists($temp.'/db-dumps');
+        File::put($temp.'/db-dumps/database.sql', 'plaintext');
+
+        Artisan::shouldReceive('call')
+            ->once()
+            ->with('backup:run', ['--disable-notifications' => true])
+            ->andThrow(new RuntimeException('dump failed'));
+
+        try {
+            app(SystemBackupRunner::class)->run();
+            $this->fail('A failed backup must be rethrown.');
+        } catch (RuntimeException $e) {
+            $this->assertSame('dump failed', $e->getMessage());
+        }
+
+        $this->assertDirectoryDoesNotExist($temp);
     }
 
     public function test_the_trigger_audit_row_is_discarded_with_its_transaction(): void
