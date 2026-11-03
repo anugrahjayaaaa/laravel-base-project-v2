@@ -188,10 +188,11 @@ class FeatureCatalog
      * Settings owned by a flag, grouped by the flag that makes them
      * meaningless when it is off.
      *
-     * A key declared under `settings` in config/pennant.php feeds a route this
-     * flag gates. With the flag off that route 403s before the setting is ever
-     * read, so the settings page hides the field and the update action refuses
-     * the write. One map, so the two cannot disagree about which keys are dead.
+     * A key declared under `settings` in config/pennant.php is only editable
+     * from a surface this flag gates. With the flag off that surface is gone,
+     * so the settings page never renders the field and the update action
+     * refuses the write — an absent field must not be read as "reset to the
+     * default". One map, so the two cannot disagree about which keys are dead.
      *
      * `active` is resolved through `activeMap()` — ONE store read for every
      * group, not one per flag. The kill switch (`disabled => true`) is honoured
