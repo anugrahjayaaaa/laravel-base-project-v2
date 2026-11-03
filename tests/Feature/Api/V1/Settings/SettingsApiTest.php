@@ -148,6 +148,44 @@ class SettingsApiTest extends TestCase
     }
 
     /**
+     * Every key the storage and backup cards own disappears together, not just
+     * the one the flag happens to be tested with — a reader must not see disk
+     * or backup policy they cannot edit.
+     */
+    public function test_api_index_hides_every_storage_key_when_the_flag_is_off(): void
+    {
+        $this->seed(SystemSettingSeeder::class);
+
+        $keys = [
+            'storage_default_disk', 'storage_local_root', 'storage_s3_region',
+            'storage_max_capacity_mb', 'storage_warning_threshold_percent',
+            'temp_file_retention_hours', 'backup_enabled', 'backup_schedule',
+            'backup_retention_daily',
+        ];
+
+        foreach ($keys as $key) {
+            $this->assertArrayHasKey($key, SystemSetting::getLive(), 'precondition: the flag is on');
+        }
+
+        Feature::deactivate('storage_management');
+        Feature::flushCache();
+
+        Sanctum::actingAs($this->userWith('settings.view'));
+
+        $data = $this->getJson(route('api.v1.settings.index'))
+            ->assertOk()
+            ->json('data');
+
+        foreach ($keys as $key) {
+            $this->assertArrayNotHasKey(
+                $key,
+                $data,
+                $key.' is owned by storage_management and must be hidden while the flag is off'
+            );
+        }
+    }
+
+    /**
      * The same exclusion applies to the POST/PUT response body — a client must
      * not get back a value it just wrote to a disabled-feature key.
      */
