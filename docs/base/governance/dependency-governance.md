@@ -82,7 +82,7 @@ an application-level abstraction:
 | `laravel/pulse` | None (technical tool only) | Application code never calls Pulse directly |
 | `laravel/pennant` | None (Feature facade is the API) | Lightweight feature flag layer for runtime feature availability |
 | `dedoc/scramble` | Documentation routes only | Documentation generation; the spec is exported at deploy and served from a file (ADR-025) |
-| `spatie/laravel-backup` | None (scheduled jobs) | Infrastructure concern, scheduled via Kernel |
+| `spatie/laravel-backup` | `SystemBackupRunner` | The only caller of the package's commands; schedule, pre-check and notifications live in application code (ADR-026) |
 
 ## Upgrade Policy
 

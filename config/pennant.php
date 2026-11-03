@@ -63,6 +63,35 @@ return [
             'description' => 'Mail transport configuration and the in-app notification inbox.',
             'settings' => ['send_test_mail_rate_limit_per_minute'],
         ],
+        'storage_management' => [
+            'label' => 'Storage Management',
+            'group' => 'Settings',
+            'description' => 'Storage driver configuration, capacity metrics and secure file access.',
+            // Every key the two cards own, disk and backup keys included. The
+            // runtime binder reads the database directly, so listing them does
+            // not gate storage itself; it stops a save made while the cards are
+            // hidden from writing the update action's hardcoded defaults over
+            // the stored configuration.
+            'settings' => [
+                'storage_default_disk',
+                'storage_local_root',
+                'storage_local_permission',
+                'storage_s3_key',
+                'storage_s3_secret',
+                'storage_s3_region',
+                'storage_s3_bucket',
+                'storage_s3_endpoint',
+                'storage_s3_url',
+                'storage_max_capacity_mb',
+                'storage_warning_threshold_percent',
+                'temp_file_retention_hours',
+                'backup_enabled',
+                'backup_schedule',
+                'backup_retention_daily',
+                'backup_retention_weekly',
+                'backup_retention_monthly',
+            ],
+        ],
         'sessions' => [
             'label' => 'Sessions',
             'group' => 'Security',

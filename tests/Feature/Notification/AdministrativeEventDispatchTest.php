@@ -313,6 +313,7 @@ class AdministrativeEventDispatchTest extends TestCase
             'user.deactivated', 'user.activated', 'user.deleted',
             'role.changed', 'role.deleted', 'feature.changed', 'setting.changed',
             'mail_setting.changed', 'channel.changed',
+            'backup.completed', 'backup.failed', 'backup.aborted',
         ];
 
         // `permission.changed` has no dispatcher of its own: it is the same

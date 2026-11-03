@@ -8,8 +8,11 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Notification;
 use Spatie\Activitylog\Models\Activity;
 use Tests\TestCase;
+use App\Actions\V1\Auth\AuthAuthenticateAction;
 use App\Actions\V1\Auth\AuthLogoutAction;
 use App\Actions\V1\Auth\AuthResendVerificationAction;
+use App\Auth\LoginThrottle;
+use App\Models\FailedLoginAttempt;
 use App\Models\SystemSetting;
 use Illuminate\Http\Request;
 
@@ -114,6 +117,41 @@ class AuthAuditTest extends TestCase
 
         $this->assertSame($user->email, $properties['identifier'] ?? null);
         $this->assertStandardContext($activity);
+    }
+
+    public function test_an_automatic_lock_is_attributed_to_the_system(): void
+    {
+        $user = $this->makeUser();
+        $ip = '127.0.0.1';
+
+        // The transport limiter trips at the same threshold as the durable
+        // one, so repeated HTTP posts stop at `checkThrottle()` and never reach
+        // the lock branch. Seed the counter one below the threshold to
+        // exercise the attempt that actually applies the lock.
+        FailedLoginAttempt::create([
+            'identifier' => $user->email,
+            'ip_address' => $ip,
+            'attempts' => 5,
+            'lock_count' => 0,
+            'locked_until' => null,
+        ]);
+
+        $result = app(AuthAuthenticateAction::class)->run(
+            $user->email,
+            'wrong-password',
+            $ip,
+            app(LoginThrottle::class),
+        );
+
+        $this->assertGreaterThan(0, $result['lockedSeconds'] ?? 0, 'the attempt did not lock the account');
+
+        $activity = Activity::where('event', 'auth.account_locked')
+            ->where('subject_id', $user->id)
+            ->first();
+
+        $this->assertNotNull($activity, 'the lock did not write auth.account_locked');
+        $this->assertNull($activity->causer_id);
+        $this->assertSame('SYSTEM', $activity->properties->toArray()['causer'] ?? null);
     }
 
     /**

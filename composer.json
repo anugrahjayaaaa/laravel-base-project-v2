@@ -13,7 +13,9 @@
         "laravel/pulse": "^1.8",
         "laravel/sanctum": "^4.0",
         "laravel/tinker": "^3.0",
+        "league/flysystem-aws-s3-v3": "^3.0",
         "spatie/laravel-activitylog": "^4.8",
+        "spatie/laravel-backup": "^10.3",
         "spatie/laravel-permission": "^6.0",
         "storviaio/vantage": "^0.1.25"
     },

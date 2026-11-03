@@ -69,7 +69,7 @@ class SystemSettingUpdateTest extends TestCase
         $this->assertEquals(15, SystemSetting::getInt('username_change_cooldown_days'));
         $this->assertEquals(10, SystemSetting::getInt('email_change_cooldown_days'));
         $this->assertEquals('00:00', SystemSetting::getString('password_security_sweep_time'));
-        $this->assertSame('', SystemSetting::getString('password_security_sweep_timezone'));
+        $this->assertSame('', SystemSetting::getString('app_timezone'));
 
         $activity = Activity::query()
             ->where('description', 'system_setting.updated')
@@ -90,12 +90,12 @@ class SystemSettingUpdateTest extends TestCase
 
         $response = $this->from('/settings')->post(route('settings.update'), [
             'password_security_sweep_time' => '07:30',
-            'password_security_sweep_timezone' => 'Asia/Jakarta',
+            'app_timezone' => 'Asia/Jakarta',
         ]);
 
         $response->assertRedirect();
         $this->assertSame('07:30', SystemSetting::getString('password_security_sweep_time'));
-        $this->assertSame('Asia/Jakarta', SystemSetting::getString('password_security_sweep_timezone'));
+        $this->assertSame('Asia/Jakarta', SystemSetting::getString('app_timezone'));
     }
 
     public function test_sweep_schedule_rejects_invalid_timezone(): void
@@ -105,11 +105,11 @@ class SystemSettingUpdateTest extends TestCase
         $this->actingAs($user, 'web');
 
         $response = $this->from('/settings')->post(route('settings.update'), [
-            'password_security_sweep_timezone' => 'Not/A_Timezone',
+            'app_timezone' => 'Not/A_Timezone',
         ]);
 
         $response->assertRedirect();
-        $response->assertSessionHasErrors('password_security_sweep_timezone');
+        $response->assertSessionHasErrors('app_timezone');
     }
 
     public function test_grace_toggle_disables_and_does_not_store_disabled_days(): void
@@ -171,7 +171,7 @@ class SystemSettingUpdateTest extends TestCase
     /**
      * Every numeric bound in the rules is proven to reject a value outside it.
      *
-     * One bound in 37 was ever exercised (`password_security_sweep_timezone`,
+     * One bound in 37 was ever exercised (`app_timezone`,
      * which is not numeric), so a mistyped bound is invisible: `max:1440`
      * written as `max:140` passes every test in the suite and silently caps a
      * rate limit a quarter of the way it should be. The rule is the contract;
@@ -221,6 +221,41 @@ class SystemSettingUpdateTest extends TestCase
         }
 
         $this->assertNotSame([], $checked, 'no integer bound found in rules()');
+    }
+
+    /**
+     * Group/other write bits would let any local user rewrite files on the
+     * private disk. `0644` — the form's own placeholder — must stay accepted.
+     */
+    public function test_a_world_writable_permission_mode_is_rejected(): void
+    {
+        foreach (['0777', '0666', '0277'] as $mode) {
+            $this->apiUpdate(['storage_local_permission' => $mode])
+                ->assertStatus(422)
+                ->assertJsonValidationErrors('storage_local_permission');
+        }
+    }
+
+    public function test_a_group_readable_permission_mode_is_accepted(): void
+    {
+        $this->apiUpdate(['storage_local_permission' => '0644'])
+            ->assertOk();
+
+        $this->assertSame('0644', SystemSetting::getString('storage_local_permission'));
+    }
+
+    public function test_s3_urls_must_be_https(): void
+    {
+        $this->apiUpdate(['storage_s3_endpoint' => 'http://minio.internal:9000'])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('storage_s3_endpoint');
+
+        $this->apiUpdate(['storage_s3_url' => 'http://cdn.example.com'])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('storage_s3_url');
+
+        $this->apiUpdate(['storage_s3_endpoint' => 'https://minio.example.com:9000'])
+            ->assertOk();
     }
 
     /**

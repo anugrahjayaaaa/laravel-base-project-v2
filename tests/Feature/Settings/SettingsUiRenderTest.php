@@ -100,19 +100,38 @@ class SettingsUiRenderTest extends TestCase
                 'password_expiry_enabled' => true,
                 'inactivity_lock_enabled' => true,
                 'inactivity_lock_grace_enabled' => true,
-                'password_security_sweep_timezone' => 'Asia/Jakarta',
+                'app_timezone' => 'Asia/Jakarta',
                 'allow_username_change' => true,
                 'allow_email_change' => true,
                 'registration_enabled' => true,
                 'registration_default_role' => 'user',
             ],
             'timezones' => $timezones,
+            // The shipped default the empty option names; the controller reads it
+            // from the provider because `config('app.timezone')` is the applied zone.
+            'baseTimezone' => 'UTC',
             // `mapWithKeys`, not `pluck('name', 'name')`: pluck reads a `name`
             // property off each element and a list of strings has none, so it
             // returns an empty map and the roles <select> renders bare.
             'roles' => collect(['admin', 'editor', 'user'])->mapWithKeys(
                 fn (string $name): array => [$name => $name]
             ),
+            // Phase 14 Group A. The same shape `StorageCapacityGuard::metrics()`
+            // returns plus the controller's formatted labels.
+            'storage' => [
+                'disk' => 'local',
+                'used' => 1073741824,
+                'available' => 3221225472,
+                'total' => 4294967296,
+                'quota' => null,
+                'percent' => 25.0,
+                'known' => true,
+                'used_label' => '1 GB',
+                'available_label' => '3 GB',
+                'total_label' => '4 GB',
+            ],
+            'storageEnabled' => true,
+            'hasStorageSecret' => false,
             'settingGroups' => FeatureCatalog::settingGroups(),
         ];
     }
@@ -223,7 +242,7 @@ class SettingsUiRenderTest extends TestCase
         $this->login();
         $html = $this->render();
 
-        preg_match_all('/<input[^>]*type="checkbox"[^>]*name="([a-z_]+)"/', $html, $boxes);
+        preg_match_all('/<input[^>]*type="checkbox"[^>]*name="([a-z0-9_]+)"/', $html, $boxes);
 
         $this->assertNotSame([], $boxes[1], 'no checkbox rendered');
 
@@ -257,8 +276,25 @@ class SettingsUiRenderTest extends TestCase
         // its own logout form, so a bare submit assertion fails on every page.
         $this->assertStringNotContainsString('Save Settings', $html, 'a read-only viewer was given a save button');
         $this->assertStringNotContainsString(route('settings.update'), $html, 'a read-only viewer was given the settings form');
+        $this->assertStringNotContainsString('Run Backup Now', $html, 'a read-only viewer was given the backup trigger');
         // The values are still readable — read-only means visible, not blank.
         $this->assertStringContainsString('login_max_attempts', $html);
+    }
+
+    /**
+     * The manual backup trigger is a form of its own: HTML cannot nest forms, so
+     * the button in the Backup card carries `form="backup-trigger-form"` and the
+     * form itself sits after the settings form closes.
+     */
+    public function test_the_backup_trigger_is_a_separate_form(): void
+    {
+        $this->login();
+        $html = $this->render();
+
+        $this->assertStringContainsString('form="backup-trigger-form"', $html);
+        $this->assertStringContainsString('id="backup-trigger-form"', $html);
+        $this->assertStringContainsString(route('storage.backup.store'), $html);
+        $this->assertStringContainsString('Run Backup Now', $html);
     }
 
     public function test_a_manager_is_not_shown_the_read_only_banner(): void
@@ -283,7 +319,7 @@ class SettingsUiRenderTest extends TestCase
         $this->login();
         $html = $this->render();
 
-        preg_match_all('/<input[^>]*name="([a-z_]+)"[^>]*>/', $html, $inputs);
+        preg_match_all('/<input[^>]*name="([a-z0-9_]+)"[^>]*>/', $html, $inputs);
 
         $this->assertNotSame([], $inputs[1], 'no input rendered');
 
@@ -302,7 +338,7 @@ class SettingsUiRenderTest extends TestCase
         }
 
         // Every emitted feedback div carries the id the aria pair points at.
-        preg_match_all('/<div class="invalid-feedback[^"]*" id="([a-z_]+)">/', $html, $feedback);
+        preg_match_all('/<div class="invalid-feedback[^"]*" id="([a-z0-9_]+)">/', $html, $feedback);
 
         foreach ($feedback[1] as $id) {
             $this->assertStringContainsString('aria-describedby="' . $id . '"', $html, "nothing points at #{$id}");
@@ -391,7 +427,7 @@ class SettingsUiRenderTest extends TestCase
         $this->login();
         $html = $this->render();
 
-        preg_match_all('/name="([a-z_]+)"/', $html, $fields);
+        preg_match_all('/name="([a-z0-9_]+)"/', $html, $fields);
         $rendered = array_unique($fields[1]);
 
         // Rendered from the `foreach` over the password-policy switches.
@@ -425,7 +461,7 @@ class SettingsUiRenderTest extends TestCase
 
         $rules = (new SystemSettingRequest())->rules();
 
-        preg_match_all('/<input[^>]*type="number"[^>]*name="([a-z_]+)"[^>]*min="(\d+)" max="(\d+)"/', $html, $inputs, PREG_SET_ORDER);
+        preg_match_all('/<input[^>]*type="number"[^>]*name="([a-z0-9_]+)"[^>]*min="(\d+)" max="(\d+)"/', $html, $inputs, PREG_SET_ORDER);
 
         $this->assertNotSame([], $inputs, 'no bounded number input rendered');
 
@@ -484,6 +520,6 @@ class SettingsUiRenderTest extends TestCase
         $this->assertStringContainsString('value="editor"', $html);
         // The empty option is "application default" / "no role", not a blank
         // row the admin has to guess about.
-        $this->assertStringContainsString('Application timezone', $html);
+        $this->assertStringContainsString('Application default', $html);
     }
 }

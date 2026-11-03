@@ -38,7 +38,11 @@ class SettingsPersistenceTest extends TestCase
         // travels with it, and a partial payload would flag that as missing.
         $action->run(array_fill_keys($validated, 1));
 
-        $persisted = array_keys(SystemSetting::getAll());
+        // Read the table, not `SystemSetting::getAll()`: the accessor removes
+        // credential keys on purpose (Phase 14 added the S3 pair), and this
+        // test is about whether a write happened, not whether a value is
+        // readable through the redacted view.
+        $persisted = DB::table('system_settings')->pluck('key')->all();
         $missing = array_values(array_diff($validated, $persisted));
 
         $this->assertSame([], $missing, implode(

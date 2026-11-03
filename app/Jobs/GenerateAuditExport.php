@@ -7,6 +7,7 @@ use App\Jobs\Concerns\ReadsCorrelationId;
 use App\Models\Activity;
 use App\Models\AuditExport;
 use App\Notifications\AuditExportReadyNotification;
+use App\Services\Storage\StorageCapacityGuard;
 use App\Support\QueueName;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -282,6 +283,12 @@ class GenerateAuditExport implements ShouldQueue
             rewind($handle);
 
             $path = $export->diskPath();
+
+            // Refuse before the file lands: a half-written export that `failed()`
+            // then has to unlink is a worse outcome than a clean refusal. Bytes
+            // are unknown here (the stream may have spilled to disk already), so
+            // the guard enforces the percentage threshold.
+            app(StorageCapacityGuard::class)->assertCanStore(0, 'local');
 
             // The private disk, never `public`. An audit extract carries every
             // actor's IP and user agent; a file under `storage/app/public` is one

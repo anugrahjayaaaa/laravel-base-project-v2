@@ -2,8 +2,11 @@
 
 namespace App\Http\Controllers\Web\V1;
 
+use App\Concerns\FormatsByteSize;
 use App\Http\Controllers\Controller;
+use App\Models\SystemSetting;
 use App\Services\HealthCheck\HealthCheckService;
+use App\Services\Storage\StorageCapacityGuard;
 use Illuminate\Contracts\View\View;
 
 /**
@@ -21,18 +24,32 @@ use Illuminate\Contracts\View\View;
  */
 class HealthController extends Controller
 {
+    use FormatsByteSize;
+
     /**
      * Render the current status of every core service.
      *
      * `$checks` arrives as `name => 'ok'|'fail'` (see HealthCheckService),
      * so the view iterates it without asking the service — or the database —
-     * anything itself.
+     * anything itself. The storage card reads the capacity gauge's numbers for
+     * the used/used-and-available line.
      */
-    public function index(HealthCheckService $health): View
+    public function index(HealthCheckService $health, StorageCapacityGuard $capacity): View
     {
         $checks = $health->check();
         $isHealthy = $health->isHealthy($checks);
+        $settings = SystemSetting::getLive();
 
-        return view('pages.health.index', compact('checks', 'isHealthy'));
+        $storage = $capacity->cachedMetrics();
+        foreach (['used', 'available', 'total'] as $key) {
+            $storage[$key.'_label'] = $this->bytesLabel($storage[$key]);
+        }
+
+        return view('pages.health.index', [
+            'checks' => $checks,
+            'isHealthy' => $isHealthy,
+            'storage' => $storage,
+            'settings' => $settings,
+        ]);
     }
 }

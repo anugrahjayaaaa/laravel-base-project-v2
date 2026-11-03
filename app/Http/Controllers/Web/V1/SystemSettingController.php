@@ -3,11 +3,14 @@
 namespace App\Http\Controllers\Web\V1;
 
 use App\Actions\V1\System\SystemSettingsUpdateAction;
+use App\Concerns\FormatsByteSize;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\V1\System\SystemSettingRequest;
 use App\Models\RoleLookup;
 use App\Models\SystemSetting;
 use App\Models\Timezone;
+use App\Providers\AppServiceProvider;
+use App\Services\Storage\StorageCapacityGuard;
 use App\Support\FeatureCatalog;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
@@ -17,6 +20,8 @@ use Illuminate\Http\RedirectResponse;
  */
 class SystemSettingController extends Controller
 {
+    use FormatsByteSize;
+
     /**
      * Settings stored as the strings 'true'/'false' but consumed as booleans.
      *
@@ -41,6 +46,7 @@ class SystemSettingController extends Controller
         'allow_email_change',
         'registration_enabled',
         'api_docs_public',
+        'backup_enabled',
     ];
 
     /**
@@ -52,7 +58,7 @@ class SystemSettingController extends Controller
      * ON. The read-only branch prints booleans as `true`/`false`, so it wants
      * them cast too.
      */
-    public function index(): View
+    public function index(StorageCapacityGuard $capacity): View
     {
         $settings = SystemSetting::getLive();
 
@@ -63,8 +69,25 @@ class SystemSettingController extends Controller
         $timezones = Timezone::active()->orderBy('name')->get();
         $roles = RoleLookup::visibleTo(request()->user())->pluck('name', 'name');
 
-        return view('pages.settings.index', compact('settings', 'timezones', 'roles'))
-            ->with('settingGroups', FeatureCatalog::settingGroups());
+        // The view renders labels, never arithmetic: measuring belongs to the
+        // service that also refuses the write.
+        $storage = $capacity->cachedMetrics();
+
+        foreach (['used', 'available', 'total'] as $key) {
+            $storage[$key.'_label'] = $this->bytesLabel($storage[$key]);
+        }
+
+        return view('pages.settings.index', [
+            'settings' => $settings,
+            'timezones' => $timezones,
+            // The shipped default, not `config('app.timezone')` — the provider
+            // has already replaced that with the applied zone by now.
+            'baseTimezone' => AppServiceProvider::baseTimezone(),
+            'roles' => $roles,
+            'storage' => $storage,
+            'storageEnabled' => FeatureCatalog::isActive('storage_management'),
+            'hasStorageSecret' => AppServiceProvider::hasStorageSecret('storage_s3_secret'),
+        ])->with('settingGroups', FeatureCatalog::settingGroups());
     }
 
     /**

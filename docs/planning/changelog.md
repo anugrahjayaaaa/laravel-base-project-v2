@@ -432,3 +432,203 @@ Each entry contains:
 | **Reason** | A document that names a body no client receives is worse than no document: it is a contract the API does not keep, and the drift gate was asserting statuses only, so 148 wrong bodies passed. The same gate was also blind to authorization — a reader could not tell a permission-gated endpoint from a public one. The three untested endpoints were only proven to exist by the route-to-path assertion, never to work. |
 | **Impact** | **Documentation surface only:** no route, status code, success shape or runtime behaviour changed. `/docs/api` now renders one Authorize scheme named `bearerAuth`, each gated operation states its middleware, and every published error body matches the contract. Seven new API tests and two document assertions. |
 | **Related** | P12-A2, P12-A4, P12-D5, P12-E2, F1–F8, `docs/base/api/documentation.md`, `docs/base/api/api-architecture.md`, `tests/Feature/Api/ApiDocumentationTest`, `tests/Feature/Api/V1/{Auth,Notification}`, `App\Support\OpenApi\*` |
+
+## 2026-10-30 — Phase 14 Group B: backups run queued, on their own disk, with a pre-flight size check
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-10-30 |
+| **Change** | (1) **Package decision recorded** (ADR-026): `spatie/laravel-backup` (`^10.3`) is added to `composer.json` by this change; `config/backup.php` now backs up MySQL + `storage/app` and writes only to the dedicated `backups` disk, excluding the destination and `backup-temp` from the source. The package's own mail notifier is disabled. (2) **Schedule is data, not config**: `SystemBackupSchedule` reads `backup_enabled` / `backup_schedule` at run time; `routes/console.php` ticks every minute and dispatches `ExecuteSystemBackupJob` when due. (3) **Execution is queued**: `ExecuteSystemBackupJob` on the `backups` queue and its own `backups` connection (`retry_after` 2000 > the job's 1800s timeout — on the shared connection a second worker would re-reserve a running backup and, with `$tries = 1`, fail it), with the standard retry chain and correlation-aware `failed()`; `bin/run-workers.sh backups` is the worker that consumes it. (4) **Pre-flight capacity check**: `SystemBackupSizeEstimator` measures `storage/app` (minus backup artifacts) plus MySQL `data_length + index_length`, and `SystemBackupRunAction` refuses when the estimate plus a 10% reserve does not fit, auditing `backup.aborted_storage_full` and notifying `backup.execute` holders. (5) **Audit + notifications**: `backup.triggered` is written before the command; `backup.completed` / `backup.failed` / `backup.aborted` notify the same audience. (6) **Manual trigger**: `POST /storage/backup` behind `feature:storage_management` + `can:backup.execute`, throttled `system-backup` (3/hour per operator + IP), dispatching after commit, with a "Run Backup Now" button on the settings page. (7) **Settings**: `backup_enabled` (off by default), `backup_schedule` (`HH:MM`, default `02:00`), `backup_retention_daily|weekly|monthly` (7/4/12) are seeded, validated, whitelisted, and exposed on a Backup card; `SystemBackupRunner` applies the retention values before every run and forgets the package's scoped `Config` instance so the next command rebuilds it. |
+| **Reason** | A backup that runs inside a request times out; a backup written to the disk it backs up is not a backup; and a schedule frozen from a config value cannot be changed without a deploy. The pre-check exists because filling a destination to the last byte leaves the host unable to write the log that explains why. |
+| **Impact** | **Additive.** New job, new `backups` queue and connection, new settings keys, one new POST route. 16 tests in `tests/Feature/Storage/BackupStrategyTest.php`; `JobConventionTest` covers the new job automatically. The package is a new production dependency; its config points at `backups` instead of `local`, and its own notifications are off. |
+| **Related** | ADR-026, P14-B1..B3, `docs/base/infrastructure/{backup-disaster-recovery,queue,storage}.md`, `docs/base/operations/retention.md`, `config/backup.php`, `app/Services/Backup/*`, `app/Jobs/ExecuteSystemBackupJob.php`, `app/Actions/V1/System/SystemBackupRunAction.php` |
+
+## 2026-10-31 — Phase 14 follow-up: one global timezone, applied to the process
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-10-31 |
+| **Change** | (1) **One setting** (ADR-027): `app_timezone` replaces `password_security_sweep_timezone`; empty means the application default. Migration `2026_10_30_000000_move_sweep_timezone_to_app_timezone.php` copies the legacy value and deletes the old row, busting the settings cache because a query-builder write fires no observer. (2) **Applied, not displayed**: `AppServiceProvider::bindTimezone()` reads the setting at the end of `boot()` and after a save, then calls `date_default_timezone_set()` and `config(['app.timezone' => …])`. The shipped base zone is captured once in a static so the fallback cannot drift after the first mutation; the read is wrapped in `try/catch` because `boot()` also runs before `system_settings` exists. (3) **Sweep and backup follow it**: the minute scheduler compares `now()->format('H:i')` in the global zone; `backup_schedule` is due at the same wall clock. (4) **API timestamps** keep ISO 8601 and now carry the configured offset (`+07:00` for `Asia/Jakarta`) in `meta.timestamp`, health and every resource. (5) **UI**: a System Timezone card with a "Application default ({{ base }})" first option; the sweep-time row is no longer a two-column pair. (6) **History**: `php artisan timezone:rebase {--from=UTC} {--to=} {--dry-run} {--force} {--chunk=500}` rewrites timestamp/datetime columns across the schema, DST-aware per row, skipping tables with no single-column primary key. |
+| **Reason** | Three surfaces kept time and only one was configurable: the sweep honoured its own zone, the backup schedule compared a wall clock against UTC, and everything else (audit trail, health/meta, API resources, settings page) rendered in the process zone. An operator scheduling a 02:00 backup in Jakarta got one at 09:00, and no test noticed because nothing asserted that two clocks agree. Changing the process zone makes one answer correct everywhere instead of teaching N call sites to format. |
+| **Impact** | **Runtime behaviour changes once an operator picks a zone.** Timestamps written from that point carry the new zone; rows written before it keep their digits and read shifted until `timezone:rebase` converts them (documented cutover order: maintenance → rebase → save the setting → resume). `queue:work` and `schedule:work` keep the zone they booted with until restarted; `schedule:run` from cron is safe. `failed_jobs.failed_at` is DB-side (`useCurrent()`) and follows the same setting: the MySQL session zone is set to the applied offset on every connection, so a SQL client reads the same wall clock the UI shows. Tests reset `date_default_timezone_set('UTC')` in `TestCase::tearDown()` so the process zone cannot leak between tests. |
+| **Related** | ADR-027, P14-F1, `docs/base/features/settings.md`, `docs/base/api/response-contract.md`, `docs/base/infrastructure/queue.md`, `docs/base/security/password-security.md`, `app/Providers/AppServiceProvider.php`, `app/Services/Timezone/RebaseTimezones.php`, `tests/Feature/Settings/GlobalTimezoneTest.php`, `tests/Feature/Console/RebaseTimezonesCommandTest.php` |
+
+## 2026-11-02 — Phase 14 Group C: temporary storage is cleaned, and only temporary storage
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-11-02 |
+| **Change** | (1) **One new setting**: `temp_file_retention_hours` (default 24, validated 1–8760) is seeded, validated, whitelisted in `SystemSettingsUpdateAction`, exposed on the Storage card, and mapped to `storage_management` in `config/pennant.php` — so the flag closes the edit surface while the cleanup itself keeps running. (2) **Daily schedule**: `routes/console.php` queues `CleanTemporaryStorageJob` daily on `QueueName::SWEEPS`, on top of the existing threshold-triggered dispatch from `StorageCapacityGuard` (one dispatch per hour via `Cache::add()`). (3) **Audit attribution**: the job now writes `temp_storage.cleaned` with no causer and `properties.causer = 'SYSTEM'`, because a cleanup is a system action on both the sync queue and a worker — `auth()->user()` attributed it to whoever happened to be logged in, and a bare null renders as "Anonymous". The same marker is now written by every system-initiated audit path: scheduled backup (manual runs keep the operator), `StorageCapacityGuard` when no user is in scope, `auth.account_locked`, and `InactivityLock` by default; `auth.login_failed` stays unmarked because a person did try. (4) **Tests**: `tests/Feature/Storage/DataRetentionTest.php` (8 tests) pins TTL purge, the setting-driven window, the exactly-at-TTL boundary, preserved audit rows and soft-deleted models, the audit row's count/bytes, and second-run idempotence. |
+| **Reason** | `tmp` was the one disk with a documented TTL and no implementation: `retention.md` described a 1-day window for artifacts "nothing writes there". The uploads that will use it are promoted on save, so an old file there is orphaned by definition — but only if something actually deletes it. The daily run makes the policy true without an upload having to trigger it first. |
+| **Impact** | **Additive.** One new settings key (rendered on the existing Storage card), one scheduled job entry. The cleanup deletes files on the `tmp` disk only; audit rows and soft-deleted models are asserted untouched. `DataRetentionTest` 8 tests / 24 assertions; `JobConventionTest` already covers the job. |
+| **Related** | P14-C1..C3, `docs/base/operations/retention.md`, `docs/base/features/settings.md`, `docs/base/infrastructure/storage.md`, `app/Jobs/CleanTemporaryStorageJob.php`, `routes/console.php`, `app/Http/Requests/V1/System/SystemSettingRequest.php`, `tests/Feature/Storage/DataRetentionTest.php` |
+
+## 2026-11-02 — Phase 14 Group D: the storage surface is closed behind RBAC and the flag
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-11-02 |
+| **Change** | **Audit-and-close**, not greenfield: `storage.view`, `storage.manage`, `backup.execute` and their `storage_management` mapping shipped with Group A, the two route gates with Groups A (`storage.secure`) and B (`storage.backup.store`), and all five audit events with Action/Job writers in A–C. Group D adds the acceptance gate none of them had: `tests/Feature/Storage/StorageAuthorizationTest.php` (7 tests) pins superadmin `Gate::before` on the secure route and the backup trigger, a `settings.view` viewer's 403 on a storage-key write, a flag-off write not persisted and **not named in the `storage_setting.updated` key list**, runtime disk binding and the upload guard still active with the flag off, and the storage audit row discarded with its transaction. Two code corrections fell out of that audit: `$storageChanged` is now derived **after** the feature-flag strip (a discarded storage key can no longer be counted as a storage change if the strip map ever covers the disk keys), and the `PermissionCatalog` docblock now states the D1 decision — the Storage card is edited under `settings.manage`, so `storage.manage` has no route consumer yet. |
+| **Reason** | The acceptance criteria for D1–D3 were assertions without a test: every gate existed, but nothing failed if a later refactor removed one. Writing them also exposed that the permissions block claimed `storage.manage` covers driver configuration, which D1 deliberately assigns to `settings.manage`. |
+| **Impact** | **No runtime change.** Tests and comments only; the `$storageChanged` move is a no-op under today's strip map (the other storage keys are never stripped) and a guard for the day that map grows. `StorageAuthorizationTest` 7 tests / 11 assertions; full suite 2346 passed / 8451 assertions, Pint clean. |
+| **Related** | P14-D1..D3, `docs/planning/phase-14-storage-backup-retention.md`, `docs/base/infrastructure/storage.md`, `app/Support/PermissionCatalog.php`, `app/Actions/V1/System/SystemSettingsUpdateAction.php`, `tests/Feature/Storage/StorageAuthorizationTest.php` |
+
+## 2026-11-02 — Phase 14 Group E: the storage docs now say what the code does
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-11-02 |
+| **Change** | Verification gate plus doc reconciliation. Gate: `php artisan test --filter=Storage` 65 tests / 178 assertions; `JobConventionTest` + `SettingsPersistenceTest` 12 tests / 107 assertions; full suite 2346 passed / 8451 assertions; `vendor/bin/pint --test` clean. Doc pass: `retention.md`, `backup-disaster-recovery.md`, `queue.md`, `error-contract.md`, `settings.md` and `audit-trail.md` were checked against the code and needed no change; `storage.md` did, on two points — the `storage_management` sentence named only the settings card (it gates both cards, the secure route and the backup trigger), and the permissions block claimed `storage.manage` covers driver configuration (it does not; that is `settings.manage`). A new `## Permissions` table in `storage.md` now maps `storage.view`, `storage.manage` and `backup.execute` to the surface each one actually gates. |
+| **Reason** | Group D exposed the same doc error twice (catalog docblock and `storage.md`), which means the permission story was written from intent rather than from the routes. E is the point where the doc is checked against the route table, not the design sketch. |
+| **Impact** | **Docs only.** No code change, so no new test. |
+| **Related** | P14-E1..E2, `docs/base/infrastructure/storage.md`, `docs/base/operations/retention.md`, `docs/base/infrastructure/backup-disaster-recovery.md`, `docs/base/infrastructure/queue.md`, `docs/base/api/error-contract.md` |
+
+## 2026-11-03 — Phase 14 fix: a flag-off settings save no longer resets the storage and backup config
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-11-03 |
+| **Change** | `config/pennant.php` now lists every key the Storage and Backup cards own under `storage_management` — disk, S3, capacity, retention and backup keys — instead of only the two retention keys. With the flag off the cards are hidden and post nothing, and the web form's "absent means reset to the default" contract wrote `local`, empty S3 fields, `backup_enabled = false`, `02:00` and the default retention counts on every save. The existing strip map now covers those keys, so the write is skipped and the stored configuration survives; the same map also keeps them out of `getLive()` while the flag is off, closing the read-side inconsistency. `StorageAuthorizationTest` pins the reset with non-default values for a disk key and a backup key. |
+| **Reason** | Group D moved `$storageChanged` after the strip and noted the strip map was incomplete ("a no-op under today's strip map — and a guard for the day that map grows"). This is that day: the map was the one place a full-form save could silently discard the production storage and backup configuration, and nothing failed because the existing test only checked the single key the map already named. |
+| **Impact** | **Runtime write behaviour changes only while the flag is off.** A settings save no longer touches storage/backup keys in that state; with the flag on the write path is unchanged. `getLive()` (and therefore `GET /api/v1/settings`) hides those keys while the flag is off — the cards are hidden then too. Disk binding and the upload guard still read the database directly and stay active, as before. |
+| **Related** | P14-D1..D3, `config/pennant.php`, `app/Support/FeatureCatalog.php`, `tests/Feature/Storage/StorageAuthorizationTest.php`, `docs/base/infrastructure/storage.md`, `docs/base/api/response-contract.md` |
+
+## 2026-11-03 — Phase 14 fix: the S3 driver gets the adapter it was missing
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-11-03 |
+| **Change** | `league/flysystem-aws-s3-v3` (`^3.0`, resolved 3.35.3) is now a production dependency, per ADR-028; it pulls `aws/aws-sdk-php`, `aws/aws-crt-php`, `mtdowling/jmespath.php` and `symfony/filesystem` transitively — five packages added, no existing version moved. `Storage::disk('s3')` now resolves to `AwsS3V3Adapter`. `StorageDiskTest::test_the_s3_driver_package_is_installed` pins it. `storage.md` records the package requirement next to the `AWS_*` block. |
+| **Reason** | Group A shipped S3 as a selectable driver — disk config, encrypted settings, capacity probe, UI fieldset, docs — but the adapter was never required. `laravel/framework` only suggests it, so the gap stayed invisible until someone selected S3, at which point the first operation threw `Class "League\Flysystem\AwsS3V3\PortableVisibilityConverter" not found`. |
+| **Impact** | **No behaviour change for local installs**: building the adapter makes no network call, and only operations against the `s3` disk touch AWS. `composer.lock` grows; deploys running `composer install --no-dev` must be allowed to fetch the SDK, and `composer audit` now covers it. The two advisories `composer audit` reports (livewire/livewire, symfony/mime) predate this change and are untouched. |
+| **Related** | ADR-028, P14-A1..A5, `composer.json`, `composer.lock`, `docs/base/infrastructure/storage.md`, `tests/Feature/Storage/StorageDiskTest.php` |
+
+## 2026-11-03 — Phase 14 fix: the local root check resolves the path before comparing
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-11-03 |
+| **Change** | `SystemSettingRequest::after()` no longer compares `storage_local_root` against `storage_path()` as a string prefix. It normalises the path lexically (`.` / `..` resolved without disk access), resolves the deepest existing ancestor through `realpath()` — which turns a symlink into its target — and re-attaches the part that does not exist yet, then compares. Three tests added: a `..` escape, a symlink planted inside the tree pointing out of it, and a valid root that has not been created yet. |
+| **Reason** | The guard existed but a prefix comparison is not containment: `/…/storage/../etc` started with the prefix and resolved to `/etc`, and a symlink inside `storage/` did the same through the filesystem. Both let an administrator point the private disk outside the storage tree, which is the disclosure primitive the check was written to prevent. |
+| **Impact** | **Only the `storage_local_root` rule changes.** A path that really resolves inside `storage_path()` is still accepted, including one that does not exist yet (the adapter creates it on first write). Unrelated keys are untouched. `StorageDiskTest` 26 tests / 65 assertions. |
+| **Related** | P14-A1..A5, `app/Http/Requests/V1/System/SystemSettingRequest.php`, `tests/Feature/Storage/StorageDiskTest.php`, `docs/base/infrastructure/storage.md`, `docs/base/features/settings.md` |
+
+## 2026-11-03 — Security: two advisories reported by `composer audit` are patched
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-11-03 |
+| **Change** | `livewire/livewire` 4.4.7 → 4.4.8 (GHSA-mhf7-xp6r-6qrc, authorization bypass in `#[Authorize]` via reordered parameter keys, affected `<4.4.8`) and `symfony/mime` 7.4.18 → 7.4.22 (CVE-2026-45070, header injection via non-token characters, affected `<7.4.22`). Patch-level only; `composer audit` is now clean. |
+| **Reason** | `composer audit` reported both after the S3 adapter install. Neither comes from the AWS packages — livewire arrives through `laravel/pulse`, `symfony/mime` through `laravel/framework` / `symfony/mailer` — but both are reachable code in this application. |
+| **Impact** | **Patch-level vendor change only**: two packages moved, no constraints in `composer.json` changed, no application code touched. 437 tests across notification, Vantage, Pulse and feature-flag suites pass on the updated vendor tree. |
+| **Related** | `composer.lock`, `laravel/pulse`, `laravel/framework` |
+
+## 2026-11-03 — Phase 14 fix: the storage audit row is earned by a change, not by a save
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-11-03 |
+| **Change** | `SystemSettingsUpdateAction` now compares each storage key in the payload against its stored value before writing `storage_setting.updated`, and the row's `keys` payload lists only the keys whose value differs. Credentials are compared as plaintext, because `encrypt()` draws a fresh IV on every call so a resubmitted secret never matches its own ciphertext. |
+| **Reason** | The web form posts every field on every save, so a presence check made the row fire on saves that touched nothing in the storage module — and its `keys` payload named all twelve storage keys each time, which turns the module's event history into a log of page views. P14-D3 documents the trigger as "a storage key changes". |
+| **Impact** | **Only the storage audit row changes.** A save that alters nothing writes `system_setting.updated` alone; a save that changes one storage value writes `storage_setting.updated` naming that one key. The row is skipped whenever the changed list is empty, including after the flag-off strip removes the keys. |
+| **Related** | P14-D3, `app/Actions/V1/System/SystemSettingsUpdateAction.php`, `tests/Feature/Storage/StorageDiskTest.php`, `docs/planning/phase-14-storage-backup-retention.md` |
+
+## 2026-11-03 — Phase 14 docs: correct the storage, retention and phase claims
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-11-03 |
+| **Change** | `docs/base/infrastructure/storage.md`: local `used` no longer claims to include backups (they sit in `storage/app/backups`, outside the measured root `storage/app/private`); the permission table now says the capacity gauge lives inside the editable Storage card, so it reads under `settings.manage`, while `storage.view` covers the secure route and the read-only table; a line records that both storage routes are web-only. `docs/base/operations/retention.md`: the schedule table was malformed (`\|\|` on most rows, `\|` on one) and rendered as two broken tables; it is one table again. `docs/planning/phase-14-storage-backup-retention.md`: the no-quota wording matches the rendered string ("could not be measured", not "n/a"); P14-D2 no longer promises a sidebar entry that does not exist; the phase records that API endpoints are deliberately out of scope. `docs/planning/progress.md`: Group F1's review date corrected to 2026-10-31, the date the phase doc and tracker already carry. |
+| **Reason** | Each claim described a surface or measurement that the code does not have. A reader planning an upload quota would have under-counted available space by the size of the backups; a reader granting `storage.view` would have expected a gauge they cannot see; the malformed table hid three retention rows inside a broken render. |
+| **Impact** | **Documentation only** — no runtime behaviour changes. |
+| **Related** | P14-D1, P14-D2, `docs/base/infrastructure/storage.md`, `docs/base/operations/retention.md`, `docs/planning/phase-14-storage-backup-retention.md`, `docs/planning/progress.md` |
+
+## 2026-11-03 — Phase 14 fixes: settings API teardown, env template, after-commit cleanup
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-11-03 |
+| **Change** | `SettingsApiTest` pins that every key owned by `storage_management` disappears from `GET /api/v1/settings` when the flag is off, not just the one key the existing test named. `.env.example` gains `FILESYSTEM_DISK`, the `AWS_*` keys, `BACKUP_QUEUE`, `BACKUP_QUEUE_RETRY_AFTER` and `BACKUP_ARCHIVE_PASSWORD` — all of which `config/filesystems.php`, `config/queue.php` and `config/backup.php` already read. `StorageCapacityGuard` dispatches `CleanTemporaryStorageJob` with `afterCommit()`, so a save that rolls back no longer queues a sweep for a `tmp` it never used. |
+| **Reason** | The API read was already fixed by completing the flag's key list in `config/pennant.php` (P14 finding #1); nothing pinned it, so a later edit could reopen the leak silently. The env template is the only place an operator learns which overrides exist, and the three backup keys were undocumented there. Every other job in the repo dispatches after commit (AGENTS.md), and the guard's own comment already said the caller may be inside a transaction. |
+| **Impact** | **No behaviour change in the request path.** The cleanup job now reaches the queue after the surrounding transaction commits; the throttle test fakes the bus, so its assertion is unaffected. |
+| **Related** | `tests/Feature/Api/V1/Settings/SettingsApiTest.php`, `.env.example`, `app/Services/Storage/StorageCapacityGuard.php` |
+
+## 2026-11-03 — Phase 14 performance: the measured hot paths
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-11-03 |
+| **Change** | `StorageCapacityGuard` gained `cachedMetrics()` (60 s per disk root, for `/settings`, `/health` and `HealthCheckService`) and now walks the disk root with a raw `RecursiveIteratorIterator`; `metrics()` stays fresh and remains the only input to `assertCanStore()`. `SystemSettingsUpdateAction` compares the normalized payload against one `SystemSetting::getAll()` snapshot and writes only the keys whose value differs, and re-encrypts an S3 credential only when its plaintext changed. `RebaseTimezones` commits one transaction per chunk. `CleanTemporaryStorageJob` reads mtime and size from one local iterator instead of three disk-API calls per file. |
+| **Reason** | Measured over 1 000 files: the gauge walk 25.5 → 3.1 ms, a full settings save 62.6 ms / 70 queries → 10.7 ms / 4 queries, the settings page 87.4 → 45.2 ms, the `tmp` cleanup 491 → 154 ms, a 1 128-row rebase 1 546 → 854 ms. The gauge is polled by every health check, and the settings form posts all ~40 keys on every save. |
+| **Impact** | **The display gauge can lag by up to a minute** — the guard's refusal never uses it. A settings save that changes nothing now writes no row (and no cache bust); its audit row and notification still fire. A resubmitted S3 credential keeps its ciphertext instead of being re-encrypted. `docs/base/infrastructure/storage.md` no longer claims logs are inside the measured root. |
+| **Related** | ADR-029, P14-A5, `app/Services/Storage/StorageCapacityGuard.php`, `app/Actions/V1/System/SystemSettingsUpdateAction.php`, `app/Services/Timezone/RebaseTimezones.php`, `app/Jobs/CleanTemporaryStorageJob.php`, `tests/Feature/Storage/StorageDiskTest.php`, `tests/Feature/Storage/StorageBenchmarkTest.php` |
+
+## 2026-11-03 — Phase 14 pentest #1: production refuses a plaintext backup archive
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-11-03 |
+| **Change** | `SystemBackupRunner::run()` refuses to run when `backup.backup.password` is empty and the environment is `production`; a failed run deletes `backup.backup.temporary_directory` (confined to `storage/`); `backup.verify_backup` is now `true`. |
+| **Reason** | `spatie/laravel-backup` only calls `ZipArchive::setPassword()` when the password is not null, and the archive holds the whole database plus `storage/app` — including `secure_documents`. A default install therefore wrote readable artifacts and reported success. The plaintext dump also sits in `backup-temp` during the run, which the package leaves behind when the process is killed. |
+| **Impact** | **Production installs without `BACKUP_ARCHIVE_PASSWORD` stop taking backups** and surface it as `backup.failed`; set the variable, run `config:cache`, then `queue:restart`. Non-production and already-encrypted installs are unchanged. A corrupt archive now fails the run instead of being announced as completed. |
+| **Related** | ADR-026, `docs/base/infrastructure/backup-disaster-recovery.md`, `config/backup.php`, `app/Services/Backup/SystemBackupRunner.php`, `tests/Feature/Storage/BackupStrategyTest.php` |
+
+## 2026-11-03 — Phase 14 pentest #2: the secure route never renders a stored file
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-11-03 |
+| **Change** | `StorageController::show()` serves `secure_documents` with `Content-Disposition: attachment` (`$disk->response($path, null, [], 'attachment')`) instead of Laravel's `inline` default. |
+| **Reason** | `secure_documents` holds arbitrary files and the default disposition renders them on the application origin: a stored `.html` or `.svg` would execute with the viewer's session for every `storage.view` holder. The route has no writer yet, so this closes the gap before an upload feature can open it. Inline preview stays unimplemented until a MIME allowlist exists. |
+| **Impact** | **The secure route now downloads instead of displaying.** No consumer exists today; a future preview needs an allowlist, not a revert of this line. |
+| **Related** | `app/Http/Controllers/Web/V1/StorageController.php`, `docs/base/infrastructure/storage.md`, `tests/Feature/Storage/StorageDiskTest.php` |
+
+## 2026-11-03 — Phase 14 pentest #3: the capacity guard's coverage is per disk, and now it says so
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-11-03 |
+| **Change** | `docs/base/infrastructure/storage.md` gains § Guard coverage: a per-boundary table (audit export → `local` via `assertCanStore`, backup pre-check → `backups` free space + reserve, health probe → default disk, unguarded by design and failing closed), plus the rule that any new disk-writing feature calls `assertCanStore($bytes, $disk)` and grows a row. Phase invariant 7 now describes enforcement at today's boundaries instead of promising uploads that do not exist. `HealthCheckService::checkStorage()` and the guard's docblock carry pointers so the probe is not "fixed" into the guard later. |
+| **Reason** | Invariant 7 read as if a global capacity check existed; in fact each check names one disk and the probe is deliberately outside the guard. An upload endpoint built on the invariant's old wording would have skipped the guard. |
+| **Impact** | **Documentation and comments only** — no runtime behaviour changes. |
+| **Related** | Phase 14 invariant 7, `docs/base/infrastructure/storage.md`, `docs/planning/phase-14-storage-backup-retention.md`, `app/Services/HealthCheck/HealthCheckService.php`, `app/Services/Storage/StorageCapacityGuard.php` |
+
+## 2026-11-03 — Phase 14 pentest #4 + #5: the two storage fields that accepted too much
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-11-03 |
+| **Change** | `SystemSettingRequest::after()` gains a second closure refusing `storage_local_permission` modes with the group/other write bits (`0777`, `0666`, `0277` → 422); `storage_s3_endpoint` / `storage_s3_url` gain `starts_with:https://`. The settings form hint names the refusal; `docs/base/infrastructure/storage.md` records both as admin-only trust boundaries; `docs/base/features/settings.md` rule table matches. |
+| **Reason** | A world-writable private disk lets any local user rewrite its contents, and a plain-http S3 endpoint carries every object body in cleartext (SigV4 only protects the credentials). Both fields are reachable solely through `settings.manage`, so the residual — an admin aiming a valid https URL at an internal host — is documented as accepted rather than blocked. |
+| **Impact** | **A save that previously persisted `0777` (or an `http://` endpoint) now returns 422 on that field.** `0644`, the form's placeholder, stays valid. Values already stored before this change keep applying at runtime — validation guards the entrance, not the stored row. |
+| **Related** | `app/Http/Requests/V1/System/SystemSettingRequest.php`, `resources/views/pages/settings/index.blade.php`, `docs/base/infrastructure/storage.md`, `docs/base/features/settings.md`, `tests/Feature/Settings/SystemSettingUpdateTest.php` |
+
+## 2026-11-03 — Phase 14 pentest #6: the backup job is single-flight by lock
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-11-03 |
+| **Change** | `ExecuteSystemBackupJob` carries `WithoutOverlapping('system-backup')` with `expireAfter(3600)` — twice `$timeout`. |
+| **Reason** | Single-flight previously held only because `bin/run-workers.sh backups` starts one worker — an operational accident, not a contract. Adding a second worker, or a supervisor restart racing the scheduler's `onOneServer()` window, would have overlapped two backups onto one destination and a half-written archive. |
+| **Impact** | An overlapping dispatch is released back to the queue until the lock frees; the lock expiry (3600s) outlives `$timeout` (1800s) so it cannot free mid-run. Needs a lock-capable default cache store (Redis in production). |
+| **Related** | `app/Jobs/ExecuteSystemBackupJob.php`, `docs/base/infrastructure/backup-disaster-recovery.md`, `tests/Feature/Storage/BackupStrategyTest.php` |
+
+## 2026-11-03 — Phase 14 pentest #7: the health probe's anonymous write is now on record
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-11-03 |
+| **Change** | `docs/base/features/monitoring.md` § Health Check Endpoint states the residual: `checkStorage()` writes and deletes a two-byte probe on the default disk, unauthenticated by design (F3/ADR-023), cost-bounded by the 10 s check-set cache and `throttle:health`, deliberately outside the capacity guard. |
+| **Reason** | The proposed mitigation — probing a cheap dedicated disk — would answer the wrong question, and a longer probe TTL is a no-op while the whole check set is already cached for 10 s. What remained was to write the accepted residual down so a later reader does not "fix" the probe into the guard or onto a scratch disk. |
+| **Impact** | **Documentation only** — no runtime behaviour changes. |
+| **Related** | `docs/base/features/monitoring.md`, `docs/base/infrastructure/storage.md` § Guard coverage, ADR-023 |
+
+## 2026-11-03 — Phase 14 pentest #8: timezone:rebase names its intent in production
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-11-03 |
+| **Change** | `timezone:rebase` refuses to write outside `--dry-run` when the environment is `production` and `--force` is absent. |
+| **Reason** | The command rewrites every timestamp column and cannot be undone; in production an interactive `confirm()` either hangs an unattended maintenance window or passes on an accidental newline from stdin. The cutover order (maintenance → rebase → save `app_timezone` → resume) was already documented in the command docblock and ADR-027; the explicit flag closes the invocation side. |
+| **Impact** | **Production runs now require `--force`.** Non-production keeps the plain confirmation prompt. `settings.md` mentions the refusal next to the ADR-027 link. |
+| **Related** | `routes/console.php`, `docs/base/features/settings.md`, `tests/Feature/Console/RebaseTimezonesCommandTest.php` |

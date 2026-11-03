@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\CrossCutting;
 
+use App\Models\SystemSetting;
 use App\Services\HealthCheck\HealthCheckService;
 use Closure;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -102,6 +103,25 @@ class HealthCheckEndpointTest extends TestCase
             ->assertStatus(503)
             ->assertJsonPath('status', 'fail')
             ->assertJsonPath('checks.database', 'fail');
+    }
+
+    public function test_the_storage_check_fails_when_over_the_configured_capacity(): void
+    {
+        SystemSetting::set('storage_max_capacity_mb', '1');
+        SystemSetting::bustCache();
+
+        Storage::disk(config('filesystems.default'))->put('over-capacity.bin', str_repeat('a', 2097152));
+
+        try {
+            $this->getJson('/api/v1/health')
+                ->assertStatus(503)
+                ->assertJsonPath('status', 'fail')
+                ->assertJsonPath('checks.storage', 'fail');
+        } finally {
+            Storage::disk(config('filesystems.default'))->delete('over-capacity.bin');
+            SystemSetting::set('storage_max_capacity_mb', '0');
+            SystemSetting::bustCache();
+        }
     }
 
     /**

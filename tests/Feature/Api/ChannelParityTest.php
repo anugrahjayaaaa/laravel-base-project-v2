@@ -182,6 +182,18 @@ class ChannelParityTest extends TestCase
             'web' => ['vantage.dashboard', 'vantage.jobs', 'vantage.jobs.show', 'vantage.tags', 'vantage.failed', 'vantage.jobs.retry'],
             'why' => 'A third-party dashboard owning its own UI, like `pulse dashboard`: an API wrapper would be a second surface over queued-job rows the queue backend already exposes. Declared behind `feature:vantage` + `queues.*`. The retry action reads the queue, so it too is a dashboard surface, not an API capability of this app.',
         ],
+
+        // ---- Storage ----
+        'backup execute' => [
+            'only' => 'web',
+            'web' => ['storage.backup.store'],
+            'why' => 'The primary trigger is the scheduler — no route at all. The manual POST is an operator action from the settings page that queues the same job an API twin would queue; a backup has no fact a client needs to read back beyond the notification, which is already cross-channel.',
+        ],
+        'private media' => [
+            'only' => 'web',
+            'web' => ['storage.secure'],
+            'why' => 'The signed URL is the credential, not a JSON call: an API client signs the same route and receives the bytes. A JSON twin would answer a URL that already exists, and the file itself cannot be described in a body.',
+        ],
     ];
 
     /**

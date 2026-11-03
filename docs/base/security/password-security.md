@@ -102,8 +102,7 @@ Group C — Password Expiration & Inactivity Lock ✅ DONE
 - `inactivity_lock_grace_enabled` (boolean, default: true) — toggle grace period for never-logged-in users
 - `inactivity_lock_grace_days` (integer, default: 30, min: 0, max: 365) — grace period for users with `last_activity_at = NULL`
 - `inactivity_lock_grace_enabled` controls whether `inactivity_lock_grace_days` is applied. When disabled, the field is ignored and never-logged-in users use only `inactivity_lock_days`.
-- `password_security_sweep_time` (time, default: `00:00`) — local sweep time
-- `password_security_sweep_timezone` (IANA timezone, default: application timezone) — sweep timezone
+- `password_security_sweep_time` (time, default: `00:00`) — local sweep time, evaluated against the global system timezone (`app_timezone`, ADR-027)
 
 ### Enforcement
 
@@ -156,7 +155,6 @@ Runtime SystemSetting keys:
 - `inactivity_lock_grace_enabled`
 - `inactivity_lock_grace_days`
 - `password_security_sweep_time`
-- `password_security_sweep_timezone`
 
 When expiration applies:
 ```

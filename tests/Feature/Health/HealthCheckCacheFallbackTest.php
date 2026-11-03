@@ -3,6 +3,7 @@
 namespace Tests\Feature\Health;
 
 use App\Services\HealthCheck\HealthCheckService;
+use App\Services\Storage\StorageCapacityGuard;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Tests\TestCase;
@@ -123,6 +124,11 @@ class HealthCheckCacheFallbackTest extends TestCase
     {
         return new class () extends HealthCheckService {
             public int $probes = 0;
+
+            public function __construct()
+            {
+                parent::__construct(app(StorageCapacityGuard::class));
+            }
 
             protected function checkDatabase(): string
             {

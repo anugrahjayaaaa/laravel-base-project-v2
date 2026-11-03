@@ -19,7 +19,7 @@
 | Queue (default) | Laravel Queue | Native | Core | P0 | Through Queue facade |
 | Cache (default) | Laravel Cache | Native | Core | P0 | Through Cache facade |
 | Redis (option) | Redis backend | `predis/predis` / `ext-redis` | Optional / Deployment | P2 | Never directly (facades only) |
-| Backup | Spatie Backup | `spatie/laravel-backup` | Planned | P2 | Infrastructure / scheduled jobs |
+| Backup | Spatie Backup | `spatie/laravel-backup` | Required (installed) | P2 | Queued via `ExecuteSystemBackupJob` (ADR-026) |
 || AdminLTE (UI) | Vendored ZIP (not npm) | AdminLTE release ZIP → `public/vendor/adminlte/` | Complete (v4.9.1) | P1 | Layout templates only |
 | External Monitoring | (deployment choice) | `sentry/sentry-laravel` etc. | Deployment-specific | P3 | Through logging/observability layer |
 

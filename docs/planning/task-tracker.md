@@ -355,6 +355,41 @@ one. The test factory no longer repeats a username. Detail:
 | P13-D | Input safety — output-sink audit, fillable/whitelist sweep, new `InputSanitizationTest` | 13 | P0 | P13-C | DONE — audited 2026-10-27, owner-reviewed 2026-10-27: no production code changed (sinks and whitelists already correct); `InputSanitizationTest` 6/31 fills the gaps, existing probes cited; `Security`+`User`+`Notification` 483/2005 green, Pint clean; detail in `phase-13-security-hardening.md` § Group D |
 | P13-E | Disclosure & limits — HTML error masking, composite-key 429 proof, `--filter=Security` + full suite run | 13 | P0 | P13-D | DONE — implemented 2026-10-27, owner-reviewed 2026-10-27: `CompositeRateLimitKeyTest` 4/20 (key scope + `reset-password`/`email-verification` 429s that had no probe), `SecurityAuditTest` HTML 500 branch, ladder completed with the admin resend route; full suite 2241/8034, Pint clean — detail in `phase-13-security-hardening.md` § Group E |
 
+### Phase 14 — Storage, Backup & Retention
+
+> Breakdown revised 2026-10-29. Group A **REVIEW** (2026-10-29), Group B
+> **REVIEW** (2026-10-30), Group F **REVIEW** (2026-10-31) — owner review
+> pending, uncommitted on `feature/phase-14-storage-backup-retention`. Groups
+> C–E still PLANNED. Seventeen tasks in six groups (A storage card/driver
+> binding/capacity guard/S3 readiness → B backup strategy/async engine → C
+> temporary retention/cleanup → D security/RBAC/feature flags/audit → E
+> tests/verification/docs → F global timezone follow-up).
+> Detail: `docs/planning/phase-14-storage-backup-retention.md`.
+
+| ID | Task | Phase | Priority | Depends On | Status |
+|----|------|-------|----------|-----------|--------|
+| P14-A1 | Storage Management Card UI (`resources/views/pages/settings/index.blade.php`, `col-lg-8`) — reactive `local`/`s3` fieldset + capacity gauge | 14 | P1 | FOUND-003 | DONE |
+| P14-A2 | Dynamic Driver Runtime Binding & Conditional Validation (`AppServiceProvider::bindStorageConfig()`, `SystemSettingRequest`, `SystemSettingsUpdateAction`, encrypted S3 credentials, `SECRET_KEYS`) | 14 | P1 | P14-A1 | DONE |
+| P14-A3 | Storage Capacity Guard & Exception Handler (`StorageCapacityExceededException` → 507 `STORAGE_FULL`, `storage_max_capacity_mb`, warning threshold) | 14 | P1 | P14-A2 | DONE |
+| P14-A4 | Secure Private Media Route & Signed URL Handler (`secure_documents`, `storage.view`, signed URL expiry) | 14 | P1 | P14-A3 | DONE |
+| P14-A5 | Automated Storage Disk, UI & Capacity Test (`tests/Feature/Storage/StorageDiskTest.php`) | 14 | P1 | P14-A1, P14-A2, P14-A3, P14-A4 | DONE |
+| P14-B1 | Spatie Backup Integration & Dynamic `SystemSetting` Control (MySQL DB + `storage/app`, dedicated `backups` disk, ADR first) | 14 | P1 | P14-A2 | DONE |
+| P14-B2 | Pre-Backup Capacity Check & Asynchronous Execution (`ExecuteSystemBackupJob`, `QueueName::BACKUPS`), abort on full target | 14 | P1 | P14-B1, P14-A3 | DONE |
+| P14-B3 | Automated Backup Strategy & Capacity Test (`tests/Feature/Storage/BackupStrategyTest.php`) | 14 | P1 | P14-B1, P14-B2 | DONE |
+| P14-C1 | Retention & Threshold Policy Configuration (`temp_file_retention_hours`, `storage_warning_threshold_percent`) | 14 | P1 | DB-001 | DONE |
+| P14-C2 | Scheduled & Capacity-Triggered Cleanup Job (`CleanTemporaryStorageJob`, `tmp` disk only, hourly dispatch throttle) | 14 | P1 | P14-C1, P14-A3 | DONE |
+| P14-C3 | Automated Retention Test (`tests/Feature/Storage/DataRetentionTest.php`, audit logs + soft deletes preserved) | 14 | P1 | P14-C1, P14-C2 | DONE |
+| P14-D1 | RBAC Authorization (`storage.view`, `storage.manage`, `backup.execute`) | 14 | P1 | RBAC-004 | DONE |
+| P14-D2 | Feature Flag Middleware (`feature:storage_management` — management surface only, guard stays active) | 14 | P1 | P14-D1 | DONE |
+| P14-D3 | Action-First Audit Trail Logging (`storage_setting.updated`, `backup.triggered`, `backup.aborted_storage_full`, `temp_storage.cleaned`, `storage.capacity_warning`) | 14 | P1 | P14-B2, P14-C2 | DONE |
+| P14-E1 | Comprehensive Test Run (`php artisan test --filter=Storage`, full suite, Pint) | 14 | P0 | P14-A5, P14-B3, P14-C3, P14-D3 | DONE |
+| P14-E2 | Update Documentation (`docs/base/infrastructure/storage.md`, `docs/base/operations/retention.md`, `docs/base/infrastructure/backup-disaster-recovery.md`, `docs/base/infrastructure/queue.md`, `docs/base/api/error-contract.md`, `progress.md`) | 14 | P2 | P14-E1 | DONE |
+| P14-F1 | Global Timezone (`app_timezone` replaces `password_security_sweep_timezone`, `AppServiceProvider::bindTimezone()`, System Timezone card, `timezone:rebase`; ADR-027) | 14 | P1 | — | DONE |
+
+**Invariants (non-negotiable):** Audit Trail / Activity Logs are never deleted; soft-deleted models are never force-deleted automatically; only the `tmp` disk is cleaned by TTL; backup runs asynchronously and never lands on the disk it backs up; storage access gated by RBAC + feature flag; the flag gates the management surface only, not the upload guard; disk binding falls back to config and never blocks boot; all jobs follow queue convention; audit rows written inside the transaction by the Action layer.
+
+---
+
 ## Full Task List (JSON for AI parsing)
 
 ```json[

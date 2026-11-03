@@ -19,7 +19,7 @@
 | 11 | Monitoring/observability | P1 | PLANNED |
 | 12 | API V1 | P0 | PLANNED |
 | 13 | Security hardening | P0 | PLANNED |
-| 14 | Storage/backup/retention | P1 | PLANNED |
+| 14 | Storage/backup/retention | P1 | IN_PROGRESS |
 | 15 | Comprehensive testing | P0 | PLANNED |
 | 16 | Documentation verification | P0 | PLANNED |
 | 17 | Full regression / final review | P0 | PLANNED |
@@ -190,7 +190,7 @@ email-verification-notice, password-change pages using AdminLTE auth layout.
 - Storage disks (local, public, tmp)
 - Backup strategy
 - Retention jobs
-- Status: PLANNED
+- Status: IN_PROGRESS — Groups A, B and F1 in REVIEW (2026-11-01); C–E planned
 
 ### Phase 15: Comprehensive Testing
 - All test types from [testing-matrix.md](../base/testing/testing-matrix.md)

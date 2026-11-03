@@ -25,6 +25,14 @@
         </div>
     @endif
 
+    @if (session('error'))
+        <div class="alert alert-danger alert-dismissible fade show mb-3" role="alert">
+            <i class="fas fa-circle-exclamation me-1"></i>
+            {{ session('error') }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    @endif
+
     {{-- The route is gated on settings.view, so someone holding only that gets a
          READ-ONLY page rather than a 403 — they can see what is configured but
          cannot change it. Wrapping the whole form (inputs AND the save button in
@@ -37,6 +45,38 @@
         <div class="row g-4">
             {{-- Main Content Area --}}
             <div class="col-lg-8 col-12">
+
+                {{-- Card 0: System Timezone --}}
+                <div class="card border-0 shadow-sm mb-4" id="section-system">
+                    <div class="card-header bg-transparent border-bottom py-3">
+                        <h5 class="card-title mb-0 fw-semibold">System Timezone</h5>
+                    </div>
+                    <div class="card-body p-4">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label for="app_timezone" class="form-label">
+                                    System Timezone
+                                    <i class="bi bi-info-circle text-muted fs-7 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Applied to the whole application: scheduler, audit trail, UI clock and API timestamps. Leave on the default to use the application configuration."></i>
+                                </label>
+                                <select name="app_timezone" id="app_timezone"
+                                        class="form-select form-select-sm @error('app_timezone') is-invalid @enderror" @error('app_timezone') aria-invalid="true" aria-describedby="app_timezone_error" @enderror>
+                                    <option value="" {{ old('app_timezone', $settings['app_timezone'] ?? '') === '' ? 'selected' : '' }}>
+                                        Application default ({{ $baseTimezone }})
+                                    </option>
+                                    @foreach ($timezones as $timezone)
+                                        <option value="{{ $timezone->name }}" {{ old('app_timezone', $settings['app_timezone'] ?? '') === $timezone->name ? 'selected' : '' }}>
+                                            {{ $timezone->label }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                                <div class="form-text">Currently applied: {{ config('app.timezone') }}.</div>
+                                @error('app_timezone')
+                                    <div class="invalid-feedback d-block" id="app_timezone_error">{{ $message }}</div>
+                                @enderror
+                            </div>
+                        </div>
+                    </div>
+                </div>
 
                 {{-- Card 1: Login Security & Progressive Lockout --}}
                 <div class="card border-0 shadow-sm mb-4" id="section-login">
@@ -223,33 +263,14 @@
                             <div class="col-md-6">
                                 <label for="password_security_sweep_time" class="form-label">
                                     Daily Sweep Time
-                                    <i class="bi bi-info-circle text-muted fs-7 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Local time when automated password expiration and account inactivity sweep jobs run."></i>
+                                    <i class="bi bi-info-circle text-muted fs-7 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Local time when automated password expiration and account inactivity sweep jobs run. Uses the system timezone."></i>
                                 </label>
                                 <input type="time" name="password_security_sweep_time" id="password_security_sweep_time"
                                        class="form-control form-control-sm @error('password_security_sweep_time') is-invalid @enderror" @error('password_security_sweep_time') aria-invalid="true" aria-describedby="password_security_sweep_time_error" @enderror
                                        value="{{ old('password_security_sweep_time', $settings['password_security_sweep_time'] ?? '00:00') }}">
+                                <div class="form-text">System timezone: {{ config('app.timezone') }}.</div>
                                 @error('password_security_sweep_time')
                                     <div class="invalid-feedback d-block" id="password_security_sweep_time_error">{{ $message }}</div>
-                                @enderror
-                            </div>
-                            <div class="col-md-6">
-                                <label for="password_security_sweep_timezone" class="form-label">
-                                    Sweep Timezone
-                                    <i class="bi bi-info-circle text-muted fs-7 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Timezone used for the sweep time. Leave on application timezone to use the server/application setting."></i>
-                                </label>
-                                <select name="password_security_sweep_timezone" id="password_security_sweep_timezone"
-                                        class="form-select form-select-sm @error('password_security_sweep_timezone') is-invalid @enderror" @error('password_security_sweep_timezone') aria-invalid="true" aria-describedby="password_security_sweep_timezone_error" @enderror>
-                                    <option value="" {{ old('password_security_sweep_timezone', $settings['password_security_sweep_timezone'] ?? '') === '' ? 'selected' : '' }}>
-                                        Application timezone ({{ config('app.timezone') }})
-                                    </option>
-                                    @foreach ($timezones as $timezone)
-                                        <option value="{{ $timezone->name }}" {{ old('password_security_sweep_timezone', $settings['password_security_sweep_timezone'] ?? '') === $timezone->name ? 'selected' : '' }}>
-                                            {{ $timezone->label }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                                @error('password_security_sweep_timezone')
-                                    <div class="invalid-feedback d-block" id="password_security_sweep_timezone_error">{{ $message }}</div>
                                 @enderror
                             </div>
                         </div>
@@ -710,6 +731,283 @@
                     </div>
                 </div>
 
+                {{-- Card 7: Storage Management (Phase 14 Group A) --}}
+                @if ($storageEnabled)
+                    <div class="card border-0 shadow-sm mb-4" id="section-storage">
+                        <div class="card-header bg-transparent border-bottom py-3">
+                            <h5 class="card-title mb-0 fw-semibold">Storage Management</h5>
+                        </div>
+                        <div class="card-body p-4">
+                            @if ($storage['percent'] !== null && $storage['percent'] >= ($settings['storage_warning_threshold_percent'] ?? 80))
+                                <div class="alert alert-warning d-flex align-items-center gap-2 py-2" role="alert">
+                                    <i class="bi bi-exclamation-triangle-fill"></i>
+                                    <span>Storage is almost full. Temporary files will be cleaned up automatically.</span>
+                                </div>
+                            @endif
+
+                            <div class="mb-2 d-flex justify-content-between align-items-center">
+                                <span class="text-muted small">
+                                    Used <strong>{{ $storage['used_label'] }}</strong>
+                                    of <strong>{{ $storage['total_label'] }}</strong>
+                                </span>
+                                <span class="text-muted small">{{ $storage['available_label'] }} available</span>
+                            </div>
+                            @if ($storage['percent'] !== null)
+                                <div class="progress mb-4" role="progressbar"
+                                     aria-label="Storage capacity"
+                                     aria-valuenow="{{ (int) $storage['percent'] }}"
+                                     aria-valuemin="0" aria-valuemax="100" style="height: 10px;">
+                                    @php($percent = min(100, (int) $storage['percent']))
+                                    <div class="progress-bar {{ $percent >= 95 ? 'bg-danger' : ($percent >= ($settings['storage_warning_threshold_percent'] ?? 80) ? 'bg-warning' : 'bg-success') }}"
+                                         style="width: {{ $percent }}%"></div>
+                                </div>
+                            @endif
+                            <p class="text-muted small">
+                                Disk <code>{{ $storage['disk'] }}</code>.
+                                @if (! $storage['known'])
+                                    Capacity could not be measured; uploads are not refused on this disk.
+                                @elseif ($storage['quota'] === null)
+                                    No quota is set, so the gauge measures the physical disk.
+                                @endif
+                            </p>
+
+                            <hr class="my-4">
+
+                            <h6 class="text-uppercase text-muted small fw-semibold mb-3">Driver</h6>
+                            <div class="mb-3">
+                                <label for="storage_default_disk" class="form-label">
+                                    Default Storage Disk
+                                    <i class="bi bi-info-circle text-muted fs-7 ms-1" data-bs-toggle="tooltip" data-bs-placement="top"
+                                       data-bs-title="Where new files are written. S3 requires the credentials below or the matching AWS_* environment values."></i>
+                                </label>
+                                <select name="storage_default_disk" id="storage_default_disk"
+                                        class="form-select form-select-sm @error('storage_default_disk') is-invalid @enderror">
+                                    <option value="local" {{ ($settings['storage_default_disk'] ?? 'local') === 'local' ? 'selected' : '' }}>Local instance storage</option>
+                                    <option value="s3" {{ ($settings['storage_default_disk'] ?? 'local') === 's3' ? 'selected' : '' }}>S3-compatible object storage</option>
+                                </select>
+                                @error('storage_default_disk')
+                                    <div class="invalid-feedback d-block">{{ $message }}</div>
+                                @enderror
+                            </div>
+
+                            <div id="storage-local-fields">
+                                <div class="mb-3">
+                                    <label for="storage_local_root" class="form-label">Local Root Path</label>
+                                    <input type="text" name="storage_local_root" id="storage_local_root"
+                                           class="form-control form-control-sm @error('storage_local_root') is-invalid @enderror"
+                                           value="{{ old('storage_local_root', $settings['storage_local_root'] ?? '') }}"
+                                           placeholder="{{ storage_path('app/private') }}">
+                                    <div class="form-text">Leave blank to use the configured default. Must stay inside <code>{{ storage_path() }}</code>.</div>
+                                    @error('storage_local_root')
+                                        <div class="invalid-feedback d-block">{{ $message }}</div>
+                                    @enderror
+                                </div>
+                                <div class="mb-3">
+                                    <label for="storage_local_permission" class="form-label">File Permission Mode</label>
+                                    <input type="text" name="storage_local_permission" id="storage_local_permission"
+                                           class="form-control form-control-sm @error('storage_local_permission') is-invalid @enderror"
+                                           value="{{ old('storage_local_permission', $settings['storage_local_permission'] ?? '') }}"
+                                           placeholder="0644" inputmode="numeric" pattern="0[0-7]{3}">
+                                    <div class="form-text">Octal mode for new files; directories get the execute bit. Must not grant write access to group or others (e.g. <code>0777</code> is refused). Blank keeps the system default.</div>
+                                    @error('storage_local_permission')
+                                        <div class="invalid-feedback d-block">{{ $message }}</div>
+                                    @enderror
+                                </div>
+                            </div>
+
+                            <div id="storage-s3-fields" hidden>
+                                <div class="mb-3">
+                                    <label for="storage_s3_key" class="form-label">Access Key</label>
+                                    <input type="text" name="storage_s3_key" id="storage_s3_key" autocomplete="off"
+                                           class="form-control form-control-sm @error('storage_s3_key') is-invalid @enderror"
+                                           value="{{ old('storage_s3_key') }}">
+                                    @if ($hasStorageSecret)
+                                        <div class="form-text">A credential is stored. Leave blank to keep it.</div>
+                                    @endif
+                                    @error('storage_s3_key')
+                                        <div class="invalid-feedback d-block">{{ $message }}</div>
+                                    @enderror
+                                </div>
+                                <div class="mb-3">
+                                    <label for="storage_s3_secret" class="form-label">Secret Key</label>
+                                    <input type="password" name="storage_s3_secret" id="storage_s3_secret" autocomplete="new-password"
+                                           class="form-control form-control-sm @error('storage_s3_secret') is-invalid @enderror"
+                                           value="{{ old('storage_s3_secret') }}">
+                                    <div class="form-text">Stored encrypted. Leave blank to keep the stored value.</div>
+                                    @error('storage_s3_secret')
+                                        <div class="invalid-feedback d-block">{{ $message }}</div>
+                                    @enderror
+                                </div>
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <label for="storage_s3_region" class="form-label">Region</label>
+                                        <input type="text" name="storage_s3_region" id="storage_s3_region"
+                                               class="form-control form-control-sm @error('storage_s3_region') is-invalid @enderror"
+                                               value="{{ old('storage_s3_region', $settings['storage_s3_region'] ?? '') }}" placeholder="us-east-1">
+                                        @error('storage_s3_region')
+                                            <div class="invalid-feedback d-block">{{ $message }}</div>
+                                        @enderror
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="storage_s3_bucket" class="form-label">Bucket</label>
+                                        <input type="text" name="storage_s3_bucket" id="storage_s3_bucket"
+                                               class="form-control form-control-sm @error('storage_s3_bucket') is-invalid @enderror"
+                                               value="{{ old('storage_s3_bucket', $settings['storage_s3_bucket'] ?? '') }}">
+                                        @error('storage_s3_bucket')
+                                            <div class="invalid-feedback d-block">{{ $message }}</div>
+                                        @enderror
+                                    </div>
+                                </div>
+                                <div class="mb-3 mt-3">
+                                    <label for="storage_s3_endpoint" class="form-label">Endpoint (optional)</label>
+                                    <input type="url" name="storage_s3_endpoint" id="storage_s3_endpoint"
+                                           class="form-control form-control-sm @error('storage_s3_endpoint') is-invalid @enderror"
+                                           value="{{ old('storage_s3_endpoint', $settings['storage_s3_endpoint'] ?? '') }}"
+                                           placeholder="https://s3.example.com">
+                                    @error('storage_s3_endpoint')
+                                        <div class="invalid-feedback d-block">{{ $message }}</div>
+                                    @enderror
+                                </div>
+                                <div class="mb-3">
+                                    <label for="storage_s3_url" class="form-label">Public URL (optional)</label>
+                                    <input type="url" name="storage_s3_url" id="storage_s3_url"
+                                           class="form-control form-control-sm @error('storage_s3_url') is-invalid @enderror"
+                                           value="{{ old('storage_s3_url', $settings['storage_s3_url'] ?? '') }}">
+                                    @error('storage_s3_url')
+                                        <div class="invalid-feedback d-block">{{ $message }}</div>
+                                    @enderror
+                                </div>
+                            </div>
+
+                            <hr class="my-4">
+
+                            <h6 class="text-uppercase text-muted small fw-semibold mb-3">Capacity Limit</h6>
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label for="storage_max_capacity_mb" class="form-label">Maximum Capacity (MB)</label>
+                                    <input type="number" name="storage_max_capacity_mb" id="storage_max_capacity_mb"
+                                           class="form-control form-control-sm @error('storage_max_capacity_mb') is-invalid @enderror"
+                                           value="{{ old('storage_max_capacity_mb', $settings['storage_max_capacity_mb'] ?? 0) }}"
+                                           min="0" max="10485760">
+                                    <div class="form-text">0 means no quota: the disk's own size is the limit.</div>
+                                    @error('storage_max_capacity_mb')
+                                        <div class="invalid-feedback d-block">{{ $message }}</div>
+                                    @enderror
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="storage_warning_threshold_percent" class="form-label">Warning Threshold (%)</label>
+                                    <input type="number" name="storage_warning_threshold_percent" id="storage_warning_threshold_percent"
+                                           class="form-control form-control-sm @error('storage_warning_threshold_percent') is-invalid @enderror"
+                                           value="{{ old('storage_warning_threshold_percent', $settings['storage_warning_threshold_percent'] ?? 80) }}"
+                                           min="1" max="99">
+                                    <div class="form-text">Cleanup runs above this. Writes are refused at 95%.</div>
+                                    @error('storage_warning_threshold_percent')
+                                        <div class="invalid-feedback d-block">{{ $message }}</div>
+                                    @enderror
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="temp_file_retention_hours" class="form-label">Temporary File Retention (hours)</label>
+                                    <input type="number" name="temp_file_retention_hours" id="temp_file_retention_hours"
+                                           class="form-control form-control-sm @error('temp_file_retention_hours') is-invalid @enderror"
+                                           value="{{ old('temp_file_retention_hours', $settings['temp_file_retention_hours'] ?? 24) }}"
+                                           min="1" max="8760">
+                                    <div class="form-text">Files left on the <code>tmp</code> disk longer than this are deleted daily.</div>
+                                    @error('temp_file_retention_hours')
+                                        <div class="invalid-feedback d-block">{{ $message }}</div>
+                                    @enderror
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                @endif
+
+                {{-- Card 8: Backup (Phase 14 Group B) --}}
+                @if ($storageEnabled)
+                    <div class="card border-0 shadow-sm mb-4" id="section-backup">
+                        <div class="card-header bg-transparent border-bottom py-3">
+                            <h5 class="card-title mb-0 fw-semibold">Backup</h5>
+                        </div>
+                        <div class="card-body p-4">
+                            <div class="form-check form-switch mb-3">
+                                <input type="hidden" name="backup_enabled" value="0">
+                                <input class="form-check-input" type="checkbox" name="backup_enabled" id="backup_enabled"
+                                    @checked($settings['backup_enabled'] ?? false)>
+                                <label class="form-check-label" for="backup_enabled">
+                                    Scheduled Backup
+                                    <i class="bi bi-info-circle text-muted fs-7 ms-1" data-bs-toggle="tooltip" data-bs-placement="top"
+                                       data-bs-title="Runs a queued backup of the database and storage/app once a day. Off by default; the manual trigger still works while this is off."></i>
+                                </label>
+                            </div>
+
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label for="backup_schedule" class="form-label">Daily Run Time</label>
+                                    <input type="time" name="backup_schedule" id="backup_schedule"
+                                           class="form-control form-control-sm @error('backup_schedule') is-invalid @enderror"
+                                           value="{{ old('backup_schedule', $settings['backup_schedule'] ?? '02:00') }}">
+                                    <div class="form-text">System timezone: {{ config('app.timezone') }}.</div>
+                                    @error('backup_schedule')
+                                        <div class="invalid-feedback d-block">{{ $message }}</div>
+                                    @enderror
+                                </div>
+                            </div>
+
+                            <h6 class="text-uppercase text-muted small fw-semibold mb-3 mt-4">Retention</h6>
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <label for="backup_retention_daily" class="form-label">Daily Kept</label>
+                                    <input type="number" name="backup_retention_daily" id="backup_retention_daily"
+                                           class="form-control form-control-sm @error('backup_retention_daily') is-invalid @enderror"
+                                           value="{{ old('backup_retention_daily', $settings['backup_retention_daily'] ?? 7) }}"
+                                           min="1" max="90">
+                                    @error('backup_retention_daily')
+                                        <div class="invalid-feedback d-block">{{ $message }}</div>
+                                    @enderror
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="backup_retention_weekly" class="form-label">Weekly Kept</label>
+                                    <input type="number" name="backup_retention_weekly" id="backup_retention_weekly"
+                                           class="form-control form-control-sm @error('backup_retention_weekly') is-invalid @enderror"
+                                           value="{{ old('backup_retention_weekly', $settings['backup_retention_weekly'] ?? 4) }}"
+                                           min="1" max="52">
+                                    @error('backup_retention_weekly')
+                                        <div class="invalid-feedback d-block">{{ $message }}</div>
+                                    @enderror
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="backup_retention_monthly" class="form-label">Monthly Kept</label>
+                                    <input type="number" name="backup_retention_monthly" id="backup_retention_monthly"
+                                           class="form-control form-control-sm @error('backup_retention_monthly') is-invalid @enderror"
+                                           value="{{ old('backup_retention_monthly', $settings['backup_retention_monthly'] ?? 12) }}"
+                                           min="1" max="60">
+                                    @error('backup_retention_monthly')
+                                        <div class="invalid-feedback d-block">{{ $message }}</div>
+                                    @enderror
+                                </div>
+                            </div>
+
+                            <p class="text-muted small mb-0 mt-3">
+                                Backups are written to the <code>backups</code> disk, never the disk being backed up.
+                            </p>
+
+                            {{-- A form cannot nest inside the settings form, so the
+                                 button points at `#backup-trigger-form`, rendered
+                                 after `</form>`. --}}
+                            @can('backup.execute')
+                                <div class="d-flex align-items-center gap-2 mt-3">
+                                    <button type="submit" form="backup-trigger-form" class="btn btn-outline-primary btn-sm">
+                                        <i class="bi bi-cloud-arrow-up me-1"></i> Run Backup Now
+                                    </button>
+                                    <span class="text-muted small">
+                                        Queues a backup immediately, whether or not the schedule is on.
+                                        The outcome arrives as a notification.
+                                    </span>
+                                </div>
+                            @endcan
+                        </div>
+                    </div>
+                @endif
+
             </div>
 
             {{-- Sidebar Area --}}
@@ -853,7 +1151,8 @@
                     </div>
                 </div>
 
-                {{-- Card 7: Sticky Save Actions Card --}}
+
+                {{-- Card 8: Sticky Save Actions Card --}}
                 <div class="card border-0 shadow-sm mb-4 sticky-top" style="top: 80px;">
                     <div class="card-header bg-transparent border-bottom py-3">
                         <h5 class="card-title mb-0 fw-semibold">Save Settings</h5>
@@ -874,6 +1173,17 @@
             </div>
         </div>
     </form>
+
+    {{-- The manual backup trigger's own form. HTML cannot nest forms, so the
+         button inside the Backup card points here with `form=`. --}}
+    @if ($storageEnabled)
+        @can('backup.execute')
+            <form id="backup-trigger-form" method="POST" action="{{ route('storage.backup.store') }}">
+                @csrf
+            </form>
+        @endcan
+    @endif
+
     @else
         {{-- settings.view without settings.manage. The editable form is NOT
              rendered: leaving inputs on screen and hiding only Save would let
@@ -936,6 +1246,21 @@
                 toggle.addEventListener('change', syncField);
                 syncField();
             });
+
+            // Storage driver: show only the fieldset the chosen driver reads.
+            const storageDriver = document.getElementById('storage_default_disk');
+            const storageLocal = document.getElementById('storage-local-fields');
+            const storageS3 = document.getElementById('storage-s3-fields');
+
+            if (storageDriver && storageLocal && storageS3) {
+                const syncStorageFields = () => {
+                    const isS3 = storageDriver.value === 's3';
+                    storageLocal.hidden = isS3;
+                    storageS3.hidden = !isS3;
+                };
+                storageDriver.addEventListener('change', syncStorageFields);
+                syncStorageFields();
+            }
         });
     </script>
 @endsection

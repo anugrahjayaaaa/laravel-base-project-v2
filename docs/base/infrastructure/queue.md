@@ -30,21 +30,51 @@ is written).
 | Constant | Queue | Jobs |
 |---|---|---|
 | `QueueName::EXPORTS` | `exports` | `GenerateAuditExport` — heavy, IO-bound, user-initiated |
-| `QueueName::SWEEPS` | `sweeps` | `PasswordExpirySweep`, `InactivityLockSweep` — scheduled, idempotent, never urgent |
+| `QueueName::BACKUPS` | `backups` | `ExecuteSystemBackupJob` — heavy, IO-bound, scheduled or operator-triggered; one attempt, a partial artifact is retried by an operator. Rides the `backups` connection, consumed by `bin/run-workers.sh backups` |
+| `QueueName::SWEEPS` | `sweeps` | `PasswordExpirySweep`, `InactivityLockSweep`, `CleanTemporaryStorageJob` — scheduled / threshold-triggered, idempotent, never urgent |
 
 The queue is set **on the instance** (`$this->onQueue(...)` in the constructor),
 never as a `public $queue` property: `Queueable` already declares `$queue`, and
 the redeclaration is a class-load fatal that `php -l` does not catch.
 
-Workers listen to all three in priority order — `default` first (queued
+Workers listen to all of them in priority order — `default` first (queued
 notifications and mails are user-facing), then `exports`, then `sweeps`:
 
 ```bash
-QUEUE_NAME="${QUEUE_NAME:-default,exports,sweeps}"   # bin/run-workers.sh
+QUEUE_NAME="${QUEUE_NAME:-default,exports,sweeps}"   # bin/run-workers.sh queue
 ```
 
-A worker started with `QUEUE_NAME=default` alone leaves every named-queue job
-waiting forever.
+`backups` is **not** in that list: it rides its own connection and its own
+worker (below). A worker started with `QUEUE_NAME=default` alone leaves every
+named-queue job waiting forever.
+
+### The backups connection
+
+`retry_after` is a property of the connection the **worker** runs, and a job
+whose reservation is older than `retry_after` is popped again — on both drivers.
+The database driver does not hold a row for the whole run: `DatabaseQueue`'s
+`isReservedButExpired()` re-selects it, and each pop increments `attempts`. With
+`$tries = 1`, that second pop marks the job failed without running it.
+
+A backup legitimately runs for up to 1800 seconds while every other job finishes
+in seconds, so the two shapes cannot share one window. `config/queue.php` derives
+a `backups` connection from the default one — same driver and credentials, only
+`queue` and `retry_after` overridden — and `ExecuteSystemBackupJob` calls
+`onConnection('backups')`:
+
+```text
+BACKUP_QUEUE_RETRY_AFTER (2000)  >  ExecuteSystemBackupJob::$timeout (1800)
+```
+
+```bash
+bin/run-workers.sh backups   # queue:work --connection=backups --queue=backups
+```
+
+Both processes are in `deploy/supervisor/laravel-base-project.conf`
+(`laravel-v2-worker`, `laravel-v2-backup-worker`) and both start under
+`bin/run-workers.sh local`. **A deployment that starts only `queue` never runs a
+backup** — the scheduler and the manual trigger would enqueue into a queue
+nobody reads.
 
 ### Correlation id on the payload
 
@@ -58,15 +88,18 @@ on the field existing.
 
 ## Password Security Workers
 
-The expiry and inactivity jobs are dispatched by the minute scheduler only when the configured sweep time and timezone match. Run the scheduler and queue as separate processes:
+The expiry and inactivity jobs are dispatched by the minute scheduler only when the configured sweep time matches. The comparison uses `now()` in the **global system timezone** (`app_timezone`, ADR-027) — there is no separate sweep timezone. Run the scheduler and queue as separate processes:
 
 ```bash
 bin/run-workers.sh local
 bin/run-workers.sh cron
 bin/run-workers.sh queue
+bin/run-workers.sh backups
 ```
 
 Production `queue` should run under Supervisor/systemd. Queue lifecycle verbosity is configurable with `QUEUE_VERBOSITY`; business sweep counters are written to `storage/logs/laravel.log`.
+
+A long-lived `queue:work` (and `schedule:work`) fixes the timezone it booted with. After changing `app_timezone`, run `php artisan queue:restart` and restart `schedule:work`; `schedule:run` ticks from cron each minute and picks the new value up on its own.
 
 ## Queue Candidates
 | Job Type | Examples |
@@ -89,7 +122,9 @@ is held to them the day it is written:
 1. **Names its queue** from `App\Support\QueueName`, set with `onQueue()` in the
    constructor — see *Named Queues* above. A new queue name means one constant
    there AND one addition to `bin/run-workers.sh`'s `QUEUE_NAME` default, or the
-   job waits forever on a queue nobody listens to.
+   job waits forever on a queue nobody listens to. A job whose timeout cannot
+   share the connection's `retry_after` also needs its own connection and worker
+   — see *The backups connection*.
 2. **Declares its retry chain** — `$tries`, `$timeout`, `$maxExceptions` and
    `backoff()` (see *Failure Handling*). The declarations are the point: a retry
    chain read off the framework's defaults is a retry chain nobody wrote down.

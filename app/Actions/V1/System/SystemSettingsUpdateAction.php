@@ -24,6 +24,27 @@ use Illuminate\Support\Facades\DB;
  */
 class SystemSettingsUpdateAction
 {
+    /**
+     * Every key owned by the storage card. Used to decide whether the storage
+     * audit row and the runtime rebind are needed — not as a second whitelist.
+     *
+     * @var array<int, string>
+     */
+    private const STORAGE_KEYS = [
+        'storage_default_disk',
+        'storage_local_root',
+        'storage_local_permission',
+        'storage_s3_key',
+        'storage_s3_secret',
+        'storage_s3_region',
+        'storage_s3_bucket',
+        'storage_s3_endpoint',
+        'storage_s3_url',
+        'storage_max_capacity_mb',
+        'storage_warning_threshold_percent',
+        'temp_file_retention_hours',
+    ];
+
     public function __construct(
         private readonly NotificationAdminEventAction $notifyAction,
     ) {
@@ -58,6 +79,11 @@ class SystemSettingsUpdateAction
         }
 
         $updates = [
+            // System timezone — Phase 14 follow-up. Empty means "use the
+            // application default". It drives the whole process at boot, not
+            // one module's sweep.
+            'app_timezone' => $data['app_timezone'] ?? '',
+
             // Login rate limiting & progressive lockout
             'login_max_attempts' => (string) ($data['login_max_attempts'] ?? 5),
             'lockout_base_minutes' => (string) ($data['lockout_base_minutes'] ?? 5),
@@ -90,7 +116,6 @@ class SystemSettingsUpdateAction
             'password_expiry_days' => (string) ($data['password_expiry_days'] ?? 90),
             'password_expiry_warn_days' => (string) ($data['password_expiry_warn_days'] ?? 14),
             'password_security_sweep_time' => $data['password_security_sweep_time'] ?? '00:00',
-            'password_security_sweep_timezone' => $data['password_security_sweep_timezone'] ?? '',
             'inactivity_lock_enabled' => ($data['inactivity_lock_enabled'] ?? false) ? 'true' : 'false',
             'inactivity_lock_days' => (string) ($data['inactivity_lock_days'] ?? 30),
             'inactivity_lock_grace_enabled' => (
@@ -159,7 +184,58 @@ class SystemSettingsUpdateAction
             // Phase 11 §13. Same three-way agreement as the health key above:
             // limiter fallback, seeder and this default all say 10.
             'queue_retry_rate_limit_per_minute' => (string) ($data['queue_retry_rate_limit_per_minute'] ?? 10),
+
+            // Phase 14 Group A — storage driver and capacity. The credentials
+            // are handled below, because their stored form is ciphertext and a
+            // blank field means "keep the stored value", never "clear it".
+            'storage_default_disk' => in_array($data['storage_default_disk'] ?? null, ['local', 's3'], true)
+                ? $data['storage_default_disk']
+                : 'local',
+            'storage_local_root' => (string) ($data['storage_local_root'] ?? ''),
+            'storage_local_permission' => (string) ($data['storage_local_permission'] ?? ''),
+            'storage_s3_region' => (string) ($data['storage_s3_region'] ?? ''),
+            'storage_s3_bucket' => (string) ($data['storage_s3_bucket'] ?? ''),
+            'storage_s3_endpoint' => (string) ($data['storage_s3_endpoint'] ?? ''),
+            'storage_s3_url' => (string) ($data['storage_s3_url'] ?? ''),
+            'storage_max_capacity_mb' => (string) ($data['storage_max_capacity_mb'] ?? 0),
+            'storage_warning_threshold_percent' => (string) ($data['storage_warning_threshold_percent'] ?? 80),
+            'temp_file_retention_hours' => (string) ($data['temp_file_retention_hours'] ?? 24),
+
+            // Phase 14 Group B — scheduled backup. Defaults match the seeder
+            // and `SystemBackupSchedule`/`SystemBackupRunner`, so a payload
+            // that omits them (an API client that never heard of the keys)
+            // leaves the documented policy in place.
+            'backup_enabled' => ($data['backup_enabled'] ?? false) ? 'true' : 'false',
+            'backup_schedule' => $data['backup_schedule'] ?? '02:00',
+            'backup_retention_daily' => (string) ($data['backup_retention_daily'] ?? 7),
+            'backup_retention_weekly' => (string) ($data['backup_retention_weekly'] ?? 4),
+            'backup_retention_monthly' => (string) ($data['backup_retention_monthly'] ?? 12),
         ];
+
+        // `encrypt()` draws a fresh IV on every call, so a resubmitted
+        // credential never matches its own ciphertext. Compare the plaintext
+        // instead and keep the verdict for the storage audit below. The row is
+        // only re-encrypted when the plaintext differs; rewriting it on every
+        // save would churn ciphertext that decrypts to the same secret.
+        $secretChanged = [];
+
+        foreach (['storage_s3_key', 'storage_s3_secret'] as $secretKey) {
+            $secret = $data[$secretKey] ?? null;
+
+            if ($secret !== null && $secret !== '') {
+                $secretChanged[$secretKey] = (string) $secret !== AppServiceProvider::storedSecret($secretKey);
+
+                if ($secretChanged[$secretKey]) {
+                    $updates[$secretKey] = encrypt((string) $secret);
+                }
+            }
+
+            // Also removed from `$data`, which is the `system_setting.updated`
+            // audit payload: a credential in activity_log is readable by every
+            // `audit.view` holder, a wider audience than the one the credential
+            // exists for.
+            unset($data[$secretKey]);
+        }
 
         $graceEnabled = $updates['inactivity_lock_grace_enabled'] === 'true';
 
@@ -182,18 +258,46 @@ class SystemSettingsUpdateAction
             $updates['inactivity_lock_grace_days'] = (string) $data['inactivity_lock_grace_days'];
         }
 
-        // One transaction for all ~40 keys. `SystemSetting::set()` writes a single row
-        // per key with no transaction of its own, so before this the loop could
-        // stop half way — a failure on key 30 left the password policy updated
-        // and the registration toggle not, with nothing to roll back and an audit
-        // row (written later, by the controller) claiming the save succeeded.
-        DB::transaction(function () use ($updates, $data, $causer): void {
+        // The web form posts every field on every save, so most of these writes
+        // would rewrite a value that is already stored — one SELECT plus one
+        // UPDATE each (~67 queries per save, measured). Keep only what differs.
+        // Secrets are absent from the snapshot (`SECRET_KEYS`); their plaintext
+        // was compared above, so one is only in `$updates` when it changed.
+        $stored = SystemSetting::getAll();
+
+        $updates = array_filter(
+            $updates,
+            fn ($value, string $key): bool => ! array_key_exists($key, $stored) || $stored[$key] !== $value,
+            ARRAY_FILTER_USE_BOTH
+        );
+
+        // After the strip and the diff: a storage key removed by either is not a
+        // storage change, and auditing it would recant the same lie the strip
+        // exists to avoid.
+        $changedStorageKeys = array_values(array_intersect(array_keys($updates), self::STORAGE_KEYS));
+
+        // One transaction for every changed key. `SystemSetting::set()` writes a
+        // single row per key with no transaction of its own, so before this the
+        // loop could stop half way — a failure on key 30 left the password policy
+        // updated and the registration toggle not, with nothing to roll back and
+        // an audit row (written later, by the controller) claiming the save
+        // succeeded.
+        DB::transaction(function () use ($updates, $data, $causer, $changedStorageKeys): void {
             foreach ($updates as $key => $value) {
                 SystemSetting::set($key, $value);
             }
 
             if ($causer !== null) {
                 SystemSetting::query()->firstOrFail()->audit('system_setting.updated', $causer, $data);
+
+                // A second, storage-specific row so the storage module has its
+                // own event history and `storage.view` holders can read what
+                // changed without parsing the whole settings payload.
+                if ($changedStorageKeys !== []) {
+                    SystemSetting::query()->firstOrFail()->audit('storage_setting.updated', $causer, [
+                        'keys' => $changedStorageKeys,
+                    ]);
+                }
             }
         });
 
@@ -203,10 +307,16 @@ class SystemSettingsUpdateAction
         // holding `config('auth.passwords.users.expire')` in memory keeps the old
         // value. Rebinding here closes that window for the rest of this process.
         //
+        // The timezone is rebound for the same reason: `date_default_timezone_set()`
+        // is process-global, so without this the request that saved Asia/Jakarta
+        // keeps rendering UTC until the next request.
+        //
         // After the transaction, not inside: binding a config from values a
         // rollback then discards would leave the process enforcing a lifetime
         // the database never accepted.
         AppServiceProvider::bindExpirations();
+        AppServiceProvider::bindStorageConfig();
+        AppServiceProvider::bindTimezone();
 
         // Every `settings.manage` holder. The message names how many keys changed,
         // never their values: a settings notification quoting the new value hands a

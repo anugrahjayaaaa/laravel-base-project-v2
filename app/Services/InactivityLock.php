@@ -82,8 +82,11 @@ class InactivityLock
             // Inside the transaction, so a rollback takes the record with the lock.
             // `causer`/`source` come from the caller because the two callers are
             // not the same kind of event: see AuditsSystemActivity for the sweep's
-            // shape and EnsurePasswordChangeRequired for the middleware's.
+            // shape and EnsurePasswordChangeRequired for the middleware's. The
+            // SYSTEM marker is the default here — every caller locks on a timer
+            // or a middleware, never on a person's direct action.
             $user->audit($event, null, array_merge([
+                'causer' => 'SYSTEM',
                 'last_activity_at' => $user->last_activity_at?->toIso8601String(),
             ], $properties));
         });

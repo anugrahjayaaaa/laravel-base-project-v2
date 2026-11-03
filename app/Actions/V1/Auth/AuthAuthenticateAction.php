@@ -55,6 +55,9 @@ class AuthAuthenticateAction
 
             if ($lockedSeconds > 0) {
                 $subject?->audit('auth.account_locked', null, [
+                    // The lock is applied by the system after N failures; the
+                    // person's attempt is already recorded by `auth.login_failed`.
+                    'causer' => 'SYSTEM',
                     'identifier' => $identifier,
                     'lock_duration_seconds' => $lockedSeconds,
                 ]);

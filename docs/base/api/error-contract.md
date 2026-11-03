@@ -18,6 +18,8 @@ Every error answered on `api/*` uses one body:
 `errors` is added on 422 only. `meta` is always present — the same block a
 successful response carries, so an error and the call beside it can be
 correlated from the body alone rather than from a header a client may not log.
+`meta.timestamp` is ISO 8601 in the global system timezone, so the offset is
+`+00:00` only while `app_timezone` is unset (`response-contract.md`, ADR-027).
 
 Built in `App\Support\ApiError`, which the exception handler
 (`bootstrap/app.php`), `Controller::respondError()` and `FormatsApiErrors` (the
@@ -43,6 +45,7 @@ Built in `App\Support\ApiError`, which the exception handler
 | 500 | Server error | the handler's fallback (`SERVER_ERROR`) |
 | 502 | Bad gateway | send-test-mail only, when the mail transport refuses the message (`BAD_GATEWAY`) |
 | 503 | Service unavailable | `HealthCheckController` when a probe fails — **not** an error envelope, see below |
+| 507 | Insufficient storage | `StorageCapacityExceededException` from `StorageCapacityGuard` (`STORAGE_FULL`), see below |
 
 **409 is not only `LAST_SUPERADMIN`.** `POST /activity-logs/exports/{export}/retry`
 answers 409 for three refusals a client cannot separate from the status — not in a
@@ -69,6 +72,13 @@ because a monitor reads the top-level `status` — and it is the only place a 50
 is produced. A failing probe is not an error about the request; the request was
 fine.
 
+**507 means the disk refused the write, not that the server broke.** The
+`STORAGE_FULL` branch sits above the `api/*` branches in `bootstrap/app.php` so
+it answers the same envelope on both channels; `meta.storage` carries the
+measurement that refused it (`disk`, `used`, `total`, `percent`). A client that
+retries the identical request gets the identical answer — the fix is to free
+space or raise `storage_max_capacity_mb`, which is why this is not a 500.
+
 ## Error codes
 
 | Code | HTTP | When |
@@ -90,6 +100,7 @@ fine.
 | RATE_LIMITED | 429 | A named limiter refused the request, or the auth lockout path |
 | EMAIL_ALREADY_VERIFIED | 422 | Resend-verification or the verification link submitted for an address already verified |
 | BAD_GATEWAY | 502 | Send-test-mail: the mail transport refused the message |
+| STORAGE_FULL | 507 | `StorageCapacityGuard` refused a write: the active disk is at or over its quota, or past the 95% hard limit |
 | SERVER_ERROR | 500 | Unhandled exception |
 
 ## Order matters: specific before generic

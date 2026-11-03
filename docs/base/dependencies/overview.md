@@ -33,7 +33,7 @@ installed and verified against `composer.lock`.
 || Queue (default backend) | Laravel Queue | Native | Core | P0 | Through Queue facade |
 || Cache (default backend) | Laravel Cache | Native | Core | P0 | Through Cache facade |
 || Redis (production option) | Redis backend | `predis/predis` or `phpredis` | Optional / Deployment | P2 | Never directly |
-|| Backup | Spatie Backup | `spatie/laravel-backup` | Planned | P2 | Infrastructure |
+|| Backup | Spatie Backup | `spatie/laravel-backup` | Required (installed) | P2 | Through `SystemBackupRunner` |
 || External Monitoring | (deployment choice) | `sentry/sentry-laravel`, etc. | Deployment-specific | P3 | Through logging/observability |
 
 ## Sections
@@ -861,10 +861,10 @@ Laravel facades exclusively.
 || Field | Value |
 ||-------|-------|
 || Composer package | `spatie/laravel-backup` |
-|| Status | Planned / Optional |
+|| Status | Required (installed, ADR-026) |
 || Priority | P2 |
 || Architecture area | Backup & DR (Phase 14 `BACKUP-001`) |
-|| Installed version | Not installed |
+|| Installed version | `^10.3` |
 || Required constraint | `^10.x` (Laravel 13 compatible) |
 
 ### Purpose

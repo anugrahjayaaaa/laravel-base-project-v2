@@ -74,18 +74,24 @@ cannot take the other.
 `SESSION_DRIVER` was left on `database`: sessions are read and written on
 every single request, which is the worst case for the finding above.
 
-One setting is **not** optional on the redis driver:
+One setting is **not** optional on either driver:
 
 ```
 REDIS_QUEUE_RETRY_AFTER=180   # must exceed the worker's --timeout (default 90)
+DB_QUEUE_RETRY_AFTER=90       # same rule, database driver
 ```
 
-A redis-driver job sits in a `reserved` sorted set for `retry_after` seconds.
-The shipped default is 90 and `bin/run-workers.sh`'s `QUEUE_TIMEOUT` is also
-90, so a job that hits its timeout becomes visible again *while a worker is
-still running it* — and a second worker executes it too. The database driver
-does not have this window: it reserves the row atomically at pop time. Raise
-the retry window whenever the worker timeout is raised.
+A job's reservation lasts `retry_after` seconds. The shipped default is 90 and
+`bin/run-workers.sh`'s `QUEUE_TIMEOUT` is also 90, so a job that hits its
+timeout becomes visible again *while a worker is still running it* — and a
+second worker executes it too. **The database driver has the same window**, not
+just redis: `DatabaseQueue::isReservedButExpired()` re-selects rows whose
+`reserved_at` is older than `retry_after`, and each pop increments `attempts`.
+Raise the retry window whenever the worker timeout is raised.
+
+That rule is why the backup job — the one job whose timeout is minutes rather
+than seconds — runs on its own `backups` connection with
+`BACKUP_QUEUE_RETRY_AFTER=2000`; see `queue.md` § *The backups connection*.
 
 ## Abstraction Rule
 

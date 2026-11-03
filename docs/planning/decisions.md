@@ -666,3 +666,300 @@ a broken file.
 `docs/base/api/documentation.md` § *Availability and access*,
 `.github/workflows/ci-cd.yml`, `bin/deploy-rollback.sh`, `OpenApiExportTest`,
 `ApiDocsUiRenderTest`
+
+## ADR-026: backups use spatie/laravel-backup, queued, on a dedicated disk
+
+**Status**: Accepted
+**Date**: 2026-10-30
+**Context**: Phase 14 Group B needs a real backup of MySQL and `storage/app`,
+not a hand-rolled dumper. This change adds `spatie/laravel-backup` (`^10.3`) to
+`composer.json` — the package was **not** a dependency before Phase 14 — and its
+config is a full `backup.php` file. Two properties drive the design: the package
+reads its config through a `Config` object built when a command is constructed,
+and its default source is the whole project while its default destination is the
+`local` disk — the disk it would be backing up.
+
+**Decision**:
+
+- **Source**: MySQL (the configured connection) plus `storage/app`, excluding
+  `storage/app/backups` and `storage/app/backup-temp` — an archive that
+  contains its own predecessors grows without bound.
+- **Destination**: the dedicated `backups` disk (`storage/app/backups`). Never
+  the default/local disk.
+- **Execution**: `ExecuteSystemBackupJob` on the `backups` queue **and the
+  `backups` connection**. The connection exists because a backup runs for
+  minutes while every other job finishes in seconds: both queue drivers
+  re-select a job whose reservation is older than `retry_after`, and the retry
+  window is read from the consuming connection. On the shared connection a
+  second worker would re-reserve the row mid-run, increment `attempts` and —
+  because the job declares `$tries = 1` — fail a backup that is still writing.
+  `bin/run-workers.sh backups` is the worker that consumes it
+  (`BACKUP_QUEUE_RETRY_AFTER` 2000 > `$timeout` 1800). The scheduler and the
+  `POST /storage/backup` trigger both dispatch it; no synchronous backup runs
+  inside a request.
+- **Schedule**: `routes/console.php` ticks every minute and asks
+  `SystemBackupSchedule`, which reads `backup_enabled` and `backup_schedule`
+  at run time. It does **not** register `backup:run` from a config value:
+  the package would freeze that value at build time.
+- **Retention**: `backup_retention_daily|weekly|monthly` (defaults 7/4/12) are
+  applied by `SystemBackupRunner::applyRetention()` immediately before the
+  command runs, then the package's scoped `Config` instance is forgotten so the
+  next command rebuilds it. Same reason: the object is scoped, so a second job
+  in one worker would otherwise keep the first run's windows.
+- **Pre-check**: the raw source estimate (files plus MySQL
+  `data_length + index_length`) must fit in the destination's free space with a
+  10% reserve. Compression only shrinks the real artifact, so the estimate is
+  an upper bound: it may refuse a backup that would have fit, never start one
+  that would not.
+- **Notifications**: the package's own channels stay disabled
+  (`backup.notifications.notifications = []`). Outcomes go through
+  `NotificationAdminEventAction` to holders of `backup.execute`, the people who
+  can act on them.
+- **Encryption**: production runs refuse to start without
+  `BACKUP_ARCHIVE_PASSWORD` (`SystemBackupRunner::run()`), `verify_backup` is
+  on so a corrupt archive fails the run, and a failed run deletes
+  `backup-temp`, where the dump is written in plaintext.
+
+**Alternatives considered**: `mysqldump` + `tar` in a custom command —
+rejected: the package already models sources, destinations, retention and
+verification, and a custom implementation would re-derive all four.
+Configuring `Schedule::command('backup:run')` from a boot-time setting —
+rejected: the scheduler process keeps the value it registered, so changing the
+time would need a restart, exactly what the phase forbids. Registering the
+package's mail notifier — rejected: it mails a hardcoded config address, not
+the operators holding the permission.
+
+**Consequences**: The package is a new production dependency, recorded here and
+in `docs/planning/changelog.md`. The pre-check and retention are exercised by
+`BackupStrategyTest` with the runner mocked, so the suite never shells out to
+`mysqldump`. A backup is one attempt (`$tries = 1`) — a retry after a partial
+artifact is an operator decision, not a queue default — which is why the job
+must run on a connection whose `retry_after` exceeds its own timeout. The
+`backups` disk sits inside `storage/app`, so the source set must keep excluding
+it; that exclusion is asserted by the estimator's tests rather than assumed.
+The disk shares the application's physical volume: a host or volume loss takes
+the database and its backups together, so an off-host copy stays an operator
+responsibility (`docs/base/infrastructure/backup-disaster-recovery.md`). A
+production install that never set the archive password stops taking backups —
+loudly, through `backup.failed` — rather than writing readable artifacts with
+the database and `secure_documents` inside.
+
+**Related**: P14-B1..B3, `docs/base/infrastructure/backup-disaster-recovery.md`,
+`docs/base/infrastructure/queue.md`,
+`docs/base/infrastructure/storage.md`, `docs/base/operations/retention.md`,
+`tests/Feature/Storage/BackupStrategyTest.php`
+
+## ADR-027: one global timezone, applied to the process at boot
+
+**Status**: Accepted
+**Date**: 2026-10-31
+**Context**: Phase 14 found the timezone fragmented. `password_security_sweep_timezone`
+scoped only the password/inactivity sweep, `backup_schedule` was compared against
+`now()` locked to `config('app.timezone') = 'UTC'`, and everything else — audit
+trail, health/meta payloads, API resource timestamps, settings page clocks —
+rendered in the process zone. An operator could set a sweep time in Jakarta and
+watch a backup fire at the UTC equivalent. Three surfaces pretending to know the
+time, and only one of them configurable.
+
+**Decision**:
+
+- **One setting**: `app_timezone` (empty string = application default). The
+  legacy `password_security_sweep_timezone` row is migrated and deleted by
+  `2026_10_30_000000_move_sweep_timezone_to_app_timezone.php`.
+- **Applied, not displayed**: `AppServiceProvider::bindTimezone()` reads the
+  setting and calls `date_default_timezone_set()` plus
+  `config(['app.timezone' => …])`. It runs at the end of `boot()` and again
+  after a settings save, so an admin sees the change on the next page load
+  instead of the next deploy.
+- **The database agrees with it**: `applySessionTimezone()` sets
+  `SET time_zone = <offset>` on every MySQL connection (on
+  `ConnectionEstablished`, and again in `bindTimezone()` for connections
+  already open), so `CURRENT_TIMESTAMP` defaults and `TIMESTAMP` conversion read
+  the same wall clock the UI renders. It cannot be a `config/database.php` value
+  — the zone lives in the database it configures.
+- **The shipped base zone is captured once** in a static before any mutation.
+  Reading `config('app.timezone')` as the fallback would, in a process that had
+  already applied a zone, treat the previously applied zone as the default and
+  drift further on every boot.
+- **Try/catch around the read**: `boot()` also runs during `migrate` and
+  `config:cache`, before `system_settings` exists. An unreadable setting
+  applies the base zone explicitly rather than leaving whatever the previous
+  process set.
+- **Validation**: `nullable|string|timezone` plus an `exists` on active
+  `timezones` rows — the same rule the dropdown offers.
+
+**Alternatives considered**: display-only formatting per resource — rejected:
+every new timestamp surface would have to remember the setting, and the
+scheduler would still compare UTC clock time to a wall-clock setting. Keeping
+the per-sweep timezone — rejected: two zones in one application means a backup
+and a password sweep can be scheduled at the same "time" and fire hours apart.
+
+**Consequences**:
+
+- `now()`, Eloquent date parsing, `toIso8601String()`, Blade `->format()`, the
+  health/meta API, the audit trail, and the CSV export all follow the zone with
+  no per-surface code.
+- **Existing rows are not rewritten.** A row written under UTC keeps its UTC
+  digits; after the switch it reads shifted by the offset. `timezone:rebase`
+  converts them once, and the documented cutover order is: enter maintenance →
+  rebase (setting still old) → save the new `app_timezone` → resume. Rows
+  written after the switch must not be rebased again.
+- **Long-lived processes keep the old zone** until restarted: `queue:work` and
+  `schedule:work` need `queue:restart` / a supervisor restart. `schedule:run`
+  from cron bootstraps per tick and is safe.
+- **`failed_jobs.failed_at`** is written by MySQL `useCurrent()`, i.e. the
+  database session zone — which now follows this setting too (below), so it is
+  the same wall clock the UI shows.
+- **DST**: the sweep compares `H:i` every minute, so a transition that repeats
+  or skips an hour can run the sweep twice or not at all that day. Zones
+  without DST are unaffected; the password sweeps are idempotent, so a repeat
+  costs a query, not correctness.
+- **The database session zone follows the setting.** `applySessionTimezone()`
+  runs on `ConnectionEstablished` and again in `bindTimezone()` for connections
+  already open, sending `SET time_zone = <offset>`. It cannot live in
+  `config/database.php`: the zone is a system setting, stored in the database
+  itself. This is deliberate — the point is that a row inspected with a SQL
+  client reads in the same wall clock the application renders, instead of
+  requiring the reader to convert from UTC. It is not a per-user preference and
+  not something a normal user can change; `app_timezone` is set once at
+  installation by someone holding `settings.manage`.
+  Sent as an offset (`+07:00`) rather than a zone name so it does not depend on
+  the server's `mysql.time_zone*` tables being populated. Application digits are
+  unaffected — they are sent as wall-clock strings — but a host that changes the
+  setting will read its **existing** `TIMESTAMP` rows shifted by the difference
+  once, because MySQL converts them. `DATETIME` columns are not converted and do
+  not shift; `timezone:rebase` is the conversion path.
+- **`config:cache` still contains `UTC`**; the runtime value comes from the
+  provider, never from the cached file. Clearing the cache does not reset the
+  applied zone.
+
+**Related**: `docs/base/features/settings.md` § *System timezone*,
+`docs/base/api/response-contract.md`, `docs/base/infrastructure/queue.md`,
+`docs/base/security/password-security.md`,
+`tests/Feature/Settings/GlobalTimezoneTest.php`,
+`tests/Feature/Console/RebaseTimezonesCommandTest.php`
+
+## ADR-028: the S3 driver ships with its adapter installed
+
+**Status**: Accepted
+**Date**: 2026-11-03
+**Context**: Phase 14 Group A shipped S3 as a storage driver — the `s3` disk in
+`config/filesystems.php`, the encrypted `storage_s3_*` settings, the capacity
+probe's S3 branch, and a driver fieldset in the settings UI — but
+`league/flysystem-aws-s3-v3` was never added to `composer.json`.
+`laravel/framework` only *suggests* it, so the gap is invisible until someone
+picks S3: `Storage::disk('s3')` then throws
+`Class "League\Flysystem\AwsS3V3\PortableVisibilityConverter" not found` and
+every storage operation fails. The docs advertised S3-ready the whole time.
+
+**Decision**: require `league/flysystem-aws-s3-v3` (`^3.0`, resolved 3.35.3
+against the installed `league/flysystem` 3.36.0). It pulls
+`aws/aws-sdk-php` transitively; the adapter version tracks the Flysystem major,
+so it moves with the framework rather than with our code.
+
+**Alternatives considered**: removing the S3 option until someone needs it —
+rejected: the disk, the encrypted settings, the guard branch, the UI and their
+tests already exist, so removal is a deletion of a Group A deliverable rather
+than a smaller change, and the base project is meant to be usable against object
+storage without edits. Leaving the option and failing with a clear message —
+rejected: still no capability, just a nicer error. Environment-only S3 without
+the settings card — rejected: the driver is a runtime setting by design
+(ADR-027's reasoning applies to the disk too).
+
+**Consequences**:
+
+- **`composer.lock` grows** by the AWS SDK. It is a production dependency now,
+  so `composer install --no-dev` on deploy must be allowed to fetch it and
+  `composer audit` will cover it from here on.
+- **No behaviour change for local installs.** Building the adapter makes no
+  network call; only operations against the `s3` disk do, and only when the
+  admin has selected that driver.
+- **Credentials still come from `storage_s3_key` / `storage_s3_secret`**
+  (encrypted, never rendered) with `AWS_*` env as the fallback the binder
+  already reads.
+- The `storage_management` flag still gates the management surface only; the
+  disk binding and the capacity guard behave as before.
+
+**Related**: P14-A1..A5, `docs/base/infrastructure/storage.md`,
+`config/filesystems.php`, `app/Providers/AppServiceProvider.php`
+(`bindStorageConfig`), `app/Services/Storage/StorageCapacityGuard.php`,
+`tests/Feature/Storage/StorageDiskTest.php`
+
+## ADR-029: the hot paths measured in Phase 14 get the cheaper shape
+
+**Status**: Accepted
+**Date**: 2026-11-03
+**Context**: A Phase 14 performance pass over the storage and settings paths
+found four costs that the feature itself did not need: the capacity gauge walked
+the whole disk root through Flysystem on every call (one object and one extra
+`stat()` per file, and it is called by `/api/v1/health` on every monitor poll),
+a settings save wrote all ~40 keys whether or not their values changed
+(70 queries per save, 67 of them SELECTs from `updateOrCreate`), the timezone
+rebase committed one row at a time, and the `tmp` cleanup asked the disk API
+three times per file for three answers the filesystem already had.
+
+**Decision**:
+
+- **`StorageCapacityGuard` has two entry points.** `metrics()` measures now and
+  is the only one the guard may use; `cachedMetrics()` caches the walk for 60 s
+  per disk root and is for display (`/settings`, `/health`,
+  `HealthCheckService::checkStorage()`). The quota is read on every call, so
+  lowering it shows on the next poll. `storedBytes()` walks the root with a raw
+  `RecursiveIteratorIterator` instead of `Storage::allFiles()`.
+- **A settings save writes only what differs.** One cached `getAll()` snapshot,
+  then `array_filter` against it; a resubmitted secret is compared as plaintext
+  and its ciphertext is only re-encrypted when the plaintext changed. The
+  storage audit row is now derived from the filtered list, so it names exactly
+  the keys that were written.
+- **`timezone:rebase` runs one transaction per chunk.** Not one per row (the
+  measured cost) and not one for the whole table: the command runs against a
+  live database, where a long lock is the bigger risk. Dry-run opens none.
+- **`CleanTemporaryStorageJob` reads metadata from the filesystem.** `tmp` is
+  always a local disk, so one iterator yields mtime and size without the two
+  extra adapter calls per file; the delete still goes through the disk API.
+
+**Measured** (same machine, test harness — SQLite `:memory:`, so the times are
+indicative and the query count is not):
+
+| Path | Before | After |
+| --- | --- | --- |
+| `metrics()` over 1 000 files | 25.5 ms | 3.1 ms |
+| `assertCanStore()` over 1 000 files | 30.3 ms | 10.4 ms |
+| Settings save (full form) | 62.6 ms / 70 queries | 10.7 ms / 4 queries |
+| Settings page render (1 000 files) | 87.4 ms | 45.2 ms |
+| `tmp` cleanup over 1 000 files | 491 ms | 154 ms |
+| `timezone:rebase`, 1 128 rows | 1 546 ms | 854 ms |
+
+**Alternatives considered**: caching used bytes for the guard too — rejected:
+the 95 % refusal is the one number that must be fresh, and a minute of lag is
+exactly how an upload slips past a full disk. An upsert for the settings save —
+rejected: the cost was the per-key `SELECT` from `updateOrCreate`, not the
+round-trip count, so an upsert would still write every row and still bust the
+cache for values that did not change. A batched `DATE_ADD`/`CASE` rebase —
+rejected: dialect-specific SQL for a one-off command, against a per-row loop
+that stays correct per row across a DST boundary. `Storage::allFiles()` for the
+cleanup — rejected: it is the slower path, and the measured delta is in the
+iterator, not in the delete.
+
+**Consequences**:
+
+- **The display gauge can lag by up to a minute.** An upload landing right after
+  a poll does not move the bar until the next poll after the TTL. The guard is
+  unaffected.
+- **A save that changes nothing writes nothing** — including no cache bust. The
+  values are unchanged, so a cached read is still correct; the audit row and the
+  notification still fire, because those describe the save, not the rows.
+- **A resubmitted S3 credential no longer rewrites its ciphertext.** Any reader
+  that expected the ciphertext to change on every save was relying on the IV
+  bug, not on a contract.
+- **`timezone:rebase` holds a write lock for at most one chunk** (500 rows by
+  default). A crash mid-table leaves the completed chunks converted and the
+  rest not, which re-running from the same `--from`/`--to` completes.
+
+**Related**: `app/Services/Storage/StorageCapacityGuard.php`,
+`app/Actions/V1/System/SystemSettingsUpdateAction.php`,
+`app/Services/Timezone/RebaseTimezones.php`,
+`app/Jobs/CleanTemporaryStorageJob.php`,
+`docs/base/infrastructure/storage.md`,
+`tests/Feature/Storage/StorageDiskTest.php`,
+`tests/Feature/Storage/StorageBenchmarkTest.php`

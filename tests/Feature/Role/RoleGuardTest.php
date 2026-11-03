@@ -8,6 +8,7 @@ use App\Http\Requests\V1\System\SystemSettingRequest;
 use App\Models\RoleLookup;
 use App\Models\SystemSetting;
 use App\Models\User;
+use App\Services\Storage\StorageCapacityGuard;
 use App\Support\SystemRole;
 use Database\Seeders\RoleSeeder;
 use Database\Seeders\SystemSettingSeeder;
@@ -191,7 +192,7 @@ class RoleGuardTest extends TestCase
     {
         Role::create(['name' => 'admin', 'guard_name' => 'api']);
 
-        $view = app(SystemSettingController::class)->index();
+        $view = app(SystemSettingController::class)->index(app(StorageCapacityGuard::class));
         $roles = $view->getData()['roles'];
 
         // The viewer here is not a superadmin, so `superadmin` is not offered.
