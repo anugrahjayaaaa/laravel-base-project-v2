@@ -130,6 +130,11 @@ class StorageAuthorizationTest extends TestCase
         Feature::deactivate('storage_management');
         Feature::flushCache();
 
+        // Non-default values, so a reset to the hardcoded default is visible.
+        SystemSetting::set('storage_default_disk', 's3');
+        SystemSetting::set('backup_schedule', '03:30');
+        SystemSetting::bustCache();
+
         $this->actingAs($this->admin())
             ->from('/settings')
             ->post(route('settings.update'), ['storage_warning_threshold_percent' => 90])
@@ -139,8 +144,12 @@ class StorageAuthorizationTest extends TestCase
 
         $this->assertSame(80, SystemSetting::getInt('storage_warning_threshold_percent', 0), 'the flag-off key was persisted');
 
-        // A full-form save still writes the other storage keys, so the row may
-        // exist — but it must not claim the stripped key changed.
+        // The hidden cards post nothing, so absent must mean "keep", not
+        // "reset to default" — which is what a full-form save used to do to
+        // every storage and backup key the strip map did not name.
+        $this->assertSame('s3', SystemSetting::getString('storage_default_disk'));
+        $this->assertSame('03:30', SystemSetting::getString('backup_schedule'));
+
         $properties = DB::table('activity_log')->where('event', 'storage_setting.updated')->value('properties');
         $keys = $properties === null ? [] : (json_decode((string) $properties, true)['keys'] ?? []);
 
