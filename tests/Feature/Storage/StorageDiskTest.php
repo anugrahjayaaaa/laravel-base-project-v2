@@ -169,6 +169,43 @@ class StorageDiskTest extends TestCase
         $this->assertDatabaseHas('activity_log', ['event' => 'storage_setting.updated']);
     }
 
+    public function test_a_save_that_changes_no_storage_value_writes_no_storage_audit_row(): void
+    {
+        $this->actingAs($this->admin())
+            ->from('/settings')
+            ->post(route('settings.update'), $this->storagePayload());
+
+        $this->assertDatabaseHas('activity_log', ['event' => 'storage_setting.updated']);
+
+        DB::table('activity_log')->where('event', 'storage_setting.updated')->delete();
+
+        // Same payload twice: every storage field is posted on every full-form
+        // save, so a presence check would claim a change here. The credential is
+        // re-encrypted with a fresh IV each time, which is why the comparison
+        // has to happen on plaintext.
+        $this->actingAs($this->admin())
+            ->from('/settings')
+            ->post(route('settings.update'), $this->storagePayload());
+
+        $this->assertDatabaseMissing('activity_log', ['event' => 'storage_setting.updated']);
+    }
+
+    public function test_the_storage_audit_row_names_only_the_keys_that_changed(): void
+    {
+        $this->actingAs($this->admin())
+            ->from('/settings')
+            ->post(route('settings.update'), ['storage_warning_threshold_percent' => 90]);
+
+        $properties = (string) DB::table('activity_log')
+            ->where('event', 'storage_setting.updated')
+            ->value('properties');
+
+        $this->assertSame(
+            ['storage_warning_threshold_percent'],
+            json_decode($properties, true)['keys'],
+        );
+    }
+
     public function test_switching_to_s3_requires_credentials(): void
     {
         $this->actingAs($this->admin())
