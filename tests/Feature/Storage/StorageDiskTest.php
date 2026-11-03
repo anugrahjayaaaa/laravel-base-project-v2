@@ -524,6 +524,22 @@ class StorageDiskTest extends TestCase
         $this->actingAs($this->admin())->get($expired)->assertForbidden();
     }
 
+    public function test_the_secure_route_forces_a_download_instead_of_rendering_html(): void
+    {
+        Storage::fake('secure_documents');
+        Storage::disk('secure_documents')->put('invoice.html', '<script>alert(1)</script>');
+
+        $url = URL::temporarySignedRoute('storage.secure', now()->addMinute(), ['path' => 'invoice.html']);
+
+        $response = $this->actingAs($this->admin())->get($url);
+
+        $response->assertOk();
+        $this->assertStringStartsWith(
+            'attachment',
+            (string) $response->headers->get('Content-Disposition')
+        );
+    }
+
     public function test_the_secure_route_refuses_traversal(): void
     {
         Storage::fake('secure_documents');

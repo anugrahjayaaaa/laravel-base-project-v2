@@ -13,6 +13,10 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
  * `signed` (which one path, for how long). The signature is not a substitute
  * for the permission — it is a time-bound second factor on top of it, so a
  * leaked link expires without rotating who holds `storage.view`.
+ *
+ * Always a download (`attachment`): the disk holds arbitrary files, and a
+ * `.html` or `.svg` served inline would render on this origin with the
+ * viewer's session. Inline preview needs a MIME allowlist first, not this.
  */
 class StorageController extends Controller
 {
@@ -33,6 +37,6 @@ class StorageController extends Controller
 
         abort_unless($disk->exists($path), 404);
 
-        return $disk->response($path);
+        return $disk->response($path, null, [], 'attachment');
     }
 }
