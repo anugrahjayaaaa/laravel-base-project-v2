@@ -572,3 +572,13 @@ Each entry contains:
 | **Reason** | `spatie/laravel-backup` only calls `ZipArchive::setPassword()` when the password is not null, and the archive holds the whole database plus `storage/app` — including `secure_documents`. A default install therefore wrote readable artifacts and reported success. The plaintext dump also sits in `backup-temp` during the run, which the package leaves behind when the process is killed. |
 | **Impact** | **Production installs without `BACKUP_ARCHIVE_PASSWORD` stop taking backups** and surface it as `backup.failed`; set the variable, run `config:cache`, then `queue:restart`. Non-production and already-encrypted installs are unchanged. A corrupt archive now fails the run instead of being announced as completed. |
 | **Related** | ADR-026, `docs/base/infrastructure/backup-disaster-recovery.md`, `config/backup.php`, `app/Services/Backup/SystemBackupRunner.php`, `tests/Feature/Storage/BackupStrategyTest.php` |
+
+## 2026-11-03 — Phase 14 pentest #2: the secure route never renders a stored file
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-11-03 |
+| **Change** | `StorageController::show()` serves `secure_documents` with `Content-Disposition: attachment` (`$disk->response($path, null, [], 'attachment')`) instead of Laravel's `inline` default. |
+| **Reason** | `secure_documents` holds arbitrary files and the default disposition renders them on the application origin: a stored `.html` or `.svg` would execute with the viewer's session for every `storage.view` holder. The route has no writer yet, so this closes the gap before an upload feature can open it. Inline preview stays unimplemented until a MIME allowlist exists. |
+| **Impact** | **The secure route now downloads instead of displaying.** No consumer exists today; a future preview needs an allowlist, not a revert of this line. |
+| **Related** | `app/Http/Controllers/Web/V1/StorageController.php`, `docs/base/infrastructure/storage.md`, `tests/Feature/Storage/StorageDiskTest.php` |

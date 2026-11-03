@@ -85,6 +85,9 @@ Middleware: `feature:storage_management` + `can:storage.view` + `signed`.
 - Path traversal (`..`, NUL) → 404 before disk access.
 - Missing file → 404.
 - Tampered / expired signature → 403 (`INVALID_SIGNATURE` on API JSON).
+- Always a download (`Content-Disposition: attachment`). A stored `.html` or
+  `.svg` must never render on the application origin; inline preview needs an
+  explicit MIME allowlist (images/PDF) and that is not implemented.
 - Generate with `URL::temporarySignedRoute('storage.secure', $expires, ['path' => …])`.
 
 ## Management UI
