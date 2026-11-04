@@ -432,6 +432,43 @@ one. The test factory no longer repeats a username. Detail:
 
 ---
 
+### Phase 16 — Documentation Verification
+
+> Breakdown written 2026-11-04, status **PLANNED** — no code changed. Fourteen
+> tasks in five groups (A docs interfaces / Markdown compliance → B schema,
+> Action-naming and setting-key mappings → C security/RBAC/backup/retention
+> docs → D audit-event map and operational runbooks → E link-integrity gate,
+> full-suite regression, tracker closure). Audit-and-close throughout: most
+> properties already have an owner test (`ApiDocumentationTest`,
+> `ApiDocsUiRenderTest`, `OpenApiExportTest`, the Phase 13 security suites,
+> `JobConventionTest`); this phase extends or cites, never duplicates. Seven
+> brief-vs-code conflicts recorded as D-1..D-7 in the phase doc, the
+> load-bearing ones being **no in-app Markdown renderer**, **no new
+> `DocsUiRenderTest` beside the existing `ApiDocsUiRenderTest`**, **doc paths
+> moved under `docs/base/`**, and **~60 setting keys, not 37**.
+> Detail: `docs/planning/phase-16-documentation-verification.md`.
+
+| ID | Task | Phase | Priority | Depends On | Status |
+|----|------|-------|----------|-----------|--------|
+| P16-A1 | API Documentation UI verification (`/docs/api` + `/docs/api.json`) — run and read the existing owners (`ApiDocsUiRenderTest`, `ApiDocumentationTest`, `OpenApiExportTest`), manual Scalar pass, every documented status reachable in the schema | 16 | P1 | — | PLANNED |
+| P16-A2 | Markdown & design-system compliance sweep of ~95 `docs/**/*.md` (heading hierarchy, relative links, code-block info strings); scripted, baseline recorded, no wholesale reformat | 16 | P1 | — | PLANNED |
+| P16-A3 | Docs render gate — extend the owning files with any A1-found gap; no duplicate `DocsUiRenderTest` (D-4) | 16 | P1 | P16-A1, P16-A2 | PLANNED |
+| P16-B1 | API endpoint schema & annotation audit — per-endpoint table PHPDoc/Scramble ↔ test-asserted payload ↔ contracts; ❌ rows fixed keeping `ApiDocumentationTest` green | 16 | P1 | — | PLANNED |
+| P16-B2 | Action naming reconciliation — enumerate all 50 `app/Actions/V1` classes against `{Domain}{Operation}Action`; doc domain list = directory list (D-2 paths) | 16 | P1 | — | PLANNED |
+| P16-B3 | SystemSetting key mapping audit — enumerate validated keys from `SystemSettingRequest::rules()` (~60, floor not ceiling), every key documented in its owning feature doc and vice versa | 16 | P1 | — | PLANNED |
+| P16-C1 | RBAC & flags docs audit — `PermissionCatalog` vs `authorization.md` / `roles-permissions.md`; `FeatureCatalog` vs fail-closed Pennant behaviour (flag OFF = 403 both channels) | 16 | P1 | — | PLANNED |
+| P16-C2 | Backup & retention docs audit — `docs/base/infrastructure/backup-disaster-recovery.md` + `docs/base/operations/retention.md` vs Phase 14 (audit logs never pruned, `tmp`-only TTL, pentest findings #1–#8); restore procedure written (D-3 paths) | 16 | P1 | — | PLANNED |
+| P16-C3 | Security hardening & CSP docs — headers/nonce/`frame-ancestors`, CSRF group swap, CORS default-deny, composite rate keys, HTML 500 masking; every doc claim cites its pinning suite | 16 | P1 | — | PLANNED |
+| P16-D1 | Audit event map — build the complete `## Event Map` in `docs/base/features/audit-trail.md` from `Auditable::audit()` call sites (incl. `storage.capacity_warning`, `causer='SYSTEM'` rows); zero observer writers | 16 | P1 | — | PLANNED |
+| P16-D2 | Operational runbooks — `docs/base/operations/*` walkable cold (worker invocation, scheduler, job failure handling, `timezone:rebase --force`); gap list for operator-needed source reading | 16 | P2 | P16-C2 | PLANNED |
+| P16-E1 | Link-integrity gate — new test pinning A2's mechanical properties (relative links resolve, info strings where the convention holds); sabotage-verified, <1 s | 16 | P1 | P16-A2 | PLANNED |
+| P16-E2 | Full regression run — `pint --test`, `phpstan analyse`, `php artisan test`; counts recorded from the run, not hand-carried | 16 | P0 | all A–D | PLANNED |
+| P16-E3 | Trackers reconciliation & closure — `task-tracker.md` rows, `qa-tracker.md`, `progress.md` (row 16 + Documentation Status re-dated), `implementation-roadmap.md`; rows flip only with evidence | 16 | P2 | P16-E1, P16-E2 | PLANNED |
+
+**Invariants (non-negotiable):** docs are corrected toward code-with-ADR, never toward aspiration; a contract the code broke is a defect with a regression test, not a doc rewrite; one check has one owner (no duplicate render/schema tests); no new Composer/npm package without an ADR; no runtime behaviour changes in this phase.
+
+---
+
 ## Full Task List (JSON for AI parsing)
 
 ```json[
