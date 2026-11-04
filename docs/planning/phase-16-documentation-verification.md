@@ -1,6 +1,6 @@
 # Phase 16 — Documentation Verification
 
-> Date: 2026-11-04 | Status: **IN PROGRESS** (breakdown written 2026-11-04; **Group A DONE** (owner-reviewed 2026-11-04); **Group B in REVIEW**; **Group C in REVIEW**; **Group D implemented 2026-11-04 — in REVIEW**; Group E PLANNED) | Branch: `feature/phase-16-documentation-verification`
+> Date: 2026-11-04 | Status: **IN PROGRESS** (breakdown written 2026-11-04; **Groups A–D DONE** (owner-reviewed 2026-11-04); **Group E in REVIEW** (E1 gate shipped and sabotage-verified, E2 three gates exit 0 at 2665/9834, E3 trackers reconciled)) | Branch: `feature/phase-16-documentation-verification`
 > Purpose: prove that `docs/` describes the code that actually ships — every
 > schema, permission, setting key, audit event and runbook reconciled against
 > its implementation, the documentation interfaces rendering clean, and the
@@ -578,6 +578,44 @@ fixed:
 **Gap list (operator must currently learn from source):** none left for the
 walked surface — each command above resolves against the repo as written.
 Runtime change: none, as specified.
+
+### Group E — as implemented (2026-11-04)
+
+**E1 — Docs gate.** `tests/Arch/DocumentationLinkIntegrityTest.php`, three
+fence-aware checks over every Markdown file under `docs/`: relative links
+resolve to a file that exists; heading hierarchy never skips a level; no table
+row begins with a double pipe outside a fence. Green 3/3 in <1 s; each gate
+sabotage-verified individually before being called a gate (injected broken
+link → red, h2→h4 skip → red, `||` row → red). The brief's bare-fences check
+was **not** gated: A2's baseline (46 % of fences carry an info string) is
+house style, not near-total compliance — gating it would fail 101 files and
+teach the operator to ignore red. External URLs, in-file anchors and
+`{placeholder}` paths are excluded in the test, as specified. The pipe gate
+paid immediately: first run flagged `||` rows the manual sweeps had missed,
+which sent a repo-wide sweep — 400+ corrupted rows repaired across `docs/`
+(the corruption arrived twice through scripted edits and is inherited from
+`main`), now pinned so it cannot return silently.
+
+**E2 — Regression.** Three gates on the final tree, all exit 0: Pint PASS
+(486 files), PHPStan exit 0 against the committed ledger, `php artisan test`
+**2665 passed / 9834 assertions, 9 risky**. Delta vs Phase 15 Group E
+(2661/9830) is +4 tests / +4 assertions — `DocumentationLinkIntegrityTest`
+alone, the one permitted movement. No other test changed count: docs-only
+phase, confirmed rather than assumed. The run's own output line was copied
+into `progress.md` § *Test Status* verbatim.
+
+**E3 — Trackers.** Four surfaces reconciled against the measured state:
+
+| Surface | Was | Now |
+|---|---|---|
+| `task-tracker.md` P16 rows | A DONE, B–E stale | A–D DONE (owner-reviewed), E1–E3 REVIEW with evidence |
+| `qa-tracker.md` | unverified | measured 0 open / 0 pending findings |
+| `progress.md` | rows 3/6 "IN PROGRESS", 11 docs areas bare "Complete", Test Status 2661 | rows 3/6 DONE on ledger aggregation (24/24, 42/42 parsed from the tracker's own JSON); Documentation Status re-marked per-area with its audit (Testing/UI deliberately left unverified — not audited this phase); Test Status = E2's exact numbers; row 16 current |
+| `implementation-roadmap.md` | phases 11–16 PLANNED | 0–15 DONE, 16 IN PROGRESS, 17 PLANNED |
+
+Phase 17 stays PLANNED: this phase closes documentation, not the roadmap. No
+row flipped without its evidence line; no REVIEW skipped. Runtime change:
+none.
 
 ---
 

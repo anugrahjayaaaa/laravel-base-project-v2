@@ -24,7 +24,7 @@
 
 10. **Update task status only after verification.** Move `IN_PROGRESS` → `REVIEW` → `DONE`. Never skip REVIEW.
 
-11. **Update documentation** when behavior changes. If the code does X but docs say Y, the docs are wrong — fix the docs.
+11. **Update documentation** when behavior changes. If the code does X but docs say Y, the docs are wrong — fix the docs. Doc relative links, heading hierarchy and table-row integrity are CI-gated from Phase 16 (`tests/Arch/DocumentationLinkIntegrityTest.php`).
 
 12. **Update changelog** (`docs/planning/changelog.md`) when architecture/planning changes. Only meaningful changes.
 
