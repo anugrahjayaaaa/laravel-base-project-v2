@@ -1,6 +1,6 @@
 # Phase 15 — Comprehensive Testing
 
-> Date: 2026-11-04 | Status: **PLANNED** | Branch: `feature/phase-15-comprehensive-testing` (not created)
+> Date: 2026-11-04 | Status: **IN PROGRESS — Group A in REVIEW (2026-11-04)** | Branch: `feature/phase-15-comprehensive-testing`
 > Purpose: make the suite deliberate instead of merely large — every layer
 > (view, action, request, policy, endpoint, pipeline) has a named owner test,
 > the static-analysis and coverage gates are enforced rather than described,
@@ -166,6 +166,45 @@ New directory: `tests/Feature/UI/` (does not exist today).
   one `.table-responsive`, drop one `data-variant`).
 - **Tests:** `ResponsiveUiTest`.
 - **Docs:** none.
+
+### Group A — as implemented (2026-11-04)
+
+Three files, 23 tests / 309 assertions, `tests/Feature/UI/` created:
+
+| Task | File | Tests |
+|---|---|---|
+| P15-A1 | `BladeComponentRenderTest` | 12 |
+| P15-A2 | `FormViewRenderTest` | 7 |
+| P15-A3 | `ResponsiveUiTest` | 4 |
+
+Deviations from this breakdown, recorded rather than absorbed:
+
+- **A2 scope narrowed.** The settings, feature-flag and notification pages already
+  own a render gate (`SettingsUiRenderTest`, `FeatureFlagUiRenderTest`,
+  `NotificationUiRenderTest`) covering the same properties. Re-testing them here
+  would be a second copy of an existing gate, so A2 covers only the four pages
+  that had none: create user, user detail, profile, forced password change.
+- **The runtime query count is not asserted on these pages.** All four render
+  through `AccountOptionsComposer` / `PasswordStrengthComposer`, which read the
+  role list and the policy settings by design. A zero-query assertion would
+  measure the composer, not the view. The property that matters — the view reads
+  variables, not the database — is asserted on the source instead, the same
+  second guard `NotificationUiRenderTest` keeps.
+- **Components are rendered through `Blade::render()`**, not through a page, so a
+  component is pinned on its own rather than incidentally.
+
+One defect found by the A3 sweep and fixed: `pages/sessions.blade.php` rendered
+its table with no `.table-responsive` wrapper. It is the only one of eleven
+tables in that state, and on a narrow viewport the Sessions page overflowed the
+card. Wrapped, and the sweep now fails for the next one.
+
+Sabotage evidence (a throwaway view with `bg-white`, an unwrapped `<table>` and
+an un-nonced inline `<script>`): three sweeps went red, then green after the file
+was removed.
+
+Not asserted, and deliberately so: colour. PHPUnit can prove the attribute and
+the class; whether the dark theme *looks* right is the manual check in
+`AGENTS.md` § *Verify before reporting done*.
 
 ---
 

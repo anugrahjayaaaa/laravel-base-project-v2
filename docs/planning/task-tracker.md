@@ -392,7 +392,8 @@ one. The test factory no longer repeats a username. Detail:
 
 ### Phase 15 — Comprehensive Testing
 
-> Breakdown written 2026-11-04, status **PLANNED**. Seventeen tasks in five
+> Breakdown written 2026-11-04, status **IN PROGRESS** — Group A in REVIEW
+> (2026-11-04), Groups B–E PLANNED. Seventeen tasks in five
 > groups (A view/render → B unit → C feature/API lifecycles → D static
 > analysis/security audits → E performance/coverage/CI).
 > Groups C and D are mostly **audit-and-close**: the suites exist (Phases 3, 5,
@@ -406,9 +407,9 @@ one. The test factory no longer repeats a username. Detail:
 
 | ID | Task | Phase | Priority | Depends On | Status |
 |----|------|-------|----------|-----------|--------|
-| P15-A1 | Blade Component & Layout Render Tests (`tests/Feature/UI/BladeComponentRenderTest.php`, shell + partials + UI components, `bg-white`/`bg-light` sweep scoped to app views) | 15 | P1 | — | PLANNED |
-| P15-A2 | Form & Interactive UI Render Tests (`tests/Feature/UI/FormViewRenderTest.php`, array payloads, zero-query render, `@error` slots) | 15 | P1 | P15-A1 | PLANNED |
-| P15-A3 | Responsive & Theme Attribute Verification (`tests/Feature/UI/ResponsiveUiTest.php`, `.table-responsive`, `data-variant`, `@nonce`) | 15 | P1 | P15-A2 | PLANNED |
+| P15-A1 | Blade Component & Layout Render Tests (`tests/Feature/UI/BladeComponentRenderTest.php`, shell + partials + UI components, `bg-white`/`bg-light` sweep scoped to app views) | 15 | P1 | — | REVIEW — 12 tests; `bg-white`/`bg-light` and footer-token sweeps sabotage-verified |
+| P15-A2 | Form & Interactive UI Render Tests (`tests/Feature/UI/FormViewRenderTest.php`, array payloads, zero-query render, `@error` slots) | 15 | P1 | P15-A1 | REVIEW — 7 tests; zero-query asserted on source, not on rendered pages (recorded in phase doc) |
+| P15-A3 | Responsive & Theme Attribute Verification (`tests/Feature/UI/ResponsiveUiTest.php`, `.table-responsive`, `data-variant`, `@nonce`) | 15 | P1 | P15-A2 | REVIEW — 4 tests; found and fixed the unwrapped sessions table |
 | P15-B1 | Domain Action Unit Suite (`tests/Unit/Actions/`, 50 actions across User/Auth/Role/Permission/Feature/System/Notification/Audit/BulkAction, behavioural rollback proof) | 15 | P1 | — | PLANNED |
 | P15-B2 | Form Requests & Rules Suite (`tests/Unit/Requests/`, `tests/Unit/Rules/`, `BaseFormRequest` 422 contract, `PasswordStrengthRule`, username rules) | 15 | P1 | — | PLANNED |
 | P15-B3 | Policies & Support Utilities (`tests/Unit/Policies/`, `tests/Unit/Support/`, `UserPolicy` at four actor levels, `PasswordPolicy`, catalogue/queue/url invariants) | 15 | P1 | — | PLANNED |
