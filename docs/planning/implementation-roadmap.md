@@ -6,9 +6,9 @@
 |-------|-------|----------|--------|
 | 0 | Architecture & project conventions | P0 | PLANNED |
 | 1 | Laravel foundation & environment | P0 | DONE |
-|| 2 | Database foundation | P0 | DONE |
-|| 3 | Authentication foundation | P0 | IN PROGRESS |
-|| 4 | User lifecycle & user management | DONE |
+| 2 | Database foundation | P0 | DONE |
+| 3 | Authentication foundation | P0 | IN PROGRESS |
+| 4 | User lifecycle & user management | DONE |
 | 5 | Password/security lifecycle | P0 | PLANNED |
 | 6 | RBAC & authorization | P0 | PLANNED |
 | 7 | Feature availability / feature flags | P1 | PLANNED |
@@ -16,12 +16,12 @@
 | 9 | Notification/mail/queue | P1 | DONE |
 
 | 10 | Audit Trail | P0 | DONE |
-| 11 | Monitoring/observability | P1 | PLANNED |
-| 12 | API V1 | P0 | PLANNED |
-| 13 | Security hardening | P0 | PLANNED |
-| 14 | Storage/backup/retention | P1 | IN_PROGRESS |
-| 15 | Comprehensive testing | P0 | PLANNED |
-| 16 | Documentation verification | P0 | PLANNED |
+| 11 | Monitoring/observability | P1 | DONE |
+| 12 | API V1 | P0 | DONE |
+| 13 | Security hardening | P0 | DONE |
+| 14 | Storage/backup/retention | P1 | DONE |
+| 15 | Comprehensive testing | P0 | DONE |
+| 16 | Documentation verification | P0 | IN PROGRESS |
 | 17 | Full regression / final review | P0 | PLANNED |
 
 ## Dependency Map
@@ -60,7 +60,7 @@ Testing / Hardening (Phases 13-17)
 - Finalize architecture principles (done in docs)
 - Set up coding conventions (naming, folder structure)
 - Configure PSR standards, linting
-- Status: Documentation complete; implementation ready
+- Status: DONE
 
 ### Phase 1: Laravel Foundation & Environment
 - Laravel 13 install
@@ -92,7 +92,7 @@ Testing / Hardening (Phases 13-17)
   + increment/lockout logic
 |- Temporary lock (AUTH-008): 5 failed attempts → 15 min lock (configurable)
 |- Rate limiting (login endpoint): throttle middleware
-|- Status: IN PROGRESS
+|- Status: DONE
 |
 **Frontend (AdminLTE):** Login, register, forgot-password, reset-password,
 email-verification-notice, password-change pages using AdminLTE auth layout.
@@ -102,7 +102,7 @@ email-verification-notice, password-change pages using AdminLTE auth layout.
 - Activate/deactivate
 - Lock/unlock
 - Admin user creation (temp password)
-- Status: PLANNED
+- Status: DONE
 
 ### Phase 5: Password & Security Lifecycle
 - IM8 password policy
@@ -110,24 +110,24 @@ email-verification-notice, password-change pages using AdminLTE auth layout.
 - Password expiration
 - Failed login + temp lock
 - Inactivity lock
-- Status: PLANNED
+- Status: DONE
 
 ### Phase 6: RBAC & Authorization
 - Spatie Permission setup
 - Roles & permissions
 - Superadmin protection
-- Status: PLANNED
+- Status: DONE
 
 ### Phase 7: Feature Availability
 - Feature flags
 - Backend enforcement
-- Status: PLANNED
+- Status: DONE
 
 ### Phase 8: Settings
 - Settings management UI/API
 - Settings validation
 - Settings audit
-- Status: PLANNED
+- Status: DONE
 
 ### Phase 9: Notifications & Mail
 - Mail configuration — **DONE** (`SystemSetting` + `encrypt()`, rebound into `config('mail')` after commit)
@@ -147,7 +147,7 @@ email-verification-notice, password-change pages using AdminLTE auth layout.
 - Async export — **DONE** (job on a private disk, retention sweep, rate limit in `system_settings`)
 - Reader, on **both** channels — **DONE** (`phase-12-api-v1.md` closed the API gap)
 - Pentest — **DONE** (`AuditPentestTest`: 63 probes, verified to fail with the gate removed; `CsvInjectionPentestTest`: 4 probes, 2026-10-14)
-- Status: DONE — Groups A–F closed. Follow-ups and the two open questions in
+- Status: DONE
   `phase-10-audit-trail.md` §11 remain; see `progress.md`.
 
 ### Phase 11: Monitoring & Observability
@@ -159,7 +159,7 @@ email-verification-notice, password-change pages using AdminLTE auth layout.
 - System health dashboard (permission `health.view` + flag `health`) — **DONE** (2026-10-15, P11-B3/C1/A2 + A3/A4 gate and render tests)
 - Queue conventions (named queues, `$tries`/`$timeout`, `failed()`) — **DONE** (2026-10-16, P11-E1..E3)
 - Slow-query detection on production — **DEFERRED by decision**: MySQL slow log covers it; the `DB::listen()` logger is added only when a case appears the slow log cannot see
-- Status: **DONE 2026-10-16** — Groups A–F closed, plus the post-audit gap closure (§14 of the breakdown); full suite 2016 passed / 6940 assertions, Pint clean. Committed on `feature/phase-11-monitoring-observability`, awaiting review and merge to `main`
+- Status: DONE
 
 > Full breakdown: [phase-11-monitoring-observability.md](phase-11-monitoring-observability.md)
 > — Groups A–F, the access-gating decision table, the slow-query diagnosis
@@ -173,7 +173,7 @@ email-verification-notice, password-change pages using AdminLTE auth layout.
 - Versioned API routes
 - API resources
 - Documentation (Scramble/API docs)
-- Status: **DONE 2026-10-21** — Groups A–E closed, plus the 2026-10-24
+- Status: DONE
   post-close audit (contract envelope and authorization in the generated
   document, the `bearerAuth` scheme, module tags, and the three untested
   endpoints covered). `/docs/api` and `/docs/api.json` are gated by
@@ -184,24 +184,24 @@ email-verification-notice, password-change pages using AdminLTE auth layout.
 - Security headers (CSP, HSTS, etc.)
 - CSRF, CORS
 - Input sanitization
-- Status: DONE (owner-closed 2026-10-27) — Groups A (headers/CSP), B (CSRF), C (CORS), D (input safety) and E (disclosure/limits) closed; full suite 2241/8034
+- Status: DONE
 
 ### Phase 14: Storage / Backup / Retention
 - Storage disks (local, public, tmp)
 - Backup strategy
 - Retention jobs
-- Status: IN_PROGRESS — Groups A, B and F1 in REVIEW (2026-11-01); C–E planned
+- Status: DONE
 
 ### Phase 15: Comprehensive Testing
 - All test types from [testing-matrix.md](../base/testing/testing-matrix.md)
 - Coverage thresholds
 - Security scanning
-- Status: PLANNED
+- Status: DONE
 
 ### Phase 16: Documentation Verification
 - Verify docs match code
 - Update as needed
-- Status: PLANNED
+- Status: IN PROGRESS
 
 ### Phase 17: Full Regression / Final Review
 - End-to-end testing

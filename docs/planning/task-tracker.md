@@ -53,12 +53,12 @@
 | ID | Task | Phase | Priority | Depends On | Status |
 |----|------|-------|----------|-----------|--------|
 | FOUND-001 | Initialize Laravel 13 project | 1 | P0 | P0-002 | DONE |
-|| FOUND-002 | Configure .env / .env.example | 1 | P0 | FOUND-001 | DONE |
-|| FOUND-003 | Set up config files (auth, cache, queue, session, mail, logging) | 1 | P0 | FOUND-001 | DONE |
-|| FOUND-004 | Install Sanctum for API auth | 1 | P0 | FOUND-001 | DONE |
-|| FOUND-005 | Install Spatie Permission (RBAC) | 1 | P0 | FOUND-001 | DONE |
-|| FOUND-006 | Install audit package (e.g. spatie/laravel-activitylog) | 1 | P0 | FOUND-001 | DONE |
-|| FOUND-007 | Install Laravel Pulse (was Telescope) | 1 | P0 | FOUND-001 | DONE |
+| FOUND-002 | Configure .env / .env.example | 1 | P0 | FOUND-001 | DONE |
+| FOUND-003 | Set up config files (auth, cache, queue, session, mail, logging) | 1 | P0 | FOUND-001 | DONE |
+| FOUND-004 | Install Sanctum for API auth | 1 | P0 | FOUND-001 | DONE |
+| FOUND-005 | Install Spatie Permission (RBAC) | 1 | P0 | FOUND-001 | DONE |
+| FOUND-006 | Install audit package (e.g. spatie/laravel-activitylog) | 1 | P0 | FOUND-001 | DONE |
+| FOUND-007 | Install Laravel Pulse (was Telescope) | 1 | P0 | FOUND-001 | DONE |
 | FOUND-008 | Create correlation/request ID middleware | 1 | P0 | FOUND-001 | DONE |
 | FOUND-009 | Set up PSR-12 linting (PHP CS Fixer) | 1 | P1 | FOUND-001 | DONE |
 | FOUND-010 | Configure health check endpoint | 1 | P1 | FOUND-001 | DONE |
@@ -73,7 +73,7 @@
 | UI-006 | UI foundation cleanup & style refinement (partials rename, theme fix, i18n removal, style guide) | 1 | P1 | UI-001,UI-002,UI-003,UI-004,UI-005 | DONE |
 | SOFT-001 | Soft delete / trash / permanent delete convention | 1 | P1 | FOUND-002 | DONE |
 | TABLE-001 | Shared table conventions (sortable, filterable, bulk actions, pagination) | 1 | P2 | UI-003 | DONE |
-|| FLAG-001 | Feature flag package foundation | 1 | P1 | FOUND-003 | DONE |
+| FLAG-001 | Feature flag package foundation | 1 | P1 | FOUND-003 | DONE |
 
 **Audit pattern (cross-phase convention):** ✅ DONE — every mutation is audited
 by the **Action that performs it**, inside that action's own transaction, via
@@ -92,17 +92,17 @@ Migrated: User, System, Role, Feature (already compliant), Auth web + API, Profi
 
 ### Phase 4 — User Lifecycle & User Management
 
-|| ID | Task | Phase | Priority | Depends On | Status |
-||----|------|-------|----------|-----------|--------|
-|| USER-001 | Create user management module | 4 | P1 | AUTH-003 | DONE |
-|| USER-002 | Implement user list/detail API | 4 | P1 | USER-001 | DONE |
-|| USER-003 | Implement create user (admin) | 4 | P1 | AUTH-001 | DONE |
-|| USER-004 | Implement update user | 4 | P1 | USER-002 | DONE |
-|| USER-005 | Implement soft delete user | 4 | P2 | USER-001 | DONE |
-|| USER-006 | Implement activate/deactivate | 4 | P1 | USER-003 | DONE |
-|| USER-007 | Implement lock/unlock | 4 | P1 | USER-001 | DONE |
-|| USER-008 | Implement force password change | 4 | P1 | AUTH-014 | DONE |
-|| USER-009 | Implement admin reset password | 4 | P1 | AUTH-013 | DONE |
+| ID | Task | Phase | Priority | Depends On | Status |
+|----|------|-------|----------|-----------|--------|
+| USER-001 | Create user management module | 4 | P1 | AUTH-003 | DONE |
+| USER-002 | Implement user list/detail API | 4 | P1 | USER-001 | DONE |
+| USER-003 | Implement create user (admin) | 4 | P1 | AUTH-001 | DONE |
+| USER-004 | Implement update user | 4 | P1 | USER-002 | DONE |
+| USER-005 | Implement soft delete user | 4 | P2 | USER-001 | DONE |
+| USER-006 | Implement activate/deactivate | 4 | P1 | USER-003 | DONE |
+| USER-007 | Implement lock/unlock | 4 | P1 | USER-001 | DONE |
+| USER-008 | Implement force password change | 4 | P1 | AUTH-014 | DONE |
+| USER-009 | Implement admin reset password | 4 | P1 | AUTH-013 | DONE |
 
 *(Task list truncated for phases 2-17. See full list in the JSON version below.)*
 
@@ -392,10 +392,8 @@ one. The test factory no longer repeats a username. Detail:
 
 ### Phase 15 — Comprehensive Testing
 
-> Written 2026-11-04, status **IN PROGRESS** — Group A DONE (owner-reviewed
-> 2026-11-04); Group B DONE (owner-reviewed 2026-11-04); Group C DONE
-> (owner-reviewed 2026-11-04); Group D DONE (owner-reviewed 2026-11-04);
-> Group E in REVIEW (2026-11-04). Seventeen tasks in five
+> Written 2026-11-04, status **DONE (owner-closed 2026-11-04, merged PR #41)** —
+> Groups A–E all DONE. Seventeen tasks in five
 > groups (A view/render → B unit → C feature/API lifecycles → D static
 > analysis/security audits → E performance/coverage/CI).
 > Groups C and D are mostly **audit-and-close**: the suites exist (Phases 3, 5,
@@ -424,11 +422,49 @@ one. The test factory no longer repeats a username. Detail:
 | P15-D2 | Code Style Gate — Pint over the full tree (replaces `--test --dirty`) | 15 | P1 | — | DONE (owner-reviewed 2026-11-04) — `pint --test` (484 files PASS); `fetch-depth: 0` removed with its `--dirty`-only reason; sabotage: one unformatted file exits 1 |
 | P15-D3 | Application Security Audit Suite — extend in-house probes to the Phase 14 surface (Enlightn/Psalm declined, D-3) | 15 | P1 | P15-C1 | DONE (owner-reviewed 2026-11-04) — mapped first; 5 new rows: 507 web branch (message-only flash), guest + valid signed URL never serves bytes, cross-path signature replay 403, 507 added to the shared envelope matrix (handler documents nine codes, not eight), rebase refusal message + by-design production `--dry-run`; recorded not faked: `GenerateAuditExport` attack path and backup fail-open attack remain unprobed (owner tests pin the mechanism) |
 | P15-D4 | Dependency Vulnerability Scanning — weekly scheduled `composer audit` / `npm audit` beside the existing PR run | 15 | P1 | — | DONE (owner-reviewed 2026-11-04) — `.github/workflows/testing.yml` Mondays 06:00 UTC, same thresholds as the unchanged PR run; actionlint clean on both files; audits exit 0 today; caveat: `schedule` only fires from the default branch — inert until merged |
-| P15-E1 | Performance Guard — extend `tests/Feature/Performance/PerformanceGuardTest.php` (query counts, N+1 across chunk boundaries, peak memory, warm bell cache); wall clock recorded, not asserted | 15 | P1 | P15-C1, P15-C2, P15-C3, P15-C4 | REVIEW — mapped first: web lists, bell warm path and the 3-vs-40 export were already pinned (`UserViewPerformanceTest`, `RbacPerformanceTest`, `AuditBenchmarkTest`, `NotificationBenchmarkTest` 0-query warm bell) — recorded, not duplicated. Three new guards, each sabotage-verified: API list 3→40 rows identical query counts over users/activity-logs/inbox (C4's deferred row; dropping `AuditIndexAction`'s eager loads turns it red, 23 vs 9); chunk-straddle 501 vs 502 rows in `AuditExportTest` (lives with its fixture, not copied into `PerformanceGuardTest`; chunk 500→1 turns it red, 1510 vs 1507); peak memory 24 MB bar over the five hot reads (measured 7.6 MB, the >2× bar the brief asks; a 40 MB allocation in the user index turns it red). Wall clock stays recorded in the existing benchmarks (D-8). ~5 s added to the suite. No production code changed. |
-| P15-E2 | Coverage Thresholds — pcov driver, `--min=85` global, Actions ≥ 95 % and Policies/Security = 100 % from one clover run; scheduled, not per-PR | 15 | P0 | P15-A3, P15-B3, P15-C4 | REVIEW — one clover run feeds everything: `php artisan test --coverage --min=85 --coverage-clover=…` (global, built-in) plus `bin/coverage_gate.php` summing three layers from the same file (XPath `//file` — PHPUnit nests files under `<package>`, `->project->file` finds nothing). First measured run: global 94.48 %, Actions 97.11 %, Policies 100 %, Requests **94.26 % — FAIL**. Closed with tests, not a lowered bar: `tests/Unit/Requests/RequestGuardsTest.php` (8 tests over the `authorize()` refusals and `withValidator()` cooldown/disabled throws — the branches the B2 rules suite never walks); re-run gives Requests **98.09 % (461/470)**, all bars OK, gate exit 0. Final global 94.87 % (5031/5303). Sabotage-verified: zeroing one Action's file metrics in a clover copy drops the layer to 94.73 %, prints the gap list, exits 1. Bar assignment for `app/Http/Requests` recorded as deviation D-13. Recorded, not deleted: the three auth Form Requests' `password()`/`remember()` accessors are dead code (12 statements, verified by exhaustive grep incl. tests) — a production deletion for the owner, not this testing phase |
-| P15-E3 | CI Pipeline & Tracker Finalisation — `.github/workflows/testing.yml` owns only PHPStan + coverage + weekly audit; `ci-cd.yml` keeps the deploy gate | 15 | P0 | P15-D1, P15-D2, P15-E1, P15-E2 | REVIEW — `testing.yml` is three trigger-split jobs: `phpstan` on every PR (~2 min, standalone so it never queues behind the suite), `coverage` on schedule + release tags (pcov via setup-php, `--min=85` + the gate), `dependency-audit` weekly (unchanged from D4). `ci-cd.yml` untouched — `git status` proves it; the deploy gate and `cancel-in-progress: false` stay as they were (D-7: one check, one owner). actionlint clean on both files. Acceptance: the PHPStan-error sabotage is the D1 one (same command the job runs); the coverage-regression sabotage is E2's clover gate run above. Trackers reconciled: E1–E3 at REVIEW with evidence, Group D flipped to DONE (owner-reviewed), `progress.md` carries the measured run (2661 passed / 9830 assertions, 9 risky, instrumented) |
+| P15-E1 | Performance Guard — extend `tests/Feature/Performance/PerformanceGuardTest.php` (query counts, N+1 across chunk boundaries, peak memory, warm bell cache); wall clock recorded, not asserted | 15 | P1 | P15-C1, P15-C2, P15-C3, P15-C4 | DONE (owner-closed 2026-11-04, merged PR #41) — mapped first: web lists, bell warm path and the 3-vs-40 export were already pinned (`UserViewPerformanceTest`, `RbacPerformanceTest`, `AuditBenchmarkTest`, `NotificationBenchmarkTest` 0-query warm bell) — recorded, not duplicated. Three new guards, each sabotage-verified: API list 3→40 rows identical query counts over users/activity-logs/inbox (C4's deferred row; dropping `AuditIndexAction`'s eager loads turns it red, 23 vs 9); chunk-straddle 501 vs 502 rows in `AuditExportTest` (lives with its fixture, not copied into `PerformanceGuardTest`; chunk 500→1 turns it red, 1510 vs 1507); peak memory 24 MB bar over the five hot reads (measured 7.6 MB, the >2× bar the brief asks; a 40 MB allocation in the user index turns it red). Wall clock stays recorded in the existing benchmarks (D-8). ~5 s added to the suite. No production code changed. |
+| P15-E2 | Coverage Thresholds — pcov driver, `--min=85` global, Actions ≥ 95 % and Policies/Security = 100 % from one clover run; scheduled, not per-PR | 15 | P0 | P15-A3, P15-B3, P15-C4 | DONE (owner-closed 2026-11-04, merged PR #41) — one clover run feeds everything: `php artisan test --coverage --min=85 --coverage-clover=…` (global, built-in) plus `bin/coverage_gate.php` summing three layers from the same file (XPath `//file` — PHPUnit nests files under `<package>`, `->project->file` finds nothing). First measured run: global 94.48 %, Actions 97.11 %, Policies 100 %, Requests **94.26 % — FAIL**. Closed with tests, not a lowered bar: `tests/Unit/Requests/RequestGuardsTest.php` (8 tests over the `authorize()` refusals and `withValidator()` cooldown/disabled throws — the branches the B2 rules suite never walks); re-run gives Requests **98.09 % (461/470)**, all bars OK, gate exit 0. Final global 94.87 % (5031/5303). Sabotage-verified: zeroing one Action's file metrics in a clover copy drops the layer to 94.73 %, prints the gap list, exits 1. Bar assignment for `app/Http/Requests` recorded as deviation D-13. Recorded, not deleted: the three auth Form Requests' `password()`/`remember()` accessors are dead code (12 statements, verified by exhaustive grep incl. tests) — a production deletion for the owner, not this testing phase |
+| P15-E3 | CI Pipeline & Tracker Finalisation — `.github/workflows/testing.yml` owns only PHPStan + coverage + weekly audit; `ci-cd.yml` keeps the deploy gate | 15 | P0 | P15-D1, P15-D2, P15-E1, P15-E2 | DONE (owner-closed 2026-11-04, merged PR #41) — `testing.yml` is three trigger-split jobs: `phpstan` on every PR (~2 min, standalone so it never queues behind the suite), `coverage` on schedule + release tags (pcov via setup-php, `--min=85` + the gate), `dependency-audit` weekly (unchanged from D4). `ci-cd.yml` untouched — `git status` proves it; the deploy gate and `cancel-in-progress: false` stay as they were (D-7: one check, one owner). actionlint clean on both files. Acceptance: the PHPStan-error sabotage is the D1 one (same command the job runs); the coverage-regression sabotage is E2's clover gate run above. Trackers reconciled: E1–E3 at REVIEW with evidence, Group D flipped to DONE (owner-reviewed), `progress.md` carries the measured run (2661 passed / 9830 assertions, 9 risky, instrumented) |
 
 **Invariants (non-negotiable):** no test is deleted or weakened to make a threshold pass; a missed threshold is a recorded gap with an owner; a new analyser or scanner needs an ADR before `composer require`; the vendor view tree is excluded from the design-system sweep; route-level `can:` remains the authorization pattern (no invented policies); one check has exactly one owner in CI.
+
+---
+
+### Phase 16 — Documentation Verification
+
+> Breakdown written 2026-11-04, status **IN PROGRESS** — Groups A–D **DONE**
+> (owner-reviewed 2026-11-04); Group E in **REVIEW** (2026-11-04). Fourteen
+> tasks in five groups (A docs interfaces / Markdown compliance → B schema,
+> Action-naming and setting-key mappings → C security/RBAC/backup/retention
+> docs → D audit-event map and operational runbooks → E link-integrity gate,
+> full-suite regression, tracker closure). Audit-and-close throughout: most
+> properties already have an owner test (`ApiDocumentationTest`,
+> `ApiDocsUiRenderTest`, `OpenApiExportTest`, the Phase 13 security suites,
+> `JobConventionTest`); this phase extends or cites, never duplicates. Seven
+> brief-vs-code conflicts recorded as D-1..D-7 in the phase doc, the
+> load-bearing ones being **no in-app Markdown renderer**, **no new
+> `DocsUiRenderTest` beside the existing `ApiDocsUiRenderTest`**, **doc paths
+> moved under `docs/base/`**, and **~60 setting keys, not 37**.
+> Detail: `docs/planning/phase-16-documentation-verification.md`.
+
+| ID | Task | Phase | Priority | Depends On | Status |
+|----|------|-------|----------|-----------|--------|
+| P16-A1 | API Documentation UI verification (`/docs/api` + `/docs/api.json`) — run and read the existing owners (`ApiDocsUiRenderTest`, `ApiDocumentationTest`, `OpenApiExportTest`), manual Scalar pass, every documented status reachable in the schema | 16 | P1 | — | DONE (owner-reviewed 2026-11-04) —  owners run green (22/70 incl. real export diff); exported doc measured: 48 paths/59 ops, statuses all inside the contract; 2 findings filed: JR001 `HealthCheckResource` inference (→ B1) and 507 per-op absence = by-design web-only, handler-pinned (recorded exception) |
+| P16-A2 | Markdown & design-system compliance sweep of ~95 `docs/**/*.md` (heading hierarchy, relative links, code-block info strings); scripted, baseline recorded, no wholesale reformat | 16 | P1 | — | DONE (owner-reviewed 2026-11-04) —  96 files scripted: 1 broken link (`soft-delete.md` → moved ui doc, fixed, anchor verified) + 1 real heading skip (`remediation-tracker.md`, promoted); 4 of 5 apparent skips were fence-comment false positives; fences-with-info 46 % = mass violation → house style, NOT gated (E1 gates links+headings) |
+| P16-A3 | Docs render gate — extend the owning files with any A1-found gap; no duplicate `DocsUiRenderTest` (D-4) | 16 | P1 | P16-A1, P16-A2 | DONE (owner-reviewed 2026-11-04) —  no code produced: both A1 findings are schema/annotation rows owned by B1, not render properties; extending `ApiDocsUiRenderTest` would copy existing assertions (§ 2.3) |
+| P16-B1 | API endpoint schema & annotation audit — per-endpoint table PHPDoc/Scramble ↔ test-asserted payload ↔ contracts; ❌ rows fixed keeping `ApiDocumentationTest` green | 16 | P1 | — | DONE — owner-reviewed 2026-11-04 — walked the exported doc (48 paths/59 ops): every response carries a schema (7 "missing" candidates were anyOf/text-csv false positives), zero statuses outside the contract; A1 JR001 closed as cosmetic (health schema exports complete from its  shape — the class docblock already reasons it); 507 per-op absence recorded as the by-design web-only exception; all 8 resources keep their shapes; the two Resource-less controllers are the documented Phase 12 passthrough. Zero fixes — proof, not assumption |
+| P16-B2 | Action naming reconciliation — enumerate all 50 `app/Actions/V1` classes against `{Domain}{Operation}Action`; doc domain list = directory list (D-2 paths) | 16 | P1 | — | DONE — owner-reviewed 2026-11-04 — enumeration over 54 files found the drift inside the doc: prose said "every class" while its own example used BulkActionProcessor. Docs-only fixes: sentence scoped to Action classes + named exception family (BulkActionHandler/User/Role handlers/Processor), dead example SystemUpdateSettingsAction → SystemSettingsUpdateAction, domains table 6→9 rows (Audit/Feature/Notification) with every example verified to resolve. Enforcement already owned by ActionNamingConventionTest (3 green) — no new Arch test |
+| P16-B3 | SystemSetting key mapping audit — enumerate validated keys from `SystemSettingRequest::rules()` (~60, floor not ceiling), every key documented in its owning feature doc and vice versa | 16 | P1 | — | DONE — owner-reviewed 2026-11-04 — measured 75 keys, not 37: 66 in `SystemSettingRequest` + 9 mail keys in `UpdateMailSettingsRequest` (its own request since Phase 9); all found in `docs/base`, 0 undocumented; `settings.md` key block diffs 66↔66 exact in both directions; the two odd expiry names are past-tense REMOVED keys, correct as written; one-off PHP diff, no harness landed |
+| P16-C1 | RBAC & flags docs audit — `PermissionCatalog` vs `authorization.md` / `roles-permissions.md`; `FeatureCatalog` vs fail-closed Pennant behaviour (flag OFF = 403 both channels) | 16 | P1 | — | DONE — owner-reviewed 2026-11-04 — audited 2026-11-04: catalog (36 perms) diffed against all three docs; 3 stale spots fixed (`roles.manage` prose → per-operation gates, `dependencies/overview.md` invented names, `feature-flags.md` missing `storage_management` + `api_docs.view` rows); `roles-permissions.md` verified clean |
+| P16-C2 | Backup & retention docs audit — `docs/base/infrastructure/backup-disaster-recovery.md` + `docs/base/operations/retention.md` vs Phase 14 (audit logs never pruned, `tmp`-only TTL, pentest findings #1–#8); restore procedure written (D-3 paths) | 16 | P1 | — | DONE — owner-reviewed 2026-11-04 — audited 2026-11-04: backup doc accurate on every mechanism; the generic Restore Procedure replaced with a concrete operator runbook whose zip layout (db-dumps/mysql-<db>.sql plain, absolute-minus-slash file paths, ZipCrypto) was verified from the shipped vendor source; round trip stays deferred-as-deferred. retention.md: 4 no-mechanism rows corrected (reset token 15 min, revoked tokens deleted-on-revoke, failed jobs/logs = operator policy), `retention.*` pseudo-keys relabelled design targets, Vantage 14 d row added |
+| P16-C3 | Security hardening & CSP docs — headers/nonce/`frame-ancestors`, CSRF group swap, CORS default-deny, composite rate keys, HTML 500 masking; every doc claim cites its pinning suite | 16 | P1 | — | DONE — owner-reviewed 2026-11-04 — audited 2026-11-04: limiter table re-derived from `RateLimiter::for()` (15 registered, 14 documented — `system-backup` row + ladder line added) and `web-security.md` "Policy-based" authorization line corrected to the route-level pattern; headers/CSRF/CORS/CSP prose already cites its suites; `--filter=Security` 139/718 green, Pint clean |
+| P16-D1 | Audit event map — build the complete `## Event Map` in `docs/base/features/audit-trail.md` from `Auditable::audit()` call sites (incl. `storage.capacity_warning`, `causer='SYSTEM'` rows); zero observer writers | 16 | P1 | — | DONE — owner-reviewed 2026-11-04 — built 2026-11-04 from call sites: 48 events across 5 subject groups, each row citing its owner; SYSTEM-marker semantics recorded as implemented (null causer + properties marker); brief's four examples present; `ActionFirstAuditTest` cited (green 38/101 with `DataRetentionTest`) |
+| P16-D2 | Operational runbooks — `docs/base/operations/*` walkable cold (worker invocation, scheduler, job failure handling, `timezone:rebase --force`); gap list for operator-needed source reading | 16 | P2 | P16-C2 | DONE — owner-reviewed 2026-11-04 — walked cold 2026-11-04; every command verified to resolve (`bin/run-workers.sh` subcommands, `backup:list`, rebase flags); 4 defects fixed: phantom `audit.enabled` diagnosis, malformed tools table, stale MAIL_MAILER-first triage, deployment.md missing the process-start step entirely; gap list: empty for the walked surface |
+| P16-E1 | Link-integrity gate — new test pinning A2's mechanical properties (relative links resolve, info strings where the convention holds); sabotage-verified, <1 s | 16 | P1 | P16-A2 | REVIEW — 2026-11-04 — `tests/Arch/DocumentationLinkIntegrityTest.php`: 3 gates (relative links resolve, heading hierarchy never skips, no table row starts with a double pipe) over every `docs/` Markdown file, fence-aware. Green 3/3 in <1 s; each gate sabotage-verified individually (broken link, h2→h4, `||` row) before being called a gate. The pipe gate paid for itself on first run: it caught `||` corruption in README rows the manual sweep had missed |
+| P16-E2 | Full regression run — `pint --test`, `phpstan analyse`, `php artisan test`; counts recorded from the run, not hand-carried | 16 | P0 | all A–D | REVIEW — 2026-11-04 — three gates on the final tree, all exit 0: Pint PASS (486 files), PHPStan exit 0 against the committed ledger, `php artisan test` **2665 passed / 9834 assertions, 9 risky**. The +4 tests / +4 assertions over Phase 15 Group E's 2661/9830 are `DocumentationLinkIntegrityTest` alone — docs-only phase, no other suite movement, exactly the one allowed change. Carried into `progress.md` § *Test Status* verbatim from the run's own output. Post-run: one Pint `no_unused_imports` fix in the E1 test itself (FQCNs → imports; behaviour identical), Pint then PASS 487 files and the gate re-run green 3/3 |
+| P16-E3 | Trackers reconciliation & closure — `task-tracker.md` rows, `qa-tracker.md`, `progress.md` (row 16 + Documentation Status re-dated), `implementation-roadmap.md`; rows flip only with evidence | 16 | P2 | P16-E1, P16-E2 | REVIEW — 2026-11-04 — reconciled four surfaces against measured state: this file's P16 rows A–D DONE / E rows REVIEW with evidence (none flipped without one); `qa-tracker.md` measured 0 open / 0 pending; `progress.md` row 16 updated, rows 3 and 6 flipped to DONE on ledger aggregation (24/24 and 42/42 tasks DONE parsed from the tracker's own JSON), § *Test Status* set to the E2 run's exact numbers, § *Documentation Status* re-marked per-area with the audit that backs each (Testing/UI left bare "Complete" — not audited this phase, no false verification); `implementation-roadmap.md` phases 0–15 → DONE (11–16 were stale), 16 IN PROGRESS, 17 PLANNED — the four trackers now agree with each other and the repo |
+
+**Invariants (non-negotiable):** docs are corrected toward code-with-ADR, never toward aspiration; a contract the code broke is a defect with a regression test, not a doc rewrite; one check has one owner (no duplicate render/schema tests); no new Composer/npm package without an ADR; no runtime behaviour changes in this phase.
 
 ---
 

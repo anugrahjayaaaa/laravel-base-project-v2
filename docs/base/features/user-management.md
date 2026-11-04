@@ -71,23 +71,23 @@ Password lifecycle    →  must_change_password, expiration, history
 
 ### Transition Rules
 
-|| Trigger | From | To | Rule |
+| Trigger | From | To | Rule |
 |---------|------|----|------|
-|| Admin deactivation | active | inactive | `users.deactivate` permission; blocked if `is_locked` (must unlock first) |
-|| Admin activation | inactive | active | `users.activate` permission |
-|| Admin lock | active/unlocked | locked | `users.lock` permission; blocked if `!is_active` (must activate first) |
-|| Admin unlock | locked | unlocked | `users.unlock` permission |
-||| Inactivity timeout | active/unlocked | locked | scheduled job; sets `is_locked` |
-||| Failed-login threshold | any | throttle lock | configurable (default: 5 attempts → 15 min); cache + DB, does NOT touch `is_locked` |
-||| Password expires | valid | expired | configured `password_expiry_days`; forces change |
-||| Admin deactivates last superadmin | — | rejected | system-role protection |
-||| Soft delete | active/inactive | deleted | `users.delete` permission; does NOT set `is_active = false` |
-||| Restore | deleted | active/inactive | `users.update` permission |
-||| Permanent delete | deleted | — | `users.delete` permission; irreversibly removes data |
+| Admin deactivation | active | inactive | `users.deactivate` permission; blocked if `is_locked` (must unlock first) |
+| Admin activation | inactive | active | `users.activate` permission |
+| Admin lock | active/unlocked | locked | `users.lock` permission; blocked if `!is_active` (must activate first) |
+| Admin unlock | locked | unlocked | `users.unlock` permission |
+| Inactivity timeout | active/unlocked | locked | scheduled job; sets `is_locked` |
+| Failed-login threshold | any | throttle lock | configurable (default: 5 attempts → 15 min); cache + DB, does NOT touch `is_locked` |
+| Password expires | valid | expired | configured `password_expiry_days`; forces change |
+| Admin deactivates last superadmin | — | rejected | system-role protection |
+| Soft delete | active/inactive | deleted | `users.delete` permission; does NOT set `is_active = false` |
+| Restore | deleted | active/inactive | `users.update` permission |
+| Permanent delete | deleted | — | `users.delete` permission; irreversibly removes data |
 
 ## States
 
-|| State | Field | Description |
+| State | Field | Description |
 |-------|-------|-------------|
 | Active/Inactive | `is_active` | Account lifecycle (admin deactivation) |
 | Locked | `is_locked` | Admin security intervention only |
@@ -117,18 +117,18 @@ Password lifecycle    →  must_change_password, expiration, history
 
 ## User Operations
 
-|| Operation | Permission | Description |
-||----------|-----------|-------------|
-|| List users | `users.view` | Paginated user list |
-|| View user | `users.view` | User detail |
-|| Create user | `users.create` | Admin creates user (generates temp password) |
-|| Update user | `users.update` | Edit profile/settings |
-|| Activate | `users.activate` | Activate deactivated account |
-|| Deactivate | `users.deactivate` | Deactivate account |
-|| Lock | `users.lock` | Lock account (security) |
-|| Unlock | `users.unlock` | Unlock account |
-|| Force password change | `users.update` | Force password change on next login |
-|| Reset password | `users.update` | Admin resets user password |
+| Operation | Permission | Description |
+|----------|-----------|-------------|
+| List users | `users.view` | Paginated user list |
+| View user | `users.view` | User detail |
+| Create user | `users.create` | Admin creates user (generates temp password) |
+| Update user | `users.update` | Edit profile/settings |
+| Activate | `users.activate` | Activate deactivated account |
+| Deactivate | `users.deactivate` | Deactivate account |
+| Lock | `users.lock` | Lock account (security) |
+| Unlock | `users.unlock` | Unlock account |
+| Force password change | `users.update` | Force password change on next login |
+| Reset password | `users.update` | Admin resets user password |
 
 ## Creation Flow
 
@@ -157,12 +157,12 @@ User MUST change password before normal application access
 
 ## API Endpoints — User State (Group C)
 
-|| Method | Endpoint | Exists | Description |
-||--------|----------|--------|-------------|
-||| POST | `/api/v1/users/{user}/activate` | YES | `UserStateController@activate` |
-||| POST | `/api/v1/users/{user}/deactivate` | YES | `UserStateController@deactivate` |
-||| POST | `/api/v1/users/{user}/lock` | YES | `UserStateController@lock` |
-||| POST | `/api/v1/users/{user}/unlock` | YES | `UserStateController@unlock` |
+| Method | Endpoint | Exists | Description |
+|--------|----------|--------|-------------|
+| POST | `/api/v1/users/{user}/activate` | YES | `UserStateController@activate` |
+| POST | `/api/v1/users/{user}/deactivate` | YES | `UserStateController@deactivate` |
+| POST | `/api/v1/users/{user}/lock` | YES | `UserStateController@lock` |
+| POST | `/api/v1/users/{user}/unlock` | YES | `UserStateController@unlock` |
 
 The `/api/v1/auth/unlock` redirect shim was removed in P12-C1: it had no `{user}`
 parameter to forward and answered 500.
@@ -183,19 +183,19 @@ All state endpoints return JSON `{ data: { message }, meta: { request_id, timest
 
 ### Schema Additions (`users` table)
 
-|| Column | Type | Description |
-||--------|------|-------------|
-|| `username` | string, unique | Login identifier (added earlier) |
-|| `username_changed_at` | timestamp nullable | Last username change timestamp |
-|| `email_changed_at` | timestamp nullable | Last email change timestamp |
-|| `pending_email` | string nullable | New email awaiting verification |
+| Column | Type | Description |
+|--------|------|-------------|
+| `username` | string, unique | Login identifier (added earlier) |
+| `username_changed_at` | timestamp nullable | Last username change timestamp |
+| `email_changed_at` | timestamp nullable | Last email change timestamp |
+| `pending_email` | string nullable | New email awaiting verification |
 
 ### System Settings (`system_settings` table)
 
-|| Key | Type | Default | Description |
-||-----|------|---------|-------------|
-|| `allow_username_change` | boolean | true | Toggle username change feature |
-|| `allow_email_change` | boolean | true | Toggle email change feature |
+| Key | Type | Default | Description |
+|-----|------|---------|-------------|
+| `allow_username_change` | boolean | true | Toggle username change feature |
+| `allow_email_change` | boolean | true | Toggle email change feature |
 | `username_change_cooldown_days` | integer | 30 | Days before username can be changed again |
 | `email_change_cooldown_days` | integer | 30 | Days before email can be changed again |
 | `registration_enabled` | boolean | false | Publishes the public sign-up form |

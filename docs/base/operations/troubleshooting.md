@@ -63,44 +63,55 @@
 **Symptoms**: Mutations happen but no audit records created.
 
 **Diagnosis**:
-1. Verify audit is triggered in the Action/Service layer (not just observers).
-2. Check transaction is committing successfully (audit rolls back on failure).
-3. Check audit config — is auditing enabled?
-4. Verify `audit.enabled` setting.
+1. Audit is written only by the Action/Service layer through
+   `Auditable::audit()` — there are no observers. If a new write path mutated
+   a model without calling the trait, no row appears (this is the defect,
+   not a configuration).
+2. Check the transaction committed — the audit row is written **inside** it
+   and rolls back with the mutation.
+3. Check the reader, not the writer: the viewer filters by allowlisted event
+   and source; a row with `source = null` (console/scheduler origin) is
+   real and stays.
 
 **Resolution**:
-- Add explicit audit calls in Action/Service.
-- Verify transaction commits successfully (audit rolls back on failure).
-- Enable audit setting.
+- Add the `Auditable::audit()` call to the Action that owns the mutation
+  (`docs/base/features/audit-trail.md` § Adding audit to a new feature).
+- There is no `audit.enabled` switch to check — writing is not configurable.
 
 ### Issue: Emails not sending
 
 **Symptoms**: Password reset emails, verification emails not received.
 
 **Diagnosis**:
-1. Check `MAIL_MAILER` — set to `log` or `smtp`.
-2. Check queue worker is running (if queued).
+1. Check the effective transport first: mail settings live in
+   `system_settings` (Phase 9) and **override** `.env`; `MAIL_MAILER` is only
+   the fallback. `/settings` shows the configured transport; the send-test
+   probe there is the fastest proof of the real path.
+2. Check a queue worker is running for the `default` queue
+   (`bin/run-workers.sh local`) — notifications are queued, and a dead worker
+   looks exactly like a dead mailer.
 3. Check spam/junk folder.
 4. Verify `MAIL_FROM_ADDRESS` is set.
 5. Check mail logs.
 
 **Resolution**:
-- Set correct MAIL_ env variables.
-- Run `php artisan queue:work`.
-- Whitelist sending domain in email provider.
+- Correct the transport settings on `/settings` (audited) or the MAIL_ env
+  variables, then `php artisan queue:restart` so the worker reloads config.
+- Whitelist the sending domain with the provider.
 
 ## Debugging Tools
 
-|| Tool | Purpose |
-||------|---------|
-| `php artisan pulse:check` | Verify Pulse is installed and its tables exist |
-| `php artisan migrate` | Run the `pulse_*` table migrations |
+| Tool | Purpose |
+|------|---------|
+| `php artisan route:list` | List all routes + middleware |
 | `php artisan route:list --path=pulse` | Verify Pulse routes are registered |
 | `php artisan route:list --path=pulse -v` | Confirm the `pulse` middleware group carries `feature:pulse` |
-|| `php artisan tinker` | Interactive debugging |
-|| `php artisan log:clear` | Clear log files |
-|| `php artisan config:clear` | Clear config cache |
-|| `php artisan route:list` | List all routes + middleware |
+| `php artisan pulse:check` | Verify Pulse is installed and its tables exist |
+| `php artisan migrate` | Run the `pulse_*` table migrations |
+| `php artisan backup:list` | List backup artifacts on the `backups` disk |
+| `php artisan tinker` | Interactive debugging |
+| `php artisan log:clear` | Clear log files |
+| `php artisan config:clear` | Clear config cache |
 
 ## Log Locations
 
@@ -113,8 +124,9 @@
 
 ## Health Checks
 
-- `/api/v1/health` — application health endpoint
-- `php artisan up` — maintenance mode check
+- `GET /api/v1/health` — ungated application health endpoint (throttled, cached check set)
+- Maintenance mode: the presence of `storage/framework/down` — `php artisan up` exits it
+- Failed work: the `failed_jobs` table and `/vantage` (retry needs `queues.retry`)
 - Manual: database connectivity, queue workers, disk space
 
 ## Support

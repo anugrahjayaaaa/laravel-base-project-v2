@@ -177,6 +177,80 @@ that is a duplicate record for one change. See
 [Application Boundaries](../architecture/application-boundaries.md) §
 Action-First Audit Logging Standard.
 
+## Event Map
+
+Every audit write in `app/`, enumerated from the `->audit()`/`auditBulk()`
+call sites (Phase 16 D1, measured 2026-11-04 — 48 distinct events). This is
+the single map; per-module docs link here instead of restating. Zero writes
+come from model observers — `ActionFirstAuditTest` pins that property.
+
+### Auth (subject: `User`)
+
+| Event | Written by | Causer |
+|-------|-----------|--------|
+| `auth.login` | `AuthLoginCompletedAction` | the actor |
+| `auth.login_failed` | `AuthAuthenticateAction` | null — no authenticated actor exists |
+| `auth.account_locked` | `AuthAuthenticateAction` | null (threshold reached) |
+| `auth.inactivity_lock` | `InactivityLock::lock()` default | `SYSTEM` marker |
+| `auth.inactivity_lock.middleware` | `EnsurePasswordChangeRequired` → `InactivityLock` | `SYSTEM` marker |
+| `auth.inactivity_lock.sweep` | `InactivityLockSweep` → `InactivityLock` | `SYSTEM` marker |
+| `auth.logout` | `AuthLogoutAction` | the actor |
+| `auth.logout_all` | `AuthLogoutAllDevicesAction` | the actor |
+| `auth.password_changed` | `AuthChangePasswordAction` | the actor |
+| `auth.password_reset_completed` | `AuthResetPasswordAction` | the recovering account |
+| `auth.verification_resent` | `AuthResendVerificationAction` | the actor |
+| `auth.email_verified` | `AuthVerifyEmailAction` | the actor |
+| `auth.password_expiry.sweep` | `PasswordExpirySweep` job | `SYSTEM` via `AuditsSystemActivity` |
+
+### User lifecycle (subject: `User`)
+
+| Event | Written by | Causer |
+|-------|-----------|--------|
+| `user.created` | `UserCreateAction` | the admin |
+| `user.registered` | `UserCreateAction` (self-register branch) | the new user |
+| `user.updated` | `UserUpdateAction` | the admin |
+| `user.profile_updated` | `UserUpdateAction` (self branch) | the user themselves |
+| `user.email_change_requested` | `UserUpdateAction` + `UserRequestEmailChangeAction` | admin or self |
+| `user.email_change_cancelled` | `UserCancelEmailChangeAction` | admin or self |
+| `user.email_changed` | `UserVerifyEmailChangeAction` | admin or self (verified link) |
+| `user.verification_resent` | `UserAdminResendVerificationAction` | the admin |
+| `user.activated` / `user.deactivated` | `UserActivateAction` / `UserDeactivateAction` | the admin |
+| `user.locked` / `user.unlocked` | `UserLockAction` / `UserUnlockAction` | the admin |
+| `user.deleted` / `user.restored` / `user.force_deleted` | `UserDeleteAction` / `UserRestoreAction` / `UserForceDeleteAction` | the admin |
+| `user.roles_assigned` | `RoleAssignAction` | the admin |
+
+### Role (subject: `Role`)
+
+| Event | Written by |
+|-------|-----------|
+| `role.created` / `role.updated` | `PersistsRole` via `RoleCreateAction` / `RoleUpdateAction` |
+| `role.deleted` / `role.restored` / `role.force_deleted` | `RoleDeleteAction` / `RoleRestoreAction` / `RoleForceDeleteAction` |
+
+### Feature flags (subject: the flag row)
+
+| Event | Written by |
+|-------|-----------|
+| `feature.toggled` | `FeatureToggleAction` |
+| `feature.bulk_toggled` | `FeatureBulkToggleAction` — via `auditBulk()`, one shared batch id for the run |
+
+### System settings, mail, backup, cleanup (subject: `SystemSetting`)
+
+| Event | Written by | Causer |
+|-------|-----------|--------|
+| `system_setting.updated` / `storage_setting.updated` | `SystemSettingsUpdateAction` | the operator |
+| `mail_setting.updated` | `NotificationMailSettingUpdateAction` | the operator |
+| `notification_channels.updated` | `NotificationChannelUpdateAction` | the operator |
+| `test_mail.sent` / `test_mail.failed` | `NotificationTestMailSendAction` | the operator |
+| `backup.triggered` / `backup.aborted_storage_full` | `SystemBackupRunAction` | operator for a manual run; `SYSTEM` marker for the scheduled one |
+| `backup.completed` / `backup.failed` | `SystemBackupRunAction` (outcome notify) | same rule |
+| `temp_storage.cleaned` | `CleanTemporaryStorageJob` | `SYSTEM`; written only when files were deleted |
+| `storage.capacity_warning` | `StorageCapacityGuard` service | the uploading user, else `SYSTEM` |
+
+**SYSTEM rows.** A system-initiated write has no authenticated actor, so it
+keeps the database `causer` **null** and puts `'causer' => 'SYSTEM'` in
+`properties` (`AuditsSystemActivity`, `InactivityLock`, `SystemBackupRunAction`)
+— fabricating a user record would be a lie the reader could not undo.
+
 ## Reference implementation: the Role feature
 
 Role is the migrated, complete example. Copy its shape. A model that is

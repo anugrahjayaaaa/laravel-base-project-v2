@@ -108,7 +108,14 @@ only `BaseFormRequest` sits at the Requests root, that no subtree other than
 
 ## Action Naming (Domain-First)
 
-**Every** class in `app/Actions/V1/` is named `{Domain}{Operation}Action`.
+**Every *Action* class in `app/Actions/V1/`** is named `{Domain}{Operation}Action`.
+
+One family is the named exception, because it is not a use case but the
+bulk-operation machinery the Actions delegate to: the `BulkAction` collaborators —
+the `BulkActionHandler` interface, its `{Model}BulkActionHandler` implementations
+(`User/UserBulkActionHandler`, `Role/RoleBulkActionHandler`) and
+`BulkAction/BulkActionProcessor`. They are named by the role they play, not with
+an `Action` suffix; a grep for them must still never straddle two domains.
 
 The domain prefix is **not decoration** — it is the folder name, repeated in
 the class name, so a reader sees the domain before they read the verb and a
@@ -130,11 +137,14 @@ App\Actions\V1\[Domain]\[Domain][Operation]Action
 | Folder | Domain | Example |
 |--------|--------|---------|
 | `Actions/V1/Auth/` | `Auth` | `AuthChangePasswordAction`, `AuthVerifyEmailAction` |
+| `Actions/V1/Audit/` | `Audit` | `AuditIndexAction`, `AuditExportRequestAction` |
+| `Actions/V1/Feature/` | `Feature` | `FeatureToggleAction`, `FeatureIndexAction` |
+| `Actions/V1/Notification/` | `Notification` | `NotificationInboxAction`, `NotificationTestMailSendAction` |
 | `Actions/V1/Role/` | `Role` | `RoleAssignAction`, `RoleForceDeleteAction` |
 | `Actions/V1/User/` | `User` | `UserCreateAction`, `UserLockAction` |
 | `Actions/V1/Permission/` | `Permission` | `PermissionIndexAction` |
-| `Actions/V1/System/` | `System` | `SystemUpdateSettingsAction` |
-| `Actions/V1/BulkAction/` | `BulkAction` | `BulkActionProcessor` |
+| `Actions/V1/System/` | `System` | `SystemSettingsUpdateAction` |
+| `Actions/V1/BulkAction/` | `BulkAction` | `BulkActionProcessor` (handler family — exception above) |
 | `Actions/Concerns/` | — | `PersistsRole` (trait, no `Action` suffix) |
 
 ### Naming by operation type

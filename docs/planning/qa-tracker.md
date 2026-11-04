@@ -4,103 +4,103 @@
 
 ## QA Categories
 
-|| Category | Description |
-||----------|-------------|
-|| Functional QA | Does the feature work as specified? |
-|| Authorization QA | Are permissions properly enforced? |
-|| Security QA | Input validation, escaping, auth boundary, secrets |
-|| API QA | Response format, error handling, pagination, filtering |
-|| Regression QA | Does this change break existing functionality? |
-|| Documentation QA | Docs match code, accurate and complete? |
+| Category | Description |
+|----------|-------------|
+| Functional QA | Does the feature work as specified? |
+| Authorization QA | Are permissions properly enforced? |
+| Security QA | Input validation, escaping, auth boundary, secrets |
+| API QA | Response format, error handling, pagination, filtering |
+| Regression QA | Does this change break existing functionality? |
+| Documentation QA | Docs match code, accurate and complete? |
 
 ## QA Test Scenarios
 
 ### Authentication QA
 
-|| ID | Scenario | Category | Feature | Status |
-||----|----------|----------|---------|--------|
-|| QA-AUTH-001 | Verify login using username | Functional | Login | PLANNED |
-|| QA-AUTH-002 | Verify login using email | Functional | Login | PLANNED |
-|| QA-AUTH-003 | Verify invalid credentials returns 401 | API | Login | PLANNED |
-|| QA-AUTH-004 | Verify rate limit on login (5/min per IP+identifier) | Security | Login | PLANNED |
-|| QA-AUTH-005 | Verify temporary lock after 5 failed attempts | Security | Failed login | PLANNED |
-|| QA-AUTH-006 | Verify failed login counter resets on success | Functional | Failed login | PLANNED |
-|| QA-AUTH-007 | Verify locked account cannot login | Authorization | Lock | PLANNED |
-|| QA-AUTH-008 | Verify unlock allows login again | Functional | Unlock | PLANNED |
-|| QA-AUTH-009 | Verify logout current device revokes session | Functional | Logout | PLANNED |
-|| QA-AUTH-010 | Verify logout all devices revokes all sessions | Security | Logout all | PLANNED |
-|| QA-AUTH-011 | Verify email verification flow | Functional | Email verification | PLANNED |
-|| QA-AUTH-012 | Verify email verification ≠ account activation | Security | Email verification | PLANNED |
-|| QA-AUTH-013 | Verify forgot password sends reset email | Functional | Forgot password | PLANNED |
-|| QA-AUTH-014 | Verify password reset via email link | Functional | Password reset | PLANNED |
-|| QA-AUTH-015 | Verify reset token expires after 60 min | Security | Password reset | PLANNED |
-|| QA-AUTH-016 | Verify rate limit on forgot password (3/hour) | Security | Forgot password | PLANNED |
-|| QA-AUTH-017 | Verify admin reset password generates secure link | Functional | Admin reset | PLANNED |
-|| QA-AUTH-018 | Verify admin cannot see user's new password | Security | Admin reset | PLANNED |
-|| QA-AUTH-019 | Verify password change requires current password | Authorization | Password change | PLANNED |
-|| QA-AUTH-020 | Verify password change respects history | Security | Password history | PLANNED |
-||| QA-AUTH-021 | Verify last_activity_at set on first successful login | Functional | last_activity_at | TODO |
-||| QA-AUTH-022 | Verify last_activity_at is NULL for never-logged-in users | Functional | last_activity_at | TODO |
-||| QA-AUTH-023 | Verify unlock does NOT update last_activity_at (NULL preserved) | Security | Unlock | TODO |
-||| QA-AUTH-024 | Verify unlock does NOT update last_activity_at (existing timestamp preserved) | Security | Unlock | TODO |
-||| QA-AUTH-025 | Verify last_activity_at updates only on meaningful activity, not every request | Functional | last_activity_at | TODO |
-|||| QA-AUTH-026 | Verify NULL last_activity_at users included in inactivity query via grace_days | Functional | Inactivity | DONE |
-|||| QA-AUTH-027 | Verify password change revokes existing sessions/tokens | Security | Password change | DONE — all Sanctum tokens, database sessions, and remember_token are cleared in the password mutation transaction |
+| ID | Scenario | Category | Feature | Status |
+|----|----------|----------|---------|--------|
+| QA-AUTH-001 | Verify login using username | Functional | Login | PLANNED |
+| QA-AUTH-002 | Verify login using email | Functional | Login | PLANNED |
+| QA-AUTH-003 | Verify invalid credentials returns 401 | API | Login | PLANNED |
+| QA-AUTH-004 | Verify rate limit on login (5/min per IP+identifier) | Security | Login | PLANNED |
+| QA-AUTH-005 | Verify temporary lock after 5 failed attempts | Security | Failed login | PLANNED |
+| QA-AUTH-006 | Verify failed login counter resets on success | Functional | Failed login | PLANNED |
+| QA-AUTH-007 | Verify locked account cannot login | Authorization | Lock | PLANNED |
+| QA-AUTH-008 | Verify unlock allows login again | Functional | Unlock | PLANNED |
+| QA-AUTH-009 | Verify logout current device revokes session | Functional | Logout | PLANNED |
+| QA-AUTH-010 | Verify logout all devices revokes all sessions | Security | Logout all | PLANNED |
+| QA-AUTH-011 | Verify email verification flow | Functional | Email verification | PLANNED |
+| QA-AUTH-012 | Verify email verification ≠ account activation | Security | Email verification | PLANNED |
+| QA-AUTH-013 | Verify forgot password sends reset email | Functional | Forgot password | PLANNED |
+| QA-AUTH-014 | Verify password reset via email link | Functional | Password reset | PLANNED |
+| QA-AUTH-015 | Verify reset token expires after 60 min | Security | Password reset | PLANNED |
+| QA-AUTH-016 | Verify rate limit on forgot password (3/hour) | Security | Forgot password | PLANNED |
+| QA-AUTH-017 | Verify admin reset password generates secure link | Functional | Admin reset | PLANNED |
+| QA-AUTH-018 | Verify admin cannot see user's new password | Security | Admin reset | PLANNED |
+| QA-AUTH-019 | Verify password change requires current password | Authorization | Password change | PLANNED |
+| QA-AUTH-020 | Verify password change respects history | Security | Password history | PLANNED |
+| QA-AUTH-021 | Verify last_activity_at set on first successful login | Functional | last_activity_at | TODO |
+| QA-AUTH-022 | Verify last_activity_at is NULL for never-logged-in users | Functional | last_activity_at | TODO |
+| QA-AUTH-023 | Verify unlock does NOT update last_activity_at (NULL preserved) | Security | Unlock | TODO |
+| QA-AUTH-024 | Verify unlock does NOT update last_activity_at (existing timestamp preserved) | Security | Unlock | TODO |
+| QA-AUTH-025 | Verify last_activity_at updates only on meaningful activity, not every request | Functional | last_activity_at | TODO |
+| QA-AUTH-026 | Verify NULL last_activity_at users included in inactivity query via grace_days | Functional | Inactivity | DONE |
+| QA-AUTH-027 | Verify password change revokes existing sessions/tokens | Security | Password change | DONE — all Sanctum tokens, database sessions, and remember_token are cleared in the password mutation transaction |
 
 ### User Management QA
 
-|| ID | Scenario | Category | Feature | Status |
-||----|----------|----------|---------|--------|
-|| QA-USER-001 | Verify user list is paginated | API | User list | PLANNED |
-|| QA-USER-002 | Verify user detail shows correct data | Functional | User detail | PLANNED |
-|| QA-USER-003 | Verify create user generates temp password | Functional | Create user | PLANNED |
-|| QA-USER-004 | Verify new user forced to change password on first login | Security | Force change | PLANNED |
-|| QA-USER-005 | Verify deactivate prevents login | Authorization | Deactivate | PLANNED |
-|| QA-USER-006 | Verify activate restores login | Functional | Activate | PLANNED |
-|| QA-USER-007 | Verify lock prevents login but allows unlock | Authorization | Lock | PLANNED |
-|| QA-USER-008 | Verify soft delete hides user but preserves data | Functional | Soft delete | PLANNED |
-|| QA-USER-009 | Verify non-admin cannot access user management | Authorization | RBAC | PLANNED |
-|| QA-USER-010 | Verify password history prevents reuse | Security | Password history | PLANNED |
-|| QA-USER-011 | Verify profile update with valid data succeeds | Functional | Profile | PLANNED |
-|| QA-USER-012 | Verify profile update with invalid email rejected | Validation | Profile | PLANNED |
-|| QA-USER-013 | Verify change password requires current password | Authorization | Profile | PLANNED |
-|| QA-USER-014 | Verify user list respects @can authorization | Authorization | User mgmt | PLANNED |
+| ID | Scenario | Category | Feature | Status |
+|----|----------|----------|---------|--------|
+| QA-USER-001 | Verify user list is paginated | API | User list | PLANNED |
+| QA-USER-002 | Verify user detail shows correct data | Functional | User detail | PLANNED |
+| QA-USER-003 | Verify create user generates temp password | Functional | Create user | PLANNED |
+| QA-USER-004 | Verify new user forced to change password on first login | Security | Force change | PLANNED |
+| QA-USER-005 | Verify deactivate prevents login | Authorization | Deactivate | PLANNED |
+| QA-USER-006 | Verify activate restores login | Functional | Activate | PLANNED |
+| QA-USER-007 | Verify lock prevents login but allows unlock | Authorization | Lock | PLANNED |
+| QA-USER-008 | Verify soft delete hides user but preserves data | Functional | Soft delete | PLANNED |
+| QA-USER-009 | Verify non-admin cannot access user management | Authorization | RBAC | PLANNED |
+| QA-USER-010 | Verify password history prevents reuse | Security | Password history | PLANNED |
+| QA-USER-011 | Verify profile update with valid data succeeds | Functional | Profile | PLANNED |
+| QA-USER-012 | Verify profile update with invalid email rejected | Validation | Profile | PLANNED |
+| QA-USER-013 | Verify change password requires current password | Authorization | Profile | PLANNED |
+| QA-USER-014 | Verify user list respects @can authorization | Authorization | User mgmt | PLANNED |
 
 ### RBAC QA
 
-|| ID | Scenario | Category | Feature | Status |
-||----|----------|----------|---------|--------|
-|| QA-RBAC-001 | Verify role permission changes propagate to users | Functional | Role permissions | DONE | DONE (2026-09-30) — `RbacRoleSyncTest::test_the_role_change_is_audited_with_before_and_after` — edit a user's roles, confirm the `user.roles_assigned` activity row records before AND after. Manual: change a user's role, check the audit log
-|| QA-RBAC-002 | Verify user inherits role permissions | Functional | Role permissions | DONE | DONE (2026-09-30) — `RbacRoleSyncTest::test_changing_the_role_changes_what_the_account_can_do` + `test_the_sync_writes_nothing_to_the_user_permission_pivot` — the role change moves `can()` and leaves `model_has_permissions` at 0 rows (ADR-004). Manual: give a user `staff`, confirm they gain users.view with no direct permission row
-|| QA-RBAC-003 | Verify cannot delete last superadmin | Security | Superadmin | DONE | DONE (2026-09-30) — `LastSuperadminGuardTest::test_the_last_superadmin_cannot_be_removed` (soft-deleted case). NOTE: this was BROKEN until Group E — deleting the account bypassed the role guard entirely; confirmed exploitable down to zero superadmins, now fixed. Manual: as a non-superadmin holding users.delete, try to delete the only superadmin — refused, account intact
-|| QA-RBAC-004 | Verify cannot deactivate last superadmin | Security | Superadmin | DONE | DONE (2026-09-30) — `LastSuperadminGuardTest` deactivated case + `test_the_bulk_path_cannot_remove_the_last_superadmin` + `test_the_api_cannot_deactivate_the_last_superadmin` (409 LAST_SUPERADMIN). NOTE: also BROKEN until Group E, and the bulk bar bypassed the action via a raw UPDATE. Manual: deactivate the only superadmin via row button, bulk dropdown and API — all three refused
-|| QA-RBAC-005 | Verify superadmin bypasses auth where explicitly allowed | Authorization | Superadmin | DONE | DONE (2026-09-30) — Sidebar/route cases in `GateDUiGatingTest` + `RbacAuthorizationMatrixTest` — a superadmin reaches every gated screen. Mechanism is `Gate::before` (AuthServiceProvider), documented in `docs/base/security/authorization.md`. Manual: sign in as superadmin, confirm /users, /roles, /permissions, /settings all open
-|| QA-RBAC-006 | Verify superadmin does NOT bypass every boundary | Security | Superadmin | DONE | DONE (2026-09-30) — The bypass is scoped, not total: `SuperadminVisibilityTest` (a delegated admin still cannot grant superadmin, even WITH confirm_superadmin), `LastSuperadminGuardTest` (E5 binds superadmins too), `RoleManagementTest::test_a_system_role_permissions_cannot_be_edited` (even a superadmin cannot strip `admin`'s set). Manual: as superadmin, try to demote the last superadmin — refused
-|| QA-RBAC-007 | Verify registration default role is 'user' | Authorization | Registration | DONE | DONE (2026-09-30) — `RbacRoleSyncTest::test_a_create_without_roles_lands_on_the_default_role` — an admin create with no `roles` key lands on the configured default, not on no role. Manual: create a user leaving roles empty, confirm they hold `user`
-|| QA-RBAC-008 | Verify public cannot select admin/superadmin role | Security | Registration | DONE | DONE (2026-09-30) — `RegisterTest` + `RbacPentestTest::test_roles_cannot_be_smuggled_through_the_profile_endpoint` — a self-registering account cannot select a role and cannot acquire one later via a mass-assigned field. Manual: register, then PUT /profile with roles[]=superadmin — refused
+| ID | Scenario | Category | Feature | Status |
+|----|----------|----------|---------|--------|
+| QA-RBAC-001 | Verify role permission changes propagate to users | Functional | Role permissions | DONE | DONE (2026-09-30) — `RbacRoleSyncTest::test_the_role_change_is_audited_with_before_and_after` — edit a user's roles, confirm the `user.roles_assigned` activity row records before AND after. Manual: change a user's role, check the audit log
+| QA-RBAC-002 | Verify user inherits role permissions | Functional | Role permissions | DONE | DONE (2026-09-30) — `RbacRoleSyncTest::test_changing_the_role_changes_what_the_account_can_do` + `test_the_sync_writes_nothing_to_the_user_permission_pivot` — the role change moves `can()` and leaves `model_has_permissions` at 0 rows (ADR-004). Manual: give a user `staff`, confirm they gain users.view with no direct permission row
+| QA-RBAC-003 | Verify cannot delete last superadmin | Security | Superadmin | DONE | DONE (2026-09-30) — `LastSuperadminGuardTest::test_the_last_superadmin_cannot_be_removed` (soft-deleted case). NOTE: this was BROKEN until Group E — deleting the account bypassed the role guard entirely; confirmed exploitable down to zero superadmins, now fixed. Manual: as a non-superadmin holding users.delete, try to delete the only superadmin — refused, account intact
+| QA-RBAC-004 | Verify cannot deactivate last superadmin | Security | Superadmin | DONE | DONE (2026-09-30) — `LastSuperadminGuardTest` deactivated case + `test_the_bulk_path_cannot_remove_the_last_superadmin` + `test_the_api_cannot_deactivate_the_last_superadmin` (409 LAST_SUPERADMIN). NOTE: also BROKEN until Group E, and the bulk bar bypassed the action via a raw UPDATE. Manual: deactivate the only superadmin via row button, bulk dropdown and API — all three refused
+| QA-RBAC-005 | Verify superadmin bypasses auth where explicitly allowed | Authorization | Superadmin | DONE | DONE (2026-09-30) — Sidebar/route cases in `GateDUiGatingTest` + `RbacAuthorizationMatrixTest` — a superadmin reaches every gated screen. Mechanism is `Gate::before` (AuthServiceProvider), documented in `docs/base/security/authorization.md`. Manual: sign in as superadmin, confirm /users, /roles, /permissions, /settings all open
+| QA-RBAC-006 | Verify superadmin does NOT bypass every boundary | Security | Superadmin | DONE | DONE (2026-09-30) — The bypass is scoped, not total: `SuperadminVisibilityTest` (a delegated admin still cannot grant superadmin, even WITH confirm_superadmin), `LastSuperadminGuardTest` (E5 binds superadmins too), `RoleManagementTest::test_a_system_role_permissions_cannot_be_edited` (even a superadmin cannot strip `admin`'s set). Manual: as superadmin, try to demote the last superadmin — refused
+| QA-RBAC-007 | Verify registration default role is 'user' | Authorization | Registration | DONE | DONE (2026-09-30) — `RbacRoleSyncTest::test_a_create_without_roles_lands_on_the_default_role` — an admin create with no `roles` key lands on the configured default, not on no role. Manual: create a user leaving roles empty, confirm they hold `user`
+| QA-RBAC-008 | Verify public cannot select admin/superadmin role | Security | Registration | DONE | DONE (2026-09-30) — `RegisterTest` + `RbacPentestTest::test_roles_cannot_be_smuggled_through_the_profile_endpoint` — a self-registering account cannot select a role and cannot acquire one later via a mass-assigned field. Manual: register, then PUT /profile with roles[]=superadmin — refused
 
 ### API QA
 
-|| ID | Scenario | Category | Feature | Status |
-||----|----------|----------|---------|--------|
-|| QA-API-001 | Verify all API responses use consistent envelope | API | API v1 | DONE (2026-10-21) — `ApiErrorEnvelopeTest` (eight handler codes, identical key set minus `debug`), `ThrottleJsonResponseTest` (limiter's own 429 carries `meta`), `CheckAccountStateMiddlewareTest` + `PasswordExpiredEnforcementTest` (middleware 403s carry `meta`), `ApiDocsUiRenderTest` (docs 401). Manual: call any endpoint with a bad payload and confirm `{message, code, meta}` |
-|| QA-API-002 | Verify 401 for unauthenticated API access | API | API v1 | DONE (2026-10-21) — `ApiDocumentationTest::test_every_authenticated_operation_documents_a_401` (reachability from `auth:sanctum`) + `ApiDocsUiRenderTest` (guest on `/docs/api.json`). Manual: `GET /api/v1/profile` with no token answers 401 `UNAUTHENTICATED` |
-|| QA-API-003 | Verify request_id in all responses | Security | API v1 | DONE (2026-10-21) — `ApiErrorEnvelopeTest::test_a_handler_error_carries_a_code_and_correlation_meta`, `AuditRequestIdTest` (`meta.request_id` equals the `X-Request-ID` header), and `ApiError::meta()` is the single builder. Manual: compare `meta.request_id` with the `X-Request-ID` header on any response |
-|| QA-API-004 | Verify 429 on rate-limited endpoint | API | Rate limiting | DONE (2026-10-21) — `ThrottleJsonResponseTest` (JSON 429 with `retry_after_seconds`, web twin still redirects) + the auth lockout cases. Manual: exceed the login lockout and confirm 429 `RATE_LIMITED` |
-|| QA-API-005 | Verify pagination metadata in collections | API | API v1 | DONE (2026-10-21) — `AuditApiTest` pins `data.pagination`'s four keys and `AuditPentestTest` reads them through the query chain; the per-module API files assert the envelope beside them; `response-contract.md` § Collection lists the three unpaginated endpoints. Manual: `GET /api/v1/users?per_page=5` returns `current_page`, `last_page`, `per_page`, `total` |
+| ID | Scenario | Category | Feature | Status |
+|----|----------|----------|---------|--------|
+| QA-API-001 | Verify all API responses use consistent envelope | API | API v1 | DONE (2026-10-21) — `ApiErrorEnvelopeTest` (eight handler codes, identical key set minus `debug`), `ThrottleJsonResponseTest` (limiter's own 429 carries `meta`), `CheckAccountStateMiddlewareTest` + `PasswordExpiredEnforcementTest` (middleware 403s carry `meta`), `ApiDocsUiRenderTest` (docs 401). Manual: call any endpoint with a bad payload and confirm `{message, code, meta}` |
+| QA-API-002 | Verify 401 for unauthenticated API access | API | API v1 | DONE (2026-10-21) — `ApiDocumentationTest::test_every_authenticated_operation_documents_a_401` (reachability from `auth:sanctum`) + `ApiDocsUiRenderTest` (guest on `/docs/api.json`). Manual: `GET /api/v1/profile` with no token answers 401 `UNAUTHENTICATED` |
+| QA-API-003 | Verify request_id in all responses | Security | API v1 | DONE (2026-10-21) — `ApiErrorEnvelopeTest::test_a_handler_error_carries_a_code_and_correlation_meta`, `AuditRequestIdTest` (`meta.request_id` equals the `X-Request-ID` header), and `ApiError::meta()` is the single builder. Manual: compare `meta.request_id` with the `X-Request-ID` header on any response |
+| QA-API-004 | Verify 429 on rate-limited endpoint | API | Rate limiting | DONE (2026-10-21) — `ThrottleJsonResponseTest` (JSON 429 with `retry_after_seconds`, web twin still redirects) + the auth lockout cases. Manual: exceed the login lockout and confirm 429 `RATE_LIMITED` |
+| QA-API-005 | Verify pagination metadata in collections | API | API v1 | DONE (2026-10-21) — `AuditApiTest` pins `data.pagination`'s four keys and `AuditPentestTest` reads them through the query chain; the per-module API files assert the envelope beside them; `response-contract.md` § Collection lists the three unpaginated endpoints. Manual: `GET /api/v1/users?per_page=5` returns `current_page`, `last_page`, `per_page`, `total` |
 
 ### Security QA
 
-|| ID | Scenario | Category | Feature | Status |
-||----|----------|----------|---------|--------|
-|| QA-SEC-001 | Verify HSTS header present | Security | Headers | PLANNED |
-|| QA-SEC-002 | Verify CSP header present | Security | Headers | PLANNED |
-|| QA-SEC-003 | Verify frame protection (CSP `frame-ancestors 'none'`; `X-Frame-Options` is not sent) | Security | Headers | PLANNED |
-|| QA-SEC-004 | Verify CSRF token on web forms | Security | CSRF | PLANNED |
-|| QA-SEC-005 | Verify no stack traces in production errors | Security | Error handling | PLANNED |
-|| QA-SEC-006 | Verify no secrets in error responses | Security | Error handling | PLANNED |
-|| QA-SEC-007 | Verify input validation at trust boundaries | Security | Validation | PLANNED |
-|| QA-SEC-008 | Verify password hashing (bcrypt/argon2) | Security | Password security | PLANNED |
+| ID | Scenario | Category | Feature | Status |
+|----|----------|----------|---------|--------|
+| QA-SEC-001 | Verify HSTS header present | Security | Headers | PLANNED |
+| QA-SEC-002 | Verify CSP header present | Security | Headers | PLANNED |
+| QA-SEC-003 | Verify frame protection (CSP `frame-ancestors 'none'`; `X-Frame-Options` is not sent) | Security | Headers | PLANNED |
+| QA-SEC-004 | Verify CSRF token on web forms | Security | CSRF | PLANNED |
+| QA-SEC-005 | Verify no stack traces in production errors | Security | Error handling | PLANNED |
+| QA-SEC-006 | Verify no secrets in error responses | Security | Error handling | PLANNED |
+| QA-SEC-007 | Verify input validation at trust boundaries | Security | Validation | PLANNED |
+| QA-SEC-008 | Verify password hashing (bcrypt/argon2) | Security | Password security | PLANNED |
 
 ### Audit QA
 
@@ -109,30 +109,30 @@ column names the test that pins it, and the F2 pentest covers the attack-shaped
 versions. What is left here is the manual pass, because the export round-trip has
 one client-side behaviour no curl test reaches: the table must resolve ITSELF.
 
-|| ID | Scenario | Category | Feature | Status | Proof / Manual step |
-||----|----------|----------|---------|--------|---------------------|
-|| QA-AUDIT-001 | Verify audit records created on mutations | Functional | Audit Trail | DONE | `ActionFirstAuditTest` — 11 cases, including "exactly one row" and rollback |
-||| QA-AUDIT-002 | Verify audit metadata includes IP, UA, request_id | Security | Audit Trail | DONE | `AuditRequestIdTest`, `AuditContextTest` — **and** that `ip`/`ua` are NULL outside a request, not `127.0.0.1` |
-||| QA-AUDIT-003 | Verify audit records are read-only | Authorization | Audit Trail | DONE | `AuditReadOnlyTest` (structural), `AuditPentestTest` probe 4 (all four verbs, both channels) |
-||| QA-AUDIT-004 | Verify async export end-to-end | Functional | Audit Export | **PARTIAL — needs a human** | Automated half done. **Manual:** run `php artisan queue:work`, click Export, and confirm the row flips `Preparing` → `Ready` with a Download button **without a page reload** |
-||| QA-AUDIT-005 | Verify export file expires after lifecycle | Security | Audit Export | DONE | `AuditExportTest` — 410 past the window, and `test_a_failed_export_leaves_no_file_behind_even_when_the_row_never_recorded_one` |
-||| QA-AUDIT-006 | Verify audit records written within transaction before commit | Security | Audit Trail | DONE | `ActionFirstAuditTest::test_a_rolled_back_delete_leaves_no_audit_record` |
-||| QA-AUDIT-007 | Verify rollback produces no audit record | Functional | Audit Trail | DONE | same file, three rollback cases |
-||| QA-AUDIT-008 | Verify the bell badge updates when an export finishes | Functional | Audit Export | **PARTIAL — needs a human** | Automated half done (`notification-poll` script ships and the event name is asserted). **Manual:** confirm the badge rises within ~5 s, not the 30 s interval |
-||| QA-AUDIT-009 | Verify a dead flag closes the module for superadmin too | Authorization | Audit Trail | DONE | `AuditPentestTest::test_a_dead_flag_closes_the_module_for_everyone_including_superadmin` |
+| ID | Scenario | Category | Feature | Status | Proof / Manual step |
+|----|----------|----------|---------|--------|---------------------|
+| QA-AUDIT-001 | Verify audit records created on mutations | Functional | Audit Trail | DONE | `ActionFirstAuditTest` — 11 cases, including "exactly one row" and rollback |
+| QA-AUDIT-002 | Verify audit metadata includes IP, UA, request_id | Security | Audit Trail | DONE | `AuditRequestIdTest`, `AuditContextTest` — **and** that `ip`/`ua` are NULL outside a request, not `127.0.0.1` |
+| QA-AUDIT-003 | Verify audit records are read-only | Authorization | Audit Trail | DONE | `AuditReadOnlyTest` (structural), `AuditPentestTest` probe 4 (all four verbs, both channels) |
+| QA-AUDIT-004 | Verify async export end-to-end | Functional | Audit Export | **PARTIAL — needs a human** | Automated half done. **Manual:** run `php artisan queue:work`, click Export, and confirm the row flips `Preparing` → `Ready` with a Download button **without a page reload** |
+| QA-AUDIT-005 | Verify export file expires after lifecycle | Security | Audit Export | DONE | `AuditExportTest` — 410 past the window, and `test_a_failed_export_leaves_no_file_behind_even_when_the_row_never_recorded_one` |
+| QA-AUDIT-006 | Verify audit records written within transaction before commit | Security | Audit Trail | DONE | `ActionFirstAuditTest::test_a_rolled_back_delete_leaves_no_audit_record` |
+| QA-AUDIT-007 | Verify rollback produces no audit record | Functional | Audit Trail | DONE | same file, three rollback cases |
+| QA-AUDIT-008 | Verify the bell badge updates when an export finishes | Functional | Audit Export | **PARTIAL — needs a human** | Automated half done (`notification-poll` script ships and the event name is asserted). **Manual:** confirm the badge rises within ~5 s, not the 30 s interval |
+| QA-AUDIT-009 | Verify a dead flag closes the module for superadmin too | Authorization | Audit Trail | DONE | `AuditPentestTest::test_a_dead_flag_closes_the_module_for_everyone_including_superadmin` |
 
 ### Logging QA
 
-|| ID | Scenario | Category | Feature | Status |
-||----|----------|----------|---------|--------|
-|| QA-LOG-001 | Verify failures produce correct log level/event name | Functional | Logging | PLANNED |
-|| QA-LOG-002 | Verify unexpected exceptions are logged | Security | Logging | PLANNED |
-|| QA-LOG-003 | Verify sensitive data (passwords/tokens/secrets) is not logged | Security | Logging | PLANNED |
-|| QA-LOG-004 | Verify request/correlation ID present in log entries | Security | Logging | PLANNED |
-|| QA-LOG-005 | Verify audit records created within transaction before commit | Security | Logging | TODO |
-|| QA-LOG-006 | Verify failed transactions do not create false successful audit events | Functional | Logging | PLANNED |
-|| QA-LOG-007 | Verify queue failures are observable in logs | Security | Logging | PLANNED |
-|| QA-LOG-008 | Verify authorization/security failures are appropriately logged | Security | Logging | PLANNED |
+| ID | Scenario | Category | Feature | Status |
+|----|----------|----------|---------|--------|
+| QA-LOG-001 | Verify failures produce correct log level/event name | Functional | Logging | PLANNED |
+| QA-LOG-002 | Verify unexpected exceptions are logged | Security | Logging | PLANNED |
+| QA-LOG-003 | Verify sensitive data (passwords/tokens/secrets) is not logged | Security | Logging | PLANNED |
+| QA-LOG-004 | Verify request/correlation ID present in log entries | Security | Logging | PLANNED |
+| QA-LOG-005 | Verify audit records created within transaction before commit | Security | Logging | TODO |
+| QA-LOG-006 | Verify failed transactions do not create false successful audit events | Functional | Logging | PLANNED |
+| QA-LOG-007 | Verify queue failures are observable in logs | Security | Logging | PLANNED |
+| QA-LOG-008 | Verify authorization/security failures are appropriately logged | Security | Logging | PLANNED |
 
 ### Monitoring QA
 
@@ -141,29 +141,29 @@ the test that pins it (Phase 11 Groups B–E). What is left is the manual pass o
 real deployment, where the flag rows and the CSP header come from the environment
 rather than from PHPUnit.
 
-|| ID | Scenario | Category | Feature | Status |
-||----|----------|----------|---------|--------|
-|| QA-MON-001 | Verify `/pulse` needs `pulse.view` AND the `pulse` flag | Authorization | Pulse | DONE — `PulsePermissionGateTest`, 6 cases (holder 200, no permission 403, superadmin 200, flag off 403 for a holder, flag off 403 for superadmin, and the gate itself reading the flag while the module is kill-switched — added by the Phase 11 security pass, ADR-024 clause 2) |
-|| QA-MON-002 | Verify `/health` needs `health.view` AND the `health` flag | Authorization | System Health | DONE — `HealthPermissionGateTest`, same 5 cases |
-|| QA-MON-003 | Verify a dead flag closes the module for **superadmin** too | Authorization | Monitoring | DONE — `test_the_flag_off_refuses_superadmin_too` in both files (D-3, closed 2026-10-16) |
-|| QA-MON-004 | Verify `/pulse` renders under the nonce-only CSP | Functional | Pulse | DONE — `ContentSecurityPolicyTest::test_only_the_pulse_route_grants_unsafe_eval` + `::test_every_script_on_the_pulse_page_carries_the_policys_nonce` (DOM-parsed) |
-|| QA-MON-005 | Verify Pulse cards survive a warm cache | Functional | Pulse | DONE — `PulseQueryCacheTest` forces a serializing store and fails at `Queues.php:35` without the `array` default |
-|| QA-MON-006 | Verify `/health` renders with no query from Blade | Regression | System Health | DONE — `HealthUiRenderTest::test_it_renders_and_queries_nothing` (delta across a warm second render) |
-|| QA-MON-007 | Verify the sidebar shows each entry only with its permission AND its flag | Authorization | Monitoring | DONE — `HealthUiRenderTest`'s four sidebar cases; Pulse opens in a new tab with `rel="noopener"`, `/health` stays in-tab |
-|| QA-MON-008 | Verify the API health twin stays unauthenticated and shape-bounded | Security | System Health | DONE — `HealthCheckEndpointTest` (no acting user; `{status, timestamp, checks}` only — no versions, no config, no DSNs) |
-|| QA-MON-009 | Verify every job declares its queue, retry chain and a `failed()` that logs `request_id` | Regression | Queue | DONE — `JobConventionTest`, 6 cases, reflection over every class in `app/Jobs` |
-|| QA-MON-010 | Verify the flag rows exist after a deploy to an environment that predates them | Functional | Monitoring | **PARTIAL — needs a human** | Automated half done (`FeatureFlagSeeder` iterates `FeatureCatalog::slugs()`). **Manual:** on a database seeded before Phase 11, run `php artisan db:seed --class=FeatureFlagSeeder` and confirm `/health` stops returning 403 — until it runs, `/health` refuses everyone, superadmin included |
-|| QA-MON-011 | Verify the `pulse` flag stops the RECORDING, not only the page | Security | Pulse | DONE — `PulseRecordingKillSwitchTest` (2 cases: with the flag on the entry is ingested, with it off `Pulse::ingest()` drops it and `pulse_entries` stays empty) |
-|| QA-MON-012 | Verify the `vantage` flag reaches a RUNNING worker, not just the route | Security | Queue | DONE — `VantageRecordingKillSwitchTest` (2 cases: `Looping` refreshes `config('vantage.enabled')` from the flag; a synchronous job that records under an active flag writes no `vantage_jobs` row under a dead one) |
-|| QA-MON-013 | Verify switching a flag off revokes its permissions and hides them everywhere | Authorization | Feature flags | DONE — `FeaturePermissionRevokeTest` (10 cases: both pivots, the bulk action, no re-grant on re-enable, hidden from the matrix and the permission index, a hidden grant preserved through a save, a crafted grant refused) + `PermissionFeatureMapTest` (7 cases pinning the map) |
-|| QA-MON-014 | Verify the retry button has a ceiling the operator can tune | Security | Queue | DONE — `QueueRetryThrottleTest` (2 cases: the ceiling comes from `queue_retry_rate_limit_per_minute`, measured at two values either side of the seeded default) |
-|| QA-MON-015 | Verify the health endpoint keeps its ceiling while its cache store is down | Performance | System Health | DONE — `HealthCheckCacheFallbackTest` (4 cases, counting probe SETS: one per window with the configured store dead, one per request only when both stores are dead) |
-|| QA-MON-016 | Verify the flag modal warns that disabling revokes permissions and that re-enabling does not grant them back — in two sentences | Functional | Feature flags | DONE — `FeatureFlagUiRenderTest::test_the_disable_modal_says_the_permissions_are_revoked` (the count for a multi-permission flag, the name for a single-permission one, nothing for a flag that owns none, nothing on the ENABLE switch, and a 2-sentence/220-char ceiling) + `BulkActionCopyTest::test_the_disable_copy_stays_two_sentences` (same ceiling for the bulk modal) |
+| ID | Scenario | Category | Feature | Status |
+|----|----------|----------|---------|--------|
+| QA-MON-001 | Verify `/pulse` needs `pulse.view` AND the `pulse` flag | Authorization | Pulse | DONE — `PulsePermissionGateTest`, 6 cases (holder 200, no permission 403, superadmin 200, flag off 403 for a holder, flag off 403 for superadmin, and the gate itself reading the flag while the module is kill-switched — added by the Phase 11 security pass, ADR-024 clause 2) |
+| QA-MON-002 | Verify `/health` needs `health.view` AND the `health` flag | Authorization | System Health | DONE — `HealthPermissionGateTest`, same 5 cases |
+| QA-MON-003 | Verify a dead flag closes the module for **superadmin** too | Authorization | Monitoring | DONE — `test_the_flag_off_refuses_superadmin_too` in both files (D-3, closed 2026-10-16) |
+| QA-MON-004 | Verify `/pulse` renders under the nonce-only CSP | Functional | Pulse | DONE — `ContentSecurityPolicyTest::test_only_the_pulse_route_grants_unsafe_eval` + `::test_every_script_on_the_pulse_page_carries_the_policys_nonce` (DOM-parsed) |
+| QA-MON-005 | Verify Pulse cards survive a warm cache | Functional | Pulse | DONE — `PulseQueryCacheTest` forces a serializing store and fails at `Queues.php:35` without the `array` default |
+| QA-MON-006 | Verify `/health` renders with no query from Blade | Regression | System Health | DONE — `HealthUiRenderTest::test_it_renders_and_queries_nothing` (delta across a warm second render) |
+| QA-MON-007 | Verify the sidebar shows each entry only with its permission AND its flag | Authorization | Monitoring | DONE — `HealthUiRenderTest`'s four sidebar cases; Pulse opens in a new tab with `rel="noopener"`, `/health` stays in-tab |
+| QA-MON-008 | Verify the API health twin stays unauthenticated and shape-bounded | Security | System Health | DONE — `HealthCheckEndpointTest` (no acting user; `{status, timestamp, checks}` only — no versions, no config, no DSNs) |
+| QA-MON-009 | Verify every job declares its queue, retry chain and a `failed()` that logs `request_id` | Regression | Queue | DONE — `JobConventionTest`, 6 cases, reflection over every class in `app/Jobs` |
+| QA-MON-010 | Verify the flag rows exist after a deploy to an environment that predates them | Functional | Monitoring | **PARTIAL — needs a human** | Automated half done (`FeatureFlagSeeder` iterates `FeatureCatalog::slugs()`). **Manual:** on a database seeded before Phase 11, run `php artisan db:seed --class=FeatureFlagSeeder` and confirm `/health` stops returning 403 — until it runs, `/health` refuses everyone, superadmin included |
+| QA-MON-011 | Verify the `pulse` flag stops the RECORDING, not only the page | Security | Pulse | DONE — `PulseRecordingKillSwitchTest` (2 cases: with the flag on the entry is ingested, with it off `Pulse::ingest()` drops it and `pulse_entries` stays empty) |
+| QA-MON-012 | Verify the `vantage` flag reaches a RUNNING worker, not just the route | Security | Queue | DONE — `VantageRecordingKillSwitchTest` (2 cases: `Looping` refreshes `config('vantage.enabled')` from the flag; a synchronous job that records under an active flag writes no `vantage_jobs` row under a dead one) |
+| QA-MON-013 | Verify switching a flag off revokes its permissions and hides them everywhere | Authorization | Feature flags | DONE — `FeaturePermissionRevokeTest` (10 cases: both pivots, the bulk action, no re-grant on re-enable, hidden from the matrix and the permission index, a hidden grant preserved through a save, a crafted grant refused) + `PermissionFeatureMapTest` (7 cases pinning the map) |
+| QA-MON-014 | Verify the retry button has a ceiling the operator can tune | Security | Queue | DONE — `QueueRetryThrottleTest` (2 cases: the ceiling comes from `queue_retry_rate_limit_per_minute`, measured at two values either side of the seeded default) |
+| QA-MON-015 | Verify the health endpoint keeps its ceiling while its cache store is down | Performance | System Health | DONE — `HealthCheckCacheFallbackTest` (4 cases, counting probe SETS: one per window with the configured store dead, one per request only when both stores are dead) |
+| QA-MON-016 | Verify the flag modal warns that disabling revokes permissions and that re-enabling does not grant them back — in two sentences | Functional | Feature flags | DONE — `FeatureFlagUiRenderTest::test_the_disable_modal_says_the_permissions_are_revoked` (the count for a multi-permission flag, the name for a single-permission one, nothing for a flag that owns none, nothing on the ENABLE switch, and a 2-sentence/220-char ceiling) + `BulkActionCopyTest::test_the_disable_copy_stays_two_sentences` (same ceiling for the bulk modal) |
 
 ### Settings QA
 
-|| ID | Scenario | Category | Feature | Status |
-||----|----------|----------|---------|--------|
+| ID | Scenario | Category | Feature | Status |
+|----|----------|----------|---------|--------|
 | QA-SET-001 | Verify settings validation on save | Validation | Settings | DONE — `SystemSettingUpdateTest::test_every_numeric_bound_rejects_a_value_outside_it` walks all 40 min:/max: bounds; `SettingsPentestTest` adds 10 out-of-range/malformed payloads |
 | QA-SET-002 | Verify settings change is audited | Security | Settings | DONE — causer attribution, `source` channel per web/API, and rejected-writes-leave-no-row, all asserted in `SettingsPentestTest` |
 | QA-SET-003 | Verify cache invalidation on settings change | Functional | Settings | DONE — `SystemSetting::set()` busts via `DB::afterCommit`; `SET-005` records the transaction-read hazard that motivated it |

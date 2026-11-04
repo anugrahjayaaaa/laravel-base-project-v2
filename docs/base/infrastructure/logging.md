@@ -267,12 +267,12 @@ for debugging (IDs, status, reason codes), never credentials or secrets.
 
 ## 11. Retention
 
-|| Data Type | Default | Config Key |
-||-----------|---------|------------|
-|| Application logs | 30 days | `retention.application_logs.days` |
-|| Security logs | 90 days | `retention.security_logs.days` |
-|| Audit logs | Indefinite | `retention.audit_logs.days` |
-|| Pulse data | Pulse's own retention config | `laravel/pulse` |
+| Data Type | Default | Config Key |
+|-----------|---------|------------|
+| Application logs | 30 days | `retention.application_logs.days` |
+| Security logs | 90 days | `retention.security_logs.days` |
+| Audit logs | Indefinite | `retention.audit_logs.days` |
+| Pulse data | Pulse's own retention config | `laravel/pulse` |
 
 Application logs and Audit Trail retention are **separate policies**. See
 [retention.md](../operations/retention.md) for the full schedule and enforcement.

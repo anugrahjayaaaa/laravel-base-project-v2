@@ -41,7 +41,9 @@ DB_PASSWORD=secret
 2. Checkout release tag
 3. Install/update dependencies (composer install --no-dev)
 4. Run migrations (php artisan migrate --force)
-5. Run seeders if needed (php artisan db:seed --force)
+5. Run seeders if needed (php artisan db:seed --force) — a newly declared
+   Pennant flag 403s its whole module until `FeatureFlagSeeder` writes the
+   row; the store is fail-closed, seeding is not optional
 6. Config cache (php artisan config:cache)
 7. Route cache (php artisan route:cache)
 8. View cache (php artisan view:cache)
@@ -50,6 +52,21 @@ DB_PASSWORD=secret
 11. Health check verification
 12. Notify stakeholders
 ```
+
+## Processes an operator must start
+
+The deploy checklist cannot start these; the host runs them.
+
+```
+bin/run-workers.sh local     # queue:work default,exports,sweeps
+bin/run-workers.sh backups   # the ExecuteSystemBackupJob pair: queue AND
+                             # connection `backups` — a listener on `default`
+                             # never consumes it (docs/base/infrastructure/queue.md)
+bin/run-workers.sh cron      # schedule:work, or `* * * * * php artisan schedule:run`
+```
+
+After `config:cache`, restart workers (`php artisan queue:restart`); a worker
+keeps the config and timezone it booted with.
 
 ## CI/CD
 

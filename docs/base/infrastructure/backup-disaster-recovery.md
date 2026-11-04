@@ -98,15 +98,47 @@ backup.completed / backup.failed notified to backup.execute holders
 
 ## Restore Procedure
 
-Documented restore procedure includes:
-1. Identify backup to restore from.
-2. Verify backup integrity.
-3. Restore database.
-4. Restore files.
-5. Run migrations (if needed).
-6. Clear caches.
-7. Verify application health.
-8. Notify stakeholders.
+There is no restore command in the application (`SystemBackupRunner` only
+writes). Restore is a manual operator procedure against the artifact on the
+`backups` disk.
+
+A healthy artifact is `<Y-m-d-H-i-s>.zip` on the `backups` disk
+(`filename_prefix` is empty in `config/backup.php`) containing:
+- `manifest.json` — what the run included;
+- `db-dumps/mysql-<database>.sql` — a plain mysqldump, **uncompressed**
+  (`backup.database_dump_compressor` is `null`);
+- the `storage/app` tree **under its full absolute path minus the leading
+  slash** (`files.relative_path` is `null`), e.g.
+  `var/www/current/storage/app/...` on Linux.
+All entries are encrypted with ZipCrypto (`backup.encryption => 'default'`).
+
+Steps (run on the database host, with the app down or in maintenance):
+
+1. Identify the artifact: `php artisan backup:list` (or list the `backups`
+   disk directly if the app itself is down).
+2. Copy the zip off the disk and verify integrity: `unzip -t <artifact>.zip`.
+3. Extract with the archive password:
+   `unzip -P "$BACKUP_ARCHIVE_PASSWORD" -d restore <artifact>.zip`.
+   A wrong password fails silently on some files — extract, then confirm
+   `restore/db-dumps/` is non-empty before trusting anything.
+4. Restore the database:
+   `mysql -u <user> -p <database> < restore/db-dumps/mysql-<database>.sql`.
+5. Restore the files: the storage tree extracts under the absolute path it
+   had on the backup host (minus the leading slash) — copy
+   `restore/<that path>/storage/app/` back into `storage/app/`. Do not
+   overwrite `storage/app/backups` — leave the surviving artifacts in place.
+6. Run migrations if the schema is ahead of the artifact:
+   `php artisan migrate --force`.
+7. Clear caches and reload config: `php artisan optimize:clear` (or
+   `config:cache` + `cache:clear` in production).
+8. `php artisan queue:restart` so workers pick up the restored environment.
+9. Verify application health (`GET /api/v1/health`, log in as a known user),
+   then notify stakeholders.
+
+shortcut: the backup→restore round trip is not automated in CI (named as a
+deferred row in Phase 15 `task-tracker.md` § P15-C4); the steps above are
+verified against the shipped `spatie/laravel-backup` artifact layout, not
+against a rehearsed restore.
 
 ## Retention
 

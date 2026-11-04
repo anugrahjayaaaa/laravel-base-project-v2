@@ -156,14 +156,14 @@ operation that does not need decoupled side effects may skip the Event.
 
 ## Source of Truth Rules
 
-|| Concern | Source of Truth |
-||---------|-----------------|
-|| Business mutation | Mutation caller (Action/Service layer) |
-|| Audit Trail record | Controller (mutation caller logs audit with channel) |
-|| Authorization decision | Policy / authorization layer |
-|| API serialization | Resource / response layer |
-|| Asynchronous work | Job |
-|| Technical observability | Logging / Laravel Pulse / monitoring infrastructure |
+| Concern | Source of Truth |
+|---------|-----------------|
+| Business mutation | Mutation caller (Action/Service layer) |
+| Audit Trail record | Controller (mutation caller logs audit with channel) |
+| Authorization decision | Policy / authorization layer |
+| API serialization | Resource / response layer |
+| Asynchronous work | Job |
+| Technical observability | Logging / Laravel Pulse / monitoring infrastructure |
 
 ### Key Implications
 

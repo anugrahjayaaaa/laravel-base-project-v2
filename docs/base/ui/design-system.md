@@ -91,7 +91,7 @@ component.
 | Header background | `surface-alt` |
 | Row border | `border` |
 | Row hover | `surface-alt` |
-|| Status badge | `success`/`warning`/`danger`/`info` |
+| Status badge | `success`/`warning`/`danger`/`info` |
 
 ### Table Conventions
 
@@ -189,10 +189,10 @@ Reference implementations: `resources/views/pages/roles/index.blade.php:130`,
 
 | Element | Token |
 |---------|-------|
-|| Overlay | `overlay` |
-|| Dialog background | `surface` |
-|| Border | `border` |
-|| Dialog header | `surface-alt` |
+| Overlay | `overlay` |
+| Dialog background | `surface` |
+| Border | `border` |
+| Dialog header | `surface-alt` |
 
 ### Confirmation Modal Convention
 

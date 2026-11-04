@@ -27,6 +27,7 @@ stale. Re-derive it rather than editing by hand when a limiter changes.
 | `send-test-mail` | `send_test_mail_rate_limit_per_minute` (5) | per minute | user id + IP + recipient | 302 + errors (web) / 429 JSON |
 | `audit-export` | `audit_export_rate_limit_per_hour` (5) | per hour | user id + IP | 302 + errors (web) / 429 JSON |
 | `queue-retry` | `queue_retry_rate_limit_per_minute` (10) | per minute | user id + IP | 302 + flash `error` (web) / 429 JSON |
+| `system-backup` | none — hardcoded `Limit::perHour(3)` in `AppServiceProvider` | per hour | user id + IP (composite key) | 302 + flash `error` (web) / 429 JSON |
 | `health` | `health_rate_limit_per_minute` (120) | per minute | IP | 429 JSON only |
 
 `email-verification` and `resend-verification` deliberately share one setting
@@ -59,6 +60,7 @@ wider key is not redundant — it is the only bucket that sees the spray.
 | `POST /auth/email/resend`, `POST /users/{user}/resend-verification`, `GET /email/verify-change/{user}` | `user-state-actions` + `resend-verification` / `email-verification` | 5/hour per user |
 | `POST /users/bulk-action`, `POST /roles/bulk-action`, `POST /features/bulk-action` | `user-state-actions` + `bulk-action` | 5/min per user |
 | `POST /notifications/test-mail` | `user-state-actions` + `send-test-mail` | 5/min per user + IP + recipient |
+| `POST /storage/backup` | `system-backup` alone (outside the `user-state-actions` group) | 3/hour per user + IP |
 | the three `/activity-logs/exports*` routes | `user-state-actions` + `audit-export` | 5/hour per user + IP |
 | `POST /auth/password/change` | `password-change` | 5/min per user |
 | `GET /health` | `health` | 120/min per IP |

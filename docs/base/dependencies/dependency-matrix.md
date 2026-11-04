@@ -20,7 +20,7 @@
 | Cache (default) | Laravel Cache | Native | Core | P0 | Through Cache facade |
 | Redis (option) | Redis backend | `predis/predis` / `ext-redis` | Optional / Deployment | P2 | Never directly (facades only) |
 | Backup | Spatie Backup | `spatie/laravel-backup` | Required (installed) | P2 | Queued via `ExecuteSystemBackupJob` (ADR-026) |
-|| AdminLTE (UI) | Vendored ZIP (not npm) | AdminLTE release ZIP → `public/vendor/adminlte/` | Complete (v4.9.1) | P1 | Layout templates only |
+| AdminLTE (UI) | Vendored ZIP (not npm) | AdminLTE release ZIP → `public/vendor/adminlte/` | Complete (v4.9.1) | P1 | Layout templates only |
 | External Monitoring | (deployment choice) | `sentry/sentry-laravel` etc. | Deployment-specific | P3 | Through logging/observability layer |
 
 ## Status Legend
@@ -44,8 +44,8 @@
 | `spatie/laravel-activitylog` | `^4.8` | Laravel 13 + PHP 8.3 compatible (**not v5**, requires PHP 8.4+) |
 | `laravel/pulse` | `^1.8` | Runtime metrics dashboard (Laravel 13 compatible) |
 | `storviaio/vantage` | `^0.1.25` | Queue monitor dashboard; the app declares its routes (Laravel 13 compatible) |
-|| `laravel/pennant` | `^1.26` | Laravel 13 compatible (feature flags) |
-|| `dedoc/scramble` | `^0.13` | Laravel 13 compatible (latest stable; ^2.0 not yet released) |
+| `laravel/pennant` | `^1.26` | Laravel 13 compatible (feature flags) |
+| `dedoc/scramble` | `^0.13` | Laravel 13 compatible (latest stable; ^2.0 not yet released) |
 | `spatie/laravel-backup` | `^10.0` | Laravel 13 compatible |
 | AdminLTE | v4.x (release ZIP) | Vendored to `public/vendor/adminlte/`; NOT in `package.json`; NOT via npm |
 | `predis/predis` | `^2.0` | Redis client (if Redis chosen) |
