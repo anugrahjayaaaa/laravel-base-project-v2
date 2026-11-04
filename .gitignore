@@ -4,5 +4,6 @@
 /node_modules
 .phpunit.result.cache
 /public/build
+/build
 /storage/db-backups
 /api.json

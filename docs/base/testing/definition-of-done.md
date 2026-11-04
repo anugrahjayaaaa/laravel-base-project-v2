@@ -32,6 +32,21 @@ A feature is **DONE** only when ALL applicable criteria pass review.
 - Documentation must match code.
 - Security must not be weakened to make tests pass.
 
+## Coverage Thresholds (P15-E2)
+
+Enforced on a schedule and on release tags, not per PR (a second full suite
+with instrumentation doubles PR wall-clock for a slow-moving number):
+
+| Layer | Bar | Enforced by |
+|-------|-----|-------------|
+| Whole `app/` | ≥ 85 % | `php artisan test --coverage --min=85` |
+| `app/Actions` | ≥ 95 % | `php bin/coverage_gate.php` (same clover run) |
+| `app/Policies` | = 100 % | same |
+| `app/Http/Requests` | ≥ 95 % | same |
+
+A missed bar is a recorded gap list with owners — never a lowered threshold,
+never a deleted test.
+
 ## AI Execution Protocol Checks
 
 Before completing a task, verify:

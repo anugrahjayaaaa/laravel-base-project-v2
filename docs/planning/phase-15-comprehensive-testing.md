@@ -1,6 +1,6 @@
 # Phase 15 — Comprehensive Testing
 
-> Date: 2026-11-04 | Status: **IN PROGRESS — Group A DONE (owner-reviewed), Group B DONE (owner-reviewed), Group C DONE (owner-reviewed 2026-11-04), Group D in REVIEW (2026-11-04)** | Branch: `feature/phase-15-comprehensive-testing`
+> Date: 2026-11-04 | Status: **IN PROGRESS — Group A DONE (owner-reviewed), Group B DONE (owner-reviewed), Group C DONE (owner-reviewed 2026-11-04), Group D DONE (owner-reviewed 2026-11-04), Group E in REVIEW (2026-11-04)** | Branch: `feature/phase-15-comprehensive-testing`
 > Purpose: make the suite deliberate instead of merely large — every layer
 > (view, action, request, policy, endpoint, pipeline) has a named owner test,
 > the static-analysis and coverage gates are enforced rather than described,
@@ -740,6 +740,55 @@ Goal: numbers that are enforced, and a pipeline that says one thing once.
 
 ---
 
+### Group E — as implemented (2026-11-04)
+
+- **E1 extended the guard file after mapping it.** The brief's five hot reads,
+  the bell warm path and the 3-vs-40 export growth row were already pinned
+  (`UserViewPerformanceTest`, `RbacPerformanceTest`, `AuditBenchmarkTest`,
+  `NotificationBenchmarkTest`'s 0-query warm bell) — recorded, not duplicated.
+  Three guards added, each sabotage-verified: API list query counts identical
+  at 3 and 40 rows over users / activity-logs / inbox (C4's deferred row;
+  dropping `AuditIndexAction`'s eager loads turns it red, 23 vs 9); the
+  chunk-straddle 501-vs-502 export probe lives in `AuditExportTest` with its
+  fixture rather than copied into `PerformanceGuardTest` (chunk 500→1 turns it
+  red, 1510 vs 1507); peak memory over the five hot reads at a 24 MB bar
+  (measured 7.6 MB — the >2× rule; a 40 MB allocation turns it red). Two
+  fixture artifacts found and pinned, not papered: the export helper appends
+  activity rows so the table is cleared between measurements, and the storage
+  capacity guard's cold `system_settings` read is warmed so the first export
+  does not cost one query more than the second. Wall clock stays recorded
+  (D-8). ~5 s added to the suite; no production code changed.
+- **E2 made the thresholds real, then met them.** One instrumented run feeds
+  every bar: `--min=85` is the built-in global check, and
+  `bin/coverage_gate.php` sums the three layers from the same clover file
+  (XPath `//file` — PHPUnit nests files under `<package>`, so the obvious
+  `->project->file` reads nothing). First measured run: global 94.48 %,
+  Actions 97.11 %, Policies 100 %, **Requests 94.26 % — under its 95 bar**.
+  Closed the way the invariants allow — with tests:
+  `tests/Unit/Requests/RequestGuardsTest.php` (8 tests over the `authorize()`
+  refusals and the `withValidator()` cooldown/disabled throws, the refusal
+  branches the B2 rules suite never walks). Re-run: Requests **98.09 %
+  (461/470)**, all bars OK, final global 94.87 % (5031/5303). Bar assignment
+  for the Requests layer recorded as D-13. Gate sabotage-verified: zeroing one
+  Action's file metrics in a clover copy drops the layer to 94.73 %, prints the
+  per-file gap list, exits 1. Recorded, not deleted: the three auth Form
+  Requests' `password()`/`remember()` accessors are dead code (12 statements) —
+  a production deletion for the owner, out of scope for a testing phase.
+- **E3 split the pipeline by trigger, without touching the deploy gate.**
+  `testing.yml` is three jobs: `phpstan` on every PR (~2 min, alone so it never
+  queues behind the suite), `coverage` on schedule + release tags (pcov via
+  setup-php, `--min=85` + the gate), `dependency-audit` weekly (unchanged D4).
+  `ci-cd.yml` is untouched — the deploy gate, the full-tree Pint and
+  `cancel-in-progress: false` stay exactly where D-7 put them. actionlint
+  clean on both files. The acceptance sabotages are the ones already proven:
+  a deliberate PHPStan error exits 1 on the command the fast job runs (D1), a
+  deliberate coverage regression exits 1 through the gate (E2 above).
+  Tracker reconciliation: E1–E3 at REVIEW, Group D flipped to DONE
+  (owner-reviewed), `progress.md` carries the measured instrumented run —
+  2661 passed / 9830 assertions, 9 risky, exit 0.
+
+---
+
 ## 8. Deviations from the brief (recorded, not silently applied)
 
 | # | The brief says | The code says | Decision |
@@ -756,6 +805,7 @@ Goal: numbers that are enforced, and a pipeline that says one thing once.
 | D-10 | Design-system sweep "zero `bg-white`/`bg-light`" | 23 occurrences, all under `resources/views/vendor/` (Pulse, Vantage) | sweep scoped to application views; vendor overrides excluded by path |
 | D-11 | "Scramble OpenAPI schema integrity" | Scramble is a production requirement (ADR-025); the served document is the deploy-time export | integrity asserted against the exported document as well as the live one |
 | D-12 | Baseline "for framework/vendor-typed noise only" (P15-D1) | the first level-8 run's 332 findings are mostly own-code PHPDoc precision debt | the whole first run was committed as the annotated ledger; logic defects are fixed with regression tests (none found in D3's four surfaces), precision debt is paid down by deleting entries — the gate is enforced on day one, the bar never moves |
+| D-13 | "Actions ≥ 95 %, Policies/Security = 100 %" while the reader is told to sum `app/Actions`, `app/Policies` **and** `app/Http/Requests` | two bars, three directories; there is no `app/Security` directory — the security surface is `SecurityAuditTest` probes, not a namespace | bar assignment: Actions ≥ 95, Policies = 100 (one class, reachable), `app/Http/Requests` ≥ 95 (the validation layer is broad — 30 request classes; holding them to 100 % would be a wish, not a gate). Recorded here because the brief cannot be executed literally without picking this |
 
 ---
 

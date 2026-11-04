@@ -1,19 +1,88 @@
 name: Testing
 
-# Scheduled-only checks (P15-D4). The PR audit in ci-cd.yml runs against the
-# lockfiles at merge time; an advisory published afterwards changes nothing
-# about that merge, so only a schedule can see it. PHPStan and the coverage
-# gate join this file in P15-E3 — Pint and the suite stay owned by ci-cd.yml.
+# The checks ci-cd.yml does not own (deviation D-7 — one check, one owner):
+# PHPStan (P15-D1), the coverage gate (P15-E2), the weekly audit (P15-D4).
+# Pint and the uninstrumented suite stay owned by ci-cd.yml, and the deploy
+# gate there is unchanged by this file.
+#
+# Trigger split per job: PHPStan answers a PR in ~2 minutes; coverage and the
+# weekly audit are SCHEDULED-ONLY (plus release tags) on purpose — a second
+# full suite with instrumentation roughly doubles PR wall-clock for a number
+# that changes slowly, and the audit only a calendar can see.
 #
 # GitHub runs `schedule` only from the default branch: this file is inert on
 # feature branches by design and goes live when it lands on main.
 on:
+  pull_request:
   schedule:
     # Monday 06:00 UTC.
     - cron: '0 6 * * 1'
+  release:
+    types: [published]
 
 jobs:
+  # Separate from `coverage` so a type error fails a PR without waiting on
+  # the instrumented suite behind it (P15-E3 acceptance: fast job, red in
+  # ~2 minutes).
+  phpstan:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, xml, curl, zip, intl, pdo_mysql, sqlite3
+          coverage: none
+          tools: composer:v2
+
+      - name: Install Composer dependencies
+        run: composer install --prefer-dist --no-interaction --no-progress
+
+      # Exits non-zero on a NEW error and on a baseline entry that no longer
+      # matches — the ledger only shrinks (ADR-030).
+      - name: Static analysis (PHPStan level 8)
+        run: vendor/bin/phpstan analyse --memory-limit=1G
+
+  # pcov, not xdebug: 3–5x faster instrumentation (P15-E2). `--min=85` is the
+  # global bar; the per-layer bars (--min cannot express them) are read from
+  # the SAME clover run by bin/coverage_gate.php — three separate
+  # --coverage-filter runs would re-run the suite three times.
+  coverage:
+    if: github.event_name == 'schedule' || github.event_name == 'release'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, xml, curl, zip, intl, pdo_mysql, sqlite3
+          coverage: pcov
+          tools: composer:v2
+
+      - name: Install Composer dependencies
+        run: composer install --prefer-dist --no-interaction --no-progress
+
+      - name: Tests with global coverage floor
+        run: php artisan test --coverage --min=85 --coverage-clover=build/coverage/clover.xml
+
+      - name: Per-layer coverage gate (Actions / Policies / Requests)
+        run: php bin/coverage_gate.php build/coverage/clover.xml
+
   dependency-audit:
+    # Weekly only: the PR-boundaries run already lives in ci-cd.yml at the
+    # SAME thresholds, and firing it here too would duplicate it on every PR.
+    if: github.event_name == 'schedule'
     runs-on: ubuntu-latest
     timeout-minutes: 10
 

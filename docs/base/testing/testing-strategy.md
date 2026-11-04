@@ -56,9 +56,13 @@ Use model factories and seeders:
 
 - Tests run on every commit/PR.
 - `vendor/bin/phpstan analyse --memory-limit=1G` exits 0 — the baseline fails
-  on new errors **and** on entries that no longer match (ADR-030). CI file
-  ownership of the run is P15-E3's decision.
-- Coverage thresholds enforced.
+  on new errors **and** on entries that no longer match (ADR-030). Runs in
+  `testing.yml` as its own fast job on every PR (P15-E3).
+- Coverage thresholds enforced on a schedule and on release tags, never per
+  PR (P15-E2): global ≥ 85 % via `php artisan test --coverage --min=85`, and
+  per layer — Actions ≥ 95 %, Policies 100 %, Requests ≥ 95 % — from the same
+  clover run via `php bin/coverage_gate.php`. A missed bar is a gap list with
+  owners, never a lowered threshold. Driver: pcov in CI.
 - Security scan integrated.
 - Architecture tests verify dependency rules.
 
@@ -69,8 +73,9 @@ Use model factories and seeders:
   `npm audit --audit-level=high` at merge.
 - Scheduled (`.github/workflows/testing.yml`, weekly): dependency audit against
   the lockfiles — catches advisories published after a merge, which the PR-only
-  audit can never see (P15-D4). Same thresholds as the PR run. PHPStan and the
-  coverage gate join this file in P15-E3.
+  audit can never see (P15-D4). Same thresholds as the PR run. PHPStan runs
+  here on every PR as a separate fast job, and the coverage gate (pcov) runs
+  on the schedule and on release tags (P15-E3).
 
 ---
 
