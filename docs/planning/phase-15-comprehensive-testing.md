@@ -1,6 +1,6 @@
 # Phase 15 — Comprehensive Testing
 
-> Date: 2026-11-04 | Status: **IN PROGRESS — Group A DONE (owner-reviewed), Group B in REVIEW (2026-11-04)** | Branch: `feature/phase-15-comprehensive-testing`
+> Date: 2026-11-04 | Status: **IN PROGRESS — Group A DONE (owner-reviewed), Group B DONE (owner-reviewed), Group C in REVIEW (2026-11-04)** | Branch: `feature/phase-15-comprehensive-testing`
 > Purpose: make the suite deliberate instead of merely large — every layer
 > (view, action, request, policy, endpoint, pipeline) has a named owner test,
 > the static-analysis and coverage gates are enforced rather than described,
@@ -437,6 +437,69 @@ map cannot be audited later.
   listed explicitly as deferred with the reason.
 - **Tests:** existing files.
 - **Docs:** none.
+
+### Group C — as implemented (2026-11-04)
+
+Audit-and-close, as briefed: four coverage maps were built by walking the
+capability rows against every relevant suite, and tests were added **only for
+rows the maps showed missing**. 10 new test methods / ~13 data sets, all in
+existing owner files except one new file.
+
+**Coverage map — the load-bearing rows and their owners:**
+
+| Capability | Owner |
+| --- | --- |
+| login success / bad creds / locked / unverified / **deactivated** | `Web/V1/Auth/AuthControllerTest` (deactivated row added by C1) |
+| logout session clear | `AuthControllerTest::test_web_logout`; token teardown lives in the shared Action, pinned API-side (`AuthActionTest`) |
+| force-password-change loop (web, `must_change_password`) | `AuthControllerTest::test_must_change_password_keeps_redirecting_the_web_user_until_changed` (new) |
+| verification link valid / **tampered hash** | `AuthControllerTest` (tamper row added) |
+| rate keys per identifier **and** per IP (`login-ip`) | `AuthControllerTest` + `Security/CompositeRateLimitKeyTest` |
+| **revocation on the next request** for deactivate / lock / soft-delete | `tests/Feature/Auth/WebSessionRevocationTest` (new file — `actingAs` web, flip state, hit `/dashboard` through the real `account.state` stack: redirect to login, guest after, tokens deleted) |
+| user CRUD, state transitions + audit, sibling-permission probes | `Feature/User/{UserCrudWebTest,UserStateWebTest,UserStateAuthorizationTest,CreateUserTest,UserExtendedCrudTest}` + `Audit/ActionFirstAuditTest` + `Role/GateD6DPentestTest` — all pre-existing, mapped not rewritten |
+| last superadmin: deactivate, soft-delete, **bulk delete + bulk force_delete** | `LastSuperadminGuardTest` (bulk test became a 3-action data set) |
+| bearer 401, envelopes, 429/422/403/404 per module, drift gate | `Api/V1/**` + `CrossCutting/ApiErrorEnvelopeTest` + `ApiDocumentationTest` |
+| pagination = four keys, `per_page` default 10, no `Link` header, no `meta.pagination` | `UserCrudApiTest::test_index_returns_paginated_users` (extended) |
+| flag OFF answers **403 not 404 on a real api.v1 route** | `FeatureFlagApiTest::test_a_flag_off_route_answers_403_not_404_on_the_api` (new — the pin the synthetic-route middleware test could not give) |
+| integrity vs the **exported** document | `OpenApiExportTest::test_a_real_export_documents_every_api_v1_route` (new — runs the deploy's `scramble:export` and diffs it against the route table) |
+| private-file signed route valid / expired / **tampered signature** | `Storage/StorageDiskTest` (tamper row added) |
+| backup dispatch, TTL cleanup, bell cache invalidation | `Storage/BackupStrategyTest`, `Storage/DataRetentionTest`, `Notification/NotificationInboxTest` |
+
+**Rows recorded, not faked (deferred with reason):**
+
+- **Expired web verification link cannot be tested as "refused":** the
+  `verification.verify` web route carries **no** `signed` middleware — the
+  controller only compares `hash_equals(hash, sha1(email))` and never checks
+  expiry or signature. Testing "expired refused" would require inventing
+  expiry behaviour; recorded as a design question, not a test.
+- **Single force-delete of the last superadmin is guarded by trash
+  admission, not by `LastSuperadminException`** (Phase 12: only trashed rows
+  reach the action, so an active superadmin 404s). A comment in
+  `removalProvider` records why there is no case.
+- **500 has no per-module endpoint test by design** — handler-only
+  (`ApiErrorEnvelopeTest`).
+- **No test talks to a real S3 endpoint** (local fakes + adapter assertion
+  only) and **the backup→restore cycle is still unexercised** — the app
+  exposes no restore surface (`SystemBackupRunner` has only `run()` /
+  `applyRetention()`). Both stay the Phase 14 runtime-verification deferral.
+- **Disk isolation is asserted at config-routing level only**; no
+  cross-disk read/write negative test exists.
+- **API-side N+1 / query-count on list endpoints** is Group E (P15-E1)
+  territory, not filled here.
+- Logout / LogoutAll / PasswordChange / PasswordForgot have no dedicated
+  `Api/V1` contract file; their logic is the shared Actions (Unit-pinned) and
+  their envelopes appear in `SecurityAuditTest` / rate-limit suites. Recorded
+  in the map rather than duplicating a file per controller.
+
+**Review correction to the brief:** C3's brief worried the API had "no test"
+for the `LAST_SUPERADMIN` 409 — it does:
+`LastSuperadminGuardTest::test_the_api_cannot_deactivate_the_last_superadmin`
+pins 409 + code + `meta`. The per-module 409 row is COVERED (deactivate);
+only force-delete lacks a case, for the trash-admission reason above.
+
+Full suite after the pass: **2644 passed / 9778 assertions, 0 failed** (the
+9 risky are the same pre-existing `tests/Feature` skips/assertion-free
+benchmarks). The Phase 13 gate `--filter=Security` is green: 136 tests / 711
+assertions. Pint clean (484 files).
 
 ---
 

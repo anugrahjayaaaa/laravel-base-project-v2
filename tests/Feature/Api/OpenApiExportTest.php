@@ -10,6 +10,7 @@ use Database\Seeders\RoleSeeder;
 use Dedoc\Scramble\CacheableGenerator;
 use Dedoc\Scramble\Scramble;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Route as RouteFacade;
 use Spatie\Permission\PermissionRegistrar;
 use Tests\TestCase;
 
@@ -87,6 +88,45 @@ class OpenApiExportTest extends TestCase
             ->assertOk()
             ->assertJsonPath('info.version', 'v1')
             ->assertJsonStructure(['paths' => ['/v1/health' => ['get']]]);
+    }
+
+    /**
+     * Integrity against the exported artifact, not only the served route.
+     *
+     * `ApiDocumentationTest` reads `/docs/api.json`, which under testing
+     * degrades to live generation — so the drift gate never looked at a real
+     * export until now. This runs the same command the deploy runs and
+     * compares its output to the live route table: an export that shipped
+     * stale (a route added after the last deploy) fails here.
+     */
+    public function test_a_real_export_documents_every_api_v1_route(): void
+    {
+        $this->artisan('scramble:export', ['--path' => $this->path])->assertSuccessful();
+
+        $spec = json_decode(file_get_contents($this->path), true, 512, JSON_THROW_ON_ERROR);
+
+        $missing = [];
+
+        foreach (RouteFacade::getRoutes() as $route) {
+            if (! str_starts_with((string) $route->getName(), 'api.v1.')) {
+                continue;
+            }
+
+            // Scramble strips the documented `api` prefix: api/v1/users → /v1/users.
+            $documented = '/'.preg_replace('#^api/#', '', $route->uri());
+
+            foreach (array_diff($route->methods(), ['HEAD']) as $method) {
+                if (! isset($spec['paths'][$documented][strtolower($method)])) {
+                    $missing[] = $method.' '.$documented;
+                }
+            }
+        }
+
+        $this->assertSame(
+            [],
+            $missing,
+            'Routes missing from the exported document: '.implode(', ', $missing)
+        );
     }
 
     private function admin(): User

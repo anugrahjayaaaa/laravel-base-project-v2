@@ -393,7 +393,8 @@ one. The test factory no longer repeats a username. Detail:
 ### Phase 15 — Comprehensive Testing
 
 > Written 2026-11-04, status **IN PROGRESS** — Group A DONE (owner-reviewed
-> 2026-11-04); Group B in REVIEW (2026-11-04); Groups C–E PLANNED. Seventeen tasks in five
+> 2026-11-04); Group B DONE (owner-reviewed 2026-11-04); Group C in REVIEW
+> (2026-11-04); Groups D–E PLANNED. Seventeen tasks in five
 > groups (A view/render → B unit → C feature/API lifecycles → D static
 > analysis/security audits → E performance/coverage/CI).
 > Groups C and D are mostly **audit-and-close**: the suites exist (Phases 3, 5,
@@ -410,13 +411,13 @@ one. The test factory no longer repeats a username. Detail:
 | P15-A1 | Blade Component & Layout Render Tests (`tests/Feature/UI/BladeComponentRenderTest.php`, shell + partials + UI components, `bg-white`/`bg-light` sweep scoped to app views) | 15 | P1 | — | DONE — 12 tests; `bg-white`/`bg-light` and footer-token sweeps sabotage-verified |
 | P15-A2 | Form & Interactive UI Render Tests (`tests/Feature/UI/FormViewRenderTest.php`, array payloads, zero-query render, `@error` slots) | 15 | P1 | P15-A1 | DONE — 7 tests; zero-query asserted on source, not on rendered pages (recorded in phase doc) |
 | P15-A3 | Responsive & Theme Attribute Verification (`tests/Feature/UI/ResponsiveUiTest.php`, `.table-responsive`, `data-variant`, `@nonce`) | 15 | P1 | P15-A2 | DONE — 4 tests; found and fixed the unwrapped sessions table |
-| P15-B1 | Domain Action Unit Suite (`tests/Unit/Actions/`, 50 actions across User/Auth/Role/Permission/Feature/System/Notification/Audit/BulkAction, behavioural rollback proof) | 15 | P1 | — | REVIEW — 143 tests; found + fixed the `PersistsRole` missing-key permission-strip, pinned by regression test |
-| P15-B2 | Form Requests & Rules Suite (`tests/Unit/Requests/`, `tests/Unit/Rules/`, `BaseFormRequest` 422 contract, `PasswordStrengthRule`, username rules) | 15 | P1 | — | REVIEW — 15 tests; contract pinned centrally on `BaseFormRequest` |
-| P15-B3 | Policies & Support Utilities (`tests/Unit/Policies/`, `tests/Unit/Support/`, `UserPolicy` at four actor levels, `PasswordPolicy`, catalogue/queue/url invariants) | 15 | P1 | — | REVIEW — 78 tests; `ApiError` left pinned by `ApiErrorEnvelopeTest` (no unit duplicate), `PasswordPolicyTest` already covered both entry points |
-| P15-C1 | Web Auth & Security Lifecycle Suite (`tests/Feature/Auth/`, `tests/Feature/Security/` — login/logout, forced change, signed verification, composite rate keys, session revocation) | 15 | P0 | — | PLANNED |
-| P15-C2 | Web User Management & State Operations (`tests/Feature/User/` — CRUD, four toggles, restore, bulk, audit, sibling-permission probes) | 15 | P0 | P15-C1 | PLANNED |
-| P15-C3 | API V1 Contract & Resource Suite (`tests/Feature/Api/V1/` — bearer auth, `data.pagination`, eight error codes, exported-document integrity) | 15 | P0 | P15-C1 | PLANNED |
-| P15-C4 | Storage, Backup & Notification Engine Suite (`tests/Feature/Storage/`, `tests/Feature/Notification/` — audit-and-close, deferred S3/restore rows named) | 15 | P0 | P15-C1 | PLANNED |
+| P15-B1 | Domain Action Unit Suite (`tests/Unit/Actions/`, 50 actions across User/Auth/Role/Permission/Feature/System/Notification/Audit/BulkAction, behavioural rollback proof) | 15 | P1 | — | DONE (owner-reviewed 2026-11-04) — 143 tests; found + fixed the `PersistsRole` missing-key permission-strip, pinned by regression test |
+| P15-B2 | Form Requests & Rules Suite (`tests/Unit/Requests/`, `tests/Unit/Rules/`, `BaseFormRequest` 422 contract, `PasswordStrengthRule`, username rules) | 15 | P1 | — | DONE (owner-reviewed 2026-11-04) — 15 tests; contract pinned centrally on `BaseFormRequest` |
+| P15-B3 | Policies & Support Utilities (`tests/Unit/Policies/`, `tests/Unit/Support/`, `UserPolicy` at four actor levels, `PasswordPolicy`, catalogue/queue/url invariants) | 15 | P1 | — | DONE (owner-reviewed 2026-11-04) — 78 tests; `ApiError` left pinned by `ApiErrorEnvelopeTest` (no unit duplicate), `PasswordPolicyTest` already covered both entry points |
+| P15-C1 | Web Auth & Security Lifecycle Suite (`tests/Feature/Auth/`, `tests/Feature/Security/` — login/logout, forced change, signed verification, composite rate keys, session revocation) | 15 | P0 | — | REVIEW — map built; 6 rows filled (deactivated login, tampered hash, force-change loop, revocation×3 through the real middleware stack in `WebSessionRevocationTest`); web verify carries NO signature/expiry check — recorded as a design question, not invented |
+| P15-C2 | Web User Management & State Operations (`tests/Feature/User/` — CRUD, four toggles, restore, bulk, audit, sibling-permission probes) | 15 | P0 | P15-C1 | REVIEW — map built; every row already had an owner except bulk last-superadmin delete/force_delete (data sets added); active-superadmin force-delete 404s by trash-admission — recorded |
+| P15-C3 | API V1 Contract & Resource Suite (`tests/Feature/Api/V1/` — bearer auth, `data.pagination`, eight error codes, exported-document integrity) | 15 | P0 | P15-C1 | REVIEW — map built; four pagination keys + `per_page` 10 + no `Link`/no `meta.pagination` pinned; flag-off 403-not-404 pinned on a REAL api.v1 route; real `scramble:export` diffed against the route table; brief's "409 untested on API" was wrong — already pinned in `LastSuperadminGuardTest` |
+| P15-C4 | Storage, Backup & Notification Engine Suite (`tests/Feature/Storage/`, `tests/Feature/Notification/` — audit-and-close, deferred S3/restore rows named) | 15 | P0 | P15-C1 | REVIEW — map built; tampered-signature row added to `StorageDiskTest`; deferred named: real S3 endpoint, backup→restore cycle, cross-disk negative isolation, API list N+1 (E1) |
 | P15-D1 | Static Analysis — PHPStan level 8 via Larastan (ADR + `changelog.md` first; committed baseline as a debt ledger) | 15 | P0 | — | PLANNED |
 | P15-D2 | Code Style Gate — Pint over the full tree (replaces `--test --dirty`) | 15 | P1 | — | PLANNED |
 | P15-D3 | Application Security Audit Suite — extend in-house probes to the Phase 14 surface (Enlightn/Psalm declined, D-3) | 15 | P1 | P15-C1 | PLANNED |

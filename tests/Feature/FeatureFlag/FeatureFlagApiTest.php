@@ -262,4 +262,21 @@ class FeatureFlagApiTest extends TestCase
             ->assertJsonPath('data.changed', [])
             ->assertJsonPath('data.unchanged', ['pulse']);
     }
+
+    /**
+     * Phase 7's decision, pinned on a REAL gated api.v1 route: a flag that is
+     * off answers 403, not 404. The middleware test proves it on a synthetic
+     * route and the pentest proves it on web; neither exercised the api.php
+     * groups, which is where the route-table difference (404 vs 403) was
+     * actually argued about.
+     */
+    public function test_a_flag_off_route_answers_403_not_404_on_the_api(): void
+    {
+        $this->actingAs($this->manager(), 'sanctum');
+
+        Feature::deactivate('users');
+        Feature::flushCache();
+
+        $this->getJson(route('api.v1.users.index'))->assertStatus(403);
+    }
 }

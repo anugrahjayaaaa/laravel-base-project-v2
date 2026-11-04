@@ -524,6 +524,22 @@ class StorageDiskTest extends TestCase
         $this->actingAs($this->admin())->get($expired)->assertForbidden();
     }
 
+    public function test_the_secure_route_refuses_a_tampered_signature(): void
+    {
+        Storage::fake('secure_documents');
+        Storage::disk('secure_documents')->put('document.pdf', 'private');
+
+        // Expiry and the unsigned case were pinned; mutating a still-valid
+        // signature to another hex string was not — and that is the shape an
+        // attacker actually tries.
+        $url = URL::temporarySignedRoute('storage.secure', now()->addMinute(), ['path' => 'document.pdf']);
+        $tampered = preg_replace('/signature=[0-9a-f]+/', 'signature='.str_repeat('ab', 32), $url);
+
+        $this->actingAs($this->admin())->get($tampered)->assertForbidden();
+
+        $this->assertNotSame($url, $tampered, 'the signature was not actually replaced');
+    }
+
     public function test_the_secure_route_forces_a_download_instead_of_rendering_html(): void
     {
         Storage::fake('secure_documents');
