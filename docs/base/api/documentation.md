@@ -146,8 +146,13 @@ Tokens are issued by `POST /api/v1/auth/login` and revoked by
 `POST /api/v1/auth/logout` (this device) and `POST /api/v1/auth/logout-all`.
 
 **Bearer scheme:** `config/scramble.php` enables
-`MiddlewareAuthSecurityStrategy`, which reads the route middleware rather than a
-hand-kept list. Every route behind `auth` / `auth:*` inherits the bearer scheme
+`App\Support\OpenApi\BearerAuthSecurityStrategy`, a subclass of scramble's
+`MiddlewareAuthSecurityStrategy` that reads the route middleware rather than a
+hand-kept list and supplies the scheme itself. The subclass exists because
+`config:cache` serialises by `var_export`/`eval`: a live `SecurityScheme` object
+written into the config file made `php artisan optimize` fail (P17-C2), and
+`tests/Arch/SerializableConfigTest.php` now keeps any config value of that shape
+out. Every route behind `auth` / `auth:*` inherits the bearer scheme
 published in `components.securitySchemes`, so `/docs/api` renders the Authorize
 box; a route without it is marked `security: []` (public) instead of asking for
 a token it ignores. The scheme is named `bearerAuth`, because that name is what

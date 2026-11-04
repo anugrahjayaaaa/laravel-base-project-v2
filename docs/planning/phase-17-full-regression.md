@@ -1,7 +1,7 @@
 # Phase 17 — Full Regression & Final Review
 
-> Date: 2026-11-04 | Status: **IN PROGRESS** (breakdown written 2026-11-04; **Groups A and B
-> run and recorded 2026-11-04 — see § 11**; Groups C and D have not been executed) |
+> Date: 2026-11-04 | Status: **IN PROGRESS** (breakdown written 2026-11-04; **Groups A, B and C
+> run and recorded 2026-11-04 — see § 11**; Group D has not been executed) |
 > Branch at implementation: `feature/phase-17-full-regression`
 > Purpose: run every gate once on the final tree, record the numbers the run
 > actually printed, reconcile the trackers to those numbers, and close the
@@ -277,8 +277,10 @@ the scheduler as a set does not collide with itself.
     scan: **zero live calls** in `app/`, `routes/`, `bootstrap/` — the only two
     mentions are comments explaining why mail settings are *not* read from
     `env()` at runtime (`AppServiceProvider:678`,
-    `UpdateMailSettingsRequest:14`). Also: no closures in `config/*.php`, so
-    `config:cache` has nothing to serialize.
+    `UpdateMailSettingsRequest:14`). Also: no closures in `config/*.php` — but
+    that was the wrong thing to check: `config:cache` serialises by
+    `var_export`/`eval`, so any config value holding a **live object without
+    `__set_state`** breaks it, and one did (see § 11 — C2).
   - Then walk a representative set of pages with caches warm (login, dashboard,
     users index, settings, audit index, `/docs/api`, `/pulse`, `/health`) and
     assert 200 — a cached-view failure is invisible to the test suite because
@@ -590,3 +592,141 @@ red gate look green.
 
 **Psalm was not installed** (D-2 stands): one analyser, one ledger. No new package, no new
 linter, no new tool ran through this group.
+
+### Group C — run and recorded (2026-11-04)
+
+| Task | Command | Result |
+|---|---|---|
+| P17-C1 | `npm ci && npm run build` | exit 0 both (vite 8.3.5, the B3 bump) — `✓ 9 modules transformed`, `✓ built in 4.12s`; manifest read: `app-*.css` **49.62 kB** (gzip 9.29) · `app-*.js` **15.00 kB** (gzip 4.62) · `fonts-*.css` 2.35 kB · 6 font files · `manifest.json` 1.47 kB |
+| P17-C2 | `php artisan optimize:clear` → `php artisan optimize` | **exit 1 on the first `optimize`** — `LogicException: Your configuration files could not be serialized because the value at "scramble.security_strategy.1.scheme" is non-serializable` (`ConfigCacheCommand.php:77`). Fixed in-group → re-run **exit 0**: config 44.78 ms DONE · events 1.92 ms DONE · routes 67.70 ms DONE · views 1 s DONE |
+| P17-C2 | warm-cache page walk, 16 pages | all **200** with config/routes/views cached (single authenticated session, `bin/fetch-page.sh`-shaped: cookie + CSRF per request) |
+| P17-C3 | `php artisan schedule:list` | exit 0 — **six** entries, matching `routes/console.php:124-259` exactly; no seventh, none missing |
+
+**C1 — the build is green and the Tailwind question is now measured, not assumed.**
+`vite.config.js:9` declares two inputs; `resources/css/app.css` is 9 lines —
+`@import 'tailwindcss'`, two `@source` hints (pagination views, compiled views) and a
+`--font-sans` theme token. **No project rule lives in it.** All three layouts `@vite`
+only the JS (`app.blade.php:61`, `guest.blade.php:31`, `auth.blade.php:83`), and neither
+manifest entry carries a `css` array — so the 49.62 kB stylesheet is written to
+`public/build/` and fetched by nobody. Two supporting facts that close the "maybe
+something needs it" question: `Paginator::useBootstrap()` +
+`LengthAwarePaginator::useBootstrap()` (`AppServiceProvider:70-71`) mean Laravel's
+Tailwind-classed pagination views are never rendered, and `@viteFonts()` appears nowhere,
+so the fonts CSS and the six `instrument-sans-*` files are unreferenced too —
+`--lbp-font: 'Instrument Sans'` in `public/vendor/theme.css:21` resolves to the
+`system-ui` fallback today. Consequence of leaving it as is: dead bytes in the build
+output and a font that silently is not the font the token names. **Not** a broken page,
+so nothing was deleted. D-8 stays open and is handed to the owner as a two-way choice
+(drop the CSS input + `tailwindcss`/`@tailwindcss/vite` devDeps, or load the CSS and
+amend `AGENTS.md` § *Stack* via ADR). `AGENTS.md` untouched.
+
+**C2 — the deploy blocker, and what fixed it.** `config:cache` serialises by
+`eval(var_export($value, true))`, so `config/scramble.php` holding a live
+`SecurityScheme` object (the `scheme` option of `MiddlewareAuthSecurityStrategy`) made
+`php artisan optimize` exit 1 — i.e. the documented deploy sequence
+(`docs/base/operations/deployment.md` steps 6-8) could not run on this tree. Fix, three
+files, behaviour unchanged:
+
+- `app/Support/OpenApi/BearerAuthSecurityStrategy.php` (new) — subclasses the vendor
+  strategy and supplies `SecurityScheme::http('bearer')->as('bearerAuth')` as a
+  constructor default, so the object is built at *resolution* time, not in config.
+- `config/scramble.php` — `[BearerAuthSecurityStrategy::class, ['middleware' =>
+  ['auth', 'auth:*']]]`; scalar-only.
+- `tests/Arch/SerializableConfigTest.php` (new gate) — every dotted config leaf that is
+  an object must have `__set_state` (or be an enum), so the next non-serialisable value
+  fails the suite instead of a deploy.
+
+Proofs, not assumptions: `ApiDocumentationTest` (10 tests, 21 assertions, green) still
+pins the `bearerAuth` name and the Authorize box, so the scheme survived the move; the
+gate was sabotage-verified by putting the object back in `config/scramble.php` — it
+failed naming `scramble.security_strategy.1.scheme`, and `config:cache` failed on the
+same key (first run had to clear `bootstrap/cache/config.php`, which otherwise shadows
+the files and produces a false green); file restored from `/tmp/scramble.bak`.
+`env()`-outside-`config/` re-scanned at **zero live calls** (the two hits are comments).
+
+**C2 — what the brief's "dynamic configuration" phrase actually points at, verified
+under a warm config cache.** `bootstrap/cache/config.php` present, then: Pennant
+`notifications` flipped OFF → `GET /notifications/inbox` **403** → flipped back ON →
+**200**; `api_docs_public` false → true → guest `GET /docs/api` **200** → restored false
+→ **302**. Both are DB reads at request time (`SystemSetting` cache-busted via
+`DB::afterCommit`, QA-SET-003), so a frozen config file does not freeze an operator's
+settings. Recorded so nobody reads the cached config as a settings regression.
+Dev state restored afterwards: `php artisan optimize:clear` exit 0 (config/cache/compiled/
+events/routes/views all DONE).
+
+**C2 — two facts the record must not smooth over.** (a) The walk needed **one** login
+session, not one per page: `RateLimiter::for('login')` is keyed identifier+IP at
+`login_rate_limit_per_minute` (default 5) with a `login-ip` limiter at 10/min, and
+`bin/fetch-page.sh` re-logs in for every page, so a 16-page loop throttles itself into
+302s. Not worked around by raising a limit. (b) That script's default credentials are
+stale (`LocalTest#2026`; `SuperAdminSeeder.php:24` seeds `#Password123`), so its default
+invocation cannot log in at all — filed as a finding, not fixed here.
+(c) The local dev DB reports a **Pending** migration
+(`2026_11_03_000000_remove_duplicate_expiry_settings`); it was deliberately **not** run
+by this phase — running migrations is not in Group C's scope and is the owner's call.
+
+**C3 — the six-entry set, audited as a set.**
+
+| Entry (as `schedule:list` prints it) | Expression | Guards | Queue it feeds |
+|---|---|---|---|
+| `password-security-sweeps` | `* * * * *` | `withoutOverlapping` | self-gates on `password_security_sweep_time` (default `00:00`), then dispatches `PasswordExpirySweep` + `InactivityLockSweep` → `sweeps` |
+| `system-backup` | `* * * * *` | `onOneServer` + `withoutOverlapping` | `SystemBackupSchedule::dispatchIfDue()` → `ExecuteSystemBackupJob` → `backups` |
+| `temp-storage-cleanup` | `0 0 * * *` | `withoutOverlapping` | `Schedule::job(new CleanTemporaryStorageJob())` → `sweeps` |
+| `notification-retention` | `0 0 * * *` | `withoutOverlapping` | inline `DB::table` delete, no queue |
+| `audit-export-retention` | `0 0 * * *` | `withoutOverlapping` | inline delete of expired exports, no queue |
+| `php artisan vantage:prune --force --keep-processing` | `0 0 * * *` | `withoutOverlapping` | runs in the scheduler process, no queue; behind `config('vantage.enabled')` |
+
+The 00:00 question, answered: **safe, and the reason is the queue split, not the
+guards.** Two entries are `everyMinute` and both self-gate on a time read of the same
+`app_timezone`-derived clock, so at their configured minute they fire in one tick —
+but they dispatch to **different** queues (`sweeps` vs `backups`), and
+`bin/run-workers.sh` listens on both (`QUEUE_NAME` default `default,exports,sweeps`,
+plus a dedicated `queue:work backups` line, started by the `workers`/`all`
+subcommands). The defaults are not even in the same minute: sweeps `00:00`
+(`routes/console.php:131`) vs backup `SystemBackupSchedule::DEFAULT_TIME = '02:00'`,
+and `backup_enabled` is **false** locally, so a stock install does not collide at all.
+The four `0 0 * * *` dailies: two are inline deletes (cheap, no worker), one is a
+`Schedule::job` on `sweeps`, one is a command in the scheduler process — so the worst
+case at midnight is the sweeps closure's two jobs plus one cleanup job, on a queue the
+worker drains in order. Single-flight holds where it matters: every entry is
+`withoutOverlapping`, and `ExecuteSystemBackupJob` adds
+`WithoutOverlapping('system-backup')->expireAfter(3600)` with `$tries = 1`,
+`$timeout = 1800` (lock expiry deliberately outlives the timeout) and
+`$maxExceptions = 1`. Queue names verified against `App\Support\QueueName`
+(`EXPORTS`/`BACKUPS`/`SWEEPS`; `default` is the connection's, not a constant) and each
+job sets `$this->onQueue(...)` — `PasswordExpirySweep:44`, `InactivityLockSweep:41`,
+`CleanTemporaryStorageJob:39` → `sweeps`, `ExecuteSystemBackupJob:47` → `backups`.
+`JobConventionTest` cited as the standing enforcement (green inside A1's run).
+
+Two things `schedule:list` does **not** tell you, so the audit is the table plus the
+source read (D-9 as planned): (1) the `everyMinute` closures both print as their name —
+the command output cannot show which one dispatches what, and the second is a
+`dispatchIfDue()` indirection; (2) the Vantage entry prints its **command string**, not
+its `->name('vantage-retention')` label, because `ScheduleListCommand` prefers
+`$event->command` when set (`ScheduleListCommand.php:93`) and only falls back to
+`getSummaryForDisplay()` — a printer quirk, not a missing name in `routes/console.php`.
+One overlap worth naming: `CleanTemporaryStorageJob` is on the nightly schedule **and**
+dispatched by the capacity guard when usage crosses the warning threshold, so two can
+run concurrently; `withoutOverlapping` guards the schedule entry, not the ad-hoc
+dispatch. The job deletes files past `temp_file_retention_hours`, so a second pass is
+idempotent — no change made.
+
+**C-group gates re-run after the C2 code change.** C2 was the first task in this phase to
+touch code, so the suite was re-measured rather than carried:
+`php artisan test` → exit 0 — **`Tests: 9 risky, 2668 passed (9837 assertions)`**,
+Duration 498.58 s. The **+3 tests / +3 assertions over A1's 2665/9834 are fully
+attributed by a per-class diff of the two run logs**: `Tests\Arch\SerializableConfigTest`
+0 → 1 (the new gate) and `Tests\Arch\NoInlineFqnTest` 424 → 426 (its provider emits one
+case per PHP file under `app/` + `tests/`, and C2 added two files). Nothing else moved,
+and no count went down. Risky stays **9**. `vendor/bin/pint --test` **exit 0, PASS 489
+files** (487 + the two new), `vendor/bin/phpstan analyse --memory-limit=1G` **exit 0,
+`[OK] No errors`, 209 files** with the ledger unchanged at **310 entries**, and
+`tests/Arch/DocumentationLinkIntegrityTest.php` re-run green **3/3** after the
+docs edits in this group (`api/documentation.md`, `operations/deployment.md`, the four
+planning trackers). Coverage was **not** re-instrumented: the change is one new
+`app/` class with a two-line constructor and one new Arch test, and the A2 bars were
+measured on the tree before it; P17-A2's numbers are therefore dated to A1's run, not
+restated as post-C. If Group D wants a post-code coverage figure it must run the
+instrumented pass again.
+
+
