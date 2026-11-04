@@ -963,3 +963,67 @@ iterator, not in the delete.
 `docs/base/infrastructure/storage.md`,
 `tests/Feature/Storage/StorageDiskTest.php`,
 `tests/Feature/Storage/StorageBenchmarkTest.php`
+
+## ADR-030: PHPStan level 8 via Larastan, with the baseline as a debt ledger
+
+**Status**: Accepted
+**Date**: 2026-11-04
+**Context**: Phase 15 Group D introduces the first static analyser the project
+has ever run: `composer.json` carried Pint, PHPUnit, Mockery and Collision only,
+and there is no `phpstan.neon`. The brief listed both PHPStan and Psalm under
+"Pest/PHPStan/Psalm" and Enlightn beside them. The suite at 2644 tests proves
+behaviour; it does not prove types, and level 8 is where "the parameter is
+`string|null` and the caller never checked" becomes a compile-time-visible bug
+rather than a runtime one on an untested branch.
+
+**Decision**:
+
+- **One analyser: PHPStan, level 8, via `larastan/larastan` as a dev
+  dependency.** Larastan is the extension that gives PHPStan the Laravel-native
+  reads — container resolution, Eloquent query-builder types, facade return
+  types — without which level 8 on an application this size is noise, not
+  signal. Analysis paths: `app/` only. `tests/` and `vendor/` are out of scope
+  for the gate; test-code typing is not a production risk.
+- **Psalm and Enlightn are declined** (recorded as deviation D-3 in
+  `docs/planning/phase-15-comprehensive-testing.md`). Psalm has no first-class
+  Laravel plugin and would be a second analyser over the same `app/` with a
+  second baseline to keep honest — two ledgers, no owner. Enlightn's checks
+  duplicate the in-house adversarial suite in `tests/Feature/Security` and add
+  a dependency whose full value sits behind a Pro tier.
+- **The committed baseline (`phpstan-baseline.neon`) is a debt ledger, not a
+  mute button.** It exists because a first level-8 run over an unanalysed
+  codebase reports 332 findings — overwhelmingly own-code type-precision debt
+  (undocumented array shapes, stale `@return` docblocks, unresolvable-by-static
+  Eloquent magic), not framework/vendor noise as the brief assumed. Fixing all
+  of them inside Phase 15 would mean editing ~100 production files during a
+  testing phase, which the phase's own Definition of Done forbids ("no
+  production code changed except where a test exposed a defect"). The ledger
+  records the state instead, and every entry must shrink, never grow. Its
+  terms: `reportUnmatchedIgnoredErrors` is enabled, so the gate **fails** both
+  on a new error and on an ignore that no longer matches — the ledger cannot
+  silently grow, and it cannot silently stale. Every entry carries the message,
+  the count, and a one-line reason comment beside it naming the debt class.
+  Paying debt down means deleting entries in the same change that fixes them.
+
+**Alternatives considered**: level 5 or 6 "to start" — rejected: the partial
+levels miss exactly the nullable/mixed returns the suite cannot see, and
+raising a level later is a new baseline generation over code that drifted.
+Baseline-free immediate green by fixing every finding first — rejected: it is
+Phase 15's job to prove coverage, not to rewrite `app/`, and a green gate that
+took a month never ships. A per-directory roll-out (Actions first, controllers
+later) — rejected: two policies in one config file is the stale-ignore problem
+re-invented, and `app/` is one tree with one owner.
+
+**Consequences**:
+
+- `vendor/bin/phpstan analyse --memory-limit=1G` exits 0 is a Definition-of-Done
+  line for every subsequent change touching `app/`.
+- The first baseline may be large; its size is the measured debt, and
+  `progress.md` records it so the number can only go down.
+- CI placement is **P15-E3's decision** (`testing.yml` owns PHPStan per
+  deviation D-7); this ADR only installs the runner and the `composer` script,
+  so the gate is runnable locally and in `vendor/bin` form from day one.
+
+**Related**: P15-D1, `docs/planning/phase-15-comprehensive-testing.md` § 6 and
+§ 8 (D-3, D-7), `phpstan.neon`, `phpstan-baseline.neon`,
+`docs/base/testing/testing-strategy.md`

@@ -1,6 +1,6 @@
 # Phase 15 — Comprehensive Testing
 
-> Date: 2026-11-04 | Status: **IN PROGRESS — Group A DONE (owner-reviewed), Group B DONE (owner-reviewed), Group C in REVIEW (2026-11-04)** | Branch: `feature/phase-15-comprehensive-testing`
+> Date: 2026-11-04 | Status: **IN PROGRESS — Group A DONE (owner-reviewed), Group B DONE (owner-reviewed), Group C DONE (owner-reviewed 2026-11-04), Group D in REVIEW (2026-11-04)** | Branch: `feature/phase-15-comprehensive-testing`
 > Purpose: make the suite deliberate instead of merely large — every layer
 > (view, action, request, policy, endpoint, pipeline) has a named owner test,
 > the static-analysis and coverage gates are enforced rather than described,
@@ -584,6 +584,60 @@ Mockery and Collision; there is no `phpstan`, `larastan`, `psalm` or
 
 ---
 
+### Group D — as implemented (2026-11-04)
+
+- **D1 installed the analyser the repository never had.** ADR-030 and the
+  `changelog.md` entry went in first; `larastan/larastan ^3.14` (PHPStan 2.3.5,
+  pinned to `^2` by Larastan's own constraint). `phpstan.neon`: level **8**,
+  paths `app/`, `reportUnmatchedIgnoredErrors: true`, committed
+  `phpstan-baseline.neon`; `composer analyse` is the one command.
+  - Ledger shape, honestly: the first run reported **332 findings in 310
+    baseline entries**, every entry now carries a one-line reason comment above
+    it (verified 310/310), grouped by rule. The brief said the baseline is for
+    "framework/vendor-typed noise only" — in fact most of it is own-code PHPDoc
+    precision debt (unwritten array shapes, erased Collection generics,
+    framework-call nullables that are guarded at runtime). Recorded as
+    deviation D-12; no logic defect was found that D3 does not already probe,
+    so the gate ships with zero runtime changes.
+  - Acceptance sabotage-verified: `vendor/bin/phpstan analyse
+    --memory-limit=1G` exits 0; a real new `int`-return violation exits 1
+    (`return.type`); corrupting one baseline message so it matches nothing
+    exits 1 ("was not matched") — the ledger cannot silently grow or stale.
+- **D2 made the style gate see the whole tree.** `pint --test --dirty` →
+  `pint --test` (484 files, PASS). `fetch-depth: 0` and its comment left with
+  it — the full-depth checkout existed only for `--dirty`. Sabotage: one
+  badly formatted file makes `pint --test` exit 1; removing it returns 0.
+- **D3 added the missing Security-suite rows over a coverage map, not a
+  rewrite** (the four surfaces already live in `tests/Feature/Storage`,
+  `tests/Feature/Console` and `tests/Unit/Actions` — mapped first, per C):
+  the web half of the 507 contract (`back()->with('error')` carries the
+  actionable message only — the metrics array never leaves the API branch),
+  guest-with-valid-signed-URL (bytes never travel; login redirect — the auth
+  group runs before `signed`), cross-path replay of one file's signature
+  against another file (403 — the signature covers the path), the 507 row into
+  `ApiErrorEnvelopeTest::contractStatuses` (the matrix said eight codes; the
+  handler documents nine), and the rebase message pinned alongside the by-design
+  production `--dry-run` allowance.
+  Recorded, not faked: `GenerateAuditExport`'s attack path (its `assertCanStore`
+  refusal, zero tests today) remains unprobed — the web branch is proven via the
+  contract route, same shape as the JSON side; the fail-open on an unmeasurable
+  destination is pinned by `SystemActionTest` as design, not attacked; encoded
+  traversal variants and audit-properties leak probes were not added because the
+  mechanism (signature, traversal 404, audited refusal row) is already pinned.
+- **D4 shipped the schedule the PR run cannot be.**
+  `.github/workflows/testing.yml` — the file P15-E3 extends — Mondays 06:00 UTC:
+  `composer audit --locked` + `npm audit --audit-level=high`, the same thresholds
+  as the unchanged PR run. actionlint clean on both workflow files; both audits
+  exit 0 today. Honest caveat: GitHub runs `schedule` only from the default
+  branch — the file is inert on this branch and goes live at merge.
+- Full suite after the pass: **2649 passed / 9798 assertions, 0 failed**, 9
+  risky (all pre-existing), `--filter=Security`-touching suites green
+  (`SecurityAuditTest` + `ApiErrorEnvelopeTest` + `RebaseTimezonesCommandTest`:
+  47 passed / 196 assertions). Pint 484 files clean, PHPStan clean against the
+  ledger, actionlint clean on both workflow files. No production code changed.
+
+---
+
 ## 7. Group E — Performance, Coverage & CI/CD
 
 Goal: numbers that are enforced, and a pipeline that says one thing once.
@@ -701,6 +755,7 @@ Goal: numbers that are enforced, and a pipeline that says one thing once.
 | D-9 | K6 / ApacheBench profiling | no load tool installed; CI has no load stage | manual procedure, documented; not a CI gate |
 | D-10 | Design-system sweep "zero `bg-white`/`bg-light`" | 23 occurrences, all under `resources/views/vendor/` (Pulse, Vantage) | sweep scoped to application views; vendor overrides excluded by path |
 | D-11 | "Scramble OpenAPI schema integrity" | Scramble is a production requirement (ADR-025); the served document is the deploy-time export | integrity asserted against the exported document as well as the live one |
+| D-12 | Baseline "for framework/vendor-typed noise only" (P15-D1) | the first level-8 run's 332 findings are mostly own-code PHPDoc precision debt | the whole first run was committed as the annotated ledger; logic defects are fixed with regression tests (none found in D3's four surfaces), precision debt is paid down by deleting entries — the gate is enforced on day one, the bar never moves |
 
 ---
 

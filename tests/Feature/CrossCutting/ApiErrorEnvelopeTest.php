@@ -3,6 +3,7 @@
 namespace Tests\Feature\CrossCutting;
 
 use App\Exceptions\LastSuperadminException;
+use App\Exceptions\StorageCapacityExceededException;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -123,6 +124,7 @@ class ApiErrorEnvelopeTest extends TestCase
             '422' => [422, 'VALIDATION_ERROR', true],
             '429' => [429, 'RATE_LIMITED', false],
             '500' => [500, 'SERVER_ERROR', false],
+            '507' => [507, 'STORAGE_FULL', false],
         ];
     }
 
@@ -163,6 +165,9 @@ class ApiErrorEnvelopeTest extends TestCase
             422 => ValidationException::withMessages(['field' => ['Invalid.']]),
             429 => new ThrottleRequestsException(),
             500 => new RuntimeException('boom'),
+            507 => new StorageCapacityExceededException([
+                'disk' => 'local', 'used' => 100, 'total' => 100, 'percent' => 100.0,
+            ]),
         };
     }
 }

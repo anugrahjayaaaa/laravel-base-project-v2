@@ -1,0 +1,13 @@
+includes:
+    - vendor/larastan/larastan/extension.neon
+    # Debt ledger (ADR-030): entries are framework/vendor-typed noise only,
+    # each with a reason comment. The gate fails on new errors AND on entries
+    # that no longer match — pay debt down by deleting lines, never by adding
+    # one without a reason.
+    - phpstan-baseline.neon
+
+parameters:
+    level: 8
+    paths:
+        - app/
+    reportUnmatchedIgnoredErrors: true

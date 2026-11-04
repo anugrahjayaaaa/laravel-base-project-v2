@@ -1,0 +1,44 @@
+name: Testing
+
+# Scheduled-only checks (P15-D4). The PR audit in ci-cd.yml runs against the
+# lockfiles at merge time; an advisory published afterwards changes nothing
+# about that merge, so only a schedule can see it. PHPStan and the coverage
+# gate join this file in P15-E3 — Pint and the suite stay owned by ci-cd.yml.
+#
+# GitHub runs `schedule` only from the default branch: this file is inert on
+# feature branches by design and goes live when it lands on main.
+on:
+  schedule:
+    # Monday 06:00 UTC.
+    - cron: '0 6 * * 1'
+
+jobs:
+  dependency-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          coverage: none
+          tools: composer:v2
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          cache: npm
+
+      # Same thresholds as the PR run in ci-cd.yml — a stricter weekly run
+      # that fails on advisories the release gate tolerates would train everyone
+      # to ignore it.
+      - name: Composer security audit
+        run: composer audit --locked
+
+      - name: NPM security audit
+        run: npm audit --audit-level=high
