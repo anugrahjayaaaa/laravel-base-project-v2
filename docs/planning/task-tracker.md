@@ -390,6 +390,44 @@ one. The test factory no longer repeats a username. Detail:
 
 ---
 
+### Phase 15 — Comprehensive Testing
+
+> Breakdown written 2026-11-04, status **PLANNED**. Seventeen tasks in five
+> groups (A view/render → B unit → C feature/API lifecycles → D static
+> analysis/security audits → E performance/coverage/CI).
+> Groups C and D are mostly **audit-and-close**: the suites exist (Phases 3, 5,
+> 9, 12, 13, 14), so each task builds a coverage map first and fills only the
+> named gaps. Group D begins with an ADR — no static analyser is installed.
+> Eleven brief-vs-code conflicts are recorded as D-1..D-11 in the phase doc;
+> the load-bearing ones are **no Pest**, **no Psalm/Enlightn**, **no
+> `SanitizesInput`**, **no `RolePolicy`/`SystemSettingPolicy`**, and
+> **`testing.yml` must not duplicate the existing `ci-cd.yml`**.
+> Detail: `docs/planning/phase-15-comprehensive-testing.md`.
+
+| ID | Task | Phase | Priority | Depends On | Status |
+|----|------|-------|----------|-----------|--------|
+| P15-A1 | Blade Component & Layout Render Tests (`tests/Feature/UI/BladeComponentRenderTest.php`, shell + partials + UI components, `bg-white`/`bg-light` sweep scoped to app views) | 15 | P1 | — | PLANNED |
+| P15-A2 | Form & Interactive UI Render Tests (`tests/Feature/UI/FormViewRenderTest.php`, array payloads, zero-query render, `@error` slots) | 15 | P1 | P15-A1 | PLANNED |
+| P15-A3 | Responsive & Theme Attribute Verification (`tests/Feature/UI/ResponsiveUiTest.php`, `.table-responsive`, `data-variant`, `@nonce`) | 15 | P1 | P15-A2 | PLANNED |
+| P15-B1 | Domain Action Unit Suite (`tests/Unit/Actions/`, 50 actions across User/Auth/Role/Permission/Feature/System/Notification/Audit/BulkAction, behavioural rollback proof) | 15 | P1 | — | PLANNED |
+| P15-B2 | Form Requests & Rules Suite (`tests/Unit/Requests/`, `tests/Unit/Rules/`, `BaseFormRequest` 422 contract, `PasswordStrengthRule`, username rules) | 15 | P1 | — | PLANNED |
+| P15-B3 | Policies & Support Utilities (`tests/Unit/Policies/`, `tests/Unit/Support/`, `UserPolicy` at four actor levels, `PasswordPolicy`, catalogue/queue/url invariants) | 15 | P1 | — | PLANNED |
+| P15-C1 | Web Auth & Security Lifecycle Suite (`tests/Feature/Auth/`, `tests/Feature/Security/` — login/logout, forced change, signed verification, composite rate keys, session revocation) | 15 | P0 | — | PLANNED |
+| P15-C2 | Web User Management & State Operations (`tests/Feature/User/` — CRUD, four toggles, restore, bulk, audit, sibling-permission probes) | 15 | P0 | P15-C1 | PLANNED |
+| P15-C3 | API V1 Contract & Resource Suite (`tests/Feature/Api/V1/` — bearer auth, `data.pagination`, eight error codes, exported-document integrity) | 15 | P0 | P15-C1 | PLANNED |
+| P15-C4 | Storage, Backup & Notification Engine Suite (`tests/Feature/Storage/`, `tests/Feature/Notification/` — audit-and-close, deferred S3/restore rows named) | 15 | P0 | P15-C1 | PLANNED |
+| P15-D1 | Static Analysis — PHPStan level 8 via Larastan (ADR + `changelog.md` first; committed baseline as a debt ledger) | 15 | P0 | — | PLANNED |
+| P15-D2 | Code Style Gate — Pint over the full tree (replaces `--test --dirty`) | 15 | P1 | — | PLANNED |
+| P15-D3 | Application Security Audit Suite — extend in-house probes to the Phase 14 surface (Enlightn/Psalm declined, D-3) | 15 | P1 | P15-C1 | PLANNED |
+| P15-D4 | Dependency Vulnerability Scanning — weekly scheduled `composer audit` / `npm audit` beside the existing PR run | 15 | P1 | — | PLANNED |
+| P15-E1 | Performance Guard — extend `tests/Feature/Performance/PerformanceGuardTest.php` (query counts, N+1 across chunk boundaries, peak memory, warm bell cache); wall clock recorded, not asserted | 15 | P1 | P15-C1, P15-C2, P15-C3, P15-C4 | PLANNED |
+| P15-E2 | Coverage Thresholds — pcov driver, `--min=85` global, Actions ≥ 95 % and Policies/Security = 100 % from one clover run; scheduled, not per-PR | 15 | P0 | P15-A3, P15-B3, P15-C4 | PLANNED |
+| P15-E3 | CI Pipeline & Tracker Finalisation — `.github/workflows/testing.yml` owns only PHPStan + coverage + weekly audit; `ci-cd.yml` keeps the deploy gate | 15 | P0 | P15-D1, P15-D2, P15-E1, P15-E2 | PLANNED |
+
+**Invariants (non-negotiable):** no test is deleted or weakened to make a threshold pass; a missed threshold is a recorded gap with an owner; a new analyser or scanner needs an ADR before `composer require`; the vendor view tree is excluded from the design-system sweep; route-level `can:` remains the authorization pattern (no invented policies); one check has exactly one owner in CI.
+
+---
+
 ## Full Task List (JSON for AI parsing)
 
 ```json[
