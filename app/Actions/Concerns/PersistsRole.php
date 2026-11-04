@@ -46,12 +46,19 @@ trait PersistsRole
                 'guard_name' => RoleLookup::guard(),
             ])->save();
 
-            // intval is mandatory, not defensive tidying. The matrix partial posts
-            // checkbox values, which arrive as strings ('19'). Spatie's
-            // syncPermissions() resolves each value through findByName() when it is
-            // not an int key, so '19' is looked up as a permission literally NAMED
-            // "19" and throws PermissionDoesNotExist.
-            $role->syncPermissions($this->assignablePermissionIds($role, $data['permissions'] ?? []));
+            // A payload without the key syncs nothing. `?? []` used to reach
+            // syncPermissions() and strip every permission from the row — the
+            // documented contract below says the key's absence is a no-op, and a
+            // partial update that silently empties a role is that contract's
+            // exact opposite.
+            if (array_key_exists('permissions', $data)) {
+                // intval is mandatory, not defensive tidying. The matrix partial posts
+                // checkbox values, which arrive as strings ('19'). Spatie's
+                // syncPermissions() resolves each value through findByName() when it is
+                // not an int key, so '19' is looked up as a permission literally NAMED
+                // "19" and throws PermissionDoesNotExist.
+                $role->syncPermissions($this->assignablePermissionIds($role, $data['permissions'] ?? []));
+            }
 
             // Inside the transaction (DEP-003): an audit row that survives a
             // rollback records a save that never happened.

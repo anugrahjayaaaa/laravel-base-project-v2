@@ -1,6 +1,6 @@
 # Phase 15 — Comprehensive Testing
 
-> Date: 2026-11-04 | Status: **IN PROGRESS — Group A in REVIEW (2026-11-04)** | Branch: `feature/phase-15-comprehensive-testing`
+> Date: 2026-11-04 | Status: **IN PROGRESS — Group A DONE (owner-reviewed), Group B in REVIEW (2026-11-04)** | Branch: `feature/phase-15-comprehensive-testing`
 > Purpose: make the suite deliberate instead of merely large — every layer
 > (view, action, request, policy, endpoint, pipeline) has a named owner test,
 > the static-analysis and coverage gates are enforced rather than described,
@@ -299,6 +299,51 @@ New directories: `tests/Unit/Actions/`, `tests/Unit/Requests/`,
 - **Tests:** `tests/Unit/Policies/UserPolicyTest.php`,
   `tests/Unit/Support/*`.
 - **Docs:** none.
+
+### Group B — as implemented (2026-11-04)
+
+Three sub-groups, 236 tests / 889 assertions across the new directories.
+(The B1 run includes the pre-existing `UserLifecycleFoundationTest`; the new
+files are the 9 domain tests.)
+
+| Task | Files | Tests |
+| --- | --- | --- |
+| B1 | `tests/Unit/Actions/` — 9 domain files + `UserLifecycleFoundationTest` | 143 / 308 |
+| B2 | `tests/Unit/Requests/` (2), `tests/Unit/Rules/` (1) | 15 / 40 |
+| B3 | `tests/Unit/Policies/` (1), `tests/Unit/Support/` (8) | 78 / 541 |
+
+Decisions and findings, recorded as measured:
+
+- **One live production defect found and fixed:** `PersistsRole` passed
+  `$data['permissions'] ?? []` into `syncPermissions()`, so any role update
+  whose payload omitted the key silently stripped every permission from the
+  row — the opposite of the documented no-op contract. Now the key's absence
+  skips the sync (`app/Actions/Concerns/PersistsRole.php`), pinned by
+  `RoleActionTest::test_an_update_without_a_permissions_key_syncs_nothing()`.
+- **Rollback proofs are behavioural** (collaborator throws after the first
+  write → assert no row persisted), present in Auth, Bulk, Feature,
+  Notification, Role, System and User (`UserActionTest` uses the real
+  `RoleAssignAction` refusal inside the transaction, not a double).
+  Audit, Permission and Bulk-action reads have no multi-row write to prove.
+- **`ApiError` was not duplicated** into `tests/Unit/Support/`: the invariant
+  ("emits every code with `meta`") is already pinned by
+  `tests/Feature/CrossCutting/ApiErrorEnvelopeTest.php` through the handler —
+  the boundary where the envelope is actually assembled. A unit copy would
+  test the class against itself.
+- **`tests/Unit/PasswordPolicyTest.php` was not extended:** both public
+  entry points (`validate()`, `strength()`) and the username-rejection branch
+  were already covered by its 13 tests. Relocating or duplicating it would
+  move coverage, not add it.
+- Review pass fixed two defects in the new tests themselves: a tie in
+  `UnreadNotificationCountTest`'s listener test (two rows created in the same
+  second make `latest()` order by `created_at` non-deterministic — the first
+  row now gets `subMinute()`), and `"Role::$is_system …"` inside a
+  double-quoted message in `SystemRoleTest` (undefined-variable
+  ErrorException).
+
+Full suite after the pass: **2632 passed / 9719 assertions, 0 failed**; the
+9 risky are pre-existing `tests/Feature` skips and the intentionally
+assertion-free benchmark tests. Pint clean (483 files).
 
 ---
 
