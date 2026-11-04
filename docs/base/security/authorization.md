@@ -65,8 +65,10 @@ System roles (`superadmin`, `admin`, `user`) are protected:
   `PermissionSeeder::matrix()`.
 - **API enforcement**: system role protection is enforced at the application
   boundary (Action/Service layer), not just in the UI.
-- **UI restrictions**: system role management UI is restricted to users with
-  `roles.manage` permission; system role rows are not deletable in the UI.
+- **UI restrictions**: system role management is gated per operation on the
+  route — `roles.create`, `roles.update`, `roles.delete`, `roles.restore`,
+  `roles.force_delete`, `roles.assign_permissions` (there is no single
+  `roles.manage`); system role rows are not deletable in the UI.
 
 ## Superadmin Integrity (P6-E4 / P6-E5)
 

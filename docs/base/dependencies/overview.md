@@ -260,22 +260,23 @@ This is documented in ADR-004 and `docs/base/security/authorization.md`.
 User → Role → Permissions
 ```
 
-Permission names follow the pattern `resource.action`:
+Permission names follow the pattern `resource.action` — a few illustrations
+below; `App\Support\PermissionCatalog` is the full, authoritative list:
 
-|| Permission | Meaning |
-||------------|---------|
-|| `users.view` | View users |
-|| `users.create` | Create users |
-|| `users.edit` | Edit users |
-|| `users.delete` | Delete users |
-|| `users.activate` | Activate users |
-|| `users.deactivate` | Deactivate users |
-|| `users.lock` | Lock users |
-|| `users.unlock` | Unlock users |
-|| `roles.manage` | Manage roles |
-|| `permissions.manage` | Manage permissions |
-|| `audit.view` | View audit trail |
-|| `audit.export` | Export audit records |
+| Permission | Meaning |
+|------------|---------|
+| `users.view` | View users |
+| `users.create` | Create users |
+| `users.update` | Edit users |
+| `users.delete` | Delete users (soft) |
+| `users.activate` | Activate users |
+| `users.deactivate` | Deactivate users |
+| `users.lock` | Lock users |
+| `users.unlock` | Unlock users |
+| `roles.create` / `roles.update` / `roles.delete` | Manage roles — gated per operation, there is no single `roles.manage` |
+| `permissions.view` | View the permission catalogue — the only permission action exposed; the catalogue itself is code |
+| `audit.view` | View audit trail |
+| `audit.export` | Export audit records |
 
 ### Superadmin Protection
 

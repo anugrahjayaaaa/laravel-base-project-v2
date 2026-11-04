@@ -1,6 +1,6 @@
 # Phase 16 — Documentation Verification
 
-> Date: 2026-11-04 | Status: **PLANNED** (breakdown written 2026-11-04, no code changed) | Branch (when implemented): `feature/phase-16-documentation-verification`
+> Date: 2026-11-04 | Status: **IN PROGRESS** (breakdown written 2026-11-04; **Group A DONE** (owner-reviewed 2026-11-04); **Group B in REVIEW**; **Group C implemented 2026-11-04 — in REVIEW**; Groups D–E PLANNED) | Branch: `feature/phase-16-documentation-verification`
 > Purpose: prove that `docs/` describes the code that actually ships — every
 > schema, permission, setting key, audit event and runbook reconciled against
 > its implementation, the documentation interfaces rendering clean, and the
@@ -171,6 +171,51 @@ where the brief's property has no owner yet.
   `OpenApiExportTest.php` (extended only where a gap was found).
 - **Docs:** none.
 
+### Group A — as implemented (2026-11-04)
+
+- **A1 ran the owners; all green.** `ApiDocsUiRenderTest` +
+  `ApiDocumentationTest` + `OpenApiExportTest` — **22 tests / 70 assertions**,
+  including the real `scramble:export` vs route-table diff. The per-status
+  check was done against the exported document (48 paths / 59 operations):
+  statuses present are 200/201/202/400/401/403/404/409/410/422/429/500/502/503,
+  every one inside the contract (`ApiDocumentationTest` fails on any status
+  outside it), so no undocumented status leaks. The Scalar UI pass itself was
+  proven by the render tests (page + spec 200 for admin, sidebar agrees with
+  the route, public-mode toggle semantics) rather than a live browser — the
+  HTML shell is the package's own view; recorded as the shortcut.
+  **Two findings, both owners elsewhere:**
+  1. `scramble:export` warns **JR001 "Cannot infer the resource model"** on
+     `HealthCheckResource` (`app/Http/Resources/Api/V1/HealthCheck/HealthCheckResource.php:19`)
+     — the health schema is published without an inferred shape. This is a
+     schema-annotation row, not a render gap → **owner P16-B1**.
+  2. **507 is absent from every per-operation document.** By design: no
+     `api.v1` route writes to a guarded disk (secure media, backup trigger and
+     capacity metrics are web-only per the Phase 14 capability sync); the code
+     is handler-pinned (`ApiErrorEnvelopeTest`, Phase 15 D3). The brief's
+     "verify 500/422/… schemas" is satisfied; the absence is a recorded
+     exception, not a defect — if B1 finds the exceptions table in
+     `api-architecture.md` should name it, that is the fix there.
+- **A2 sweep measured, not assumed.** One-off scanner over **96 `docs/**/*.md`**
+  (kept out of the repo per § 2.5; enforcement lands in P16-E1):
+  | Property | Baseline | Action |
+  | --- | --- | --- |
+  | Relative links resolve | **1 broken** — `docs/base/data/soft-delete.md` → `./ui-architecture.md` (file moved to `docs/base/ui/`) | fixed → `../ui/ui-architecture.md`, anchor `§ Confirmation Modal` verified to exist |
+  | Heading skips (fence-aware) | **1 real** — `docs/qa/remediation-tracker.md` `### C4 gate re-audit` under H1 | promoted to `##` |
+  | Fences with info string | **103 of 192 bare (46 % compliance)** — mostly ASCII diagrams and `.env` samples in `docs/planning/` | mass violation → recorded as a house-style decision, **not gated** (§ 3 A2 rule); E1 gates links + headings only |
+  Four of the five apparent heading skips were the scanner's own false
+  positives (`# comment` lines inside `bash`/`ini` fences) — the corrected
+  fence-aware sweep is the number above. This is why the baseline was scripted
+  before any file was touched: naive counting would have "fixed" four correct
+  docs. Re-scan after the fixes: zero broken links, zero skips.
+  - **Scope correction held:** no in-app Markdown renderer exists (zero
+    `resources/views` matches) — D-1 stands; A2 audited files, not a viewer.
+- **A3 produced no code.** Both A1 findings belong to schema annotation (B1)
+  and documented exceptions — neither is a render property, so per § 2.3 the
+  owners are extended only when a render gap appears, and none did.
+  `--filter=Docs`-equivalent suites are green as run above; the
+  `tests/Feature/Documentation/DocsUiRenderTest.php` the brief asks for would
+  be a byte-for-byte second copy of `ApiDocsUiRenderTest` (D-4).
+
 ---
 
 ## 4. Group B — Code-to-Docs Engine & Endpoint Schema Audit
@@ -246,6 +291,55 @@ setting keys — agree between code and docs, end to end.
 - **Tests:** none required (the table is the artefact); enforcement only if
   trivially expressible without a new harness.
 - **Docs:** `docs/base/features/settings.md` + owning module docs.
+
+### Group B — as implemented (2026-11-04)
+
+- **B1 walked the exported document, not a wish list.** The per-endpoint
+  verdict is a **summary + exceptions table** (59 operations would be 59
+  identical ✅ rows):
+
+  | Surface | Verdict |
+  | --- | --- |
+  | 48 paths / 59 operations, every 2xx/4xx with a JSON content schema (or the documented `text/csv` on the export download) | ✅ — seven "no schema" candidates were heuristic false positives: Scramble emits the `respond()` shapes as `anyOf` with `const` messages, all meaningful |
+  | Statuses outside the contract | ✅ zero — `ApiDocumentationTest` gates it and is green; doc statuses (200/201/202/400/401/403/404/409/410/422/429/500/502/503) are all contract members |
+  | A1's JR001 finding (`HealthCheckResource`) | **Closed as cosmetic** — the exported `/v1/health` schema is complete (`status`/`timestamp`/`checks`, all required) straight from the `@return array{}` shape; the class docblock already reasons why no `@mixin` exists. The warning stays; the doc matches the code |
+  | A1's 507 per-op absence | Recorded exception — no `api.v1` route writes to a guarded disk (Phase 14 web-only surfaces), handler-pinned by `ApiErrorEnvelopeTest`. Nothing to add to the `api-architecture.md` exceptions table beyond this record |
+  | PHPDoc shapes | ✅ all 8 `app/Http/Resources/Api/V1` classes carry `@return array{…}`; the two controllers without a Resource (`Notification`, `SystemSetting`) are the documented Phase 12 passthrough decision |
+
+  Zero fixes were needed: B1's honest output is "the Phase 12 annotations still
+  hold" — with the proof, not the assumption.
+- **B2 found the drift inside the doc itself.** Enumeration over 54 files in
+  `app/Actions/V1/` (50 `*Action` + 4 non-Action): the naming
+  `naming-conventions.md` prose said "**Every** class … `{Domain}{Operation}Action`"
+  while its own example table used `BulkActionProcessor` — and the table was
+  stale in three more ways. Fixes (docs only):
+  1. the sentence is scoped to *Action* classes and names the exception family
+     it already tolerated: `BulkActionHandler` (interface),
+     `User/UserBulkActionHandler`, `Role/RoleBulkActionHandler`,
+     `BulkActionProcessor` — bulk machinery the Actions delegate to, named by
+     role, folder-prefix still honoured;
+  2. dead example `SystemUpdateSettingsAction` → real `SystemSettingsUpdateAction`;
+  3. Current domains table was 6 rows for 9 folders — added `Audit`, `Feature`,
+     `Notification` with verified examples (each example in the table now
+     resolves to a real file; checked one by one).
+  **Enforcement already has an owner** — `ActionNamingConventionTest`
+  (`test_every_action_is_named_domain_first`, PSR-4 + camelCase DI checks) is
+  green (3 passed) and handles the exception family: the phase doc's proposed
+  one-liner Arch test is not written, per § 2.3.
+- **B3 measured 75, not 37, and needed no doc lines.** Sources of truth
+  diffed programmatically (one-off, PHP, kept out of the repo per § 2.5):
+  - `SystemSettingRequest::rules()` → **66 keys**, each found in `docs/base/` —
+    **0 undocumented**;
+  - `UpdateMailSettingsRequest::rules()` → the **9 `mail_*`** keys, all in
+    `features/notifications.md` (mail transport is its own request since
+    Phase 9 — the brief's single-request view of the key list is incomplete);
+  - the reverse direction: `settings.md`'s explicit key block is a
+    **66↔66 exact match** with `rules()` (diffed both ways — nothing listed is
+    dead, nothing live is missing); the two suspicious expiry-key names in the
+    prose are there *as removed legacy keys*, past tense — correct, left alone;
+    `last_activity_at`/`disk_total_space`/`system_settings_key_unique` are a
+    column, a PHP function and a lang key, not settings.
+  D-5 ("37+" was a floor) holds; the honest number is 66 + 9.
 
 ---
 
@@ -326,6 +420,70 @@ docs describe the runtime as it answers today.
 - **Tests:** the cited suites, run once (`--filter=Security` green — the
   Phase 13 gate).
 - **Docs:** `docs/base/security/*` (row corrections only).
+
+### Group C — as implemented (2026-11-04)
+
+Audit-and-close as specified: the maps were built from the code, corrections
+were made only where a doc row had no counterpart or contradicted one. Five
+files changed, all of them rows — no design prose was rewritten.
+
+**C1 — RBAC / flags.** Diffed `PermissionCatalog` (36 permissions, measured
+from the grouped constants) against the three docs. Three stale spots fixed:
+
+| File | Drift | Correction |
+|---|---|---|
+| `security/authorization.md` | claimed a `roles.manage` permission | per-operation gates (`roles.create/update/delete/restore/force_delete/assign_permissions`), verified against `routes/web.php` `can:` strings |
+| `dependencies/overview.md` | table listed `users.edit`, `roles.manage`, `permissions.manage` (none exist) and was malformed markdown | real names, prefixed "illustrations; `PermissionCatalog` is the authoritative list" |
+| `features/feature-flags.md` | flag↔permission table missing `storage_management` (`storage.view/manage`, `backup.execute`); no-flag row missing `api_docs.view` | both rows added, verified against `FEATURE_BY_RESOURCE` and `UNMAPPED_RESOURCES` |
+
+`roles-permissions.md` survived: its table mirrors the catalog and its own
+paragraph documents the `roles.manage` drift it once had. `Gate::before`
+semantics and the fail-closed seeder behaviour match `PermissionSeeder::matrix()`
+and `FeatureFlagSeeder` as read.
+
+**C2 — backup / retention.** `backup-disaster-recovery.md` was accurate on
+every Phase 14 mechanism (retry_after/timeout pair, `$tries=1` +
+`WithoutOverlapping`, 5 GB cap, mandatory production encryption, DR honesty).
+Its one required gap — the generic 8-step "Restore Procedure" — is now a
+concrete operator procedure with the artifact layout **verified from the
+shipped vendor source**, not invented: zip named `Y-m-d-H-i-s.zip`
+(`filename_prefix` empty), `db-dumps/mysql-<db>.sql` as plain SQL
+(`database_dump_compressor => null`), storage files under their absolute path
+minus the leading slash (`files.relative_path => null`), ZipCrypto
+(`encryption => 'default'`) so `unzip -P` opens it. The round trip stays
+**deferred, stated as deferred** (the P15-C4 row it belongs to).
+`retention.md` needed four corrections where the doc promised what no code
+does:
+
+| Row | Doc said | Code does |
+|---|---|---|
+| Password reset tokens | 60 min | 15 min (`PASSWORD_RESET_EXPIRE_MINUTES` default, `config/auth.php`) |
+| Revoked tokens | 30-day investigation window | deleted on revocation, no archive |
+| Failed jobs | 7 days | no scheduled prune — operator policy, now labelled as such |
+| Application logs | 30 days | default channel is `stack → single` (one growing file); `daily`/`LOG_DAILY_DAYS` is opt-in |
+
+The Configuration block listed `retention.*` keys that no code reads; it now
+separates the four real `SystemSetting` knobs from the design targets, adds the
+Vantage sweep row (`vantage.retention_days`, 14) and states the notification
+sweep prunes **read** rows only. Audit-logs-never-pruned is enforced, not just
+promised (`activitylog.delete_records_older_than_days => null`).
+
+**C3 — security docs.** `web-security.md` and `security-baseline.md` read
+clean against Phase 13/15 (no `X-Frame-Options`, scoped `'unsafe-eval'`, CSRF
+419, CORS default-deny — each already cites its pinning test). Two fixes:
+the rate-limiting table was missing the `system-backup` limiter (3/hour
+composite key, hardcoded, flash response — `POST /storage/backup` sits
+*outside* the `user-state-actions` group, now stated in the ladder), and
+`web-security.md` § Security Audit said "Policy-based" authorization, which
+contradicts the project's route-level pattern — corrected to name `can:` +
+`PermissionCatalog` and the single `UserPolicy`. Spot-grep for the known
+renamed-away strings (`roles.manage`, `users.edit`,
+`password_security_sweep_timezone`, `X-Frame-Options`) across `docs/base/`
+returned only deliberate historical/"this used to be wrong" mentions.
+
+Gate runs: `--filter=Security` **139 passed / 718 assertions**, Pint clean
+(486 files). No production code changed; every correction moved the doc toward
+the code, which is the direction this phase's spec 2 fixes.
 
 ---
 
@@ -464,7 +622,7 @@ state of every tracker.
 
 ## 9. Execution order
 
-```
+```text
 A1 ──┐
 A2 ──┼→ A3 ──┐
 B1, B2, B3 ──┼→ E1 ─┐

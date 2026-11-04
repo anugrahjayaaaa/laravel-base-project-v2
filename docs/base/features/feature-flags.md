@@ -343,7 +343,8 @@ middleware does. See ADR-024.
 | `pulse` | `pulse.view` |
 | `health` | `health.view` |
 | `vantage` | `queues.view`, `queues.retry` — resource `queues`, flag `vantage` |
-| *no flag* | `features.view`, `features.manage` — the resource is deliberately unmapped, so no switch can revoke them |
+| `storage_management` | `storage.view`, `storage.manage`, `backup.execute` — resources `storage` and `backup`, one flag |
+| *no flag* | `features.view`, `features.manage`, `api_docs.view` — deliberately unmapped: the toggle page cannot be behind a toggle, and the API document describes every module, so it must vanish with none of them |
 | `sessions` | none — these flags own no permissions |
 
 `PermissionFeatureMapTest` keeps the map behind this table honest: it fails when a

@@ -190,7 +190,9 @@ Security policies must remain compatible with:
 
 All security-relevant changes must be reviewed:
 - Input validation at trust boundaries
-- Authorization checks (Policy-based)
+- Authorization checks (route-level `can:` against `PermissionCatalog`;
+  `UserPolicy` for row ownership — the project has no model policies by design,
+  see `docs/base/architecture/naming-conventions.md`)
 - SQL injection prevention (Eloquent/query builder)
 - XSS prevention (escaping in views)
 - Session fixation prevention
