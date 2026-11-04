@@ -206,4 +206,4 @@ email-verification-notice, password-change pages using AdminLTE auth layout.
 ### Phase 17: Full Regression / Final Review
 - End-to-end testing
 - Final review against Definition of Done
-- Status: IN PROGRESS — Group A run and recorded 2026-11-04 (REVIEW); Groups B–D PLANNED
+- Status: IN PROGRESS — Groups A and B run and recorded 2026-11-04 (REVIEW); Groups C–D PLANNED

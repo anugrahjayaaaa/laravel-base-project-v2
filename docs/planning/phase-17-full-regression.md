@@ -1,7 +1,7 @@
 # Phase 17 — Full Regression & Final Review
 
-> Date: 2026-11-04 | Status: **IN PROGRESS** (breakdown written 2026-11-04; **Group A
-> run and recorded 2026-11-04 — see § 11**; Group B, C and D have not been executed) |
+> Date: 2026-11-04 | Status: **IN PROGRESS** (breakdown written 2026-11-04; **Groups A and B
+> run and recorded 2026-11-04 — see § 11**; Groups C and D have not been executed) |
 > Branch at implementation: `feature/phase-17-full-regression`
 > Purpose: run every gate once on the final tree, record the numbers the run
 > actually printed, reconcile the trackers to those numbers, and close the
@@ -560,3 +560,33 @@ named in D-3, run here inside A1, not re-barcoded.
    unproven remainder is named — `users/create`, `users/show`, `profile/edit`, `sessions`,
    `notifications/show`, the six auth pages, `welcome`, and the layout partials other than
    the sidebar and header bell. No tree-wide gate was invented for them (D-4 stands).
+
+### Group B — run and recorded (2026-11-04)
+
+| Task | Command | Result |
+|---|---|---|
+| P17-B1 | `vendor/bin/pint --test` | exit 0 — **PASS, 487 files** (PSR-12 preset, whole tree since P15-D2). No ignore added, nothing reformatted |
+| P17-B2 | `vendor/bin/phpstan analyse --memory-limit=1G` | exit 0 — **`[OK] No errors`**, 208 files analysed at **level 8** (Larastan, ADR-030). Ledger: **310 entries / 2171 lines** — exactly the P15-D1 figure, no growth and no accidental payment (`reportUnmatchedIgnoredErrors: true` would fail on a stale entry, so exit 0 proves the ledger still matches the code) |
+| P17-B3 | `composer audit --locked` | exit 0 — **`No security vulnerability advisories found.`** against the committed `composer.lock` |
+| P17-B3 | `npm audit --audit-level=high` | **exit 1 on the first read** — `vite 8.3.0 - 8.3.2`, 6 high advisories (GHSA-698v-4r3x-3vcv, GHSA-r825-w8mm-5pxw, GHSA-587h-7wmj-h5pm, GHSA-9jrq-w75r-8gcw, GHSA-rq7h-c2jc-7f22, GHSA-vfpm-58rq-9qcg). Owner decision **upgrade** → `vite 8.3.5`, `package-lock.json` only (`package.json`'s `^8.0.0` already allowed it; 20 version entries, 81 lines, all dev-only). Re-run: **exit 0, `found 0 vulnerabilities`** |
+
+**B3 — the risk class, stated.** Every advisory is in the **dev toolchain**: the repo has
+**no runtime npm dependencies** (`package.json` `dependencies` is null; `vite`,
+`laravel-vite-plugin`, `@tailwindcss/vite`, `tailwindcss`, `bootstrap`, `concurrently` are all
+devDependencies), and all six issues are dev-server or `launch-editor` behaviours that do not
+exist in a built asset. So no shipped byte was exposed. What the advisory *did* block is the
+release path: `npm audit --audit-level=high` is a step inside the **`test`** job and `deploy` is
+`needs: test`, so CI stayed red until the bump. Recorded in `docs/planning/changelog.md`.
+
+**B3 — verification of the bump** (the commands CI runs, not a local-only build): `npm ci`
+exit 0 → `npm run build` exit 0, manifest read (9 entries; `app-*.css` 49.62 kB, `app-*.js`
+15.00 kB, fonts css 2.35 kB, `✓ built in 4.12s`) → `npm audit --audit-level=high` exit 0.
+D-8 is **not** closed by this: the built Tailwind stylesheet is still loaded by no layout, and
+that remains an owner decision for C1.
+
+**Exit codes were captured from the tools themselves** (`cmd > log 2>&1; echo $?`), not from a
+pipeline's tail — piping through `grep`/`tail` reports the filter's status and would have made a
+red gate look green.
+
+**Psalm was not installed** (D-2 stands): one analyser, one ledger. No new package, no new
+linter, no new tool ran through this group.
