@@ -468,6 +468,46 @@ one. The test factory no longer repeats a username. Detail:
 
 ---
 
+### Phase 17 — Full Regression & Final Review
+
+> Breakdown written 2026-11-04, status **PLANNED** — nothing executed yet.
+> Twelve tasks in four groups (A full-suite + coverage bars + UI render → B
+> Pint, PHPStan, dependency audits → C asset build, `optimize`, scheduler set →
+> D code-to-docs reconciliation, tracker closure, release summary). **This is a
+> run-and-record phase, not a build phase:** every A/B gate was built and
+> sabotage-verified in Phase 15 (coverage bars in `bin/coverage_gate.php`,
+> PHPStan level 8 + ADR-030 ledger, full-tree Pint, `composer audit` /
+> `npm audit` in CI) and the docs gates in Phase 16. The genuinely new work is
+> C2 (`optimize` + warm-cache page walk), C3 (the six scheduler entries audited
+> as a set), and D1–D3. Ten brief-vs-code conflicts recorded as D-1..D-12 in
+> the phase doc, the load-bearing ones being **Psalm is not installed and one
+> analyser owns the ledger**, **no tree-wide "zero queries in Blade" gate exists
+> (it is proven per page)**, **`qa-tracker.md` has 58 of 99 rows unreconciled so
+> a blanket CLOSED stamp would make the tracker lie**, and **the Vite build ships
+> a Tailwind stylesheet no layout loads while `AGENTS.md` says "No Tailwind"** —
+> an owner decision, reported not deleted. Phase 16 Group E must leave REVIEW
+> before P17-D2 flips any row.
+> Detail: `docs/planning/phase-17-full-regression.md`.
+
+| ID | Task | Phase | Priority | Depends On | Status |
+|----|------|-------|----------|-----------|--------|
+| P17-A1 | Comprehensive backend test run — `php artisan test` on the final tree; 0 failures/errors, the 9 risky accounted for not absorbed; every named surface shown present (Auth, User CRUD, RBAC, Settings, Flags, Notifications, Storage, Audit, API V1); the printed count quoted into `progress.md` verbatim | 17 | P0 | — | PLANNED |
+| P17-A2 | Coverage threshold assertion — one instrumented run feeding `--min=85` + `bin/coverage_gate.php` (Actions ≥ 95 %, Policies = 100 %, `app/Http/Requests` ≥ 95 %); xdebug locally vs pcov in CI recorded as the cost; a miss is a gap list with owners, never a lowered bar | 17 | P0 | P17-A1 | PLANNED |
+| P17-A3 | UI & Blade render regression — run the owners (`tests/Feature/UI/` 23 tests + the four page render suites) and the Phase 15 design-system sweeps; the "no direct DB queries in templates" property recorded as **proven per page by query-count gates**, with unproven pages named as a gap (D-4) | 17 | P1 | P17-A1 | PLANNED |
+| P17-B1 | Code style gate — `vendor/bin/pint --test` full tree (PSR-12 preset, since P15-D2); exit 0 with file count recorded; failures fixed per file, not by adding ignores | 17 | P1 | — | PLANNED |
+| P17-B2 | Static analysis — `vendor/bin/phpstan analyse --memory-limit=1G` at **level 8** over `app/` against the committed ADR-030 ledger; baseline entry count recorded, growth is a finding; Psalm declined (one analyser, one ledger — D-2) | 17 | P1 | — | PLANNED |
+| P17-B3 | Dependency & vulnerability audit at the release tree — `composer audit --locked` + `npm audit --audit-level=high`, same thresholds CI uses per-PR and weekly; every advisory listed with package/severity/owner decision, dev-only vs runtime distinguished | 17 | P1 | — | PLANNED |
+| P17-C1 | Frontend asset compilation — `npm ci && npm run build`, exit 0 with bundle sizes recorded; settle the Tailwind conflict on paper: `resources/css/app.css` is a Vite input importing Tailwind while no layout links the built CSS (all CSS is self-hosted from `public/vendor/`) and `AGENTS.md` says "No Tailwind" — **owner decision, reported not unilaterally deleted** (D-8) | 17 | P1 | — | PLANNED |
+| P17-C2 | Cache optimization & warm-boot verification — `optimize:clear` → `optimize` (config/events/routes/views), then a page walk returning 200 with caches warm; `env()`-outside-config scan (currently zero) and no closures in `config/` recorded; DB-backed `SystemSetting` + feature-flag mutation proven still effective under a warm config cache; dev state restored afterwards | 17 | P1 | P17-C1 | PLANNED |
+| P17-C3 | Scheduler & queue set audit — six entries in `routes/console.php` (`password-security-sweeps`, `system-backup` every-minute both self-gating on a stored time; `temp-storage-cleanup`, `notification-retention`, `audit-export-retention`, `vantage-retention` daily) cross-checked against `schedule:list`; the 00:00 collision answered (queues `sweeps` vs `backups`, `withoutOverlapping`/`onOneServer`, worker listening); `JobConventionTest` cited | 17 | P2 | — | PLANNED |
+| P17-D1 | Final code-to-docs reconciliation — re-date every `docs/base/` area in § *Documentation Status*, **including Testing and UI, which have no verification row today**; resolve or file the C1 CSS conflict; code-contradicts-contract = defect + regression test + `changelog.md`, not a doc edit; `docs/base/architecture.md` path correction honoured (D-9) | 17 | P1 | P17-A1..C3 | PLANNED |
+| P17-D2 | Tracker closure — reconcile `qa-tracker.md`'s **58 unreconciled rows** (49 PLANNED / 6 TODO / 3 PARTIAL of 99) against the suite row by row, close Phase 16's three REVIEW E rows on their own evidence, flip `task-tracker.md` / `progress.md` / `implementation-roadmap.md`; deferred runtime evidence and recorded delete-candidates must survive into § *Known Issues*, not vanish at closure (D-10) | 17 | P0 | P17-D1, P16-E1..E3 | PLANNED |
+| P17-D3 | Final release summary — `docs/planning/final-release-summary.md`: delivered capabilities with their proving files, the measured bar and how CI enforces it, what stays **deferred as deferred** (real S3, restore round trip, live rebase, 9 risky, dead auth-request accessors), three deployment lines pointing at the runbook, and a verdict that does not exceed the evidence | 17 | P2 | P17-D2 | PLANNED |
+
+**Invariants (non-negotiable):** a number is quoted from a run, never carried from a doc; one check has one owner (no second render/schema/coverage gate); a missed bar is a gap list with owners, never a lowered threshold or a deleted/weakened test; no new analyser, linter, load tester or package without an ADR; the closing statement may not exceed the evidence — deferred items stay labelled deferred; nothing is committed by the implementing turn.
+
+---
+
 ## Full Task List (JSON for AI parsing)
 
 ```json[
