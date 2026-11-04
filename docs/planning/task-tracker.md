@@ -53,12 +53,12 @@
 | ID | Task | Phase | Priority | Depends On | Status |
 |----|------|-------|----------|-----------|--------|
 | FOUND-001 | Initialize Laravel 13 project | 1 | P0 | P0-002 | DONE |
-|| FOUND-002 | Configure .env / .env.example | 1 | P0 | FOUND-001 | DONE |
-|| FOUND-003 | Set up config files (auth, cache, queue, session, mail, logging) | 1 | P0 | FOUND-001 | DONE |
-|| FOUND-004 | Install Sanctum for API auth | 1 | P0 | FOUND-001 | DONE |
-|| FOUND-005 | Install Spatie Permission (RBAC) | 1 | P0 | FOUND-001 | DONE |
-|| FOUND-006 | Install audit package (e.g. spatie/laravel-activitylog) | 1 | P0 | FOUND-001 | DONE |
-|| FOUND-007 | Install Laravel Pulse (was Telescope) | 1 | P0 | FOUND-001 | DONE |
+| FOUND-002 | Configure .env / .env.example | 1 | P0 | FOUND-001 | DONE |
+| FOUND-003 | Set up config files (auth, cache, queue, session, mail, logging) | 1 | P0 | FOUND-001 | DONE |
+| FOUND-004 | Install Sanctum for API auth | 1 | P0 | FOUND-001 | DONE |
+| FOUND-005 | Install Spatie Permission (RBAC) | 1 | P0 | FOUND-001 | DONE |
+| FOUND-006 | Install audit package (e.g. spatie/laravel-activitylog) | 1 | P0 | FOUND-001 | DONE |
+| FOUND-007 | Install Laravel Pulse (was Telescope) | 1 | P0 | FOUND-001 | DONE |
 | FOUND-008 | Create correlation/request ID middleware | 1 | P0 | FOUND-001 | DONE |
 | FOUND-009 | Set up PSR-12 linting (PHP CS Fixer) | 1 | P1 | FOUND-001 | DONE |
 | FOUND-010 | Configure health check endpoint | 1 | P1 | FOUND-001 | DONE |
@@ -73,7 +73,7 @@
 | UI-006 | UI foundation cleanup & style refinement (partials rename, theme fix, i18n removal, style guide) | 1 | P1 | UI-001,UI-002,UI-003,UI-004,UI-005 | DONE |
 | SOFT-001 | Soft delete / trash / permanent delete convention | 1 | P1 | FOUND-002 | DONE |
 | TABLE-001 | Shared table conventions (sortable, filterable, bulk actions, pagination) | 1 | P2 | UI-003 | DONE |
-|| FLAG-001 | Feature flag package foundation | 1 | P1 | FOUND-003 | DONE |
+| FLAG-001 | Feature flag package foundation | 1 | P1 | FOUND-003 | DONE |
 
 **Audit pattern (cross-phase convention):** ✅ DONE — every mutation is audited
 by the **Action that performs it**, inside that action's own transaction, via
@@ -92,17 +92,17 @@ Migrated: User, System, Role, Feature (already compliant), Auth web + API, Profi
 
 ### Phase 4 — User Lifecycle & User Management
 
-|| ID | Task | Phase | Priority | Depends On | Status |
+| ID | Task | Phase | Priority | Depends On | Status |
 ||----|------|-------|----------|-----------|--------|
-|| USER-001 | Create user management module | 4 | P1 | AUTH-003 | DONE |
-|| USER-002 | Implement user list/detail API | 4 | P1 | USER-001 | DONE |
-|| USER-003 | Implement create user (admin) | 4 | P1 | AUTH-001 | DONE |
-|| USER-004 | Implement update user | 4 | P1 | USER-002 | DONE |
-|| USER-005 | Implement soft delete user | 4 | P2 | USER-001 | DONE |
-|| USER-006 | Implement activate/deactivate | 4 | P1 | USER-003 | DONE |
-|| USER-007 | Implement lock/unlock | 4 | P1 | USER-001 | DONE |
-|| USER-008 | Implement force password change | 4 | P1 | AUTH-014 | DONE |
-|| USER-009 | Implement admin reset password | 4 | P1 | AUTH-013 | DONE |
+| USER-001 | Create user management module | 4 | P1 | AUTH-003 | DONE |
+| USER-002 | Implement user list/detail API | 4 | P1 | USER-001 | DONE |
+| USER-003 | Implement create user (admin) | 4 | P1 | AUTH-001 | DONE |
+| USER-004 | Implement update user | 4 | P1 | USER-002 | DONE |
+| USER-005 | Implement soft delete user | 4 | P2 | USER-001 | DONE |
+| USER-006 | Implement activate/deactivate | 4 | P1 | USER-003 | DONE |
+| USER-007 | Implement lock/unlock | 4 | P1 | USER-001 | DONE |
+| USER-008 | Implement force password change | 4 | P1 | AUTH-014 | DONE |
+| USER-009 | Implement admin reset password | 4 | P1 | AUTH-013 | DONE |
 
 *(Task list truncated for phases 2-17. See full list in the JSON version below.)*
 
@@ -435,7 +435,8 @@ one. The test factory no longer repeats a username. Detail:
 > Breakdown written 2026-11-04, status **IN PROGRESS** — Group A DONE
 > (owner-reviewed 2026-11-04); Group B implemented 2026-11-04, in **REVIEW**;
 > Group C implemented 2026-11-04, in **REVIEW**;
-> Groups D–E PLANNED. Fourteen
+> Group D implemented 2026-11-04, in **REVIEW**;
+> Group E PLANNED. Fourteen
 > tasks in five groups (A docs interfaces / Markdown compliance → B schema,
 > Action-naming and setting-key mappings → C security/RBAC/backup/retention
 > docs → D audit-event map and operational runbooks → E link-integrity gate,
@@ -460,8 +461,8 @@ one. The test factory no longer repeats a username. Detail:
 | P16-C1 | RBAC & flags docs audit — `PermissionCatalog` vs `authorization.md` / `roles-permissions.md`; `FeatureCatalog` vs fail-closed Pennant behaviour (flag OFF = 403 both channels) | 16 | P1 | — | REVIEW — audited 2026-11-04: catalog (36 perms) diffed against all three docs; 3 stale spots fixed (`roles.manage` prose → per-operation gates, `dependencies/overview.md` invented names, `feature-flags.md` missing `storage_management` + `api_docs.view` rows); `roles-permissions.md` verified clean |
 | P16-C2 | Backup & retention docs audit — `docs/base/infrastructure/backup-disaster-recovery.md` + `docs/base/operations/retention.md` vs Phase 14 (audit logs never pruned, `tmp`-only TTL, pentest findings #1–#8); restore procedure written (D-3 paths) | 16 | P1 | — | REVIEW — audited 2026-11-04: backup doc accurate on every mechanism; the generic Restore Procedure replaced with a concrete operator runbook whose zip layout (db-dumps/mysql-<db>.sql plain, absolute-minus-slash file paths, ZipCrypto) was verified from the shipped vendor source; round trip stays deferred-as-deferred. retention.md: 4 no-mechanism rows corrected (reset token 15 min, revoked tokens deleted-on-revoke, failed jobs/logs = operator policy), `retention.*` pseudo-keys relabelled design targets, Vantage 14 d row added |
 | P16-C3 | Security hardening & CSP docs — headers/nonce/`frame-ancestors`, CSRF group swap, CORS default-deny, composite rate keys, HTML 500 masking; every doc claim cites its pinning suite | 16 | P1 | — | REVIEW — audited 2026-11-04: limiter table re-derived from `RateLimiter::for()` (15 registered, 14 documented — `system-backup` row + ladder line added) and `web-security.md` "Policy-based" authorization line corrected to the route-level pattern; headers/CSRF/CORS/CSP prose already cites its suites; `--filter=Security` 139/718 green, Pint clean |
-| P16-D1 | Audit event map — build the complete `## Event Map` in `docs/base/features/audit-trail.md` from `Auditable::audit()` call sites (incl. `storage.capacity_warning`, `causer='SYSTEM'` rows); zero observer writers | 16 | P1 || P16-B3 | | 16 | P1 | — | REVIEW |
-| P16-D2 | Operational runbooks — `docs/base/operations/*` walkable cold (worker invocation, scheduler, job failure handling, `timezone:rebase --force`); gap list for operator-needed source reading | 16 | P2 | P16-C2 | PLANNED |
+| P16-D1 | Audit event map — build the complete `## Event Map` in `docs/base/features/audit-trail.md` from `Auditable::audit()` call sites (incl. `storage.capacity_warning`, `causer='SYSTEM'` rows); zero observer writers | 16 | P1 | — | REVIEW — built 2026-11-04 from call sites: 48 events across 5 subject groups, each row citing its owner; SYSTEM-marker semantics recorded as implemented (null causer + properties marker); brief's four examples present; `ActionFirstAuditTest` cited (green 38/101 with `DataRetentionTest`) |
+| P16-D2 | Operational runbooks — `docs/base/operations/*` walkable cold (worker invocation, scheduler, job failure handling, `timezone:rebase --force`); gap list for operator-needed source reading | 16 | P2 | P16-C2 | REVIEW — walked cold 2026-11-04; every command verified to resolve (`bin/run-workers.sh` subcommands, `backup:list`, rebase flags); 4 defects fixed: phantom `audit.enabled` diagnosis, malformed tools table, stale MAIL_MAILER-first triage, deployment.md missing the process-start step entirely; gap list: empty for the walked surface |
 | P16-E1 | Link-integrity gate — new test pinning A2's mechanical properties (relative links resolve, info strings where the convention holds); sabotage-verified, <1 s | 16 | P1 | P16-A2 | PLANNED |
 | P16-E2 | Full regression run — `pint --test`, `phpstan analyse`, `php artisan test`; counts recorded from the run, not hand-carried | 16 | P0 | all A–D | PLANNED |
 | P16-E3 | Trackers reconciliation & closure — `task-tracker.md` rows, `qa-tracker.md`, `progress.md` (row 16 + Documentation Status re-dated), `implementation-roadmap.md`; rows flip only with evidence | 16 | P2 | P16-E1, P16-E2 | PLANNED |

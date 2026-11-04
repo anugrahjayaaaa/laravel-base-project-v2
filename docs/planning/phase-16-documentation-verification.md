@@ -1,6 +1,6 @@
 # Phase 16 — Documentation Verification
 
-> Date: 2026-11-04 | Status: **IN PROGRESS** (breakdown written 2026-11-04; **Group A DONE** (owner-reviewed 2026-11-04); **Group B in REVIEW**; **Group C implemented 2026-11-04 — in REVIEW**; Groups D–E PLANNED) | Branch: `feature/phase-16-documentation-verification`
+> Date: 2026-11-04 | Status: **IN PROGRESS** (breakdown written 2026-11-04; **Group A DONE** (owner-reviewed 2026-11-04); **Group B in REVIEW**; **Group C in REVIEW**; **Group D implemented 2026-11-04 — in REVIEW**; Group E PLANNED) | Branch: `feature/phase-16-documentation-verification`
 > Purpose: prove that `docs/` describes the code that actually ships — every
 > schema, permission, setting key, audit event and runbook reconciled against
 > its implementation, the documentation interfaces rendering clean, and the
@@ -540,6 +540,44 @@ Goal: one complete event map, and runbooks an operator can follow as written.
 - **Tests:** `JobConventionTest` cited for the job standard.
 - **Docs:** `docs/base/operations/*`, `docs/base/infrastructure/queue.md`
   (row corrections only).
+
+### Group D — as implemented (2026-11-04)
+
+**D1 — Event Map.** Built from every `->audit()`/`auditBulk()` call site in
+`app/` (not from event strings — the string grep undercounts: it misses
+`storage.capacity_warning`'s guard and the four dynamic callers behind
+`PersistsRole`, `InactivityLock`, `SystemBackupRunAction` and
+`AuditsSystemActivity`). **48 distinct events**, all mapped in a new
+`## Event Map` section of `docs/base/features/audit-trail.md`, grouped by
+subject (Auth 13, User 16, Role 5, Feature 2, SystemSetting 12), each row
+citing the owning Action/Job/Service/Middleware. The four brief examples
+(`user.created`, `backup.triggered`, `mail_setting.updated`,
+`storage.capacity_warning`) are present. The SYSTEM semantics are recorded as
+the code implements them: causer stays **null** and `properties.causer =
+'SYSTEM'` is added for scheduled backup, capacity guard outside a request,
+inactivity locks, account-lock sweep and password-expiry sweep. Zero
+observer-based writers restated with `ActionFirstAuditTest` as the pinning
+owner (run green, 38/101 with `DataRetentionTest`).
+
+**D2 — Runbooks.** Walked `operations/deployment.md`, `environment.md`,
+`troubleshooting.md`, `retention.md` and the queue/backup operator sections
+cold. Verified-as-resolvable, unchanged: `bin/run-workers.sh backups`
+(local/cron/queue/backups all exist in the script), `schedule:run`,
+`backup:list`, the `backups` connection pair, `ReadsCorrelationId` and
+`JobConventionTest` (queue.md), fail-closed seeder (feature-flags.md),
+`timezone:rebase {--force}` (settings.md + changelog). Four real defects
+fixed:
+
+| File | Defect | Fix |
+|---|---|---|
+| `troubleshooting.md` | audit issue told the operator to check a non-existent `audit.enabled` setting | rewritten around the Action-first truth: no switch exists, missing call is the defect |
+| `troubleshooting.md` | Debugging Tools table malformed (`\|\|` rows) with the Pulse rows interleaved out of order | valid table, rows ordered |
+| `troubleshooting.md` | mail issue started at `MAIL_MAILER`, which Phase 9 demoted to fallback | first check is now `system_settings` transport + the send-test probe; worker advice names `bin/run-workers.sh local`, not bare `queue:work` |
+| `deployment.md` | no process-start step at all — a deploy following it could run with no worker consuming `backups` | added "Processes an operator must start" (three `bin/run-workers.sh` lines + restart-after-config rule) and the fail-closed seeder warning on step 5 |
+
+**Gap list (operator must currently learn from source):** none left for the
+walked surface — each command above resolves against the repo as written.
+Runtime change: none, as specified.
 
 ---
 
