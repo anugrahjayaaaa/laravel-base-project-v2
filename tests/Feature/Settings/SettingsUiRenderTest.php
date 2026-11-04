@@ -278,7 +278,11 @@ class SettingsUiRenderTest extends TestCase
         $this->assertStringNotContainsString(route('settings.update'), $html, 'a read-only viewer was given the settings form');
         $this->assertStringNotContainsString('Run Backup Now', $html, 'a read-only viewer was given the backup trigger');
         // The values are still readable — read-only means visible, not blank.
-        $this->assertStringContainsString('login_max_attempts', $html);
+        $this->assertMatchesRegularExpression(
+            '/<td class="text-muted">Failed Logins Before Lockout<\/td>\s*<td>5<\/td>/',
+            $html,
+            'the read-only table does not show the setting name and its value'
+        );
     }
 
     /**
