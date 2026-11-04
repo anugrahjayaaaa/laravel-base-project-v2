@@ -22,7 +22,7 @@
 | 14 | Storage/backup/retention | P1 | DONE |
 | 15 | Comprehensive testing | P0 | DONE |
 | 16 | Documentation verification | P0 | IN PROGRESS |
-| 17 | Full regression / final review | P0 | PLANNED |
+| 17 | Full regression / final review | P0 | IN PROGRESS |
 
 ## Dependency Map
 
@@ -206,4 +206,4 @@ email-verification-notice, password-change pages using AdminLTE auth layout.
 ### Phase 17: Full Regression / Final Review
 - End-to-end testing
 - Final review against Definition of Done
-- Status: PLANNED
+- Status: IN PROGRESS — Group A run and recorded 2026-11-04 (REVIEW); Groups B–D PLANNED

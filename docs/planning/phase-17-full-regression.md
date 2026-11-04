@@ -1,8 +1,8 @@
 # Phase 17 — Full Regression & Final Review
 
-> Date: 2026-11-04 | Status: **PLANNED** (breakdown written 2026-11-04; nothing
-> executed yet — this file is the plan, not the result) | Branch at
-> implementation: `feature/phase-17-full-regression`
+> Date: 2026-11-04 | Status: **IN PROGRESS** (breakdown written 2026-11-04; **Group A
+> run and recorded 2026-11-04 — see § 11**; Group B, C and D have not been executed) |
+> Branch at implementation: `feature/phase-17-full-regression`
 > Purpose: run every gate once on the final tree, record the numbers the run
 > actually printed, reconcile the trackers to those numbers, and close the
 > roadmap — with the honesty rule that no row flips without evidence.
@@ -514,3 +514,49 @@ split as Phases 12–16). Nothing has been executed to produce this file: every
 `routes/console.php`, `progress.md`, the Phase 15/16 records), and the figures
 that require running a gate are written as the bar to meet, not as a result.
 Branch at implementation: `feature/phase-17-full-regression`.
+
+---
+
+## 11. As implemented (2026-11-04)
+
+### Group A — run and recorded
+
+| Task | Command run | Result |
+|---|---|---|
+| P17-A1 | `XDEBUG_MODE=coverage php artisan test --coverage --min=85 --coverage-clover=build/coverage/clover.xml` | exit 0 — **`Tests: 9 risky, 2665 passed (9834 assertions)`**, Duration 763.70 s |
+| P17-A2 | `php bin/coverage_gate.php build/coverage/clover.xml` | exit 0 — Actions **97.11 %** (1547/1593, bar 95) · Policies **100 %** (31/31) · Requests **98.09 %** (461/470, bar 95); global **94.87 %** (5031/5303) read off the same clover's `<project>` metrics, `--min=85` satisfied by the run itself |
+| P17-A3 | each owner suite run individually (`vendor/bin/phpunit --no-coverage <file>`) | all **OK**: `BladeComponentRenderTest` 12/114 · `FormViewRenderTest` 7/66 · `ResponsiveUiTest` 4/129 · `SettingsUiRenderTest` 14/358 · `RbacUiRenderTest` 20/114 · `NotificationUiRenderTest` 19/128 · `HealthUiRenderTest` 11/50 · `AuditLogUiRenderTest` 27/116 · `FeatureFlagUiRenderTest` 14/109 · `ApiDocsUiRenderTest` 9/38 |
+
+**A1 — the counts did not move.** 2665/9834 is the same figure P16-E2 printed. Nothing in
+this phase has changed code so far, so a moved number would have been the finding.
+The run reports the **same 9 risky** as P16-E2 — matched **by count**: this printer emitted the
+summary line only, no per-test risky detail, so the nine were not re-proven by name. Attribution
+stays with P15-E1. They are accounted for, not absorbed, and the identity-by-name check is a
+known limitation of this record.
+Every surface named in the brief was present as its own `PASS` block in the run log:
+`Auth/WebSessionRevocationTest`, `User/User*`, `Role/RbacPerformanceTest`,
+`Vantage/VantagePermissionGateTest`, `CrossCutting/ActionNamingConventionTest`,
+`Security/SettingsPentestTest`, `Settings/SettingsUiRenderTest`,
+`FeatureFlag/FeatureFlagMiddlewareTest`, `Storage/StorageAuthorizationTest` +
+`BackupStrategyTest`, `Audit/ActionFirstAuditTest` + `AuditExportTest`,
+`Api/ApiDocumentationTest` + `OpenApiExportTest`, `CrossCutting/ApiErrorEnvelopeTest`,
+and the whole `tests/Feature/Api/V1/**` tree. Unit / Feature / Arch all ran — the plain
+command, no filter.
+
+**A2 — no bar moved.** Each percentage matches its P15-E2 value exactly. Locally the
+driver is **xdebug** (CI's coverage job uses pcov); the 12+ minutes is the price of the
+measurement. `app/Security` remains a non-namespace — the security surface is the suites
+named in D-3, run here inside A1, not re-barcoded.
+
+**A3 — two things the plan did not say, now recorded.**
+
+1. The plan names **four** page render suites; the tree has **seven**. The three it
+   missed (`AuditLogUiRenderTest`, `FeatureFlagUiRenderTest`, `ApiDocsUiRenderTest`) were
+   run anyway and are green. Phase-doc omission, not a code gap.
+2. The per-page query-count gates are richer than D-4 assumed, and the gaps are now
+   written down with their owners in
+   `docs/base/testing/testing-matrix.md` § *UI render & view-query coverage*: eleven page
+   groups are gated (zero-query-on-warm-render or count-does-not-grow), and the
+   unproven remainder is named — `users/create`, `users/show`, `profile/edit`, `sessions`,
+   `notifications/show`, the six auth pages, `welcome`, and the layout partials other than
+   the sidebar and header bell. No tree-wide gate was invented for them (D-4 stands).
