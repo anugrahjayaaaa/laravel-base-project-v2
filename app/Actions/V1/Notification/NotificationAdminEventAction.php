@@ -28,11 +28,18 @@ class NotificationAdminEventAction
         );
     }
 
-    /** A new account exists — notify every `users.create` holder and the account. */
+    /**
+     * A new account exists — notify every `users.create` holder.
+     *
+     * The account itself is not a recipient. It already receives
+     * `RegisterNotification` or `UserCreatedNotification`, both of which carry
+     * the verification link; a second, status-only "Registration received" row
+     * beside the one with the action was noise, so the owner removed it.
+     */
     public function userRegistered(User $user, ?User $causer = null): void
     {
         $this->dispatch(
-            $this->recipients('user.registered', $user),
+            NotificationAudience::forEvent('user.registered'),
             new UserRegisteredNotification($user, $causer)
         );
     }
@@ -41,7 +48,7 @@ class NotificationAdminEventAction
     public function configurationChanged(string $event, ?string $detail = null, ?User $causer = null): void
     {
         $this->dispatch(
-            $this->recipients($event),
+            NotificationAudience::forEvent($event),
             new ConfigurationChangedNotification($event, $detail, $causer)
         );
     }
@@ -62,19 +69,5 @@ class NotificationAdminEventAction
                 'exception' => $e->getMessage(),
             ]);
         }
-    }
-
-    /** The audience for an event, plus an extra recipient, deduplicated. */
-    private function recipients(string $event, ?User $also = null): Collection
-    {
-        $recipients = NotificationAudience::forEvent($event);
-
-        if ($also !== null) {
-            $recipients = $recipients->push($also);
-        }
-
-        return $recipients
-            ->unique(fn (User $user): int|string => $user->getKey())
-            ->values();
     }
 }

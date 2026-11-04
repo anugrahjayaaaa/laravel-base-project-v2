@@ -36,6 +36,11 @@ class UserCreatedNotification extends Notification implements ShouldQueue
      *
      * @param  string     $tempPassword
      * @param  string     $username
+     * @param  array<int, string> $roles  The roles the account holds. Stated here
+     *                                    because account creation assigns them in
+     *                                    the same act, and a separate "roles
+     *                                    changed" mail to a brand-new account
+     *                                    describes a change that never happened.
      * @param  string     $verificationUrl
      * @param  int        $expireMinutes  Lifetime of the verification link, stated
      *                                    in the mail so it matches what the
@@ -45,6 +50,7 @@ class UserCreatedNotification extends Notification implements ShouldQueue
     public function __construct(
         private readonly string $tempPassword,
         private readonly string $username,
+        private readonly array $roles,
         private readonly string $verificationUrl,
         private readonly int $expireMinutes,
         private readonly ?User $causer = null,
@@ -80,6 +86,7 @@ class UserCreatedNotification extends Notification implements ShouldQueue
             ->markdown('vendor.notifications.user-created', [
                 'username' => $this->username,
                 'tempPassword' => $this->tempPassword,
+                'roles' => $this->roleNames(),
                 'url' => $this->verificationUrl,
                 'expireMinutes' => $this->expireMinutes,
                 // The template names the operator rather than saying "by an
@@ -114,6 +121,14 @@ class UserCreatedNotification extends Notification implements ShouldQueue
             'Sign in with the temporary password we emailed you, then change it right away.',
         ];
 
+        if ($this->roles !== []) {
+            $roles = $this->roleNames();
+
+            $lines[] = count($roles) === 1
+                ? sprintf('Your account has the %s role.', $roles[0])
+                : sprintf('Your account has these roles: %s.', implode(', ', $roles));
+        }
+
         if ($this->causer !== null) {
             $lines[] = sprintf('Your account was created by %s.', $this->causer->name);
         }
@@ -122,5 +137,22 @@ class UserCreatedNotification extends Notification implements ShouldQueue
             'subject' => 'Your new account is ready',
             'lines' => $lines,
         ];
+    }
+
+    /**
+     * Role names flattened to one line each.
+     *
+     * A role name is free prose by the time it reaches here, and a line break in
+     * one would add a line to a mail the recipient trusts. Same guard
+     * `RolesChangedNotification` applies for the same reason.
+     *
+     * @return array<int, string>
+     */
+    private function roleNames(): array
+    {
+        return array_map(
+            static fn (string $name): string => str_replace(["\r", "\n"], ' ', $name),
+            $this->roles,
+        );
     }
 }

@@ -33,12 +33,20 @@ Two disjoint audiences, and no third category.
 | Confirm a new email address | mail | The pending address — the one being confirmed | `ChangeEmailVerificationNotification` |
 | Account locked / unlocked / activated / deactivated | mail, database | The affected user **and** every holder of the matching action permission | `AccountStateChangedNotification` |
 | New registration (administrative copy) | mail, database | Every holder of `users.create` | `UserRegisteredNotification` |
-| Roles granted / revoked | mail, database | The affected user, **and** `roles.assign` holders when an administrator did it | `RolesChangedNotification` |
+| Roles granted / revoked | mail, database | The affected user, **and** `roles.assign` holders when an administrator did it | `RolesChangedNotification` (never on account creation — see below) |
 | Configuration changed — role, feature flag, system setting, mail transport, channels, user profile | mail, database | The holders of the permission that performs the change | `ConfigurationChangedNotification` |
 
 `UserCreatedNotification` carries a temporary password, which is why it is
 personal only: it is handed to the account holder, never to administrators. The
 permission that created the account did not receive a copy of the credential.
+
+It is also the mail that states the account's initial roles. Account creation
+assigns the roles in the same act, so the account has no before-state for them to
+change from — a `RolesChangedNotification` sent at that moment would describe a
+change that never happened and arrive beside the welcome mail that already gives
+the account its next step. `RoleAssignAction` therefore skips the account's own
+copy when the caller is creating it (`notifyUser: false`); the administrative
+half still fires, because the grant is real.
 
 **Four of these ignore the mail switch** — verification, email-change
 confirmation, account state, and the temporary password. Their absence does not
@@ -95,11 +103,14 @@ value as each key's fallback.
 behaves exactly as before; a saved row simply overrides the same value.
 
 **Rebinding** — `AppServiceProvider::bindMailConfig()` pushes the stored values
-onto `config('mail')`. It is called from the save action **after commit**, not
-from `boot()`: boot runs before the settings table exists on a fresh install and
-before `RefreshDatabase` migrates, and the query failure takes the whole boot
-down. A long-lived queue worker keeps its bound transport until
-`queue:restart` — accepted, for the same reason token lifetimes accept it.
+onto `config('mail')`. It runs from `boot()` (via `applyRuntimeSettings()`), so
+every request and every queue worker — the process that actually sends — uses
+the stored transport rather than `.env`, and it runs again after a save commits
+so the admin who saved sees the change without a restart. Boot also runs before
+the settings table exists on a fresh install; that failure is the only one
+silenced, because anything else is a binding bug and is logged. A long-lived
+queue worker keeps its bound transport until `queue:restart` — accepted, for the
+same reason token lifetimes accept it.
 
 **Access** — `/notifications`, gated on the `notifications` feature flag plus
 `notifications.view` to read and `notifications.manage` to write. Sending a test
@@ -176,10 +187,13 @@ writes to the inbox, so the defects it was written for cannot return unnoticed.
 | **Say where the next step happens when the notification cannot perform it.** | These payloads carry no link and the inbox has no controls, so a reader who has to go elsewhere is told where — in the mail, or on the page that owns the setting. |
 | **Present tense, active voice.** | A notification reports what is true now. "Your account is locked" is shorter and truer than "your account has been locked", and a passive subject spends its first four words on grammar. |
 
-One audience can produce two rows for one event — a self-registration writes both
-`RegisterNotification` and `UserRegisteredNotification` — so those two word
-different questions deliberately: one carries the action ("Verify your email to
-activate your account"), the other the status ("Registration received").
+The account itself is never a recipient of the administrative registration copy.
+A self-registration or an admin-created account already writes `RegisterNotification` or
+`UserCreatedNotification`, both carrying the verification link; a second,
+status-only row ("Registration received") beside the one with the action added no
+fact, and on the admin path it claimed a registration that never happened. So
+`UserRegisteredNotification` reaches `users.create` holders only, and each
+registration produces one mail per audience rather than two for the same one.
 
 Sentence case itself is **not** asserted by the test: a subject can legitimately
 carry a person's name ("Ana Silva changed the roles of jane"), and no mechanical

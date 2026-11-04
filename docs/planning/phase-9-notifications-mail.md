@@ -344,6 +344,14 @@ that swallows a `TypeError` around a loop of writes is not a safety net, it is a
 way of losing all of them at once. Where a partial failure is acceptable, each
 step catches for itself.
 
+**Correction (2026-11-03) — the boot half was missing.** Binding only after a
+save left every other process on `.env`: the next request, every queue worker
+(where the mail actually leaves), and the test-mail POST, which is its own
+request — so the probe measured `.env` and could report success while the saved
+transport was never used. `bindMailConfig()` now runs from `boot()` through
+`applyRuntimeSettings()`, and the silenced path applies only when the settings
+table does not exist yet.
+
 ---
 
 **ponytail:** the read path is `SystemSetting::getString($key, config('fallback'))`

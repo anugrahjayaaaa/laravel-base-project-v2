@@ -290,11 +290,13 @@ class NotificationCopyTest extends TestCase
     }
 
     /**
-     * A notification and the two audiences it reaches.
+     * A notification and the audiences it reaches.
      *
-     * Both audiences for every class, because the personal and administrative
+     * Every audience for every class, because the personal and administrative
      * copies are the ones that drifted apart — and the bell shows the subject
      * only, so the subject is the part most likely to be read in isolation.
+     * The exception is `UserRegisteredNotification`, which is administrative by
+     * definition: the account already gets the mail carrying the action.
      *
      * `@` in an argument stands for the subject account, `#causer` for the
      * operator and `#none` for an event with no actor — so the specs stay
@@ -358,10 +360,9 @@ class NotificationCopyTest extends TestCase
                 ['as' => 'operator', 'args' => ['@subject', '#none', ['Support'], []]],
             ]],
             'account created with a password' => [UserCreatedNotification::class, [
-                ['as' => 'self', 'args' => ['temp-pass', 'jane', 'https://example.test/verify', 60, '#causer']],
+                ['as' => 'self', 'args' => ['temp-pass', 'jane', ['admin', 'support'], 'https://example.test/verify', 60, '#causer']],
             ]],
             'new registration' => [UserRegisteredNotification::class, [
-                ['as' => 'self', 'args' => ['@subject', '#none']],
                 ['as' => 'operator', 'args' => ['@subject', '#causer']],
                 ['as' => 'operator, no actor', 'args' => ['@subject', '#none']],
             ]],

@@ -165,6 +165,14 @@ tooltips say so rather than implying an effect that is not there. Pinned by
 `every_validated_setting_has_a_form_field` — the inverse of
 `SettingsPersistenceTest`, which catches the other direction.
 
+**Correction (2026-11-03).** Both keys were removed from the seeder, the rules,
+the action and the page (migration
+`2026_11_03_000000_remove_duplicate_expiry_settings.php`). Each flow already
+takes its one enforced lifetime from `password_reset_expire_minutes` /
+`email_verification_expire_minutes`, so these were a second control for the same
+number that no consumer read — the tooltips described an effect that never
+existed.
+
 **Gap 8 — the rate fields in *Rate Limits & Expirations* said what was limited
 without saying per what.** "Forgot Password Limit" and "Reset Submit Limit"
 never named the window, and "Verify Request Limit" was per-hour while its two
@@ -230,6 +238,28 @@ is a decision rather than an oversight.
 > already exist in working form, gated on `auth` + `settings.view`. Stubbing them
 > would delete working code. P8-A1/A2/A3 are therefore recorded as audits of
 > shipped code, not as builds.
+
+### Group A fourth pass (2026-11-04) — copy corrected against the readers
+
+Four tooltips described behaviour the code does not have, and a further set of
+labels left their unit, scope or window unstated. Corrected against the code
+that reads each key.
+
+- `login_max_attempts` / `lockout_increment_minutes`: the lock is per
+  identifier + IP, not per account, and the increment applies per lockout
+  cycle, not per failed attempt. Sources: `LoginThrottle::recordFailed()` and
+  `FailedLoginAttempt::nextLockoutMinutes()`.
+- `inactivity_lock_grace_days`: applies to accounts that have never signed in,
+  at any age, counted from `created_at` (`InactivityLock::isInactive()`).
+- `password_expiry_days`: now labelled *Password Validity*. The duplicate name
+  the third pass left pending is resolved, and the tooltip states both paths to
+  OFF. `0` stays a valid value (`calculateExpiration()` returns null), so
+  `docs/base/security/password-security.md`'s `min: 0` stands unchanged.
+- Storage and Backup fields gained the info icons the rest of the page already
+  had; `Daily Kept` / `Weekly Kept` / `Monthly Kept` named neither the tier nor
+  its unit.
+- The read-only branch shows the form's labels instead of raw keys, with a
+  fallback to the key for anything unlisted.
 
 ---
 

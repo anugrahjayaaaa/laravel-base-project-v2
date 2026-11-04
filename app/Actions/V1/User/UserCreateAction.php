@@ -69,11 +69,16 @@ class UserCreateAction
             if (array_key_exists('roles', $data)) {
                 // No permission check here: RoleAssignAction holds it, so C9 and
                 // C10 cannot drift apart.
+                //
+                // `notifyUser: false`: the welcome mail carries the roles, and a
+                // separate "Your account roles changed" mail to an account that
+                // never had roles reads as a change that did not happen.
                 $user = $this->assignRolesAction->run(
                     $user,
                     $data['roles'],
                     $causer,
-                    filter_var($data['confirm_superadmin'] ?? false, FILTER_VALIDATE_BOOLEAN)
+                    filter_var($data['confirm_superadmin'] ?? false, FILTER_VALIDATE_BOOLEAN),
+                    notifyUser: false,
                 );
             } else {
                 // findMany(), not find() in a loop: the default set is short
@@ -118,6 +123,11 @@ class UserCreateAction
             return $user;
         });
 
+        // Re-read the committed row: the welcome mail states the roles the
+        // account actually holds, and the in-memory instance's `roles` relation
+        // was read before the sync (that is how the diff was built).
+        $user = $user->fresh();
+
         // Read the lifetime once and hand the same number to the URL and to the
         // mail, so the email states what the link actually enforces.
         $minutes = SystemSetting::getInt('email_verification_expire_minutes', 60);
@@ -139,10 +149,18 @@ class UserCreateAction
         // the notification, so there is nothing to gain by signing it against
         // uncommitted state.
         Notification::send($user, $isTemporary
-            ? new UserCreatedNotification($password, $user->username, $verificationUrl, $minutes, $causer)
+            ? new UserCreatedNotification(
+                $password,
+                $user->username,
+                $user->getRoleNames()->all(),
+                $verificationUrl,
+                $minutes,
+                $causer,
+            )
             : new RegisterNotification($user->username, $verificationUrl, $minutes));
 
-        // Administrators who can create accounts, and the account itself.
+        // Administrators who can create accounts — not the account itself, which
+        // already got its own mail above.
         // Outside the closure, which RETURNS the transaction — that is why this
         // dispatch shipped with passing tests and no caller when it sat one line
         // further up.
@@ -150,7 +168,7 @@ class UserCreateAction
         // `UserCreatedNotification` is NOT reused. It carries a temporary
         // password, and copying that into every `users.create` holder's inbox
         // would turn a permission into a credential distribution list.
-        $this->notifyAction->userRegistered($user->fresh(), $causer);
+        $this->notifyAction->userRegistered($user, $causer);
 
         return $user;
     }

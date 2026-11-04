@@ -87,8 +87,8 @@
                         <div class="row g-3">
                             <div class="col-6 col-md-3">
                                 <label for="login_max_attempts" class="form-label">
-                                    Max Failed Attempts
-                                    <i class="bi bi-info-circle text-muted fs-7 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Maximum number of failed login attempts allowed before an account is automatically locked."></i>
+                                    Failed Logins Before Lockout
+                                    <i class="bi bi-info-circle text-muted fs-7 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Failed sign-ins allowed for one identifier from one IP before that combination is temporarily blocked. The account itself stays unlocked, so other devices and addresses are unaffected."></i>
                                 </label>
                                 <div class="input-group">
                                     <input type="number" name="login_max_attempts" id="login_max_attempts"
@@ -117,8 +117,8 @@
                             </div>
                             <div class="col-6 col-md-3">
                                 <label for="lockout_increment_minutes" class="form-label">
-                                    Lockout Increment
-                                    <i class="bi bi-info-circle text-muted fs-7 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Additional penalty duration added for each subsequent failed login attempt."></i>
+                                    Lockout Escalation Step
+                                    <i class="bi bi-info-circle text-muted fs-7 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Minutes added to each later lockout for the same identifier and IP: 5 → 15 → 25 → …"></i>
                                 </label>
                                 <div class="input-group">
                                     <input type="number" name="lockout_increment_minutes" id="lockout_increment_minutes"
@@ -132,8 +132,8 @@
                             </div>
                             <div class="col-6 col-md-3">
                                 <label for="login_rate_limit_per_minute" class="form-label">
-                                    Login Rate Limit
-                                    <i class="bi bi-info-circle text-muted fs-7 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Login requests per minute per account and IP."></i>
+                                    Login Attempts per Account + IP
+                                    <i class="bi bi-info-circle text-muted fs-7 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Sign-in requests per minute for one identifier from one address."></i>
                                 </label>
                                 <div class="input-group">
                                     <input type="number" name="login_rate_limit_per_minute" id="login_rate_limit_per_minute"
@@ -147,8 +147,8 @@
                             </div>
                             <div class="col-6 col-md-3">
                                 <label for="login_ip_rate_limit_per_minute" class="form-label">
-                                    Login Attempts per IP
-                                    <i class="bi bi-info-circle text-muted fs-7 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Login requests per minute per IP, all accounts."></i>
+                                    Login Attempts per IP (all accounts)
+                                    <i class="bi bi-info-circle text-muted fs-7 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Every sign-in request from one address, regardless of account."></i>
                                 </label>
                                 <div class="input-group">
                                     <input type="number" name="login_ip_rate_limit_per_minute" id="login_ip_rate_limit_per_minute"
@@ -173,7 +173,7 @@
                         <div class="row g-3">
                             <div class="col-md-6">
                                 <label for="password_min_length" class="form-label">
-                                    Minimum Length
+                                    Minimum Password Length
                                     <i class="bi bi-info-circle text-muted fs-7 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Minimum character length required when creating or updating passwords."></i>
                                 </label>
                                 <div class="input-group">
@@ -191,15 +191,15 @@
                         <div class="row g-3 mt-0">
                             <div class="col-md-6">
                                 <label for="password_history_count" class="form-label">
-                                    Password History Limit
-                                    <i class="bi bi-info-circle text-muted fs-7 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Number of previous passwords remembered to prevent password reuse."></i>
+                                    Previous Passwords Remembered
+                                    <i class="bi bi-info-circle text-muted fs-7 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Number of previous passwords checked for reuse. 0 turns the check off even while the switch is on."></i>
                                 </label>
                                 <div class="input-group">
                                     <input type="number" name="password_history_count" id="password_history_count"
                                            class="form-control form-control-sm @error('password_history_count') is-invalid @enderror" @error('password_history_count') aria-invalid="true" aria-describedby="password_history_count_error" @enderror
                                            value="{{ old('password_history_count', $settings['password_history_count'] ?? 5) }}" min="0" max="24"
                                            {{ $settings['password_history_enabled'] ?? true ? '' : 'disabled' }}>
-                                    <span class="input-group-text bg-body-tertiary">counts</span>
+                                    <span class="input-group-text bg-body-tertiary">passwords</span>
                                 </div>
                                 @error('password_history_count')
                                     <div class="invalid-feedback d-block" id="password_history_count_error">{{ $message }}</div>
@@ -277,8 +277,8 @@
                         <div class="row g-3 mt-0">
                             <div class="col-md-6">
                                 <label for="password_expiry_days" class="form-label">
-                                    Password Expiration
-                                    <i class="bi bi-info-circle text-muted fs-7 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Number of days before a password expires (0 to disable)."></i>
+                                    Password Validity
+                                    <i class="bi bi-info-circle text-muted fs-7 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Days a password stays valid after it is set. 0 turns expiry off even while the switch is on; use the switch to disable expiry for the whole application."></i>
                                 </label>
                                 <div class="input-group">
                                     <input type="number" name="password_expiry_days" id="password_expiry_days"
@@ -298,7 +298,7 @@
                                         @checked($settings['password_expiry_enabled'] ?? true)>
                                     <label for="password_expiry_enabled" class="form-check-label">
                                         Enable Password Expiration
-                                        <i class="bi bi-info-circle text-muted fs-7 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Enforces password expiration after the configured number of days."></i>
+                                        <i class="bi bi-info-circle text-muted fs-7 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Enforces password expiry after the configured validity period."></i>
                                     </label>
                                 </div>
                             </div>
@@ -335,8 +335,8 @@
                         <div class="row g-3 mt-0">
                             <div class="col-md-6">
                                 <label for="inactivity_lock_grace_days" class="form-label">
-                                    New Account Grace Period
-                                    <i class="bi bi-info-circle text-muted fs-7 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Additional days for never-logged-in accounts before inactivity lock."></i>
+                                    Never-Signed-In Grace Period
+                                    <i class="bi bi-info-circle text-muted fs-7 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Extra days added to the inactivity threshold for accounts that have never signed in, counted from the account creation date."></i>
                                 </label>
                                 <div class="input-group">
                                     <input type="number" name="inactivity_lock_grace_days" id="inactivity_lock_grace_days"
@@ -355,8 +355,8 @@
                                     <input class="form-check-input" type="checkbox" name="inactivity_lock_grace_enabled" id="inactivity_lock_grace_enabled"
                                         @checked($settings['inactivity_lock_grace_enabled'] ?? true) value="1">
                                     <label for="inactivity_lock_grace_enabled" class="form-check-label">
-                                        Enable Grace Period for New Accounts
-                                        <i class="bi bi-info-circle text-muted fs-7 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Enables an extra grace period for accounts that have never logged in."></i>
+                                        Enable Grace Period for Never-Signed-In Accounts
+                                        <i class="bi bi-info-circle text-muted fs-7 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Enables an extra grace period for accounts that have never signed in."></i>
                                     </label>
                                 </div>
                             </div>
@@ -364,8 +364,8 @@
                         <div class="row g-3 mt-0">
                             <div class="col-md-6">
                                 <label for="password_expiry_warn_days" class="form-label">
-                                    Expiry Warning Period
-                                    <i class="bi bi-info-circle text-muted fs-7 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Number of days before expiry to show warning banner."></i>
+                                    Expiry Warning Window
+                                    <i class="bi bi-info-circle text-muted fs-7 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Days before expiry when the warning banner starts showing."></i>
                                 </label>
                                 <div class="input-group">
                                     <input type="number" name="password_expiry_warn_days" id="password_expiry_warn_days"
@@ -383,7 +383,7 @@
                 </div>
                 <div class="card border-0 shadow-sm mb-4" id="section-rate-limits">
                     <div class="card-header bg-transparent border-bottom py-3">
-                        <h5 class="card-title mb-0 fw-semibold">Rate Limits &amp; Expirations</h5>
+                        <h5 class="card-title mb-0 fw-semibold">Limits &amp; Expirations</h5>
                     </div>
                     <div class="card-body p-4">
                         {{-- Fields are grouped by the feature that governs them.
@@ -451,7 +451,7 @@
 
                             <div class="col-md-6">
                                 <label for="password_forgot_rate_limit" class="form-label">
-                                    Forgot Password Limit
+                                    Forgot Password Requests
                                     <i class="bi bi-info-circle text-muted fs-7 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Maximum forgot-password requests allowed per minute for a single email and IP pair."></i>
                                 </label>
                                 <div class="input-group">
@@ -466,7 +466,7 @@
                             </div>
                             <div class="col-md-6">
                                 <label for="password_reset_rate_limit" class="form-label">
-                                    Reset Form Submit Limit
+                                    Password Reset Submissions
                                     <i class="bi bi-info-circle text-muted fs-7 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Maximum password reset form submissions allowed per minute (brute-force guard)."></i>
                                 </label>
                                 <div class="input-group">
@@ -481,7 +481,7 @@
                             </div>
                             <div class="col-md-6">
                                 <label for="password_change_rate_limit_per_minute" class="form-label">
-                                    Password Change Limit
+                                    Password Changes
                                     <i class="bi bi-info-circle text-muted fs-7 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Maximum password change requests allowed per minute for a single user."></i>
                                 </label>
                                 <div class="input-group">
@@ -495,24 +495,9 @@
                                 @enderror
                             </div>
                             <div class="col-md-6">
-                                <label for="password_reset_token_expire_minutes" class="form-label">
-                                    Reset Link Lifetime
-                                    <i class="bi bi-info-circle text-muted fs-7 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Duration in minutes a password reset link remains usable before expiring."></i>
-                                </label>
-                                <div class="input-group">
-                                    <input type="number" name="password_reset_token_expire_minutes" id="password_reset_token_expire_minutes"
-                                           class="form-control form-control-sm @error('password_reset_token_expire_minutes') is-invalid @enderror" @error('password_reset_token_expire_minutes') aria-invalid="true" aria-describedby="password_reset_token_expire_minutes_error" @enderror
-                                           value="{{ old('password_reset_token_expire_minutes', $settings['password_reset_token_expire_minutes'] ?? 15) }}" min="1" max="1440">
-                                    <span class="input-group-text bg-body-tertiary">min</span>
-                                </div>
-                                @error('password_reset_token_expire_minutes')
-                                    <div class="invalid-feedback d-block" id="password_reset_token_expire_minutes_error">{{ $message }}</div>
-                                @enderror
-                            </div>
-                            <div class="col-md-6">
                                 <label for="password_reset_expire_minutes" class="form-label">
-                                    Reset Token Lifetime
-                                    <i class="bi bi-info-circle text-muted fs-7 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Duration in minutes the internal security token behind the reset link stays valid."></i>
+                                    Reset Link Lifetime
+                                    <i class="bi bi-info-circle text-muted fs-7 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="How long a password reset link stays valid, in minutes."></i>
                                 </label>
                                 <div class="input-group">
                                     <input type="number" name="password_reset_expire_minutes" id="password_reset_expire_minutes"
@@ -552,21 +537,6 @@
                                 </div>
                                 @error('email_verification_expire_minutes')
                                     <div class="invalid-feedback d-block" id="email_verification_expire_minutes_error">{{ $message }}</div>
-                                @enderror
-                            </div>
-                            <div class="col-md-6">
-                                <label for="email_verification_token_expire_minutes" class="form-label">
-                                    Verification Token Lifetime
-                                    <i class="bi bi-info-circle text-muted fs-7 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Duration in minutes the internal token behind the verification link stays valid."></i>
-                                </label>
-                                <div class="input-group">
-                                    <input type="number" name="email_verification_token_expire_minutes" id="email_verification_token_expire_minutes"
-                                           class="form-control form-control-sm @error('email_verification_token_expire_minutes') is-invalid @enderror" @error('email_verification_token_expire_minutes') aria-invalid="true" aria-describedby="email_verification_token_expire_minutes_error" @enderror
-                                           value="{{ old('email_verification_token_expire_minutes', $settings['email_verification_token_expire_minutes'] ?? 60) }}" min="1" max="1440">
-                                    <span class="input-group-text bg-body-tertiary">min</span>
-                                </div>
-                                @error('email_verification_token_expire_minutes')
-                                    <div class="invalid-feedback d-block" id="email_verification_token_expire_minutes_error">{{ $message }}</div>
                                 @enderror
                             </div>
 
@@ -610,7 +580,7 @@
                                  an operator than by an operator's patience. --}}
                             <div class="col-md-6">
                                 <label for="audit_export_max_manual_retries" class="form-label">
-                                    Export Retries
+                                    Manual Export Retries
                                     <i class="bi bi-info-circle text-muted fs-7 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="How many times a single failed export may be re-run by hand before the row asks the operator to contact an administrator. Each retry is three further attempts at building the file. Set to 0 to remove the retry button."></i>
                                 </label>
                                 <div class="input-group">
@@ -638,7 +608,7 @@
 
                             <div class="col-md-6">
                                 <label for="user_state_actions_rate_limit_per_minute" class="form-label">
-                                    State Actions
+                                    Account State Changes
                                     <i class="bi bi-info-circle text-muted fs-7 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Lock, unlock, activate and deactivate actions per minute, per operator."></i>
                                 </label>
                                 <div class="input-group">
@@ -653,7 +623,7 @@
                             </div>
                             <div class="col-md-6">
                                 <label for="bulk_action_rate_limit_per_minute" class="form-label">
-                                    Bulk Actions
+                                    Bulk User Actions
                                     <i class="bi bi-info-circle text-muted fs-7 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Bulk activate, deactivate, lock and delete requests per minute, per operator."></i>
                                 </label>
                                 <div class="input-group">
@@ -675,7 +645,7 @@
 
                             <div class="col-md-6">
                                 <label for="send_test_mail_rate_limit_per_minute" class="form-label">
-                                    Test Mail
+                                    Test Email Sends
                                     <i class="bi bi-info-circle text-muted fs-7 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Test messages per minute, counted per operator, IP and recipient address — so one account cannot spray many addresses."></i>
                                 </label>
                                 <div class="input-group">
@@ -696,7 +666,7 @@
 
                             <div class="col-md-6">
                                 <label for="health_rate_limit_per_minute" class="form-label">
-                                    Health Endpoint
+                                    Health Endpoint Limit
                                     <i class="bi bi-info-circle text-muted fs-7 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Requests per minute to GET /api/v1/health, counted per IP address. That endpoint has no login, so an address is the only unit there is — raise this if monitors or app clients share one."></i>
                                 </label>
                                 <div class="input-group">
@@ -713,7 +683,7 @@
                             @if($settingGroups['vantage']['active'])
                             <div class="col-md-6">
                                 <label for="queue_retry_rate_limit_per_minute" class="form-label">
-                                    Queue Job Retries
+                                    Queue Retry Limit
                                     <i class="bi bi-info-circle text-muted fs-7 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Retries per minute on the queue monitor, counted per user and IP. Each press re-queues one failed job, so the ceiling is how fast one account can put work back on the queue."></i>
                                 </label>
                                 <div class="input-group">
@@ -817,7 +787,9 @@
 
                             <div id="storage-s3-fields" hidden>
                                 <div class="mb-3">
-                                    <label for="storage_s3_key" class="form-label">Access Key</label>
+                                    <label for="storage_s3_key" class="form-label">Access Key
+                                        <i class="bi bi-info-circle text-muted fs-7 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Access key ID for the S3 user. Leave blank to keep the stored value, or use the AWS_* environment values."></i>
+                                    </label>
                                     <input type="text" name="storage_s3_key" id="storage_s3_key" autocomplete="off"
                                            class="form-control form-control-sm @error('storage_s3_key') is-invalid @enderror"
                                            value="{{ old('storage_s3_key') }}">
@@ -840,7 +812,9 @@
                                 </div>
                                 <div class="row g-3">
                                     <div class="col-md-6">
-                                        <label for="storage_s3_region" class="form-label">Region</label>
+                                        <label for="storage_s3_region" class="form-label">Region
+                                            <i class="bi bi-info-circle text-muted fs-7 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Region that hosts the bucket, e.g. us-east-1."></i>
+                                        </label>
                                         <input type="text" name="storage_s3_region" id="storage_s3_region"
                                                class="form-control form-control-sm @error('storage_s3_region') is-invalid @enderror"
                                                value="{{ old('storage_s3_region', $settings['storage_s3_region'] ?? '') }}" placeholder="us-east-1">
@@ -849,7 +823,9 @@
                                         @enderror
                                     </div>
                                     <div class="col-md-6">
-                                        <label for="storage_s3_bucket" class="form-label">Bucket</label>
+                                        <label for="storage_s3_bucket" class="form-label">Bucket
+                                            <i class="bi bi-info-circle text-muted fs-7 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Bucket that receives new files."></i>
+                                        </label>
                                         <input type="text" name="storage_s3_bucket" id="storage_s3_bucket"
                                                class="form-control form-control-sm @error('storage_s3_bucket') is-invalid @enderror"
                                                value="{{ old('storage_s3_bucket', $settings['storage_s3_bucket'] ?? '') }}">
@@ -859,7 +835,9 @@
                                     </div>
                                 </div>
                                 <div class="mb-3 mt-3">
-                                    <label for="storage_s3_endpoint" class="form-label">Endpoint (optional)</label>
+                                    <label for="storage_s3_endpoint" class="form-label">Endpoint (optional)
+                                        <i class="bi bi-info-circle text-muted fs-7 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Base URL of an S3-compatible provider such as MinIO or Cloudflare R2. Leave blank for AWS."></i>
+                                    </label>
                                     <input type="url" name="storage_s3_endpoint" id="storage_s3_endpoint"
                                            class="form-control form-control-sm @error('storage_s3_endpoint') is-invalid @enderror"
                                            value="{{ old('storage_s3_endpoint', $settings['storage_s3_endpoint'] ?? '') }}"
@@ -869,7 +847,9 @@
                                     @enderror
                                 </div>
                                 <div class="mb-3">
-                                    <label for="storage_s3_url" class="form-label">Public URL (optional)</label>
+                                    <label for="storage_s3_url" class="form-label">Public URL (optional)
+                                        <i class="bi bi-info-circle text-muted fs-7 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Base URL used to generate public links to stored files, for example a CDN. Leave blank to use the provider default."></i>
+                                    </label>
                                     <input type="url" name="storage_s3_url" id="storage_s3_url"
                                            class="form-control form-control-sm @error('storage_s3_url') is-invalid @enderror"
                                            value="{{ old('storage_s3_url', $settings['storage_s3_url'] ?? '') }}">
@@ -955,7 +935,7 @@
                             <h6 class="text-uppercase text-muted small fw-semibold mb-3 mt-4">Retention</h6>
                             <div class="row g-3">
                                 <div class="col-md-4">
-                                    <label for="backup_retention_daily" class="form-label">Daily Kept</label>
+                                    <label for="backup_retention_daily" class="form-label">Keep Daily Backups (days)</label>
                                     <input type="number" name="backup_retention_daily" id="backup_retention_daily"
                                            class="form-control form-control-sm @error('backup_retention_daily') is-invalid @enderror"
                                            value="{{ old('backup_retention_daily', $settings['backup_retention_daily'] ?? 7) }}"
@@ -965,7 +945,7 @@
                                     @enderror
                                 </div>
                                 <div class="col-md-4">
-                                    <label for="backup_retention_weekly" class="form-label">Weekly Kept</label>
+                                    <label for="backup_retention_weekly" class="form-label">Keep Weekly Backups (weeks)</label>
                                     <input type="number" name="backup_retention_weekly" id="backup_retention_weekly"
                                            class="form-control form-control-sm @error('backup_retention_weekly') is-invalid @enderror"
                                            value="{{ old('backup_retention_weekly', $settings['backup_retention_weekly'] ?? 4) }}"
@@ -975,7 +955,7 @@
                                     @enderror
                                 </div>
                                 <div class="col-md-4">
-                                    <label for="backup_retention_monthly" class="form-label">Monthly Kept</label>
+                                    <label for="backup_retention_monthly" class="form-label">Keep Monthly Backups (months)</label>
                                     <input type="number" name="backup_retention_monthly" id="backup_retention_monthly"
                                            class="form-control form-control-sm @error('backup_retention_monthly') is-invalid @enderror"
                                            value="{{ old('backup_retention_monthly', $settings['backup_retention_monthly'] ?? 12) }}"
@@ -985,6 +965,10 @@
                                     @enderror
                                 </div>
                             </div>
+
+                            <p class="text-muted small mb-0 mt-3">
+                                How long each backup tier is kept. Cleanup runs after every backup, scheduled or manual.
+                            </p>
 
                             <p class="text-muted small mb-0 mt-3">
                                 Backups are written to the <code>backups</code> disk, never the disk being backed up.
@@ -1031,7 +1015,7 @@
                         <div class="mb-3">
                             <label for="username_change_cooldown_days" class="form-label">
                                 Username Change Cooldown
-                                <i class="bi bi-info-circle text-muted fs-7 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Cooldown period required before a user can change their username again."></i>
+                                <i class="bi bi-info-circle text-muted fs-7 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Days a user must wait after a username change before changing it again."></i>
                             </label>
                             <div class="input-group">
                                 <input type="number" name="username_change_cooldown_days" id="username_change_cooldown_days"
@@ -1039,6 +1023,7 @@
                                        value="{{ old('username_change_cooldown_days', $settings['username_change_cooldown_days'] ?? 30) }}" min="0" max="365">
                                 <span class="input-group-text bg-body-tertiary">days</span>
                             </div>
+                            <div class="form-text">0 means no cooldown.</div>
                             @error('username_change_cooldown_days')
                                 <div class="invalid-feedback d-block" id="username_change_cooldown_days_error">{{ $message }}</div>
                             @enderror
@@ -1055,7 +1040,7 @@
                         <div class="mb-3">
                             <label for="email_change_cooldown_days" class="form-label">
                                 Email Change Cooldown
-                                <i class="bi bi-info-circle text-muted fs-7 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Cooldown period required before a user can change their email address again."></i>
+                                <i class="bi bi-info-circle text-muted fs-7 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Days a user must wait after an email change before changing it again."></i>
                             </label>
                             <div class="input-group">
                                 <input type="number" name="email_change_cooldown_days" id="email_change_cooldown_days"
@@ -1063,6 +1048,7 @@
                                        value="{{ old('email_change_cooldown_days', $settings['email_change_cooldown_days'] ?? 30) }}" min="0" max="365">
                                 <span class="input-group-text bg-body-tertiary">days</span>
                             </div>
+                            <div class="form-text">0 means no cooldown.</div>
                             @error('email_change_cooldown_days')
                                 <div class="invalid-feedback d-block" id="email_change_cooldown_days_error">{{ $message }}</div>
                             @enderror
@@ -1070,13 +1056,13 @@
                         <div class="mb-3">
                             <label for="email_verification_mode" class="form-label">
                                 Email Verification Mode
-                                <i class="bi bi-info-circle text-muted fs-7 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Determines email verification strategy: Public (user self-verify), Admin-only, or Disabled."></i>
+                                <i class="bi bi-info-circle text-muted fs-7 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Controls who may send a verification link. Links already sent stay usable."></i>
                             </label>
                             <select name="email_verification_mode" id="email_verification_mode"
                                     class="form-select form-select-sm @error('email_verification_mode') is-invalid @enderror" @error('email_verification_mode') aria-invalid="true" aria-describedby="email_verification_mode_error" @enderror>
-                                <option value="public" {{ ($settings['email_verification_mode'] ?? 'public') === 'public' ? 'selected' : '' }}>Public</option>
-                                <option value="admin" {{ ($settings['email_verification_mode'] ?? 'public') === 'admin' ? 'selected' : '' }}>Admin-only</option>
-                                <option value="disabled" {{ ($settings['email_verification_mode'] ?? 'public') === 'disabled' ? 'selected' : '' }}>Disabled</option>
+                                <option value="public" {{ ($settings['email_verification_mode'] ?? 'public') === 'public' ? 'selected' : '' }}>Public — users request their own verification</option>
+                                <option value="admin" {{ ($settings['email_verification_mode'] ?? 'public') === 'admin' ? 'selected' : '' }}>Admin-only — only admins send verification links</option>
+                                <option value="disabled" {{ ($settings['email_verification_mode'] ?? 'public') === 'disabled' ? 'selected' : '' }}>Disabled — no verification emails are sent</option>
                             </select>
                             @error('email_verification_mode')
                                 <div class="invalid-feedback d-block" id="email_verification_mode_error">{{ $message }}</div>
@@ -1092,7 +1078,7 @@
                                 @checked($settings['registration_enabled'] ?? false)>
                             <label class="form-check-label" for="registration_enabled">
                                 Allow Self-Registration
-                                <i class="bi bi-info-circle text-muted fs-7 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Publishes a public sign-up form. New accounts still have to verify their email before they can log in."></i>
+                                <i class="bi bi-info-circle text-muted fs-7 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-title="Publishes a public sign-up form. New accounts still verify their email according to the mode above."></i>
                             </label>
                         </div>
                         <div class="mb-3">
@@ -1199,6 +1185,78 @@
                 <p class="text-muted fs-6">
                     You can view these settings but not change them.
                 </p>
+                {{-- Read-only viewers get the same names the form uses; a key with
+                     no entry here falls back to the raw key. --}}
+                <?php
+                $readOnlyLabels = [
+                        'app_timezone' => 'System Timezone',
+                        'login_max_attempts' => 'Failed Logins Before Lockout',
+                        'lockout_base_minutes' => 'Initial Lockout Duration',
+                        'lockout_increment_minutes' => 'Lockout Escalation Step',
+                        'login_rate_limit_per_minute' => 'Login Attempts per Account + IP',
+                        'login_ip_rate_limit_per_minute' => 'Login Attempts per IP',
+                        'password_forgot_rate_limit' => 'Forgot Password Requests',
+                        'password_reset_rate_limit' => 'Password Reset Submissions',
+                        'password_change_rate_limit_per_minute' => 'Password Changes',
+                        'email_verification_rate_limit' => 'Verification Email Limit',
+                        'password_min_length' => 'Minimum Password Length',
+                        'password_require_upper' => 'Require Uppercase',
+                        'password_require_lower' => 'Require Lowercase',
+                        'password_require_digit' => 'Require Numbers',
+                        'password_require_symbol' => 'Require Symbols',
+                        'password_reject_username' => 'Reject Username Match',
+                        'password_uncompromised' => 'Check Leaked Passwords',
+                        'password_history_enabled' => 'Enforce History Check',
+                        'password_history_count' => 'Previous Passwords Remembered',
+                        'password_expiry_enabled' => 'Enable Password Expiration',
+                        'password_expiry_days' => 'Password Validity',
+                        'password_expiry_warn_days' => 'Expiry Warning Window',
+                        'password_security_sweep_time' => 'Daily Sweep Time',
+                        'inactivity_lock_enabled' => 'Enable Inactivity Lock',
+                        'inactivity_lock_days' => 'Inactivity Lock Threshold',
+                        'inactivity_lock_grace_enabled' => 'Enable Grace Period for Never-Signed-In Accounts',
+                        'inactivity_lock_grace_days' => 'Never-Signed-In Grace Period',
+                        'email_verification_expire_minutes' => 'Verification Link Lifetime',
+                        'email_verification_mode' => 'Email Verification Mode',
+                        'password_reset_expire_minutes' => 'Reset Link Lifetime',
+                        'api_token_expire_value' => 'API Token Lifetime',
+                        'api_token_expire_unit' => 'API Token Lifetime Unit',
+                        'web_session_expire_value' => 'Web Session Lifetime',
+                        'web_session_expire_unit' => 'Web Session Lifetime Unit',
+                        'allow_username_change' => 'Allow Username Change',
+                        'username_change_cooldown_days' => 'Username Change Cooldown',
+                        'allow_email_change' => 'Allow Email Change',
+                        'email_change_cooldown_days' => 'Email Change Cooldown',
+                        'registration_enabled' => 'Allow Self-Registration',
+                        'registration_default_role' => 'Default Registration Role',
+                        'registration_rate_limit_per_minute' => 'Registration Rate Limit',
+                        'api_docs_public' => 'Publish API Documentation Publicly',
+                        'audit_export_rate_limit_per_hour' => 'Audit Export Limit',
+                        'audit_export_max_manual_retries' => 'Manual Export Retries',
+                        'user_state_actions_rate_limit_per_minute' => 'Account State Changes',
+                        'bulk_action_rate_limit_per_minute' => 'Bulk User Actions',
+                        'send_test_mail_rate_limit_per_minute' => 'Test Email Sends',
+                        'health_rate_limit_per_minute' => 'Health Endpoint Limit',
+                        'queue_retry_rate_limit_per_minute' => 'Queue Retry Limit',
+                        'storage_default_disk' => 'Default Storage Disk',
+                        'storage_local_root' => 'Local Root Path',
+                        'storage_local_permission' => 'File Permission Mode',
+                        'storage_s3_key' => 'Access Key',
+                        'storage_s3_secret' => 'Secret Key',
+                        'storage_s3_region' => 'Region',
+                        'storage_s3_bucket' => 'Bucket',
+                        'storage_s3_endpoint' => 'Endpoint',
+                        'storage_s3_url' => 'Public URL',
+                        'storage_max_capacity_mb' => 'Maximum Capacity (MB)',
+                        'storage_warning_threshold_percent' => 'Warning Threshold (%)',
+                        'temp_file_retention_hours' => 'Temporary File Retention (hours)',
+                        'backup_enabled' => 'Scheduled Backup',
+                        'backup_schedule' => 'Daily Run Time',
+                        'backup_retention_daily' => 'Keep Daily Backups (days)',
+                        'backup_retention_weekly' => 'Keep Weekly Backups (weeks)',
+                        'backup_retention_monthly' => 'Keep Monthly Backups (months)',
+                    ];
+                ?>
                 <div class="table-responsive">
                     <table class="table table-sm align-middle mb-0">
                         <thead>
@@ -1210,7 +1268,7 @@
                         <tbody>
                             @foreach (($settings ?? []) as $key => $value)
                                 <tr>
-                                    <td class="text-muted"><code>{{ $key }}</code></td>
+                                    <td class="text-muted">{{ $readOnlyLabels[$key] ?? $key }}</td>
                                     <td>{{ is_bool($value) ? ($value ? 'true' : 'false') : $value }}</td>
                                 </tr>
                             @endforeach

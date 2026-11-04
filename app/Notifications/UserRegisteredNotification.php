@@ -23,11 +23,14 @@ use Illuminate\Notifications\Notification;
  * The two are never combined. That separation is the whole reason this file
  * exists rather than a parameter on the other one.
  *
- * ## Reaches every `users.create` holder, plus the account itself
+ * ## Reaches `users.create` holders only
  *
- * The new account gets the same message: learning that your account exists is not
- * privileged information, and a first login that says "you were created by
- * someone" is how a user learns their username was not their own idea.
+ * The account itself is not a recipient. Whoever it is, the account already
+ * received `RegisterNotification` or `UserCreatedNotification` — the mail that
+ * carries the verification link and, on the admin path, the temporary password.
+ * A second, status-only "Registration received" copy beside that one repeated
+ * the same promise without adding a fact, and on the admin path it claimed a
+ * registration that never happened, so it was removed.
  */
 class UserRegisteredNotification extends Notification implements ShouldQueue
 {
@@ -68,11 +71,9 @@ class UserRegisteredNotification extends Notification implements ShouldQueue
      */
     public function toMail(User $notifiable): MailMessage
     {
-        $isSelf = $this->isSelf($notifiable);
-        $message = new MailMessage();
-        $message->subject($this->subject($isSelf));
+        $message = (new MailMessage())->subject($this->subject());
 
-        foreach ($this->lines($isSelf) as $line) {
+        foreach ($this->lines() as $line) {
             $message->line($line);
         }
 
@@ -84,78 +85,39 @@ class UserRegisteredNotification extends Notification implements ShouldQueue
      */
     public function toArray(User $notifiable): array
     {
-        $isSelf = $this->isSelf($notifiable);
-
         return [
-            'subject' => $this->subject($isSelf),
-            'lines' => $this->lines($isSelf),
+            'subject' => $this->subject(),
+            'lines' => $this->lines(),
         ];
     }
 
     /**
-     * One line, two very different questions.
-     *
-     * ## Why the two audiences need different sentences
-     *
-     * A self-registration produces TWO rows in one person's inbox: this one and
-     * `RegisterNotification`. Before this, they read "Your account registration is
-     * complete" beside "Verify your email to activate your account", which are not
-     * two facts but two contradictory readings of one. So this row states a STATUS
-     * ("waiting for verification") and the other carries the ACTION. A reader who
-     * has just signed up now has a status and a next step, not two claims about
-     * the same account.
-     *
-     * The administrator's copy answers a different question again — who registered
-     * — and the actor belongs in the subject for the same reason it does
-     * elsewhere: an administrator's inbox is a list, and a subject that does not
-     * identify itself is unreadable in the bell, which shows subjects only.
+     * The actor belongs in the subject: an administrator's inbox is a list, and
+     * a subject that does not identify itself is unreadable in the bell, which
+     * shows subjects only.
      */
-    private function subject(bool $isSelf): string
+    private function subject(): string
     {
-        if ($isSelf) {
-            return 'Registration received';
-        }
-
         return $this->causer !== null
             ? sprintf('%s registered a new account', $this->causer->name)
             : sprintf('New account registered: %s', $this->user->username);
     }
 
     /**
-     * What the reader needs to know next, which is different for each audience.
+     * Sentences rather than a field list. "Username: jane" reads as a column
+     * header in a table cell and as nothing at all to a screen reader, which
+     * reads the row as prose — and these rows are read in an admin's list,
+     * where the two details matter less than the sentence that says what to
+     * do with them.
      *
-     * The old copy ended every administrative copy with "No credentials are
-     * included in this message." — a sentence about the email rather than about
-     * anything the reader can do. It was reassurance addressed to nobody who
-     * needed it: the person who creates accounts knows what the mail contains.
+     * @return array<string>
      */
-    private function lines(bool $isSelf): array
+    private function lines(): array
     {
-        if ($isSelf) {
-            return [
-                'Your account activates once you confirm the verification link.',
-            ];
-        }
-
-        // Sentences rather than a field list. "Username: jane" reads as a column
-        // header in a table cell and as nothing at all to a screen reader, which
-        // reads the row as prose — and these rows are read in an admin's list,
-        // where the two details matter less than the sentence that says what to
-        // do with them.
-        $lines = [
+        return [
             sprintf('The username is %s.', $this->user->username),
             sprintf('The account email is %s.', $this->user->email),
             'Review the account from the Users page.',
         ];
-
-        return $lines;
-    }
-
-    /**
-     * Is this recipient the account that registered?
-     */
-    private function isSelf(User $notifiable): bool
-    {
-        return $notifiable->getKey() === $this->user->getKey();
     }
 }

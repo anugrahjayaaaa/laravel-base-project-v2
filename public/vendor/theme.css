@@ -558,6 +558,15 @@ input:focus-visible,
   border: 1px solid var(--lbp-border, rgba(0, 0, 0, .15));
 }
 
+/* `/settings` Login Security is a four-up grid (col-md-3). Its longer labels
+   wrap to a second line and push only their own input down, so the row of
+   inputs loses its baseline. Holding every label in that card to two lines
+   (14px × 1.55 line-height) keeps the inputs aligned; the fifth field sits
+   alone on its own row. */
+#section-login .form-label {
+  min-height: 2.75rem;
+}
+
 /* The one animated thing in the interface: the spinner on a `pending` audit
    export row. It runs forever, and an infinite rotation is exactly the kind of
    motion that triggers vestibular discomfort — so the user's OS preference wins

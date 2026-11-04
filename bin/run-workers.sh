@@ -67,8 +67,7 @@ case "${1:-}" in
     # `backups` connection holds its row for BACKUP_QUEUE_RETRY_AFTER (2000s).
     # One worker cannot serve both windows, so this is a process of its own.
     backups)
-        exec "$PHP_BIN" artisan queue:work \
-            --connection=backups \
+        exec "$PHP_BIN" artisan queue:work backups \
             --queue="$BACKUP_QUEUE" \
             --sleep="$QUEUE_SLEEP" \
             --tries="$QUEUE_TRIES" \
@@ -86,8 +85,7 @@ case "${1:-}" in
             --timeout="$QUEUE_TIMEOUT" \
             "-$QUEUE_VERBOSITY" &
         queue_pid=$!
-        "$PHP_BIN" artisan queue:work \
-            --connection=backups \
+        "$PHP_BIN" artisan queue:work backups \
             --queue="$BACKUP_QUEUE" \
             --sleep="$QUEUE_SLEEP" \
             --tries="$QUEUE_TRIES" \

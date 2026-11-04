@@ -11,6 +11,12 @@ Temporary password: **{{ $tempPassword }}**
     This account was created for you by **{{ $causer }}**.
 @endif
 
+@if (count($roles) === 1)
+Your account has the **{{ $roles[0] }}** role.
+@elseif (count($roles) > 1)
+Your account has these roles: **{{ implode('**, **', $roles) }}**.
+@endif
+
 @component('mail::button', ['url' => $url])
 Verify email address
 @endcomponent

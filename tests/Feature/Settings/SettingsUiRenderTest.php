@@ -278,7 +278,11 @@ class SettingsUiRenderTest extends TestCase
         $this->assertStringNotContainsString(route('settings.update'), $html, 'a read-only viewer was given the settings form');
         $this->assertStringNotContainsString('Run Backup Now', $html, 'a read-only viewer was given the backup trigger');
         // The values are still readable — read-only means visible, not blank.
-        $this->assertStringContainsString('login_max_attempts', $html);
+        $this->assertMatchesRegularExpression(
+            '/<td class="text-muted">Failed Logins Before Lockout<\/td>\s*<td>5<\/td>/',
+            $html,
+            'the read-only table does not show the setting name and its value'
+        );
     }
 
     /**
@@ -417,10 +421,9 @@ class SettingsUiRenderTest extends TestCase
      *
      * The inverse of `SettingsPersistenceTest`: that one catches a validated key
      * the action drops, this one catches a validated key the form never sends —
-     * `email_verification_token_expire_minutes` and
-     * `password_reset_expire_minutes` were seeded, validated and whitelisted
-     * with no field anywhere, so no admin could set them. The loop-rendered
-     * policy switches are listed because their `name` is `{{ $key }}`.
+     * `password_reset_expire_minutes` was seeded, validated and whitelisted with
+     * no field anywhere, so no admin could set it. The loop-rendered policy
+     * switches are listed because their `name` is `{{ $key }}`.
      */
     public function test_every_validated_setting_has_a_form_field(): void
     {

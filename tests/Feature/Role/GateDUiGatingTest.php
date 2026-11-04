@@ -448,7 +448,6 @@ class GateDUiGatingTest extends TestCase
 
         // Seed one setting so the read-only table has a row to show.
         SystemSetting::set('login_max_attempts', '7');
-        $settings = SystemSetting::getAll();
 
         // Precondition, so this cannot pass for the wrong reason: if this
         // user held settings.manage the page would be writable and the
@@ -470,14 +469,16 @@ class GateDUiGatingTest extends TestCase
         $this->assertStringNotContainsString('Save Settings', $html);
 
         // Read-only means the values are still readable, so the table is
-        // rendered rather than the page being left blank. Assert on what the
-        // table itself shows: the seeded keys, not the view's inline defaults
-        // (a setting nobody has changed is absent from $settings entirely).
+        // rendered rather than the page being left blank. Assert on the row the
+        // table shows for the seeded setting — its human name and its value —
+        // not the view's inline defaults (a setting nobody has changed is
+        // absent from $settings entirely).
         $this->assertStringContainsString('Read-only', $html);
         $this->assertStringContainsString('<table', $html);
-        $this->assertStringContainsString(
-            (string) array_key_first($settings ?? []),
-            $html
+        $this->assertMatchesRegularExpression(
+            '/<td class="text-muted">Failed Logins Before Lockout<\/td>\s*<td>7<\/td>/',
+            $html,
+            'the read-only table must show the seeded setting with its value'
         );
     }
 
