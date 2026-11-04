@@ -30,58 +30,60 @@
                             <i class="fas fa-sign-out-alt me-1"></i> Logout All Devices
                         </x-ui.confirm-action>
                     </div>
-                    <table class="table table-hover mb-0 sessions-table">
-                        <thead>
-                            <tr>
-                                <th class="align-middle">Device</th>
-                                <th class="align-middle">IP Address</th>
-                                <th class="align-middle">Last Activity</th>
-                                <th class="align-middle">Created</th>
-                                <th class="align-middle">Status</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {{-- Current web session --}}
-                            <tr class="bg-body-secondary">
-                                <td>
-                                    <i class="fas fa-desktop me-1"></i> <strong>This Device</strong>
-                                </td>
-                                <td>{{ request()->ip() }}</td>
-                                <td>{{ now()->format('Y-m-d H:i') }}</td>
-                                <td>{{ auth()->user()->created_at->format('Y-m-d') }}</td>
-                                <td><span class="badge bg-success-subtle text-success">Active</span></td>
-                            </tr>
-
-                            {{-- API tokens (other devices).
-                                 personal_access_tokens records no IP, so this cell
-                                 can never show one. It used to print 'Never' for a
-                                 token that had not been used and '—' otherwise,
-                                 which read as an address column answering a
-                                 question it had no data for. --}}
-                            @foreach ($tokens as $token)
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0 sessions-table">
+                            <thead>
                                 <tr>
-                                    <td>
-                                        <i class="fas fa-mobile-alt me-1"></i> {{ $token->name }}
-                                    </td>
-                                    <td>—</td>
-                                    <td>{{ $token->last_used_at?->format('Y-m-d H:i') ?? 'Never' }}</td>
-                                    <td>{{ $token->created_at->format('Y-m-d H:i') }}</td>
-                                    <td>
-                                        <span class="badge bg-info-subtle text-info">API</span>
-                                    </td>
+                                    <th class="align-middle">Device</th>
+                                    <th class="align-middle">IP Address</th>
+                                    <th class="align-middle">Last Activity</th>
+                                    <th class="align-middle">Created</th>
+                                    <th class="align-middle">Status</th>
                                 </tr>
-                            @endforeach
+                            </thead>
+                            <tbody>
+                                {{-- Current web session --}}
+                                <tr class="bg-body-secondary">
+                                    <td>
+                                        <i class="fas fa-desktop me-1"></i> <strong>This Device</strong>
+                                    </td>
+                                    <td>{{ request()->ip() }}</td>
+                                    <td>{{ now()->format('Y-m-d H:i') }}</td>
+                                    <td>{{ auth()->user()->created_at->format('Y-m-d') }}</td>
+                                    <td><span class="badge bg-success-subtle text-success">Active</span></td>
+                                </tr>
 
-                            @if ($tokens->isEmpty())
-                                <tr>
-                                    <td colspan="5" class="text-center text-muted py-4">
-                                        <i class="fas fa-inbox fa-2x text-muted mb-2 d-block"></i>
-                                        No other active sessions.
-                                    </td>
-                                </tr>
-                            @endif
-                        </tbody>
-                    </table>
+                                {{-- API tokens (other devices).
+                                     personal_access_tokens records no IP, so this cell
+                                     can never show one. It used to print 'Never' for a
+                                     token that had not been used and '—' otherwise,
+                                     which read as an address column answering a
+                                     question it had no data for. --}}
+                                @foreach ($tokens as $token)
+                                    <tr>
+                                        <td>
+                                            <i class="fas fa-mobile-alt me-1"></i> {{ $token->name }}
+                                        </td>
+                                        <td>—</td>
+                                        <td>{{ $token->last_used_at?->format('Y-m-d H:i') ?? 'Never' }}</td>
+                                        <td>{{ $token->created_at->format('Y-m-d H:i') }}</td>
+                                        <td>
+                                            <span class="badge bg-info-subtle text-info">API</span>
+                                        </td>
+                                    </tr>
+                                @endforeach
+
+                                @if ($tokens->isEmpty())
+                                    <tr>
+                                        <td colspan="5" class="text-center text-muted py-4">
+                                            <i class="fas fa-inbox fa-2x text-muted mb-2 d-block"></i>
+                                            No other active sessions.
+                                        </td>
+                                    </tr>
+                                @endif
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>
