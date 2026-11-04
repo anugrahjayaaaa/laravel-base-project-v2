@@ -96,7 +96,28 @@ class RebaseTimezonesCommandTest extends TestCase
         $this->artisan('timezone:rebase', [
             '--from' => 'UTC',
             '--to' => 'Asia/Jakarta',
-        ])->assertFailed();
+        ])->expectsOutput('Refusing to rewrite timestamps in production without --force.')
+            ->assertFailed();
+
+        $this->assertSame('2026-01-01 10:00:00', $this->storedCreatedAt($user));
+    }
+
+    /**
+     * Production plus --dry-run is allowed by design: the refusal exists for
+     * the bulk rewrite, and a dry run never writes. Pinning the combination
+     * means a later tightening of the guard cannot silently break unattended
+     * pre-flight checks in production.
+     */
+    public function test_production_dry_run_reports_without_writing(): void
+    {
+        $user = $this->userAt('2026-01-01 10:00:00');
+        $this->app->detectEnvironment(fn (): string => 'production');
+
+        $this->artisan('timezone:rebase', [
+            '--from' => 'UTC',
+            '--to' => 'Asia/Jakarta',
+            '--dry-run' => true,
+        ])->assertSuccessful();
 
         $this->assertSame('2026-01-01 10:00:00', $this->storedCreatedAt($user));
     }

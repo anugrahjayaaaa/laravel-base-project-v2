@@ -121,6 +121,9 @@ class LastSuperadminGuardTest extends TestCase
      */
     public static function removalProvider(): array
     {
+        // No force-delete case on purpose: the web route accepts only trashed
+        // rows (Phase 12), so the last superadmin can never reach that action
+        // while active — the trash requirement is the guard.
         return [
             'deactivated' => ['deactivate', 'post'],
             'soft deleted' => ['destroy', 'delete'],
@@ -150,6 +153,11 @@ class LastSuperadminGuardTest extends TestCase
         $response->assertRedirect();
 
         $survivor = $superadmin->fresh();
+
+        $this->assertNotNull(
+            $survivor,
+            'the superadmin row is gone — the removal was applied despite the guard'
+        );
 
         $this->assertNotNull(
             session('error'),
@@ -237,7 +245,17 @@ class LastSuperadminGuardTest extends TestCase
      * action, so it inherits the guard. Pinned because it is reached through a
      * different controller with a different id key.
      */
-    public function test_the_bulk_path_cannot_remove_the_last_superadmin(): void
+    public static function bulkRemovalProvider(): array
+    {
+        return [
+            'deactivate' => ['deactivate'],
+            'delete' => ['delete'],
+            'force_delete' => ['force_delete'],
+        ];
+    }
+
+    #[DataProvider('bulkRemovalProvider')]
+    public function test_the_bulk_path_cannot_remove_the_last_superadmin(string $action): void
     {
         $superadmin = $this->superadmin();
         $operator = $this->operatorWithUserPowers();
@@ -247,15 +265,19 @@ class LastSuperadminGuardTest extends TestCase
         $this->actingAs($operator, 'web');
 
         $this->post(route('users.bulk-action'), [
-            'action' => 'deactivate',
+            'action' => $action,
             'user_ids' => [$superadmin->id],
             'ids' => [$superadmin->id],
         ])->assertRedirect();
 
+        $survivor = $superadmin->fresh();
+
+        $this->assertNotNull($survivor, "the bulk {$action} force-deleted the last superadmin");
         $this->assertTrue(
-            $superadmin->fresh()->is_active,
-            'the bulk action deactivated the last superadmin'
+            $survivor->is_active,
+            "the bulk {$action} deactivated the last superadmin"
         );
+        $this->assertFalse($survivor->trashed(), "the bulk {$action} trashed the last superadmin");
         $this->assertSame(1, User::role(SystemRole::SUPERADMIN)->where('is_active', true)->count());
     }
 

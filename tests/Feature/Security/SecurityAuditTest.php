@@ -3,12 +3,15 @@
 namespace Tests\Feature\Security;
 
 use App\Http\Middleware\CheckAccountState;
+use App\Exceptions\StorageCapacityExceededException;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Route;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Route as RouteFacade;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\URL;
 use Laravel\Sanctum\Sanctum;
 use RuntimeException;
 use Spatie\Permission\Models\Role;
@@ -32,6 +35,7 @@ use Spatie\Permission\PermissionRegistrar;
  *  G. CSRF on state-changing forms
  *  H. Password policy
  *  I. Information disclosure
+ *  J. Phase 14 surface (disk-full refusal, signed private downloads)
  */
 class SecurityAuditTest extends TestCase
 {
@@ -486,5 +490,67 @@ class SecurityAuditTest extends TestCase
         foreach (['RuntimeException', 'boom-detail', '.php', 'Stack trace', 'vendor/'] as $needle) {
             $this->assertStringNotContainsString($needle, $body, "the HTML error page leaked '{$needle}'");
         }
+    }
+
+    // =====================================================================
+    // J. PHASE 14 SURFACE — DISK-FULL REFUSAL & SIGNED PRIVATE DOWNLOADS
+    // =====================================================================
+
+    /**
+     * The web half of the 507 contract.
+     *
+     * `StorageDiskTest` pins the JSON envelope; a form caller must get the
+     * redirect-with-error branch instead, and that branch must carry the
+     * actionable sentence only — never the metrics array, whose disk names and
+     * byte counts belong to the operator, not to the visitor.
+     */
+    public function test_a_full_disk_web_refusal_redirects_back_with_the_message_only(): void
+    {
+        config(['app.debug' => false]);
+
+        RouteFacade::middleware('web')->get('/__disk-full', fn () => throw new StorageCapacityExceededException([
+            'disk' => 'local',
+            'used' => 100,
+            'total' => 100,
+            'percent' => 100.0,
+        ]));
+
+        $this->get('/__disk-full')
+            ->assertRedirect()
+            ->assertSessionHas('error', 'Storage capacity exceeded.');
+    }
+
+    public function test_a_guest_cannot_read_a_private_file_even_with_a_valid_signed_url(): void
+    {
+        Storage::fake('secure_documents');
+        Storage::disk('secure_documents')->put('document.pdf', 'private-bytes');
+
+        $url = URL::temporarySignedRoute('storage.secure', now()->addMinute(), ['path' => 'document.pdf']);
+
+        $response = $this->get($url);
+
+        // The auth group wraps the signed group: a valid signature is not a
+        // session. The visitor is sent to login and the bytes never travel.
+        $response->assertRedirect(route('login'));
+        $this->assertGuest();
+        $this->assertStringNotContainsString('private-bytes', (string) $response->getContent());
+    }
+
+    public function test_a_signed_url_for_one_file_does_not_open_another(): void
+    {
+        [$admin] = $this->makeUsers();
+        Storage::fake('secure_documents');
+        Storage::disk('secure_documents')->put('document.pdf', 'mine');
+        Storage::disk('secure_documents')->put('other.pdf', 'not-yours');
+
+        $url = URL::temporarySignedRoute('storage.secure', now()->addMinute(), ['path' => 'document.pdf']);
+        $replay = str_replace('/storage/secure/document.pdf', '/storage/secure/other.pdf', $url);
+
+        // The signature covers the whole URL, path included — swapping the
+        // file under a valid signature for another must fail the `signed`
+        // middleware, not merely re-check the permission.
+        $this->actingAs($admin)
+            ->get($replay)
+            ->assertStatus(403);
     }
 }

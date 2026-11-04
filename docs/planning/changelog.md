@@ -632,3 +632,13 @@ Each entry contains:
 | **Reason** | The command rewrites every timestamp column and cannot be undone; in production an interactive `confirm()` either hangs an unattended maintenance window or passes on an accidental newline from stdin. The cutover order (maintenance → rebase → save `app_timezone` → resume) was already documented in the command docblock and ADR-027; the explicit flag closes the invocation side. |
 | **Impact** | **Production runs now require `--force`.** Non-production keeps the plain confirmation prompt. `settings.md` mentions the refusal next to the ADR-027 link. |
 | **Related** | `routes/console.php`, `docs/base/features/settings.md`, `tests/Feature/Console/RebaseTimezonesCommandTest.php` |
+
+## 2026-11-04 — PHPStan level 8 via Larastan becomes the type gate (ADR-030)
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-11-04 |
+| **Change** | `larastan/larastan` added as a dev dependency; `phpstan.neon` set to level **8** over `app/`; the first run's 332 type-precision findings committed as `phpstan-baseline.neon` — every entry annotated with its debt class — with `reportUnmatchedIgnoredErrors` on; a `composer analyse` script makes `vendor/bin/phpstan analyse --memory-limit=1G` the one command. |
+| **Reason** | Phase 15 Group D (P15-D1). 2644 tests prove behaviour; nothing proved types. Level 8 catches the nullable/mixed return the runtime suite only exercises on its happy branch. Psalm and Enlightn declined per deviation D-3 — one analyser, one baseline, one owner. |
+| **Impact** | Every future `app/` change is gated on a clean analyse; the baseline fails on new errors **and** on stale ignores, so it is a debt ledger that cannot grow or rot silently. CI ownership of the run belongs to P15-E3 (`testing.yml`), not this change. |
+| **Related** | ADR-030, P15-D1, `docs/planning/phase-15-comprehensive-testing.md` § 6, `phpstan.neon`, `phpstan-baseline.neon` |

@@ -327,6 +327,44 @@ class AuditExportTest extends TestCase
     }
 
     /**
+     * P15-E1 — straddling the 500-row chunk boundary changes nothing per row.
+     *
+     * The 3-vs-40 case above deliberately stays INSIDE one chunk, so it cannot
+     * see the chunker itself degenerate: 501 and 502 rows both land in exactly
+     * two chunks, so the query count must be identical — with per-row reads
+     * the extra row is an extra query and this goes red. Lives here, not in
+     * `PerformanceGuardTest`, because `exportQueryCount()` and the job fixture
+     * are already this file's.
+     */
+    public function test_the_export_query_count_holds_across_the_chunk_boundary(): void
+    {
+        Notification::fake();
+
+        $this->login(SystemRole::ADMIN);
+
+        // Warm the capacity guard's settings read: whichever export runs first
+        // would otherwise pay the cold `system_settings` select and the two
+        // identical-shape measurements would differ by one query.
+        SystemSetting::getInt('storage_max_capacity_mb', 0);
+
+        $first = $this->exportQueryCount(501);
+
+        // The helper APPENDS rows, and an export reads the whole table, so the
+        // second measurement would otherwise see ~1 000 rows — three chunks, a
+        // real +2 queries for a chunk that never existed in the first run.
+        DB::table('activity_log')->delete();
+
+        $second = $this->exportQueryCount(502);
+
+        $this->assertSame(
+            $first,
+            $second,
+            '501 and 502 rows are both exactly two 500-row chunks, so the export must not '
+            ."cost {$second} queries against {$first} — the chunker is reading per row again"
+        );
+    }
+
+    /**
      * Write $rows activity rows with `created_at` ascending alongside `id`.
      *
      * `DB::table()` rather than `$user->audit()` because the model's `created_at`

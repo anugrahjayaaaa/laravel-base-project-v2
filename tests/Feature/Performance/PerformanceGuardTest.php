@@ -8,11 +8,13 @@ use App\Models\User;
 use App\Support\PermissionCatalog;
 use App\Support\SystemRole;
 use App\View\Composers\AppMenuComposer;
+use Database\Seeders\FeatureFlagSeeder;
 use Database\Seeders\PermissionSeeder;
 use Database\Seeders\RoleSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Str;
 use Illuminate\View\View;
 use Laravel\Pennant\Feature;
 use PHPUnit\Framework\Attributes\Test;
@@ -21,7 +23,12 @@ use Spatie\Permission\Models\Permission;
 
 /**
  * Three per-request costs that a page pays on EVERY authenticated view, and
- * that nothing else in the suite would notice going away.
+ * that nothing else in the suite would notice going away (P15-A-era cases 1–3),
+ * plus the P15-E1 guards: the API list endpoints do not grow queries with the
+ * row count (the row C4 deferred), and the hot reads fit under a peak-memory
+ * ceiling. Wall clock stays a RECORDED measurement (see the benchmark files
+ * under tests/Feature/Performance and tests/Benchmark) — deviation D-8: a
+ * sub-200 ms assertion on a shared runner is a gate that gets disabled.
  *
  * ## Why these three and not a page-level latency budget
  *
@@ -291,6 +298,150 @@ class PerformanceGuardTest extends TestCase
             1,
             substr_count($response->getContent(), 'app-sidebar'),
             'precondition: the sidebar really rendered exactly once'
+        );
+    }
+
+    /**
+     * Warm one API request, then count the queries of the next identical one.
+     *
+     * The warm call first: the very first request in a test pays one-off
+     * provider and view-compilation costs that have nothing to do with the
+     * row count, and a guard that measures noise fails for the wrong reason.
+     */
+    private function countApiQueries(User $viewer, string $routeName): int
+    {
+        $this->actingAs($viewer, 'sanctum');
+
+        $this->getJson(route($routeName))->assertOk();
+
+        DB::flushQueryLog();
+        DB::enableQueryLog();
+        $this->getJson(route($routeName))->assertOk();
+        $count = count(DB::getQueryLog());
+        DB::disableQueryLog();
+
+        return $count;
+    }
+
+    /**
+     * Write $rows audit rows for the viewer, table-shaped like production.
+     */
+    private function seedAuditRows(User $actor, int $rows): void
+    {
+        for ($i = 0; $i < $rows; $i++) {
+            DB::table('activity_log')->insert([
+                'log_name' => 'default',
+                'description' => 'updated',
+                'subject_type' => $actor->getMorphClass(),
+                'subject_id' => $actor->getKey(),
+                'causer_type' => $actor->getMorphClass(),
+                'causer_id' => $actor->getKey(),
+                'event' => 'user.updated',
+                'properties' => json_encode(['ip' => '127.0.0.1']),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
+    }
+
+    private function seedInboxRows(User $viewer, int $rows): void
+    {
+        for ($i = 0; $i < $rows; $i++) {
+            $viewer->notifications()->create([
+                'id' => (string) Str::uuid(),
+                'type' => 'App\\Notifications\\RegisterNotification',
+                'data' => ['subject' => 'probe', 'lines' => []],
+                'read_at' => null,
+            ]);
+        }
+    }
+
+    /**
+     * P15-E1 — the API list endpoints answer the same number of queries with
+     * 40 rows as with 3 (the "API list N+1" row deferred by P15-C4).
+     *
+     * The web twins of these pages are already pinned elsewhere
+     * (`UserViewPerformanceTest`, `RbacPerformanceTest`, `AuditBenchmarkTest`);
+     * what was never measured is the API envelope, because a per-row relation
+     * can also be triggered inside a Resource, not only inside the shared
+     * Action. Three rows then forty: `assertSame`, not a margin — the page
+     * size is fixed at 10, so the second page of rows cannot even be reached
+     * by the default request, and any growth is a per-row read.
+     */
+    public function test_api_list_query_counts_do_not_grow_with_the_row_count(): void
+    {
+        $this->seed(FeatureFlagSeeder::class);
+        $viewer = $this->viewerWithEveryPermission();
+
+        $fixtures = [
+            'api.v1.users.index' => fn (int $n) => User::factory()->count($n)->create(),
+            'api.v1.activity-logs.index' => fn (int $n) => $this->seedAuditRows($viewer, $n),
+            'api.v1.notifications.inbox.index' => fn (int $n) => $this->seedInboxRows($viewer, $n),
+        ];
+
+        foreach ($fixtures as $routeName => $seed) {
+            $seed(3);
+            $few = $this->countApiQueries($viewer, $routeName);
+
+            $seed(37);
+            $many = $this->countApiQueries($viewer, $routeName);
+
+            $this->assertSame(
+                $few,
+                $many,
+                "{$routeName} cost {$many} queries at 40 rows against {$few} at 3 — a per-row read appeared on the API channel"
+            );
+        }
+    }
+
+    /**
+     * P15-E1 — the five hot reads fit under a peak-memory ceiling.
+     *
+     * A coarse process-peak delta over the five requests, not a per-request
+     * number: peak is monotonic per process, so a per-request ceiling would
+     * need isolating processes. `shortcut: coarse process delta, upgrade to
+     * per-request isolation only if a regression hides inside the margin`.
+     * The ceiling is ≥2× the measured value (measured 2026-11-04: see the
+     * failure message, which reports the actual delta), so ordinary growth
+     * passes and loading whole tables into memory does not.
+     */
+    public function test_the_hot_reads_stay_under_a_peak_memory_ceiling(): void
+    {
+        $this->seed(FeatureFlagSeeder::class);
+        $viewer = $this->viewerWithEveryPermission();
+
+        User::factory()->count(30)->create();
+        for ($i = 0; $i < 10; $i++) {
+            Role::create(['name' => 'Mem '.$i, 'guard_name' => RoleLookup::guard()]);
+        }
+        $this->seedAuditRows($viewer, 20);
+        $this->seedInboxRows($viewer, 20);
+
+        $this->actingAs($viewer, 'web');
+
+        $baseline = memory_get_peak_usage();
+
+        foreach (
+            [
+                route('users.index'),
+                route('roles.index'),
+                route('activity-logs.index'),
+                route('notifications.inbox'),
+                route('settings.index'),
+            ] as $uri
+        ) {
+            $this->get($uri)->assertOk();
+        }
+
+        $delta = memory_get_peak_usage() - $baseline;
+
+        // Measured on this machine 2026-11-04: 7.6 MB across the five reads.
+        // The 24 MB bar is >2x the measurement as the brief requires; the
+        // failure message reports the actual delta.
+        $this->assertLessThan(
+            24 * 1024 * 1024,
+            $delta,
+            sprintf('five hot reads allocated %.1f MB of peak memory — a request now retains whole tables', $delta / 1048576)
         );
     }
 }

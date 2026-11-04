@@ -26,6 +26,11 @@ cheat sheet; that guide is the contract.
 
 ## Hard rules
 - **Never merge/commit to `main`.** Branch `feature/<task-id>-<desc>`.
+- **Never run `git commit` unless the owner asked for it in that turn.** Not at
+  the end of a task, not "to be tidy", not because a phase doc says REVIEW.
+  Leave the work in the working tree and say what is staged; the owner commits.
+  (2026-11-04: `git commit` was run after a task because a previous turn had
+  asked for it — the permission does not carry over to later turns.)
 - Run `php artisan test` before declaring done. Tests green or it is not done.
 - **Never write an inline FQCN** (`\App\Models\User::query()`) — in `app/`, in
   `tests/`, anywhere. `use` it at the top and write `User::query()`. Only

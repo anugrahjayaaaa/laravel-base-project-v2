@@ -23,8 +23,8 @@ Testing goes beyond code coverage. Coverage is a metric, not the definition of t
 | Middleware tests | Request filtering, auth gates | Feature tests |
 | Concurrency tests | Race condition handling | Feature tests + load simulation |
 | Regression tests | Ensure previously fixed bugs don't return | PHPUnit |
-| Integration tests | Cross-component behavior | Full-stack tests |
-| Manual QA | UI/UX, exploratory, human judgment | Manual test plans |
+| Static analysis | Type correctness over `app/` — level 8, Laravel-aware | PHPStan + Larastan (`composer analyse`), committed `phpstan-baseline.neon` as debt ledger (ADR-030) |
+| Integration tests | Cross-component behavior | Full-stack tests || Manual QA | UI/UX, exploratory, human judgment | Manual test plans |
 
 ## Testing Principles
 
@@ -55,9 +55,29 @@ Use model factories and seeders:
 ## CI Integration
 
 - Tests run on every commit/PR.
-- Coverage thresholds enforced.
+- `vendor/bin/phpstan analyse --memory-limit=1G` exits 0 — the baseline fails
+  on new errors **and** on entries that no longer match (ADR-030). Runs in
+  `testing.yml` as its own fast job on every PR (P15-E3).
+- Coverage thresholds enforced on a schedule and on release tags, never per
+  PR (P15-E2): global ≥ 85 % via `php artisan test --coverage --min=85`, and
+  per layer — Actions ≥ 95 %, Policies 100 %, Requests ≥ 95 % — from the same
+  clover run via `php bin/coverage_gate.php`. A missed bar is a gap list with
+  owners, never a lowered threshold. Driver: pcov in CI.
 - Security scan integrated.
 - Architecture tests verify dependency rules.
+
+## CI/CD Pipeline
+
+- PR runs (owned by `.github/workflows/ci-cd.yml`): `pint --test` over the full
+  tree (P15-D2), `php artisan test`, `composer audit --locked` +
+  `npm audit --audit-level=high` at merge.
+- Scheduled (`.github/workflows/testing.yml`, weekly): dependency audit against
+  the lockfiles — catches advisories published after a merge, which the PR-only
+  audit can never see (P15-D4). Same thresholds as the PR run. PHPStan runs
+  here on every PR as a separate fast job, and the coverage gate (pcov) runs
+  on the schedule and on release tags (P15-E3).
+
+---
 
 ## Test Coverage Areas
 

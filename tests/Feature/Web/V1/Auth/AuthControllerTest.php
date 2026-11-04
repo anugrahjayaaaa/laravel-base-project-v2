@@ -324,4 +324,57 @@ class AuthControllerTest extends TestCase
     }
 
     // Mail failure test for resend requires notification sender mocking — not feasible
+
+    public function test_web_login_fails_deactivated_user(): void
+    {
+        $user = User::factory()->create(['email_verified_at' => now(), 'is_active' => false]);
+
+        $response = $this->from('/login')
+            ->post('/login', [
+                'identifier' => $user->email,
+                'password' => 'password',
+            ]);
+
+        $response->assertRedirectBack()
+            ->assertSessionHasErrors('identifier');
+
+        $this->assertGuest();
+    }
+
+    public function test_web_verify_email_rejects_a_tampered_hash(): void
+    {
+        $user = User::factory()->unverified()->create();
+
+        // The route carries no `signed` middleware; the controller's own
+        // hash_equals is the only rejection branch, so it must be pinned here.
+        $url = URL::signedRoute('verification.verify', [
+            'id' => $user->getKey(),
+            'hash' => 'deadbeef',
+        ]);
+
+        $response = $this->get($url);
+
+        $response->assertRedirect(route('verification.notice'))
+            ->assertSessionHas('error');
+
+        $this->assertNull($user->fresh()->email_verified_at);
+    }
+
+    public function test_must_change_password_keeps_redirecting_the_web_user_until_changed(): void
+    {
+        $user = User::factory()->create([
+            'email_verified_at' => now(),
+            'is_active' => true,
+            'must_change_password' => true,
+        ]);
+
+        $this->actingAs($user, 'web');
+
+        // The loop, not one hop: every protected route answers the same way
+        // while the flag stands. /profile is permission-free on purpose — the
+        // assertion must prove the middleware redirected, not survive a
+        // race with route-level `can:` ordering.
+        $this->get('/dashboard')->assertRedirect(route('password.expired'));
+        $this->get('/profile')->assertRedirect(route('password.expired'));
+    }
 }

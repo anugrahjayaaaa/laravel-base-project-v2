@@ -38,11 +38,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v5
-        with:
-          # pint --dirty diffs against the merge base. With the default depth-1
-          # there is no base ref, so --dirty silently checks nothing and passes
-          # without formatting a single file.
-          fetch-depth: 0
 
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
@@ -88,8 +83,10 @@ jobs:
       - name: Run tests
         run: php artisan test --no-coverage
 
-      - name: Check changed PHP formatting
-        run: vendor/bin/pint --test --dirty
+      - name: Check PHP formatting
+        # Full tree, not --dirty: a violation committed before the gate existed
+        # was invisible forever under --dirty (P15-D2).
+        run: vendor/bin/pint --test
 
       - name: Composer security audit
         run: composer audit --locked

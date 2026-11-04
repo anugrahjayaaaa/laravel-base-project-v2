@@ -57,6 +57,22 @@ class UserCrudApiTest extends TestCase
         $this->assertArrayHasKey('users', $response->json('data'));
         $this->assertArrayHasKey('pagination', $response->json('data'));
         $this->assertCount(4, $response->json('data.users'));
+
+        // The contract is four keys, not "a pagination-shaped blob" —
+        // docs/base/api/response-contract.md § Collections.
+        $this->assertSame(
+            ['current_page', 'last_page', 'per_page', 'total'],
+            array_keys($response->json('data.pagination'))
+        );
+
+        // per_page's validated default is 10 on every list but the inbox;
+        // nothing pinned it here before.
+        $this->assertSame(10, $response->json('data.pagination.per_page'));
+
+        // There is no Link header and no meta.pagination — both were
+        // documented lies the contract phase corrected.
+        $response->assertHeaderMissing('Link');
+        $this->assertArrayNotHasKey('pagination', $response->json('meta', []));
     }
 
     // -- Show --

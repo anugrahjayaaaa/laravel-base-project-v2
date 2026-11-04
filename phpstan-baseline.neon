@@ -1,0 +1,2171 @@
+parameters:
+	ignoreErrors:
+		# missingType.generics: own-code docblock debt: Collection/Paginator generics not written out; pay off with @return generic shape
+		-
+			message: '#^Method App\\Actions\\V1\\Audit\\AuditIndexAction\:\:run\(\) return type with generic interface Illuminate\\Contracts\\Pagination\\LengthAwarePaginator does not specify its types\: TKey, TValue$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Actions/V1/Audit/AuditIndexAction.php
+
+		# staticClassAccess.privateConstant: static:: on a private const; convert to self:: when paying off (behaviour-identical)
+		-
+			message: '#^Unsafe access to private constant App\\Actions\\V1\\Audit\\AuditIndexAction\:\:TTL through static\:\:\.$#'
+			identifier: staticClassAccess.privateConstant
+			count: 4
+			path: app/Actions/V1/Audit/AuditIndexAction.php
+
+		# missingType.iterableValue: own-code docblock debt: array shape not written out; runtime correct; pay off by tightening the PHPDoc
+		-
+			message: '#^Method App\\Actions\\V1\\Auth\\AuthAuthenticateAction\:\:checkAccountState\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Actions/V1/Auth/AuthAuthenticateAction.php
+
+		# missingType.iterableValue: own-code docblock debt: array shape not written out; runtime correct; pay off by tightening the PHPDoc
+		-
+			message: '#^Method App\\Actions\\V1\\Auth\\AuthAuthenticateAction\:\:checkEmailVerification\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Actions/V1/Auth/AuthAuthenticateAction.php
+
+		# missingType.iterableValue: own-code docblock debt: array shape not written out; runtime correct; pay off by tightening the PHPDoc
+		-
+			message: '#^Method App\\Actions\\V1\\Auth\\AuthAuthenticateAction\:\:checkThrottle\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Actions/V1/Auth/AuthAuthenticateAction.php
+
+		# missingType.iterableValue: own-code docblock debt: array shape not written out; runtime correct; pay off by tightening the PHPDoc
+		-
+			message: '#^Method App\\Actions\\V1\\Auth\\AuthAuthenticateAction\:\:run\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Actions/V1/Auth/AuthAuthenticateAction.php
+
+		# argument.type: framework/vendor signature narrower than runtime reality (null from guards, generics erased); verify per site when paying off
+		-
+			message: '#^Parameter \#1 \$value of method Illuminate\\Foundation\\Auth\\User\:\:setRememberToken\(\) expects string, null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Actions/V1/Auth/AuthChangePasswordAction.php
+
+		# missingType.generics: own-code docblock debt: Collection/Paginator generics not written out; pay off with @return generic shape
+		-
+			message: '#^Method App\\Actions\\V1\\Auth\\AuthListSessionsAction\:\:run\(\) return type with generic class Illuminate\\Support\\Collection does not specify its types\: TKey, TValue$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Actions/V1/Auth/AuthListSessionsAction.php
+
+		# instanceof.alwaysTrue: defensive guard the analyser proves redundant for the typed signature; kept for non-typed callers
+		-
+			message: '#^Instanceof between Illuminate\\Auth\\SessionGuard and Illuminate\\Contracts\\Auth\\StatefulGuard will always evaluate to true\.$#'
+			identifier: instanceof.alwaysTrue
+			count: 1
+			path: app/Actions/V1/Auth/AuthLogoutAction.php
+
+		# nullsafe.neverNull: nullsafe on a non-nullable type; harmless, simplify when paying off
+		-
+			message: '#^Using nullsafe method call on non\-nullable type Laravel\\Sanctum\\PersonalAccessToken\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Actions/V1/Auth/AuthLogoutAction.php
+
+		# missingType.iterableValue: own-code docblock debt: array shape not written out; runtime correct; pay off by tightening the PHPDoc
+		-
+			message: '#^Method App\\Actions\\V1\\Auth\\AuthLogoutAllDevicesAction\:\:run\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Actions/V1/Auth/AuthLogoutAllDevicesAction.php
+
+		# missingType.iterableValue: own-code docblock debt: array shape not written out; runtime correct; pay off by tightening the PHPDoc
+		-
+			message: '#^Method App\\Actions\\V1\\Auth\\AuthResetPasswordAction\:\:run\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Actions/V1/Auth/AuthResetPasswordAction.php
+
+		# missingType.iterableValue: own-code docblock debt: array shape not written out; runtime correct; pay off by tightening the PHPDoc
+		-
+			message: '#^Method App\\Actions\\V1\\Auth\\AuthSendResetLinkAction\:\:run\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Actions/V1/Auth/AuthSendResetLinkAction.php
+
+		# missingType.iterableValue: own-code docblock debt: array shape not written out; runtime correct; pay off by tightening the PHPDoc
+		-
+			message: '#^Method App\\Actions\\V1\\Auth\\AuthVerifyEmailAction\:\:run\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Actions/V1/Auth/AuthVerifyEmailAction.php
+
+		# missingType.iterableValue: own-code docblock debt: array shape not written out; runtime correct; pay off by tightening the PHPDoc
+		-
+			message: '#^Method App\\Actions\\V1\\BulkAction\\BulkActionProcessor\:\:run\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Actions/V1/BulkAction/BulkActionProcessor.php
+
+		# offsetAccess.notFound: Eloquent attribute offset; present at runtime, not in the type
+		-
+			message: '#^Offset ''label'' might not exist on array\{slug\: string, label\: string, group\: string, description\: string, pending\: string\|null\}\|null\.$#'
+			identifier: offsetAccess.notFound
+			count: 1
+			path: app/Actions/V1/Feature/FeatureBulkToggleAction.php
+
+		# arrayValues.list: array_values on a typed list is a no-op; kept for the untyped caller
+		-
+			message: '#^Parameter \#1 \$array \(list\<string\>\) of array_values is already a list, call has no effect\.$#'
+			identifier: arrayValues.list
+			count: 1
+			path: app/Actions/V1/Feature/FeatureBulkToggleAction.php
+
+		# offsetAccess.notFound: Eloquent attribute offset; present at runtime, not in the type
+		-
+			message: '#^Offset ''label'' might not exist on array\{slug\: string, label\: string, group\: string, description\: string, pending\: string\|null\}\|null\.$#'
+			identifier: offsetAccess.notFound
+			count: 1
+			path: app/Actions/V1/Feature/FeatureToggleAction.php
+
+		# missingType.generics: own-code docblock debt: Collection/Paginator generics not written out; pay off with @return generic shape
+		-
+			message: '#^Method App\\Actions\\V1\\Notification\\NotificationAdminEventAction\:\:dispatch\(\) has parameter \$recipients with generic class Illuminate\\Support\\Collection but does not specify its types\: TKey, TValue$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Actions/V1/Notification/NotificationAdminEventAction.php
+
+		# missingType.iterableValue: own-code docblock debt: array shape not written out; runtime correct; pay off by tightening the PHPDoc
+		-
+			message: '#^Method App\\Actions\\V1\\Notification\\NotificationAdminEventAction\:\:rolesChanged\(\) has parameter \$added with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Actions/V1/Notification/NotificationAdminEventAction.php
+
+		# missingType.iterableValue: own-code docblock debt: array shape not written out; runtime correct; pay off by tightening the PHPDoc
+		-
+			message: '#^Method App\\Actions\\V1\\Notification\\NotificationAdminEventAction\:\:rolesChanged\(\) has parameter \$removed with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Actions/V1/Notification/NotificationAdminEventAction.php
+
+		# missingType.generics: own-code docblock debt: Collection/Paginator generics not written out; pay off with @return generic shape
+		-
+			message: '#^Method App\\Actions\\V1\\Notification\\NotificationInboxAction\:\:inbox\(\) return type with generic interface Illuminate\\Contracts\\Pagination\\LengthAwarePaginator does not specify its types\: TKey, TValue$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Actions/V1/Notification/NotificationInboxAction.php
+
+		# missingType.iterableValue: own-code docblock debt: array shape not written out; runtime correct; pay off by tightening the PHPDoc
+		-
+			message: '#^Method App\\Actions\\V1\\Notification\\NotificationInboxAction\:\:show\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Actions/V1/Notification/NotificationInboxAction.php
+
+		# closure.unusedUse: captured variable unused after refactor; delete the use when paying off
+		-
+			message: '#^Anonymous function has an unused use \$data\.$#'
+			identifier: closure.unusedUse
+			count: 1
+			path: app/Actions/V1/Notification/NotificationMailSettingUpdateAction.php
+
+		# missingType.iterableValue: own-code docblock debt: array shape not written out; runtime correct; pay off by tightening the PHPDoc
+		-
+			message: '#^Method App\\Actions\\V1\\Notification\\NotificationTestMailSendAction\:\:audit\(\) has parameter \$properties with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Actions/V1/Notification/NotificationTestMailSendAction.php
+
+		# missingType.generics: own-code docblock debt: Collection/Paginator generics not written out; pay off with @return generic shape
+		-
+			message: '#^Method App\\Actions\\V1\\Permission\\PermissionIndexAction\:\:run\(\) return type with generic interface Illuminate\\Contracts\\Pagination\\LengthAwarePaginator does not specify its types\: TKey, TValue$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Actions/V1/Permission/PermissionIndexAction.php
+
+		# property.nonObject: nullable from framework signature; guarded at runtime; revisit when the guard is typed
+		-
+			message: '#^Cannot access property \$roles on App\\Models\\User\|null\.$#'
+			identifier: property.nonObject
+			count: 1
+			path: app/Actions/V1/Role/RoleAssignAction.php
+
+		# argument.type: framework/vendor signature narrower than runtime reality (null from guards, generics erased); verify per site when paying off
+		-
+			message: '#^Parameter \#1 \$user of method App\\Actions\\V1\\Notification\\NotificationAdminEventAction\:\:rolesChanged\(\) expects App\\Models\\User, App\\Models\\User\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Actions/V1/Role/RoleAssignAction.php
+
+		# missingType.generics: own-code docblock debt: Collection/Paginator generics not written out; pay off with @return generic shape
+		-
+			message: '#^Method App\\Actions\\V1\\Role\\RoleBulkActionHandler\:\:getValidItems\(\) return type with generic class Illuminate\\Database\\Eloquent\\Collection does not specify its types\: TKey, TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Actions/V1/Role/RoleBulkActionHandler.php
+
+		# missingType.iterableValue: own-code docblock debt: array shape not written out; runtime correct; pay off by tightening the PHPDoc
+		-
+			message: '#^Method App\\Actions\\V1\\Role\\RoleCreateAction\:\:guardSystemPermissions\(\) has parameter \$data with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Actions/V1/Role/RoleCreateAction.php
+
+		# missingType.iterableValue: own-code docblock debt: array shape not written out; runtime correct; pay off by tightening the PHPDoc
+		-
+			message: '#^Method App\\Actions\\V1\\Role\\RoleCreateAction\:\:persist\(\) has parameter \$data with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Actions/V1/Role/RoleCreateAction.php
+
+		# missingType.iterableValue: own-code docblock debt: array shape not written out; runtime correct; pay off by tightening the PHPDoc
+		-
+			message: '#^Method App\\Actions\\V1\\Role\\RoleCreateAction\:\:run\(\) has parameter \$data with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Actions/V1/Role/RoleCreateAction.php
+
+		# method.nonObject: nullable from framework signature (find()/fresh()); guarded at runtime; revisit when the guard is typed
+		-
+			message: '#^Cannot call method roles\(\) on App\\Models\\User\|null\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Actions/V1/Role/RoleDeleteAction.php
+
+		# argument.type: framework/vendor signature narrower than runtime reality (null from guards, generics erased); verify per site when paying off
+		-
+			message: '#^Parameter \#1 \$holders of method App\\Actions\\V1\\Role\\RoleDeleteAction\:\:reassignDefaultTo\(\) expects Illuminate\\Database\\Eloquent\\Collection\<int, App\\Models\\User\>, Illuminate\\Database\\Eloquent\\Collection\<int, Illuminate\\Database\\Eloquent\\Model\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Actions/V1/Role/RoleDeleteAction.php
+
+		# missingType.iterableValue: own-code docblock debt: array shape not written out; runtime correct; pay off by tightening the PHPDoc
+		-
+			message: '#^Method App\\Actions\\V1\\Role\\RoleUpdateAction\:\:guardSystemPermissions\(\) has parameter \$data with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Actions/V1/Role/RoleUpdateAction.php
+
+		# missingType.iterableValue: own-code docblock debt: array shape not written out; runtime correct; pay off by tightening the PHPDoc
+		-
+			message: '#^Method App\\Actions\\V1\\Role\\RoleUpdateAction\:\:persist\(\) has parameter \$data with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Actions/V1/Role/RoleUpdateAction.php
+
+		# missingType.iterableValue: own-code docblock debt: array shape not written out; runtime correct; pay off by tightening the PHPDoc
+		-
+			message: '#^Method App\\Actions\\V1\\Role\\RoleUpdateAction\:\:run\(\) has parameter \$data with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Actions/V1/Role/RoleUpdateAction.php
+
+		# missingType.iterableValue: own-code docblock debt: array shape not written out; runtime correct; pay off by tightening the PHPDoc
+		-
+			message: '#^Method App\\Actions\\V1\\User\\UserActivateAction\:\:run\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Actions/V1/User/UserActivateAction.php
+
+		# match.unhandled: exhaustive over documented status codes; default branch intentionally absent, HTTP only emits these
+		-
+			message: '#^Match expression does not handle remaining value\: string$#'
+			identifier: match.unhandled
+			count: 1
+			path: app/Actions/V1/User/UserBulkActionHandler.php
+
+		# return.type: docblock and implementation disagree (stated shape too precise); runtime value correct; fix the docblock when paying off
+		-
+			message: '#^Method App\\Actions\\V1\\User\\UserBulkActionHandler\:\:getCacheKeys\(\) should return array\<string\> but returns array\<string, int\>\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Actions/V1/User/UserBulkActionHandler.php
+
+		# missingType.generics: own-code docblock debt: Collection/Paginator generics not written out; pay off with @return generic shape
+		-
+			message: '#^Method App\\Actions\\V1\\User\\UserBulkActionHandler\:\:getValidItems\(\) return type with generic class Illuminate\\Database\\Eloquent\\Collection does not specify its types\: TKey, TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Actions/V1/User/UserBulkActionHandler.php
+
+		# argument.type: framework/vendor signature narrower than runtime reality (null from guards, generics erased); verify per site when paying off
+		-
+			message: '#^Parameter \#2 of callable callable\(App\\Models\\User, App\\Models\\User\)\: mixed expects App\\Models\\User, App\\Models\\User\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Actions/V1/User/UserBulkActionHandler.php
+
+		# property.nonObject: nullable from framework signature; guarded at runtime; revisit when the guard is typed
+		-
+			message: '#^Cannot access property \$username on App\\Models\\User\|null\.$#'
+			identifier: property.nonObject
+			count: 2
+			path: app/Actions/V1/User/UserCreateAction.php
+
+		# method.nonObject: nullable from framework signature (find()/fresh()); guarded at runtime; revisit when the guard is typed
+		-
+			message: '#^Cannot call method getEmailForVerification\(\) on App\\Models\\User\|null\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Actions/V1/User/UserCreateAction.php
+
+		# method.nonObject: nullable from framework signature (find()/fresh()); guarded at runtime; revisit when the guard is typed
+		-
+			message: '#^Cannot call method getKey\(\) on App\\Models\\User\|null\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Actions/V1/User/UserCreateAction.php
+
+		# method.nonObject: nullable from framework signature (find()/fresh()); guarded at runtime; revisit when the guard is typed
+		-
+			message: '#^Cannot call method getRoleNames\(\) on App\\Models\\User\|null\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Actions/V1/User/UserCreateAction.php
+
+		# missingType.iterableValue: own-code docblock debt: array shape not written out; runtime correct; pay off by tightening the PHPDoc
+		-
+			message: '#^Method App\\Actions\\V1\\User\\UserCreateAction\:\:run\(\) has parameter \$data with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Actions/V1/User/UserCreateAction.php
+
+		# return.type: docblock and implementation disagree (stated shape too precise); runtime value correct; fix the docblock when paying off
+		-
+			message: '#^Method App\\Actions\\V1\\User\\UserCreateAction\:\:run\(\) should return App\\Models\\User but returns App\\Models\\User\|null\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Actions/V1/User/UserCreateAction.php
+
+		# argument.type: framework/vendor signature narrower than runtime reality (null from guards, generics erased); verify per site when paying off
+		-
+			message: '#^Parameter \#1 \$user of method App\\Actions\\V1\\Notification\\NotificationAdminEventAction\:\:userRegistered\(\) expects App\\Models\\User, App\\Models\\User\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Actions/V1/User/UserCreateAction.php
+
+		# missingType.iterableValue: own-code docblock debt: array shape not written out; runtime correct; pay off by tightening the PHPDoc
+		-
+			message: '#^Method App\\Actions\\V1\\User\\UserDeactivateAction\:\:run\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Actions/V1/User/UserDeactivateAction.php
+
+		# missingType.iterableValue: own-code docblock debt: array shape not written out; runtime correct; pay off by tightening the PHPDoc
+		-
+			message: '#^Method App\\Actions\\V1\\User\\UserDeleteAction\:\:run\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Actions/V1/User/UserDeleteAction.php
+
+		# missingType.iterableValue: own-code docblock debt: array shape not written out; runtime correct; pay off by tightening the PHPDoc
+		-
+			message: '#^Method App\\Actions\\V1\\User\\UserForceDeleteAction\:\:run\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Actions/V1/User/UserForceDeleteAction.php
+
+		# property.nonObject: nullable from framework signature; guarded at runtime; revisit when the guard is typed
+		-
+			message: '#^Cannot access property \$active on stdClass\|null\.$#'
+			identifier: property.nonObject
+			count: 1
+			path: app/Actions/V1/User/UserIndexAction.php
+
+		# property.nonObject: nullable from framework signature; guarded at runtime; revisit when the guard is typed
+		-
+			message: '#^Cannot access property \$inactive on stdClass\|null\.$#'
+			identifier: property.nonObject
+			count: 1
+			path: app/Actions/V1/User/UserIndexAction.php
+
+		# property.nonObject: nullable from framework signature; guarded at runtime; revisit when the guard is typed
+		-
+			message: '#^Cannot access property \$locked on stdClass\|null\.$#'
+			identifier: property.nonObject
+			count: 1
+			path: app/Actions/V1/User/UserIndexAction.php
+
+		# property.nonObject: nullable from framework signature; guarded at runtime; revisit when the guard is typed
+		-
+			message: '#^Cannot access property \$trashed on stdClass\|null\.$#'
+			identifier: property.nonObject
+			count: 1
+			path: app/Actions/V1/User/UserIndexAction.php
+
+		# missingType.generics: own-code docblock debt: Collection/Paginator generics not written out; pay off with @return generic shape
+		-
+			message: '#^Method App\\Actions\\V1\\User\\UserIndexAction\:\:applySearch\(\) has parameter \$query with generic class Illuminate\\Database\\Eloquent\\Builder but does not specify its types\: TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Actions/V1/User/UserIndexAction.php
+
+		# missingType.generics: own-code docblock debt: Collection/Paginator generics not written out; pay off with @return generic shape
+		-
+			message: '#^Method App\\Actions\\V1\\User\\UserIndexAction\:\:applySort\(\) has parameter \$query with generic class Illuminate\\Database\\Eloquent\\Builder but does not specify its types\: TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Actions/V1/User/UserIndexAction.php
+
+		# missingType.generics: own-code docblock debt: Collection/Paginator generics not written out; pay off with @return generic shape
+		-
+			message: '#^Method App\\Actions\\V1\\User\\UserIndexAction\:\:applyStatusFilter\(\) has parameter \$query with generic class Illuminate\\Database\\Eloquent\\Builder but does not specify its types\: TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Actions/V1/User/UserIndexAction.php
+
+		# return.type: docblock and implementation disagree (stated shape too precise); runtime value correct; fix the docblock when paying off
+		-
+			message: '#^Method App\\Actions\\V1\\User\\UserIndexAction\:\:cacheKeys\(\) should return array\{active\: int, inactive\: int, locked\: int, trashed\: int\} but returns array\{''user_index_counts…'', ''user_index_counts…''\}\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Actions/V1/User/UserIndexAction.php
+
+		# missingType.iterableValue: own-code docblock debt: array shape not written out; runtime correct; pay off by tightening the PHPDoc
+		-
+			message: '#^Method App\\Actions\\V1\\User\\UserIndexAction\:\:counts\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Actions/V1/User/UserIndexAction.php
+
+		# missingType.generics: own-code docblock debt: Collection/Paginator generics not written out; pay off with @return generic shape
+		-
+			message: '#^Method App\\Actions\\V1\\User\\UserIndexAction\:\:run\(\) return type with generic interface Illuminate\\Contracts\\Pagination\\LengthAwarePaginator does not specify its types\: TKey, TValue$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Actions/V1/User/UserIndexAction.php
+
+		# argument.type: framework/vendor signature narrower than runtime reality (null from guards, generics erased); verify per site when paying off
+		-
+			message: '#^Parameter \#1 \$key of static method Illuminate\\Cache\\Repository\:\:forget\(\) expects array\|string\|UnitEnum, int given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Actions/V1/User/UserIndexAction.php
+
+		# argument.type: framework/vendor signature narrower than runtime reality (null from guards, generics erased); verify per site when paying off
+		-
+			message: '#^Parameter \#2 \$sort of method App\\Actions\\V1\\User\\UserIndexAction\:\:applySort\(\) expects string, string\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Actions/V1/User/UserIndexAction.php
+
+		# argument.type: framework/vendor signature narrower than runtime reality (null from guards, generics erased); verify per site when paying off
+		-
+			message: '#^Parameter \#3 \$direction of method App\\Actions\\V1\\User\\UserIndexAction\:\:applySort\(\) expects string, string\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Actions/V1/User/UserIndexAction.php
+
+		# staticClassAccess.privateConstant: static:: on a private const; convert to self:: when paying off (behaviour-identical)
+		-
+			message: '#^Unsafe access to private constant App\\Actions\\V1\\User\\UserIndexAction\:\:TTL through static\:\:\.$#'
+			identifier: staticClassAccess.privateConstant
+			count: 1
+			path: app/Actions/V1/User/UserIndexAction.php
+
+		# missingType.iterableValue: own-code docblock debt: array shape not written out; runtime correct; pay off by tightening the PHPDoc
+		-
+			message: '#^Method App\\Actions\\V1\\User\\UserLockAction\:\:run\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Actions/V1/User/UserLockAction.php
+
+		# missingType.iterableValue: own-code docblock debt: array shape not written out; runtime correct; pay off by tightening the PHPDoc
+		-
+			message: '#^Method App\\Actions\\V1\\User\\UserRestoreAction\:\:run\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Actions/V1/User/UserRestoreAction.php
+
+		# closure.unusedUse: captured variable unused after refactor; delete the use when paying off
+		-
+			message: '#^Anonymous function has an unused use \$request\.$#'
+			identifier: closure.unusedUse
+			count: 1
+			path: app/Actions/V1/User/UserUnlockAction.php
+
+		# missingType.iterableValue: own-code docblock debt: array shape not written out; runtime correct; pay off by tightening the PHPDoc
+		-
+			message: '#^Method App\\Actions\\V1\\User\\UserUnlockAction\:\:run\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Actions/V1/User/UserUnlockAction.php
+
+		# return.type: docblock and implementation disagree (stated shape too precise); runtime value correct; fix the docblock when paying off
+		-
+			message: '#^Anonymous function should return App\\Models\\User but returns App\\Models\\User\|null\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Actions/V1/User/UserUpdateAction.php
+
+		# missingType.iterableValue: own-code docblock debt: array shape not written out; runtime correct; pay off by tightening the PHPDoc
+		-
+			message: '#^Method App\\Actions\\V1\\User\\UserUpdateAction\:\:run\(\) has parameter \$data with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Actions/V1/User/UserUpdateAction.php
+
+		# nullCoalesce.variable: variable defined in a branch the analyser cannot follow; safe at runtime
+		-
+			message: '#^Variable \$causer on left side of \?\? always exists and is always null\.$#'
+			identifier: nullCoalesce.variable
+			count: 1
+			path: app/Actions/V1/User/UserUpdateAction.php
+
+		# method.nonObject: nullable from framework signature (find()/fresh()); guarded at runtime; revisit when the guard is typed
+		-
+			message: '#^Cannot call method isPast\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Actions/V1/User/UserVerifyEmailChangeAction.php
+
+		# argument.type: framework/vendor signature narrower than runtime reality (null from guards, generics erased); verify per site when paying off
+		-
+			message: '#^Parameter \#1 \$user of method App\\Actions\\V1\\Audit\\AuditExportDownloadAction\:\:run\(\) expects App\\Models\\User, App\\Models\\User\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/Api/V1/Audit/AuditController.php
+
+		# argument.type: framework/vendor signature narrower than runtime reality (null from guards, generics erased); verify per site when paying off
+		-
+			message: '#^Parameter \#1 \$user of method App\\Actions\\V1\\Audit\\AuditExportRequestAction\:\:recentFor\(\) expects App\\Models\\User, App\\Models\\User\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/Api/V1/Audit/AuditController.php
+
+		# argument.type: framework/vendor signature narrower than runtime reality (null from guards, generics erased); verify per site when paying off
+		-
+			message: '#^Parameter \#1 \$user of method App\\Actions\\V1\\Audit\\AuditExportRequestAction\:\:retry\(\) expects App\\Models\\User, App\\Models\\User\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/Api/V1/Audit/AuditController.php
+
+		# argument.type: framework/vendor signature narrower than runtime reality (null from guards, generics erased); verify per site when paying off
+		-
+			message: '#^Parameter \#1 \$user of method App\\Actions\\V1\\Audit\\AuditExportRequestAction\:\:run\(\) expects App\\Models\\User, App\\Models\\User\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/Api/V1/Audit/AuditController.php
+
+		# property.onlyWritten: property written but never read; delete when paying off (or after confirming no future reader)
+		-
+			message: '#^Property App\\Http\\Controllers\\Api\\V1\\Audit\\AuditController\:\:\$showAction is never read, only written\.$#'
+			identifier: property.onlyWritten
+			count: 1
+			path: app/Http/Controllers/Api/V1/Audit/AuditController.php
+
+		# argument.type: framework/vendor signature narrower than runtime reality (null from guards, generics erased); verify per site when paying off
+		-
+			message: '#^Parameter \#2 \$ip of method App\\Auth\\LoginThrottle\:\:reset\(\) expects string, string\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/Api/V1/Auth/LoginController.php
+
+		# argument.type: framework/vendor signature narrower than runtime reality (null from guards, generics erased); verify per site when paying off
+		-
+			message: '#^Parameter \#3 \$ip of method App\\Actions\\V1\\Auth\\AuthAuthenticateAction\:\:run\(\) expects string, string\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/Api/V1/Auth/LoginController.php
+
+		# argument.type: framework/vendor signature narrower than runtime reality (null from guards, generics erased); verify per site when paying off
+		-
+			message: '#^Parameter \#1 \$user of method App\\Actions\\V1\\Auth\\AuthLogoutAllDevicesAction\:\:run\(\) expects App\\Models\\User, App\\Models\\User\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/Api/V1/Auth/LogoutAllController.php
+
+		# argument.type: framework/vendor signature narrower than runtime reality (null from guards, generics erased); verify per site when paying off
+		-
+			message: '#^Parameter \$user of method App\\Actions\\V1\\Auth\\AuthChangePasswordAction\:\:run\(\) expects App\\Models\\User, App\\Models\\User\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/Api/V1/Auth/PasswordChangeController.php
+
+		# argument.type: framework/vendor signature narrower than runtime reality (null from guards, generics erased); verify per site when paying off
+		-
+			message: '#^Parameter \#2 \$ip of method App\\Actions\\V1\\Auth\\AuthSendResetLinkAction\:\:run\(\) expects string, string\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/Api/V1/Auth/PasswordForgotController.php
+
+		# argument.type: framework/vendor signature narrower than runtime reality (null from guards, generics erased); verify per site when paying off
+		-
+			message: '#^Parameter \#2 \$ip of method App\\Actions\\V1\\Auth\\AuthResetPasswordAction\:\:run\(\) expects string, string\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/Api/V1/Auth/PasswordResetController.php
+
+		# nullCoalesce.offset: array offset the analyser cannot prove absent; ?? keeps it safe at runtime
+		-
+			message: '#^Offset ''error_code'' on array\{message\: string, status\: int, error_code\: string\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Http/Controllers/Api/V1/Auth/ResendVerificationController.php
+
+		# argument.type: framework/vendor signature narrower than runtime reality (null from guards, generics erased); verify per site when paying off
+		-
+			message: '#^Parameter \#2 \$ip of method App\\Actions\\V1\\Auth\\AuthResendVerificationAction\:\:run\(\) expects string, string\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/Api/V1/Auth/ResendVerificationController.php
+
+		# argument.type: framework/vendor signature narrower than runtime reality (null from guards, generics erased); verify per site when paying off
+		-
+			message: '#^Parameter \#1 \$user of method App\\Actions\\V1\\Auth\\AuthVerifyEmailAction\:\:run\(\) expects App\\Models\\User, App\\Models\\User\|Illuminate\\Database\\Eloquent\\Collection\<int, App\\Models\\User\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/Api/V1/Auth/VerifyEmailController.php
+
+		# classConstant.phpDocType: PHPDoc type on a class constant the analyser distrusts; verify when paying off
+		-
+			message: '#^PHPDoc tag @var for constant App\\Http\\Controllers\\Api\\V1\\Notification\\NotificationController\:\:CONFIG_FALLBACKS with type array\<int, string\> is incompatible with value array\{mail_mailer\: ''mail\.default'', mail_host\: ''mail\.mailers\.smtp…'', mail_port\: ''mail\.mailers\.smtp…'', mail_encryption\: ''mail\.mailers\.smtp…'', mail_username\: ''mail\.mailers\.smtp…'', mail_from_address\: ''mail\.from\.address'', mail_from_name\: ''mail\.from\.name''\}\.$#'
+			identifier: classConstant.phpDocType
+			count: 1
+			path: app/Http/Controllers/Api/V1/Notification/NotificationController.php
+
+		# method.nonObject: nullable from framework signature (find()/fresh()); guarded at runtime; revisit when the guard is typed
+		-
+			message: '#^Cannot call method notifications\(\) on App\\Models\\User\|null\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Http/Controllers/Api/V1/Notification/NotificationInboxController.php
+
+		# argument.type: framework/vendor signature narrower than runtime reality (null from guards, generics erased); verify per site when paying off
+		-
+			message: '#^Parameter \#1 \$user of static method App\\Support\\UnreadNotificationCount\:\:for\(\) expects App\\Models\\User, App\\Models\\User\|null given\.$#'
+			identifier: argument.type
+			count: 2
+			path: app/Http/Controllers/Api/V1/Notification/NotificationInboxController.php
+
+		# argument.type: framework/vendor signature narrower than runtime reality (null from guards, generics erased); verify per site when paying off
+		-
+			message: '#^Parameter \#1 \$user of static method App\\Support\\UnreadNotificationCount\:\:latestIdFor\(\) expects App\\Models\\User, App\\Models\\User\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/Api/V1/Notification/NotificationInboxController.php
+
+		# argument.type: framework/vendor signature narrower than runtime reality (null from guards, generics erased); verify per site when paying off
+		-
+			message: '#^Parameter \#1 \$viewer of method App\\Actions\\V1\\Notification\\NotificationInboxAction\:\:inbox\(\) expects App\\Models\\User, App\\Models\\User\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/Api/V1/Notification/NotificationInboxController.php
+
+		# argument.type: framework/vendor signature narrower than runtime reality (null from guards, generics erased); verify per site when paying off
+		-
+			message: '#^Parameter \#1 \$viewer of method App\\Actions\\V1\\Notification\\NotificationInboxAction\:\:markAllAsRead\(\) expects App\\Models\\User, App\\Models\\User\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/Api/V1/Notification/NotificationInboxController.php
+
+		# argument.type: framework/vendor signature narrower than runtime reality (null from guards, generics erased); verify per site when paying off
+		-
+			message: '#^Parameter \#1 \$viewer of method App\\Actions\\V1\\Notification\\NotificationInboxAction\:\:markAsRead\(\) expects App\\Models\\User, App\\Models\\User\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/Api/V1/Notification/NotificationInboxController.php
+
+		# phpDoc.parseError: PHPDoc syntax the analyser cannot parse; fix the annotation when paying off
+		-
+			message: '#^PHPDoc tag @var has invalid value \(\\\\Illuminate\\Contracts\\\\Pagination\\\\LengthAwarePaginator \$permissions\)\: Unexpected token "\\\\\\\\Illuminate\\\\Contracts\\\\\\\\Pagination\\\\\\\\LengthAwarePaginator", expected type at offset 9 on line 1$#'
+			identifier: phpDoc.parseError
+			count: 1
+			path: app/Http/Controllers/Api/V1/Permission/PermissionController.php
+
+		# method.nonObject: nullable from framework signature (find()/fresh()); guarded at runtime; revisit when the guard is typed
+		-
+			message: '#^Cannot call method fresh\(\) on App\\Models\\User\|null\.$#'
+			identifier: method.nonObject
+			count: 2
+			path: app/Http/Controllers/Api/V1/ProfileController.php
+
+		# method.nonObject: nullable from framework signature (find()/fresh()); guarded at runtime; revisit when the guard is typed
+		-
+			message: '#^Cannot call method getOriginal\(\) on App\\Models\\User\|null\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Http/Controllers/Api/V1/ProfileController.php
+
+		# argument.type: framework/vendor signature narrower than runtime reality (null from guards, generics erased); verify per site when paying off
+		-
+			message: '#^Parameter \#1 \$user of method App\\Actions\\V1\\User\\UserUpdateAction\:\:run\(\) expects App\\Models\\User, App\\Models\\User\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/Api/V1/ProfileController.php
+
+		# argument.type: framework/vendor signature narrower than runtime reality (null from guards, generics erased); verify per site when paying off
+		-
+			message: '#^Parameter \$user of method App\\Actions\\V1\\Auth\\AuthChangePasswordAction\:\:run\(\) expects App\\Models\\User, App\\Models\\User\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/Api/V1/ProfileController.php
+
+		# method.nonObject: nullable from framework signature (find()/fresh()); guarded at runtime; revisit when the guard is typed
+		-
+			message: '#^Cannot call method load\(\) on App\\Models\\Role\|null\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Http/Controllers/Api/V1/Role/RoleController.php
+
+		# argument.type: framework/vendor signature narrower than runtime reality (null from guards, generics erased); verify per site when paying off
+		-
+			message: '#^Parameter \$causer of method App\\Actions\\V1\\BulkAction\\BulkActionProcessor\:\:run\(\) expects App\\Models\\User, App\\Models\\User\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/Api/V1/Role/RoleController.php
+
+		# argument.type: framework/vendor signature narrower than runtime reality (null from guards, generics erased); verify per site when paying off
+		-
+			message: '#^Parameter \#1 \$user of method App\\Actions\\V1\\Auth\\AuthListSessionsAction\:\:run\(\) expects App\\Models\\User, App\\Models\\User\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/Api/V1/SessionController.php
+
+		# argument.type: framework/vendor signature narrower than runtime reality (null from guards, generics erased); verify per site when paying off
+		-
+			message: '#^Parameter \#1 \$user of method App\\Actions\\V1\\Auth\\AuthRevokeSessionAction\:\:run\(\) expects App\\Models\\User, App\\Models\\User\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/Api/V1/SessionController.php
+
+		# nullCoalesce.offset: array offset the analyser cannot prove absent; ?? keeps it safe at runtime
+		-
+			message: '#^Offset ''error_code'' on array\{message\: string, status\: int, error_code\: string\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Http/Controllers/Api/V1/User/UserController.php
+
+		# nullCoalesce.offset: array offset the analyser cannot prove absent; ?? keeps it safe at runtime
+		-
+			message: '#^Offset ''status'' on array\{message\: string, status\: int, error_code\: string\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Http/Controllers/Api/V1/User/UserController.php
+
+		# argument.type: framework/vendor signature narrower than runtime reality (null from guards, generics erased); verify per site when paying off
+		-
+			message: '#^Parameter \#2 \$causer of method App\\Actions\\V1\\User\\UserDeleteAction\:\:run\(\) expects App\\Models\\User, App\\Models\\User\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/Api/V1/User/UserController.php
+
+		# argument.type: framework/vendor signature narrower than runtime reality (null from guards, generics erased); verify per site when paying off
+		-
+			message: '#^Parameter \#2 \$causer of method App\\Actions\\V1\\User\\UserForceDeleteAction\:\:run\(\) expects App\\Models\\User, App\\Models\\User\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/Api/V1/User/UserController.php
+
+		# argument.type: framework/vendor signature narrower than runtime reality (null from guards, generics erased); verify per site when paying off
+		-
+			message: '#^Parameter \#2 \$ip of method App\\Actions\\V1\\User\\UserAdminResendVerificationAction\:\:run\(\) expects string, string\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/Api/V1/User/UserController.php
+
+		# argument.type: framework/vendor signature narrower than runtime reality (null from guards, generics erased); verify per site when paying off
+		-
+			message: '#^Parameter \$causer of method App\\Actions\\V1\\BulkAction\\BulkActionProcessor\:\:run\(\) expects App\\Models\\User, App\\Models\\User\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/Api/V1/User/UserController.php
+
+		# argument.type: framework/vendor signature narrower than runtime reality (null from guards, generics erased); verify per site when paying off
+		-
+			message: '#^Parameter \#2 \$causer of method App\\Actions\\V1\\User\\UserDeactivateAction\:\:run\(\) expects App\\Models\\User, App\\Models\\User\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/Api/V1/User/UserStateController.php
+
+		# missingType.generics: own-code docblock debt: Collection/Paginator generics not written out; pay off with @return generic shape
+		-
+			message: '#^Method App\\Http\\Controllers\\Controller\:\:paginationFor\(\) has parameter \$paginator with generic interface Illuminate\\Contracts\\Pagination\\LengthAwarePaginator but does not specify its types\: TKey, TValue$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Http/Controllers/Controller.php
+
+		# missingType.iterableValue: own-code docblock debt: array shape not written out; runtime correct; pay off by tightening the PHPDoc
+		-
+			message: '#^Method App\\Http\\Controllers\\Controller\:\:respond\(\) has parameter \$data with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Http/Controllers/Controller.php
+
+		# argument.type: framework/vendor signature narrower than runtime reality (null from guards, generics erased); verify per site when paying off
+		-
+			message: '#^Parameter \#1 \$user of method App\\Actions\\V1\\Audit\\AuditExportRequestAction\:\:recentFor\(\) expects App\\Models\\User, App\\Models\\User\|null given\.$#'
+			identifier: argument.type
+			count: 2
+			path: app/Http/Controllers/Web/V1/ActivityLogController.php
+
+		# argument.type: framework/vendor signature narrower than runtime reality (null from guards, generics erased); verify per site when paying off
+		-
+			message: '#^Parameter \#1 \$user of method App\\Actions\\V1\\Audit\\AuditExportDownloadAction\:\:run\(\) expects App\\Models\\User, App\\Models\\User\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/Web/V1/AuditExportController.php
+
+		# argument.type: framework/vendor signature narrower than runtime reality (null from guards, generics erased); verify per site when paying off
+		-
+			message: '#^Parameter \#1 \$user of method App\\Actions\\V1\\Audit\\AuditExportRequestAction\:\:recentFor\(\) expects App\\Models\\User, App\\Models\\User\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/Web/V1/AuditExportController.php
+
+		# argument.type: framework/vendor signature narrower than runtime reality (null from guards, generics erased); verify per site when paying off
+		-
+			message: '#^Parameter \#1 \$user of method App\\Actions\\V1\\Audit\\AuditExportRequestAction\:\:retry\(\) expects App\\Models\\User, App\\Models\\User\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/Web/V1/AuditExportController.php
+
+		# argument.type: framework/vendor signature narrower than runtime reality (null from guards, generics erased); verify per site when paying off
+		-
+			message: '#^Parameter \#1 \$user of method App\\Actions\\V1\\Audit\\AuditExportRequestAction\:\:run\(\) expects App\\Models\\User, App\\Models\\User\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/Web/V1/AuditExportController.php
+
+		# method.notFound: Laravel macro/magic method resolved at runtime; not statically visible
+		-
+			message: '#^Call to an undefined method App\\Models\\User\|Illuminate\\Database\\Eloquent\\Collection\<int, App\\Models\\User\>\:\:getEmailForVerification\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Http/Controllers/Web/V1/Auth/AuthController.php
+
+		# method.notFound: Laravel macro/magic method resolved at runtime; not statically visible
+		-
+			message: '#^Call to an undefined method App\\Models\\User\|Illuminate\\Database\\Eloquent\\Collection\<int, App\\Models\\User\>\:\:hasVerifiedEmail\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Http/Controllers/Web/V1/Auth/AuthController.php
+
+		# argument.type: framework/vendor signature narrower than runtime reality (null from guards, generics erased); verify per site when paying off
+		-
+			message: '#^Parameter \#1 \$user of method App\\Actions\\V1\\Auth\\AuthListSessionsAction\:\:run\(\) expects App\\Models\\User, App\\Models\\User\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/Web/V1/Auth/AuthController.php
+
+		# argument.type: framework/vendor signature narrower than runtime reality (null from guards, generics erased); verify per site when paying off
+		-
+			message: '#^Parameter \#1 \$user of method App\\Actions\\V1\\Auth\\AuthLogoutAllDevicesAction\:\:run\(\) expects App\\Models\\User, App\\Models\\User\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/Web/V1/Auth/AuthController.php
+
+		# argument.type: framework/vendor signature narrower than runtime reality (null from guards, generics erased); verify per site when paying off
+		-
+			message: '#^Parameter \#1 \$user of method App\\Actions\\V1\\Auth\\AuthVerifyEmailAction\:\:run\(\) expects App\\Models\\User, App\\Models\\User\|Illuminate\\Database\\Eloquent\\Collection\<int, App\\Models\\User\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/Web/V1/Auth/AuthController.php
+
+		# argument.type: framework/vendor signature narrower than runtime reality (null from guards, generics erased); verify per site when paying off
+		-
+			message: '#^Parameter \#2 \$ip of method App\\Actions\\V1\\Auth\\AuthResendVerificationAction\:\:run\(\) expects string, string\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/Web/V1/Auth/AuthController.php
+
+		# argument.type: framework/vendor signature narrower than runtime reality (null from guards, generics erased); verify per site when paying off
+		-
+			message: '#^Parameter \#2 \$ip of method App\\Actions\\V1\\Auth\\AuthResetPasswordAction\:\:run\(\) expects string, string\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/Web/V1/Auth/AuthController.php
+
+		# argument.type: framework/vendor signature narrower than runtime reality (null from guards, generics erased); verify per site when paying off
+		-
+			message: '#^Parameter \#2 \$ip of method App\\Actions\\V1\\Auth\\AuthSendResetLinkAction\:\:run\(\) expects string, string\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/Web/V1/Auth/AuthController.php
+
+		# argument.type: framework/vendor signature narrower than runtime reality (null from guards, generics erased); verify per site when paying off
+		-
+			message: '#^Parameter \#3 \$ip of method App\\Actions\\V1\\Auth\\AuthAuthenticateAction\:\:run\(\) expects string, string\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/Web/V1/Auth/AuthController.php
+
+		# argument.type: framework/vendor signature narrower than runtime reality (null from guards, generics erased); verify per site when paying off
+		-
+			message: '#^Parameter \#1 \$callback of function array_map expects \(callable\(int\|string\)\: mixed\)\|null, ''ucfirst'' given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/Web/V1/NotificationController.php
+
+		# method.nonObject: nullable from framework signature (find()/fresh()); guarded at runtime; revisit when the guard is typed
+		-
+			message: '#^Cannot call method can\(\) on App\\Models\\User\|null\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Http/Controllers/Web/V1/NotificationInboxController.php
+
+		# argument.type: framework/vendor signature narrower than runtime reality (null from guards, generics erased); verify per site when paying off
+		-
+			message: '#^Parameter \#1 \$user of static method App\\Support\\UnreadNotificationCount\:\:for\(\) expects App\\Models\\User, App\\Models\\User\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/Web/V1/NotificationInboxController.php
+
+		# argument.type: framework/vendor signature narrower than runtime reality (null from guards, generics erased); verify per site when paying off
+		-
+			message: '#^Parameter \#1 \$user of static method App\\Support\\UnreadNotificationCount\:\:latestIdFor\(\) expects App\\Models\\User, App\\Models\\User\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/Web/V1/NotificationInboxController.php
+
+		# argument.type: framework/vendor signature narrower than runtime reality (null from guards, generics erased); verify per site when paying off
+		-
+			message: '#^Parameter \#1 \$viewer of method App\\Actions\\V1\\Notification\\NotificationInboxAction\:\:inbox\(\) expects App\\Models\\User, App\\Models\\User\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/Web/V1/NotificationInboxController.php
+
+		# argument.type: framework/vendor signature narrower than runtime reality (null from guards, generics erased); verify per site when paying off
+		-
+			message: '#^Parameter \#1 \$viewer of method App\\Actions\\V1\\Notification\\NotificationInboxAction\:\:markAllAsRead\(\) expects App\\Models\\User, App\\Models\\User\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/Web/V1/NotificationInboxController.php
+
+		# argument.type: framework/vendor signature narrower than runtime reality (null from guards, generics erased); verify per site when paying off
+		-
+			message: '#^Parameter \#1 \$viewer of method App\\Actions\\V1\\Notification\\NotificationInboxAction\:\:markAsRead\(\) expects App\\Models\\User, App\\Models\\User\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/Web/V1/NotificationInboxController.php
+
+		# argument.type: framework/vendor signature narrower than runtime reality (null from guards, generics erased); verify per site when paying off
+		-
+			message: '#^Parameter \#1 \$viewer of method App\\Actions\\V1\\Notification\\NotificationInboxAction\:\:show\(\) expects App\\Models\\User, App\\Models\\User\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/Web/V1/NotificationInboxController.php
+
+		# method.nonObject: nullable from framework signature (find()/fresh()); guarded at runtime; revisit when the guard is typed
+		-
+			message: '#^Cannot call method getOriginal\(\) on App\\Models\\User\|null\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Http/Controllers/Web/V1/ProfileController.php
+
+		# missingType.return: own-code docblock debt: missing @return; pay off by documenting the type
+		-
+			message: '#^Method App\\Http\\Controllers\\Web\\V1\\ProfileController\:\:showExpiredPassword\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/Web/V1/ProfileController.php
+
+		# argument.type: framework/vendor signature narrower than runtime reality (null from guards, generics erased); verify per site when paying off
+		-
+			message: '#^Parameter \#1 \$user of method App\\Actions\\V1\\User\\UserUpdateAction\:\:run\(\) expects App\\Models\\User, App\\Models\\User\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/Web/V1/ProfileController.php
+
+		# argument.type: framework/vendor signature narrower than runtime reality (null from guards, generics erased); verify per site when paying off
+		-
+			message: '#^Parameter \$user of method App\\Actions\\V1\\Auth\\AuthChangePasswordAction\:\:run\(\) expects App\\Models\\User, App\\Models\\User\|null given\.$#'
+			identifier: argument.type
+			count: 2
+			path: app/Http/Controllers/Web/V1/ProfileController.php
+
+		# missingType.generics: own-code docblock debt: Collection/Paginator generics not written out; pay off with @return generic shape
+		-
+			message: '#^Method App\\Http\\Controllers\\Web\\V1\\RoleController\:\:permissionData\(\) return type with generic class Illuminate\\Support\\Collection does not specify its types\: TKey, TValue$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Http/Controllers/Web/V1/RoleController.php
+
+		# argument.type: framework/vendor signature narrower than runtime reality (null from guards, generics erased); verify per site when paying off
+		-
+			message: '#^Parameter \$causer of method App\\Actions\\V1\\BulkAction\\BulkActionProcessor\:\:run\(\) expects App\\Models\\User, App\\Models\\User\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/Web/V1/RoleController.php
+
+		# missingType.return: own-code docblock debt: missing @return; pay off by documenting the type
+		-
+			message: '#^Method App\\Http\\Controllers\\Web\\V1\\UserController\:\:edit\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Http/Controllers/Web/V1/UserController.php
+
+		# argument.type: framework/vendor signature narrower than runtime reality (null from guards, generics erased); verify per site when paying off
+		-
+			message: '#^Parameter \#2 \$causer of method App\\Actions\\V1\\User\\UserDeleteAction\:\:run\(\) expects App\\Models\\User, App\\Models\\User\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/Web/V1/UserController.php
+
+		# argument.type: framework/vendor signature narrower than runtime reality (null from guards, generics erased); verify per site when paying off
+		-
+			message: '#^Parameter \#2 \$causer of method App\\Actions\\V1\\User\\UserForceDeleteAction\:\:run\(\) expects App\\Models\\User, App\\Models\\User\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/Web/V1/UserController.php
+
+		# argument.type: framework/vendor signature narrower than runtime reality (null from guards, generics erased); verify per site when paying off
+		-
+			message: '#^Parameter \#2 \$ip of method App\\Actions\\V1\\User\\UserAdminResendVerificationAction\:\:run\(\) expects string, string\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/Web/V1/UserController.php
+
+		# argument.type: framework/vendor signature narrower than runtime reality (null from guards, generics erased); verify per site when paying off
+		-
+			message: '#^Parameter \$causer of method App\\Actions\\V1\\BulkAction\\BulkActionProcessor\:\:run\(\) expects App\\Models\\User, App\\Models\\User\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/Web/V1/UserController.php
+
+		# argument.type: framework/vendor signature narrower than runtime reality (null from guards, generics erased); verify per site when paying off
+		-
+			message: '#^Parameter \#2 \$causer of method App\\Actions\\V1\\User\\UserDeactivateAction\:\:run\(\) expects App\\Models\\User, App\\Models\\User\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/Web/V1/UserStateController.php
+
+		# method.nonObject: nullable from framework signature (find()/fresh()); guarded at runtime; revisit when the guard is typed
+		-
+			message: '#^Cannot call method getName\(\) on Illuminate\\Routing\\Route\|null\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Http/Middleware/CheckAccountState.php
+
+		# method.nonObject: nullable from framework signature (find()/fresh()); guarded at runtime; revisit when the guard is typed
+		-
+			message: '#^Cannot call method getName\(\) on Illuminate\\Routing\\Route\|null\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Http/Middleware/EnsurePasswordChangeRequired.php
+
+		# missingType.iterableValue: own-code docblock debt: array shape not written out; runtime correct; pay off by tightening the PHPDoc
+		-
+			message: '#^Method App\\Http\\Requests\\V1\\Auth\\LoginRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Http/Requests/V1/Auth/LoginRequest.php
+
+		# missingType.iterableValue: own-code docblock debt: array shape not written out; runtime correct; pay off by tightening the PHPDoc
+		-
+			message: '#^Method App\\Http\\Requests\\V1\\Auth\\PasswordChangeRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Http/Requests/V1/Auth/PasswordChangeRequest.php
+
+		# missingType.iterableValue: own-code docblock debt: array shape not written out; runtime correct; pay off by tightening the PHPDoc
+		-
+			message: '#^Method App\\Http\\Requests\\V1\\Auth\\PasswordForgotRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Http/Requests/V1/Auth/PasswordForgotRequest.php
+
+		# missingType.iterableValue: own-code docblock debt: array shape not written out; runtime correct; pay off by tightening the PHPDoc
+		-
+			message: '#^Method App\\Http\\Requests\\V1\\Auth\\PasswordResetRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Http/Requests/V1/Auth/PasswordResetRequest.php
+
+		# missingType.iterableValue: own-code docblock debt: array shape not written out; runtime correct; pay off by tightening the PHPDoc
+		-
+			message: '#^Method App\\Http\\Requests\\V1\\Auth\\RegisterRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Http/Requests/V1/Auth/RegisterRequest.php
+
+		# missingType.iterableValue: own-code docblock debt: array shape not written out; runtime correct; pay off by tightening the PHPDoc
+		-
+			message: '#^Method App\\Http\\Requests\\V1\\Auth\\ResendVerificationRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Http/Requests/V1/Auth/ResendVerificationRequest.php
+
+		# missingType.iterableValue: own-code docblock debt: array shape not written out; runtime correct; pay off by tightening the PHPDoc
+		-
+			message: '#^Method App\\Http\\Requests\\V1\\Feature\\BulkFeatureRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Http/Requests/V1/Feature/BulkFeatureRequest.php
+
+		# missingType.iterableValue: own-code docblock debt: array shape not written out; runtime correct; pay off by tightening the PHPDoc
+		-
+			message: '#^Method App\\Http\\Requests\\V1\\Feature\\ToggleFeatureRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Http/Requests/V1/Feature/ToggleFeatureRequest.php
+
+		# missingType.iterableValue: own-code docblock debt: array shape not written out; runtime correct; pay off by tightening the PHPDoc
+		-
+			message: '#^Method App\\Http\\Requests\\V1\\Permission\\PermissionQueryRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Http/Requests/V1/Permission/PermissionQueryRequest.php
+
+		# missingType.iterableValue: own-code docblock debt: array shape not written out; runtime correct; pay off by tightening the PHPDoc
+		-
+			message: '#^Method App\\Http\\Requests\\V1\\Role\\BulkRoleRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Http/Requests/V1/Role/BulkRoleRequest.php
+
+		# missingType.iterableValue: own-code docblock debt: array shape not written out; runtime correct; pay off by tightening the PHPDoc
+		-
+			message: '#^Method App\\Http\\Requests\\V1\\Role\\DeleteRoleRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Http/Requests/V1/Role/DeleteRoleRequest.php
+
+		# missingType.iterableValue: own-code docblock debt: array shape not written out; runtime correct; pay off by tightening the PHPDoc
+		-
+			message: '#^Method App\\Http\\Requests\\V1\\Role\\ForceDeleteRoleRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Http/Requests/V1/Role/ForceDeleteRoleRequest.php
+
+		# missingType.iterableValue: own-code docblock debt: array shape not written out; runtime correct; pay off by tightening the PHPDoc
+		-
+			message: '#^Method App\\Http\\Requests\\V1\\Role\\RestoreRoleRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Http/Requests/V1/Role/RestoreRoleRequest.php
+
+		# missingType.iterableValue: own-code docblock debt: array shape not written out; runtime correct; pay off by tightening the PHPDoc
+		-
+			message: '#^Method App\\Http\\Requests\\V1\\Role\\RoleQueryRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Http/Requests/V1/Role/RoleQueryRequest.php
+
+		# nullCoalesce.expr: left side not nullable per docblock; coalesce kept for the untyped caller
+		-
+			message: '#^Expression on left side of \?\? is not nullable\.$#'
+			identifier: nullCoalesce.expr
+			count: 1
+			path: app/Http/Requests/V1/Role/StoreRoleRequest.php
+
+		# missingType.iterableValue: own-code docblock debt: array shape not written out; runtime correct; pay off by tightening the PHPDoc
+		-
+			message: '#^Method App\\Http\\Requests\\V1\\Role\\StoreRoleRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Http/Requests/V1/Role/StoreRoleRequest.php
+
+		# nullsafe.neverNull: nullsafe on a non-nullable type; harmless, simplify when paying off
+		-
+			message: '#^Using nullsafe method call on non\-nullable type App\\Models\\User\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Requests/V1/Role/StoreRoleRequest.php
+
+		# nullCoalesce.expr: left side not nullable per docblock; coalesce kept for the untyped caller
+		-
+			message: '#^Expression on left side of \?\? is not nullable\.$#'
+			identifier: nullCoalesce.expr
+			count: 1
+			path: app/Http/Requests/V1/Role/UpdateRoleRequest.php
+
+		# missingType.iterableValue: own-code docblock debt: array shape not written out; runtime correct; pay off by tightening the PHPDoc
+		-
+			message: '#^Method App\\Http\\Requests\\V1\\Role\\UpdateRoleRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Http/Requests/V1/Role/UpdateRoleRequest.php
+
+		# nullsafe.neverNull: nullsafe on a non-nullable type; harmless, simplify when paying off
+		-
+			message: '#^Using nullsafe method call on non\-nullable type App\\Models\\User\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Requests/V1/Role/UpdateRoleRequest.php
+
+		# missingType.iterableValue: own-code docblock debt: array shape not written out; runtime correct; pay off by tightening the PHPDoc
+		-
+			message: '#^Method App\\Http\\Requests\\V1\\System\\SystemSettingRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Http/Requests/V1/System/SystemSettingRequest.php
+
+		# missingType.iterableValue: own-code docblock debt: array shape not written out; runtime correct; pay off by tightening the PHPDoc
+		-
+			message: '#^Method App\\Http\\Requests\\V1\\User\\BulkUserRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Http/Requests/V1/User/BulkUserRequest.php
+
+		# missingType.iterableValue: own-code docblock debt: array shape not written out; runtime correct; pay off by tightening the PHPDoc
+		-
+			message: '#^Method App\\Http\\Requests\\V1\\User\\CreateUserRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Http/Requests/V1/User/CreateUserRequest.php
+
+		# property.nonObject: nullable from framework signature; guarded at runtime; revisit when the guard is typed
+		-
+			message: '#^Cannot access property \$email on App\\Models\\User\|null\.$#'
+			identifier: property.nonObject
+			count: 1
+			path: app/Http/Requests/V1/User/ProfileUpdateRequest.php
+
+		# property.nonObject: nullable from framework signature; guarded at runtime; revisit when the guard is typed
+		-
+			message: '#^Cannot access property \$password on App\\Models\\User\|null\.$#'
+			identifier: property.nonObject
+			count: 1
+			path: app/Http/Requests/V1/User/ProfileUpdateRequest.php
+
+		# property.nonObject: nullable from framework signature; guarded at runtime; revisit when the guard is typed
+		-
+			message: '#^Cannot access property \$username on App\\Models\\User\|null\.$#'
+			identifier: property.nonObject
+			count: 1
+			path: app/Http/Requests/V1/User/ProfileUpdateRequest.php
+
+		# method.nonObject: nullable from framework signature (find()/fresh()); guarded at runtime; revisit when the guard is typed
+		-
+			message: '#^Cannot call method canChangeEmail\(\) on App\\Models\\User\|null\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Http/Requests/V1/User/ProfileUpdateRequest.php
+
+		# method.nonObject: nullable from framework signature (find()/fresh()); guarded at runtime; revisit when the guard is typed
+		-
+			message: '#^Cannot call method canChangeUsername\(\) on App\\Models\\User\|null\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Http/Requests/V1/User/ProfileUpdateRequest.php
+
+		# missingType.iterableValue: own-code docblock debt: array shape not written out; runtime correct; pay off by tightening the PHPDoc
+		-
+			message: '#^Method App\\Http\\Requests\\V1\\User\\ProfileUpdateRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Http/Requests/V1/User/ProfileUpdateRequest.php
+
+		# property.notFound: Eloquent magic attribute resolved at runtime by Laravel; not statically visible (Larastan limitation, not a bug)
+		-
+			message: '#^Access to an undefined property \(class\-string\|object\)\:\:\$email_changed_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Requests/V1/User/UpdateUserRequest.php
+
+		# property.notFound: Eloquent magic attribute resolved at runtime by Laravel; not statically visible (Larastan limitation, not a bug)
+		-
+			message: '#^Access to an undefined property \(class\-string\|object\)\:\:\$username_changed_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Requests/V1/User/UpdateUserRequest.php
+
+		# property.notFound: Eloquent magic attribute resolved at runtime by Laravel; not statically visible (Larastan limitation, not a bug)
+		-
+			message: '#^Access to an undefined property \(object\|string\|null\)\:\:\$email\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Requests/V1/User/UpdateUserRequest.php
+
+		# property.notFound: Eloquent magic attribute resolved at runtime by Laravel; not statically visible (Larastan limitation, not a bug)
+		-
+			message: '#^Access to an undefined property \(object\|string\|null\)\:\:\$username\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Requests/V1/User/UpdateUserRequest.php
+
+		# method.notFound: Laravel macro/magic method resolved at runtime; not statically visible
+		-
+			message: '#^Call to an undefined method \(object\|string\)\:\:getKey\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Http/Requests/V1/User/UpdateUserRequest.php
+
+		# missingType.iterableValue: own-code docblock debt: array shape not written out; runtime correct; pay off by tightening the PHPDoc
+		-
+			message: '#^Method App\\Http\\Requests\\V1\\User\\UpdateUserRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Http/Requests/V1/User/UpdateUserRequest.php
+
+		# missingType.iterableValue: own-code docblock debt: array shape not written out; runtime correct; pay off by tightening the PHPDoc
+		-
+			message: '#^Method App\\Http\\Requests\\V1\\User\\UserQueryRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Http/Requests/V1/User/UserQueryRequest.php
+
+		# missingType.iterableValue: own-code docblock debt: array shape not written out; runtime correct; pay off by tightening the PHPDoc
+		-
+			message: '#^Method App\\Http\\Requests\\V1\\User\\VerifyEmailChangeRequest\:\:rules\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Http/Requests/V1/User/VerifyEmailChangeRequest.php
+
+		# property.notFound: Eloquent magic attribute resolved at runtime by Laravel; not statically visible (Larastan limitation, not a bug)
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\Api\\V1\\Audit\\ActivityResource\:\:\$batch_uuid\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/Api/V1/Audit/ActivityResource.php
+
+		# property.notFound: Eloquent magic attribute resolved at runtime by Laravel; not statically visible (Larastan limitation, not a bug)
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\Api\\V1\\Audit\\ActivityResource\:\:\$causer_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/Api/V1/Audit/ActivityResource.php
+
+		# property.notFound: Eloquent magic attribute resolved at runtime by Laravel; not statically visible (Larastan limitation, not a bug)
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\Api\\V1\\Audit\\ActivityResource\:\:\$causer_type\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/Api/V1/Audit/ActivityResource.php
+
+		# property.notFound: Eloquent magic attribute resolved at runtime by Laravel; not statically visible (Larastan limitation, not a bug)
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\Api\\V1\\Audit\\ActivityResource\:\:\$created_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/Api/V1/Audit/ActivityResource.php
+
+		# property.notFound: Eloquent magic attribute resolved at runtime by Laravel; not statically visible (Larastan limitation, not a bug)
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\Api\\V1\\Audit\\ActivityResource\:\:\$description\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/Api/V1/Audit/ActivityResource.php
+
+		# property.notFound: Eloquent magic attribute resolved at runtime by Laravel; not statically visible (Larastan limitation, not a bug)
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\Api\\V1\\Audit\\ActivityResource\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/Api/V1/Audit/ActivityResource.php
+
+		# property.notFound: Eloquent magic attribute resolved at runtime by Laravel; not statically visible (Larastan limitation, not a bug)
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\Api\\V1\\Audit\\ActivityResource\:\:\$properties\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/Api/V1/Audit/ActivityResource.php
+
+		# property.notFound: Eloquent magic attribute resolved at runtime by Laravel; not statically visible (Larastan limitation, not a bug)
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\Api\\V1\\Audit\\ActivityResource\:\:\$subject_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/Api/V1/Audit/ActivityResource.php
+
+		# property.notFound: Eloquent magic attribute resolved at runtime by Laravel; not statically visible (Larastan limitation, not a bug)
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\Api\\V1\\Audit\\ActivityResource\:\:\$subject_type\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/Api/V1/Audit/ActivityResource.php
+
+		# method.notFound: Laravel macro/magic method resolved at runtime; not statically visible
+		-
+			message: '#^Call to an undefined method App\\Http\\Resources\\Api\\V1\\Audit\\ActivityResource\:\:causerLabel\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Http/Resources/Api/V1/Audit/ActivityResource.php
+
+		# method.notFound: Laravel macro/magic method resolved at runtime; not statically visible
+		-
+			message: '#^Call to an undefined method App\\Http\\Resources\\Api\\V1\\Audit\\ActivityResource\:\:eventName\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Http/Resources/Api/V1/Audit/ActivityResource.php
+
+		# method.notFound: Laravel macro/magic method resolved at runtime; not statically visible
+		-
+			message: '#^Call to an undefined method App\\Http\\Resources\\Api\\V1\\Audit\\ActivityResource\:\:extra\(\)\.$#'
+			identifier: method.notFound
+			count: 3
+			path: app/Http/Resources/Api/V1/Audit/ActivityResource.php
+
+		# method.notFound: Laravel macro/magic method resolved at runtime; not statically visible
+		-
+			message: '#^Call to an undefined method App\\Http\\Resources\\Api\\V1\\Audit\\ActivityResource\:\:source\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Http/Resources/Api/V1/Audit/ActivityResource.php
+
+		# method.notFound: Laravel macro/magic method resolved at runtime; not statically visible
+		-
+			message: '#^Call to an undefined method App\\Http\\Resources\\Api\\V1\\Audit\\ActivityResource\:\:subjectLabel\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Http/Resources/Api/V1/Audit/ActivityResource.php
+
+		# property.notFound: Eloquent magic attribute resolved at runtime by Laravel; not statically visible (Larastan limitation, not a bug)
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\Api\\V1\\Audit\\AuditExportResource\:\:\$completed_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/Api/V1/Audit/AuditExportResource.php
+
+		# property.notFound: Eloquent magic attribute resolved at runtime by Laravel; not statically visible (Larastan limitation, not a bug)
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\Api\\V1\\Audit\\AuditExportResource\:\:\$created_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/Api/V1/Audit/AuditExportResource.php
+
+		# property.notFound: Eloquent magic attribute resolved at runtime by Laravel; not statically visible (Larastan limitation, not a bug)
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\Api\\V1\\Audit\\AuditExportResource\:\:\$expires_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/Api/V1/Audit/AuditExportResource.php
+
+		# property.notFound: Eloquent magic attribute resolved at runtime by Laravel; not statically visible (Larastan limitation, not a bug)
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\Api\\V1\\Audit\\AuditExportResource\:\:\$filters\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/Api/V1/Audit/AuditExportResource.php
+
+		# property.notFound: Eloquent magic attribute resolved at runtime by Laravel; not statically visible (Larastan limitation, not a bug)
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\Api\\V1\\Audit\\AuditExportResource\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/Api/V1/Audit/AuditExportResource.php
+
+		# property.notFound: Eloquent magic attribute resolved at runtime by Laravel; not statically visible (Larastan limitation, not a bug)
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\Api\\V1\\Audit\\AuditExportResource\:\:\$retry_count\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/Api/V1/Audit/AuditExportResource.php
+
+		# property.notFound: Eloquent magic attribute resolved at runtime by Laravel; not statically visible (Larastan limitation, not a bug)
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\Api\\V1\\Audit\\AuditExportResource\:\:\$row_count\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/Api/V1/Audit/AuditExportResource.php
+
+		# property.notFound: Eloquent magic attribute resolved at runtime by Laravel; not statically visible (Larastan limitation, not a bug)
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\Api\\V1\\Audit\\AuditExportResource\:\:\$status\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Http/Resources/Api/V1/Audit/AuditExportResource.php
+
+		# method.notFound: Laravel macro/magic method resolved at runtime; not statically visible
+		-
+			message: '#^Call to an undefined method App\\Http\\Resources\\Api\\V1\\Audit\\AuditExportResource\:\:canRetry\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Http/Resources/Api/V1/Audit/AuditExportResource.php
+
+		# method.notFound: Laravel macro/magic method resolved at runtime; not statically visible
+		-
+			message: '#^Call to an undefined method App\\Http\\Resources\\Api\\V1\\Audit\\AuditExportResource\:\:isDownloadable\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Http/Resources/Api/V1/Audit/AuditExportResource.php
+
+		# method.notFound: Laravel macro/magic method resolved at runtime; not statically visible
+		-
+			message: '#^Call to an undefined method App\\Http\\Resources\\Api\\V1\\Audit\\AuditExportResource\:\:isExpired\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Http/Resources/Api/V1/Audit/AuditExportResource.php
+
+		# property.notFound: Eloquent magic attribute resolved at runtime by Laravel; not statically visible (Larastan limitation, not a bug)
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\Api\\V1\\Notification\\NotificationResource\:\:\$created_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/Api/V1/Notification/NotificationResource.php
+
+		# property.notFound: Eloquent magic attribute resolved at runtime by Laravel; not statically visible (Larastan limitation, not a bug)
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\Api\\V1\\Notification\\NotificationResource\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/Api/V1/Notification/NotificationResource.php
+
+		# property.notFound: Eloquent magic attribute resolved at runtime by Laravel; not statically visible (Larastan limitation, not a bug)
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\Api\\V1\\Notification\\NotificationResource\:\:\$read_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/Api/V1/Notification/NotificationResource.php
+
+		# property.notFound: Eloquent magic attribute resolved at runtime by Laravel; not statically visible (Larastan limitation, not a bug)
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\Api\\V1\\Notification\\NotificationResource\:\:\$type\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/Api/V1/Notification/NotificationResource.php
+
+		# return.type: docblock and implementation disagree (stated shape too precise); runtime value correct; fix the docblock when paying off
+		-
+			message: '#^Anonymous function should return array\{url\: string, label\: string\} but returns array\{url\: string, label\: string\}\|null\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Http/Resources/Api/V1/Notification/NotificationResource.php
+
+		# property.notFound: Eloquent magic attribute resolved at runtime by Laravel; not statically visible (Larastan limitation, not a bug)
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\Api\\V1\\Permission\\PermissionResource\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/Api/V1/Permission/PermissionResource.php
+
+		# property.notFound: Eloquent magic attribute resolved at runtime by Laravel; not statically visible (Larastan limitation, not a bug)
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\Api\\V1\\Permission\\PermissionResource\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/Api/V1/Permission/PermissionResource.php
+
+		# property.notFound: Eloquent magic attribute resolved at runtime by Laravel; not statically visible (Larastan limitation, not a bug)
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\Api\\V1\\Permission\\PermissionResource\:\:\$roles\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/Api/V1/Permission/PermissionResource.php
+
+		# property.notFound: Eloquent magic attribute resolved at runtime by Laravel; not statically visible (Larastan limitation, not a bug)
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\Api\\V1\\Role\\RoleResource\:\:\$created_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/Api/V1/Role/RoleResource.php
+
+		# property.notFound: Eloquent magic attribute resolved at runtime by Laravel; not statically visible (Larastan limitation, not a bug)
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\Api\\V1\\Role\\RoleResource\:\:\$deleted_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/Api/V1/Role/RoleResource.php
+
+		# property.notFound: Eloquent magic attribute resolved at runtime by Laravel; not statically visible (Larastan limitation, not a bug)
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\Api\\V1\\Role\\RoleResource\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/Api/V1/Role/RoleResource.php
+
+		# property.notFound: Eloquent magic attribute resolved at runtime by Laravel; not statically visible (Larastan limitation, not a bug)
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\Api\\V1\\Role\\RoleResource\:\:\$is_system\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/Api/V1/Role/RoleResource.php
+
+		# property.notFound: Eloquent magic attribute resolved at runtime by Laravel; not statically visible (Larastan limitation, not a bug)
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\Api\\V1\\Role\\RoleResource\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/Api/V1/Role/RoleResource.php
+
+		# property.notFound: Eloquent magic attribute resolved at runtime by Laravel; not statically visible (Larastan limitation, not a bug)
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\Api\\V1\\Role\\RoleResource\:\:\$permissions\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/Api/V1/Role/RoleResource.php
+
+		# property.notFound: Eloquent magic attribute resolved at runtime by Laravel; not statically visible (Larastan limitation, not a bug)
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\Api\\V1\\Role\\RoleResource\:\:\$updated_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/Api/V1/Role/RoleResource.php
+
+		# property.notFound: Eloquent magic attribute resolved at runtime by Laravel; not statically visible (Larastan limitation, not a bug)
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\Api\\V1\\Session\\SessionResource\:\:\$abilities\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/Api/V1/Session/SessionResource.php
+
+		# property.notFound: Eloquent magic attribute resolved at runtime by Laravel; not statically visible (Larastan limitation, not a bug)
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\Api\\V1\\Session\\SessionResource\:\:\$created_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/Api/V1/Session/SessionResource.php
+
+		# property.notFound: Eloquent magic attribute resolved at runtime by Laravel; not statically visible (Larastan limitation, not a bug)
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\Api\\V1\\Session\\SessionResource\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/Api/V1/Session/SessionResource.php
+
+		# property.notFound: Eloquent magic attribute resolved at runtime by Laravel; not statically visible (Larastan limitation, not a bug)
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\Api\\V1\\Session\\SessionResource\:\:\$last_used_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/Api/V1/Session/SessionResource.php
+
+		# property.notFound: Eloquent magic attribute resolved at runtime by Laravel; not statically visible (Larastan limitation, not a bug)
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\Api\\V1\\Session\\SessionResource\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/Api/V1/Session/SessionResource.php
+
+		# property.notFound: Eloquent magic attribute resolved at runtime by Laravel; not statically visible (Larastan limitation, not a bug)
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\Api\\V1\\User\\UserResource\:\:\$created_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/Api/V1/User/UserResource.php
+
+		# property.notFound: Eloquent magic attribute resolved at runtime by Laravel; not statically visible (Larastan limitation, not a bug)
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\Api\\V1\\User\\UserResource\:\:\$email\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/Api/V1/User/UserResource.php
+
+		# property.notFound: Eloquent magic attribute resolved at runtime by Laravel; not statically visible (Larastan limitation, not a bug)
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\Api\\V1\\User\\UserResource\:\:\$email_verified_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/Api/V1/User/UserResource.php
+
+		# property.notFound: Eloquent magic attribute resolved at runtime by Laravel; not statically visible (Larastan limitation, not a bug)
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\Api\\V1\\User\\UserResource\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/Api/V1/User/UserResource.php
+
+		# property.notFound: Eloquent magic attribute resolved at runtime by Laravel; not statically visible (Larastan limitation, not a bug)
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\Api\\V1\\User\\UserResource\:\:\$is_active\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/Api/V1/User/UserResource.php
+
+		# property.notFound: Eloquent magic attribute resolved at runtime by Laravel; not statically visible (Larastan limitation, not a bug)
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\Api\\V1\\User\\UserResource\:\:\$is_locked\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/Api/V1/User/UserResource.php
+
+		# property.notFound: Eloquent magic attribute resolved at runtime by Laravel; not statically visible (Larastan limitation, not a bug)
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\Api\\V1\\User\\UserResource\:\:\$must_change_password\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/Api/V1/User/UserResource.php
+
+		# property.notFound: Eloquent magic attribute resolved at runtime by Laravel; not statically visible (Larastan limitation, not a bug)
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\Api\\V1\\User\\UserResource\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/Api/V1/User/UserResource.php
+
+		# property.notFound: Eloquent magic attribute resolved at runtime by Laravel; not statically visible (Larastan limitation, not a bug)
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\Api\\V1\\User\\UserResource\:\:\$username\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/Api/V1/User/UserResource.php
+
+		# property.notFound: Eloquent magic attribute resolved at runtime by Laravel; not statically visible (Larastan limitation, not a bug)
+		-
+			message: '#^Access to an undefined property object\:\:\$causer_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Jobs/GenerateAuditExport.php
+
+		# property.notFound: Eloquent magic attribute resolved at runtime by Laravel; not statically visible (Larastan limitation, not a bug)
+		-
+			message: '#^Access to an undefined property object\:\:\$causer_type\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Jobs/GenerateAuditExport.php
+
+		# property.notFound: Eloquent magic attribute resolved at runtime by Laravel; not statically visible (Larastan limitation, not a bug)
+		-
+			message: '#^Access to an undefined property object\:\:\$subject_id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Jobs/GenerateAuditExport.php
+
+		# property.notFound: Eloquent magic attribute resolved at runtime by Laravel; not statically visible (Larastan limitation, not a bug)
+		-
+			message: '#^Access to an undefined property object\:\:\$subject_type\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Jobs/GenerateAuditExport.php
+
+		# method.notFound: Laravel macro/magic method resolved at runtime; not statically visible
+		-
+			message: '#^Call to an undefined method object\:\:getKeyName\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Jobs/GenerateAuditExport.php
+
+		# argument.type: framework/vendor signature narrower than runtime reality (null from guards, generics erased); verify per site when paying off
+		-
+			message: '#^Parameter \#2 \$direction of method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\Activity\>\:\:orderBy\(\) expects ''asc''\|''desc''\|SortDirection, string given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Jobs/GenerateAuditExport.php
+
+		# argument.templateType: vendor generic the analyser resolves differently; upstream typing
+		-
+			message: '#^Unable to resolve the template type T in call to function array_values$#'
+			identifier: argument.templateType
+			count: 1
+			path: app/Jobs/GenerateAuditExport.php
+
+		# property.notFound: Eloquent magic attribute resolved at runtime by Laravel; not statically visible (Larastan limitation, not a bug)
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Models/Activity.php
+
+		# missingType.generics: own-code docblock debt: Collection/Paginator generics not written out; pay off with @return generic shape
+		-
+			message: '#^Method App\\Models\\Activity\:\:scopeFiltered\(\) has parameter \$query with generic class Illuminate\\Database\\Eloquent\\Builder but does not specify its types\: TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/Activity.php
+
+		# missingType.generics: own-code docblock debt: Collection/Paginator generics not written out; pay off with @return generic shape
+		-
+			message: '#^PHPDoc tag @property for property App\\Models\\Activity\:\:\$properties contains generic class Illuminate\\Support\\Collection but does not specify its types\: TKey, TValue$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/Activity.php
+
+		# argument.type: framework/vendor signature narrower than runtime reality (null from guards, generics erased); verify per site when paying off
+		-
+			message: '#^Parameter \#1 \$className of static method Illuminate\\Database\\Eloquent\\Relations\\Relation\<Illuminate\\Database\\Eloquent\\Model,Illuminate\\Database\\Eloquent\\Model,mixed\>\:\:getMorphAlias\(\) expects class\-string\<Illuminate\\Database\\Eloquent\\Model\>, string given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Models/Activity.php
+
+		# argument.type: framework/vendor signature narrower than runtime reality (null from guards, generics erased); verify per site when paying off
+		-
+			message: '#^Parameter \#1 \$value of static method Illuminate\\Support\\Str\:\:snake\(\) expects string, int\|string given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Models/Activity.php
+
+		# notIdentical.alwaysTrue: comparison typed from a PHPDoc the analyser treats as certain; value is dynamic at runtime
+		-
+			message: '#^Strict comparison using \!\=\= between non\-empty\-string and null will always evaluate to true\.$#'
+			identifier: notIdentical.alwaysTrue
+			count: 2
+			path: app/Models/Activity.php
+
+		# return.type: docblock and implementation disagree (stated shape too precise); runtime value correct; fix the docblock when paying off
+		-
+			message: '#^Method App\\Models\\AuditExport\:\:user\(\) should return Illuminate\\Database\\Eloquent\\Relations\\BelongsTo\<App\\Models\\User, App\\Models\\AuditExport\> but returns Illuminate\\Database\\Eloquent\\Relations\\BelongsTo\<App\\Models\\User, \$this\(App\\Models\\AuditExport\)\>\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Models/AuditExport.php
+
+		# return.type: docblock and implementation disagree (stated shape too precise); runtime value correct; fix the docblock when paying off
+		-
+			message: '#^Method App\\Models\\FailedLoginAttempt\:\:for\(\) should return static\(App\\Models\\FailedLoginAttempt\) but returns App\\Models\\FailedLoginAttempt\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Models/FailedLoginAttempt.php
+
+		# return.type: docblock and implementation disagree (stated shape too precise); runtime value correct; fix the docblock when paying off
+		-
+			message: '#^Method App\\Models\\RoleLookup\:\:assignable\(\) should return Illuminate\\Database\\Eloquent\\Collection\<int, Spatie\\Permission\\Models\\Role\> but returns Illuminate\\Database\\Eloquent\\Collection\<int, App\\Models\\Role\>\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Models/RoleLookup.php
+
+		# return.type: docblock and implementation disagree (stated shape too precise); runtime value correct; fix the docblock when paying off
+		-
+			message: '#^Method App\\Models\\RoleLookup\:\:visibleTo\(\) should return Illuminate\\Database\\Eloquent\\Collection\<int, Spatie\\Permission\\Models\\Role\> but returns Illuminate\\Database\\Eloquent\\Collection\<int, App\\Models\\Role\>\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Models/RoleLookup.php
+
+		# staticClassAccess.privateConstant: static:: on a private const; convert to self:: when paying off (behaviour-identical)
+		-
+			message: '#^Unsafe access to private constant App\\Models\\SystemSetting\:\:SECRET_KEYS through static\:\:\.$#'
+			identifier: staticClassAccess.privateConstant
+			count: 1
+			path: app/Models/SystemSetting.php
+
+		# missingType.return: own-code docblock debt: missing @return; pay off by documenting the type
+		-
+			message: '#^Method App\\Models\\Timezone\:\:scopeActive\(\) has no return type specified\.$#'
+			identifier: missingType.return
+			count: 1
+			path: app/Models/Timezone.php
+
+		# missingType.parameter: own-code docblock debt: missing @param type; pay off by documenting the type
+		-
+			message: '#^Method App\\Models\\Timezone\:\:scopeActive\(\) has parameter \$query with no type specified\.$#'
+			identifier: missingType.parameter
+			count: 1
+			path: app/Models/Timezone.php
+
+		# function.alreadyNarrowedType: redundant narrowing kept for readability; remove when paying off
+		-
+			message: '#^Call to function is_string\(\) with string will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: app/Models/User.php
+
+		# method.nonObject: nullable from framework signature (find()/fresh()); guarded at runtime; revisit when the guard is typed
+		-
+			message: '#^Cannot call method addDays\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 2
+			path: app/Models/User.php
+
+		# method.nonObject: nullable from framework signature (find()/fresh()); guarded at runtime; revisit when the guard is typed
+		-
+			message: '#^Cannot call method format\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Models/User.php
+
+		# missingType.generics: own-code docblock debt: Collection/Paginator generics not written out; pay off with @return generic shape
+		-
+			message: '#^Class App\\Models\\User uses generic trait Illuminate\\Database\\Eloquent\\Factories\\HasFactory but does not specify its types\: TFactory$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/User.php
+
+		# missingType.iterableValue: own-code docblock debt: array shape not written out; runtime correct; pay off by tightening the PHPDoc
+		-
+			message: '#^Method App\\Models\\User\:\:can\(\) has parameter \$abilities with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Models/User.php
+
+		# missingType.generics: own-code docblock debt: Collection/Paginator generics not written out; pay off with @return generic shape
+		-
+			message: '#^Method App\\Models\\User\:\:scopeActive\(\) has parameter \$query with generic class Illuminate\\Database\\Eloquent\\Builder but does not specify its types\: TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/User.php
+
+		# missingType.generics: own-code docblock debt: Collection/Paginator generics not written out; pay off with @return generic shape
+		-
+			message: '#^Method App\\Models\\User\:\:scopeActive\(\) return type with generic class Illuminate\\Database\\Eloquent\\Builder does not specify its types\: TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/User.php
+
+		# missingType.generics: own-code docblock debt: Collection/Paginator generics not written out; pay off with @return generic shape
+		-
+			message: '#^Method App\\Models\\User\:\:scopeInactive\(\) has parameter \$query with generic class Illuminate\\Database\\Eloquent\\Builder but does not specify its types\: TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/User.php
+
+		# missingType.generics: own-code docblock debt: Collection/Paginator generics not written out; pay off with @return generic shape
+		-
+			message: '#^Method App\\Models\\User\:\:scopeInactive\(\) return type with generic class Illuminate\\Database\\Eloquent\\Builder does not specify its types\: TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/User.php
+
+		# missingType.generics: own-code docblock debt: Collection/Paginator generics not written out; pay off with @return generic shape
+		-
+			message: '#^Method App\\Models\\User\:\:scopeLocked\(\) has parameter \$query with generic class Illuminate\\Database\\Eloquent\\Builder but does not specify its types\: TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/User.php
+
+		# missingType.generics: own-code docblock debt: Collection/Paginator generics not written out; pay off with @return generic shape
+		-
+			message: '#^Method App\\Models\\User\:\:scopeLocked\(\) return type with generic class Illuminate\\Database\\Eloquent\\Builder does not specify its types\: TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/User.php
+
+		# missingType.generics: own-code docblock debt: Collection/Paginator generics not written out; pay off with @return generic shape
+		-
+			message: '#^Method App\\Models\\User\:\:scopePendingVerification\(\) has parameter \$query with generic class Illuminate\\Database\\Eloquent\\Builder but does not specify its types\: TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/User.php
+
+		# missingType.generics: own-code docblock debt: Collection/Paginator generics not written out; pay off with @return generic shape
+		-
+			message: '#^Method App\\Models\\User\:\:scopePendingVerification\(\) return type with generic class Illuminate\\Database\\Eloquent\\Builder does not specify its types\: TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Models/User.php
+
+		# generics.wrongParent: vendor parent-generic declaration mismatch; upstream typing
+		-
+			message: '#^The @use tag of class App\\Models\\User describes Illuminate\\Database\\Eloquent\\Factories\\HasFactory but the class uses Laravel\\Sanctum\\HasApiTokens\.$#'
+			identifier: generics.wrongParent
+			count: 1
+			path: app/Models/User.php
+
+		# missingType.iterableValue: own-code docblock debt: array shape not written out; runtime correct; pay off by tightening the PHPDoc
+		-
+			message: '#^Method App\\Notifications\\AccountStateChangedNotification\:\:lines\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Notifications/AccountStateChangedNotification.php
+
+		# missingType.parameter: own-code docblock debt: missing @param type; pay off by documenting the type
+		-
+			message: '#^Method App\\Notifications\\ChangeEmailVerificationNotification\:\:toMail\(\) has parameter \$notifiable with no type specified\.$#'
+			identifier: missingType.parameter
+			count: 1
+			path: app/Notifications/ChangeEmailVerificationNotification.php
+
+		# missingType.parameter: own-code docblock debt: missing @param type; pay off by documenting the type
+		-
+			message: '#^Method App\\Notifications\\ChangeEmailVerificationNotification\:\:via\(\) has parameter \$notifiable with no type specified\.$#'
+			identifier: missingType.parameter
+			count: 1
+			path: app/Notifications/ChangeEmailVerificationNotification.php
+
+		# missingType.iterableValue: own-code docblock debt: array shape not written out; runtime correct; pay off by tightening the PHPDoc
+		-
+			message: '#^Method App\\Notifications\\ConfigurationChangedNotification\:\:lines\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Notifications/ConfigurationChangedNotification.php
+
+		# missingType.iterableValue: own-code docblock debt: array shape not written out; runtime correct; pay off by tightening the PHPDoc
+		-
+			message: '#^Method App\\Notifications\\RolesChangedNotification\:\:lines\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Notifications/RolesChangedNotification.php
+
+		# argument.type: framework/vendor signature narrower than runtime reality (null from guards, generics erased); verify per site when paying off
+		-
+			message: '#^Parameter \#1 \$feature of static method Laravel\\Pennant\\Feature\:\:define\(\) expects string\|UnitEnum, int\|string given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Providers/AppServiceProvider.php
+
+		# argument.type: framework/vendor signature narrower than runtime reality (null from guards, generics erased); verify per site when paying off
+		-
+			message: '#^Parameter \#1 \$user of static method App\\Support\\UnreadNotificationCount\:\:for\(\) expects App\\Models\\User, App\\Models\\User\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Providers/AppServiceProvider.php
+
+		# argument.type: framework/vendor signature narrower than runtime reality (null from guards, generics erased); verify per site when paying off
+		-
+			message: '#^Parameter \#1 \$user of static method App\\Support\\UnreadNotificationCount\:\:recent\(\) expects App\\Models\\User, App\\Models\\User\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Providers/AppServiceProvider.php
+
+		# argument.type: framework/vendor signature narrower than runtime reality (null from guards, generics erased); verify per site when paying off
+		-
+			message: '#^Parameter \#2 \$identifier of method App\\Auth\\LoginThrottle\:\:key\(\) expects string, string\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Providers/AuthServiceProvider.php
+
+		# argument.type: framework/vendor signature narrower than runtime reality (null from guards, generics erased); verify per site when paying off
+		-
+			message: '#^Parameter \#3 \$ip of method App\\Auth\\LoginThrottle\:\:key\(\) expects string, string\|null given\.$#'
+			identifier: argument.type
+			count: 7
+			path: app/Providers/AuthServiceProvider.php
+
+		# missingType.property: own-code docblock debt: untyped property; pay off by documenting the type
+		-
+			message: '#^Property App\\Providers\\AuthServiceProvider\:\:\$policies has no type specified\.$#'
+			identifier: missingType.property
+			count: 1
+			path: app/Providers/AuthServiceProvider.php
+
+		# missingType.iterableValue: own-code docblock debt: array shape not written out; runtime correct; pay off by tightening the PHPDoc
+		-
+			message: '#^Method App\\Services\\HealthCheck\\HealthCheckService\:\:rememberResults\(\) has parameter \$checks with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Services/HealthCheck/HealthCheckService.php
+
+		# method.nonObject: nullable from framework signature (find()/fresh()); guarded at runtime; revisit when the guard is typed
+		-
+			message: '#^Cannot call method copy\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Services/InactivityLock.php
+
+		# method.nonObject: nullable from framework signature (find()/fresh()); guarded at runtime; revisit when the guard is typed
+		-
+			message: '#^Cannot call method toIso8601String\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Services/InactivityLock.php
+
+		# method.nonObject: nullable from framework signature (find()/fresh()); guarded at runtime; revisit when the guard is typed
+		-
+			message: '#^Cannot call method isPast\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 3
+			path: app/Services/PasswordExpiry.php
+
+		# method.notFound: Laravel macro/magic method resolved at runtime; not statically visible
+		-
+			message: '#^Call to an undefined method League\\Flysystem\\FilesystemAdapter\:\:getBucket\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Services/Storage/StorageCapacityGuard.php
+
+		# method.notFound: Laravel macro/magic method resolved at runtime; not statically visible
+		-
+			message: '#^Call to an undefined method League\\Flysystem\\FilesystemAdapter\:\:getClient\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Services/Storage/StorageCapacityGuard.php
+
+		# argument.type: framework/vendor signature narrower than runtime reality (null from guards, generics erased); verify per site when paying off
+		-
+			message: '#^Parameter \#1 \$metrics of class App\\Exceptions\\StorageCapacityExceededException constructor expects array\<string, float\|int\|null\>, array\<string, float\|int\|string\|true\|null\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/Storage/StorageCapacityGuard.php
+
+		# method.nonObject: nullable from framework signature (find()/fresh()); guarded at runtime; revisit when the guard is typed
+		-
+			message: '#^Cannot call method setTimezone\(\) on Carbon\\CarbonImmutable\|null\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Services/Timezone/RebaseTimezones.php
+
+		# nullCoalesce.offset: array offset the analyser cannot prove absent; ?? keeps it safe at runtime
+		-
+			message: '#^Offset ''primary'' on array\{name\: string, columns\: list\<string\>, type\: string, unique\: bool, primary\: bool\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Services/Timezone/RebaseTimezones.php
+
+		# nullCoalesce.offset: array offset the analyser cannot prove absent; ?? keeps it safe at runtime
+		-
+			message: '#^Offset ''type'' on \*NEVER\* on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Services/Timezone/RebaseTimezones.php
+
+		# nullCoalesce.offset: array offset the analyser cannot prove absent; ?? keeps it safe at runtime
+		-
+			message: '#^Offset ''type_name'' on array\{name\: string, type\: string, type_name\: string\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Services/Timezone/RebaseTimezones.php
+
+		# return.type: docblock and implementation disagree (stated shape too precise); runtime value correct; fix the docblock when paying off
+		-
+			message: '#^Method App\\Support\\FeatureCatalog\:\:all\(\) should return array\<int, array\{slug\: string, label\: string, group\: string, description\: string, pending\: string\|null\}\> but returns array\<string, array\{slug\: string, label\: string, group\: string, description\: string, pending\: string\|null\}\>\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Support/FeatureCatalog.php
+
+		# missingType.generics: own-code docblock debt: Collection/Paginator generics not written out; pay off with @return generic shape
+		-
+			message: '#^Method App\\Support\\NotificationAudience\:\:administratorsFor\(\) return type with generic class Illuminate\\Support\\Collection does not specify its types\: TKey, TValue$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Support/NotificationAudience.php
+
+		# missingType.generics: own-code docblock debt: Collection/Paginator generics not written out; pay off with @return generic shape
+		-
+			message: '#^Method App\\Support\\NotificationAudience\:\:forEvent\(\) return type with generic class Illuminate\\Support\\Collection does not specify its types\: TKey, TValue$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Support/NotificationAudience.php
+
+		# missingType.iterableValue: own-code docblock debt: array shape not written out; runtime correct; pay off by tightening the PHPDoc
+		-
+			message: '#^Method App\\Support\\NotificationChannel\:\:for\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Support/NotificationChannel.php
+
+		# match.unhandled: exhaustive over documented status codes; default branch intentionally absent, HTTP only emits these
+		-
+			message: '#^Match expression does not handle remaining values\: 402\|int\<min, 400\>\|int\<405, 421\>\|int\<423, max\>$#'
+			identifier: match.unhandled
+			count: 1
+			path: app/Support/OpenApi/ApiErrorResponseExtension.php
+
+		# greater.alwaysTrue: comparison typed from a PHPDoc the analyser treats as certain; value is dynamic at runtime
+		-
+			message: '#^Comparison operation "\>" between 5 and 0 is always true\.$#'
+			identifier: greater.alwaysTrue
+			count: 1
+			path: app/Support/PasswordPolicy.php
+
+		# property.notFound: Eloquent magic attribute resolved at runtime by Laravel; not statically visible (Larastan limitation, not a bug)
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Support/UnreadNotificationCount.php
+
+		# method.nonObject: nullable from framework signature (find()/fresh()); guarded at runtime; revisit when the guard is typed
+		-
+			message: '#^Cannot call method toDateTimeString\(\) on Carbon\\Carbon\|null\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Support/UnreadNotificationCount.php
+
+		# missingType.iterableValue: own-code docblock debt: array shape not written out; runtime correct; pay off by tightening the PHPDoc
+		-
+			message: '#^Method App\\Support\\UnreadNotificationCount\:\:materialize\(\) has parameter \$rows with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/Support/UnreadNotificationCount.php
+
+		# missingType.generics: own-code docblock debt: Collection/Paginator generics not written out; pay off with @return generic shape
+		-
+			message: '#^Method App\\Support\\UnreadNotificationCount\:\:materialize\(\) return type with generic class Illuminate\\Database\\Eloquent\\Collection does not specify its types\: TKey, TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Support/UnreadNotificationCount.php
+
+		# missingType.generics: own-code docblock debt: Collection/Paginator generics not written out; pay off with @return generic shape
+		-
+			message: '#^Method App\\Support\\UnreadNotificationCount\:\:recent\(\) return type with generic class Illuminate\\Database\\Eloquent\\Collection does not specify its types\: TKey, TModel$#'
+			identifier: missingType.generics
+			count: 1
+			path: app/Support/UnreadNotificationCount.php
+
+		# argument.type: framework/vendor signature narrower than runtime reality (null from guards, generics erased); verify per site when paying off
+		-
+			message: '#^Parameter \#1 \$items of class Illuminate\\Database\\Eloquent\\Collection constructor expects Illuminate\\Contracts\\Support\\Arrayable\<\(int\|string\), TModel of Illuminate\\Database\\Eloquent\\Model\>\|iterable\<\(int\|string\), TModel of Illuminate\\Database\\Eloquent\\Model\>\|null, array\<stdClass\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Support/UnreadNotificationCount.php
+
+		# property.notFound: Eloquent magic attribute resolved at runtime by Laravel; not statically visible (Larastan limitation, not a bug)
+		-
+			message: '#^Access to an undefined property Storvia\\Vantage\\Models\\VantageJob\:\:\$uuid\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Support/Vantage/FailedJobPayloadRestorer.php
+
+		# missingType.iterableValue: own-code docblock debt: array shape not written out; runtime correct; pay off by tightening the PHPDoc
+		-
+			message: '#^Method App\\View\\Composers\\AppMenuComposer\:\:visible\(\) has parameter \$item with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: app/View/Composers/AppMenuComposer.php
