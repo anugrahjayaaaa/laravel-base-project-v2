@@ -31,7 +31,7 @@ Updated: 2026-09-27
 | P6C1-004 | Spatie's `deleting` hook skips `detach()` on a soft delete, so trashing a role would revoke nothing and a restore would silently re-grant | `RoleDeleteAction` detaches explicitly inside its transaction; pinned by `test_trashing_a_role_revokes_it_from_every_user_holding_it` | RESOLVED |
 | P6C1-005 | `BulkRoleRequest::authorize()` returned `true` — a user holding only the `user` role could bulk-trash a role (measured: 302, role confirmed soft-deleted) while the single-row delete correctly refused. P6-C17's pattern, arrived with C1's bulk work | `BulkRoleRequest` and `BulkUserRequest` now share the `AuthorizesBulkAction` trait: one `BULK_ACTIONS` map, entity prefix per request, unmapped action fails closed. Pinned by `a_role_bulk_action_requires_its_own_permission` | RESOLVED |
 
-### C4 gate re-audit (2026-09-30, measured, not read off the plan)
+## C4 gate re-audit (2026-09-30, measured, not read off the plan)
 
 A throwaway probe (`RefreshDatabase`, role with **no** permission, `Sanctum::actingAs($nobody, ['*'])` for the API side) posted to every ungated user write route and checked the row afterwards. A `302` alone proves nothing — these are `back()` redirects, so the side effect is the evidence.
 

@@ -40,7 +40,7 @@ Rules:
 - Permanent delete is ONLY available for records already in deleted state.
 - Permanent delete must NEVER be a direct action from the active state.
 - Destructive actions require confirmation (see
-  [UI Architecture](./ui-architecture.md) § Confirmation Modal).
+  [UI Architecture](../ui/ui-architecture.md) § Confirmation Modal).
 - Applicable actions should support bulk operations (bulk soft delete, bulk
   restore, bulk permanent delete).
 - Not every model/feature must support every action; applicability depends on
