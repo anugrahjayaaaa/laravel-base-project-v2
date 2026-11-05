@@ -68,6 +68,16 @@ bin/run-workers.sh cron      # schedule:work, or `* * * * * php artisan schedule
 After `config:cache`, restart workers (`php artisan queue:restart`); a worker
 keeps the config and timezone it booted with.
 
+Steps 6–8 are what `php artisan optimize` does (config + events + routes + views);
+that sequence was run end to end on the release tree in P17-C2 and exited 0.
+`config:cache` serialises the merged config with `var_export`/`eval`, so **any config
+value holding a live object without `__set_state` fails the deploy** — the one that did
+was a scramble `SecurityScheme`, now built inside
+`App\Support\OpenApi\BearerAuthSecurityStrategy` instead (`docs/base/api/documentation.md`).
+`tests/Arch/SerializableConfigTest.php` is the gate, so the failure surfaces in CI
+rather than at step 6. `optimize:clear` is the **development** command (it is how the
+verification run restored its state), not part of this checklist.
+
 ## CI/CD
 
 Integrate with GitHub Actions (or similar CI):

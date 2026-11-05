@@ -642,3 +642,23 @@ Each entry contains:
 | **Reason** | Phase 15 Group D (P15-D1). 2644 tests prove behaviour; nothing proved types. Level 8 catches the nullable/mixed return the runtime suite only exercises on its happy branch. Psalm and Enlightn declined per deviation D-3 — one analyser, one baseline, one owner. |
 | **Impact** | Every future `app/` change is gated on a clean analyse; the baseline fails on new errors **and** on stale ignores, so it is a debt ledger that cannot grow or rot silently. CI ownership of the run belongs to P15-E3 (`testing.yml`), not this change. |
 | **Related** | ADR-030, P15-D1, `docs/planning/phase-15-comprehensive-testing.md` § 6, `phpstan.neon`, `phpstan-baseline.neon` |
+
+## 2026-11-04 — vite 8.3.0 → 8.3.5 (lockfile only) to clear the high-severity advisory
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-11-04 |
+| **Change** | `package-lock.json` only: `vite` 8.3.0 → 8.3.5 plus its transitive build deps (20 version entries, 81 lines). `package.json` is untouched — `^8.0.0` already allowed the patched version, and no package was added or removed. |
+| **Reason** | P17-B3 dependency audit at the release tree: `npm audit --audit-level=high` exited **1** on `vite 8.3.0 - 8.3.2` — six high advisories (GHSA-698v-4r3x-3vcv, GHSA-r825-w8mm-5pxw, GHSA-587h-7wmj-h5pm, GHSA-9jrq-w75r-8gcw, GHSA-rq7h-c2jc-7f22, GHSA-vfpm-58rq-9qcg). All are dev-server / `launch-editor` issues in a **dev-only** package (the repo has no runtime npm dependencies), but the `npm audit` step lives inside the `test` job and `deploy` is `needs: test`, so the advisory blocked release. Owner decision: upgrade, not accept/defer. |
+| **Impact** | **No application code, no manifest, no runtime dependency change.** Verified by the commands CI runs: `npm ci` exit 0, `npm run build` exit 0 (manifest read; `app-*.css` 49.62 kB / `app-*.js` 15.00 kB / fonts css 2.35 kB, built in 4.12 s), `npm audit --audit-level=high` now exit 0 ("found 0 vulnerabilities"). The Tailwind-stylesheet-is-loaded-nowhere question is untouched and still an owner decision (P17-C1, D-8). |
+| **Related** | P17-B3, `docs/planning/phase-17-full-regression.md` § *As implemented*, `.github/workflows/ci-cd.yml` (`test` job), `.github/workflows/testing.yml` (`dependency-audit`, weekly) |
+
+## 2026-11-04 — scramble's bearer scheme moved out of config so `optimize` can run
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-11-04 |
+| **Change** | `config/scramble.php` now enables `App\Support\OpenApi\BearerAuthSecurityStrategy` (new, extends scramble's `MiddlewareAuthSecurityStrategy`) with a scalar options array; the `SecurityScheme::http('bearer')->as('bearerAuth')` object the file used to hold is supplied as the subclass's constructor default instead. New Arch gate `tests/Arch/SerializableConfigTest.php`: every dotted config leaf that is an object must expose `__set_state` (or be an enum). |
+| **Reason** | P17-C2 cache-optimisation run. `php artisan optimize` exited **1** on the release tree: `config:cache` serialises the merged config with `eval(var_export($value, true))`, and Laravel's own check (`ConfigCacheCommand.php:77`) rejected `scramble.security_strategy.1.scheme` as non-serializable. The documented deploy steps 6–8 were therefore unrunnable on this tree — a deploy blocker found by running the step, not by reading it. |
+| **Impact** | **No behaviour change on either channel.** The exported document still publishes one `bearerAuth` scheme and `/docs/api` still renders the Authorize box — `ApiDocumentationTest` (10 tests, 21 assertions) and `ApiDocsUiRenderTest` pin both and stayed green. `optimize` now exits 0 (config / events / routes / views all DONE) and a 16-page walk returns 200 with caches warm. The gate is sabotage-verified: re-inserting the object fails it naming that exact key. Docs updated to match: `docs/base/api/documentation.md` § *Bearer scheme*, `docs/base/operations/deployment.md` § *Processes an operator must start*. |
+| **Related** | P17-C2, `docs/planning/phase-17-full-regression.md` § *As implemented* (Group C), `config/scramble.php`, `app/Support/OpenApi/BearerAuthSecurityStrategy.php`, `tests/Arch/SerializableConfigTest.php` |

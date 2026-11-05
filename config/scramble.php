@@ -1,8 +1,7 @@
 <?php
 
 use App\Http\Middleware\RestrictApiDocsAccess;
-use Dedoc\Scramble\SecurityDocumentation\MiddlewareAuthSecurityStrategy;
-use Dedoc\Scramble\Support\Generator\SecurityScheme;
+use App\Support\OpenApi\BearerAuthSecurityStrategy;
 
 return [
     /*
@@ -190,17 +189,18 @@ return [
      *     \Dedoc\Scramble\SecurityDocumentation\MiddlewareAuthSecurityStrategy::class,
      *     [
      *         'middleware' => ['auth', 'auth:*'],
-     *         'scheme' => \Dedoc\Scramble\Support\Generator\SecurityScheme::http('bearer'),
      *     ],
      * ],
+     *
+     * The `scheme` option takes a SecurityScheme object, which config cannot
+     * hold: `config:cache` var_exports every leaf and a live object is not
+     * serializable (P17-C2 — `optimize` died here). That is why the named
+     * bearer scheme is built in `BearerAuthSecurityStrategy` below.
      */
     'security_strategy' => [
-        MiddlewareAuthSecurityStrategy::class,
+        BearerAuthSecurityStrategy::class,
         [
             'middleware' => ['auth', 'auth:*'],
-            // Named rather than the default `http`: the scheme name is what the
-            // docs UI prints next to the Authorize button.
-            'scheme' => SecurityScheme::http('bearer')->as('bearerAuth'),
         ],
     ],
 ];

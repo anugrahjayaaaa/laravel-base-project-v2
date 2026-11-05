@@ -460,11 +460,57 @@ one. The test factory no longer repeats a username. Detail:
 | P16-C3 | Security hardening & CSP docs — headers/nonce/`frame-ancestors`, CSRF group swap, CORS default-deny, composite rate keys, HTML 500 masking; every doc claim cites its pinning suite | 16 | P1 | — | DONE — owner-reviewed 2026-11-04 — audited 2026-11-04: limiter table re-derived from `RateLimiter::for()` (15 registered, 14 documented — `system-backup` row + ladder line added) and `web-security.md` "Policy-based" authorization line corrected to the route-level pattern; headers/CSRF/CORS/CSP prose already cites its suites; `--filter=Security` 139/718 green, Pint clean |
 | P16-D1 | Audit event map — build the complete `## Event Map` in `docs/base/features/audit-trail.md` from `Auditable::audit()` call sites (incl. `storage.capacity_warning`, `causer='SYSTEM'` rows); zero observer writers | 16 | P1 | — | DONE — owner-reviewed 2026-11-04 — built 2026-11-04 from call sites: 48 events across 5 subject groups, each row citing its owner; SYSTEM-marker semantics recorded as implemented (null causer + properties marker); brief's four examples present; `ActionFirstAuditTest` cited (green 38/101 with `DataRetentionTest`) |
 | P16-D2 | Operational runbooks — `docs/base/operations/*` walkable cold (worker invocation, scheduler, job failure handling, `timezone:rebase --force`); gap list for operator-needed source reading | 16 | P2 | P16-C2 | DONE — owner-reviewed 2026-11-04 — walked cold 2026-11-04; every command verified to resolve (`bin/run-workers.sh` subcommands, `backup:list`, rebase flags); 4 defects fixed: phantom `audit.enabled` diagnosis, malformed tools table, stale MAIL_MAILER-first triage, deployment.md missing the process-start step entirely; gap list: empty for the walked surface |
-| P16-E1 | Link-integrity gate — new test pinning A2's mechanical properties (relative links resolve, info strings where the convention holds); sabotage-verified, <1 s | 16 | P1 | P16-A2 | REVIEW — 2026-11-04 — `tests/Arch/DocumentationLinkIntegrityTest.php`: 3 gates (relative links resolve, heading hierarchy never skips, no table row starts with a double pipe) over every `docs/` Markdown file, fence-aware. Green 3/3 in <1 s; each gate sabotage-verified individually (broken link, h2→h4, `||` row) before being called a gate. The pipe gate paid for itself on first run: it caught `||` corruption in README rows the manual sweep had missed |
-| P16-E2 | Full regression run — `pint --test`, `phpstan analyse`, `php artisan test`; counts recorded from the run, not hand-carried | 16 | P0 | all A–D | REVIEW — 2026-11-04 — three gates on the final tree, all exit 0: Pint PASS (486 files), PHPStan exit 0 against the committed ledger, `php artisan test` **2665 passed / 9834 assertions, 9 risky**. The +4 tests / +4 assertions over Phase 15 Group E's 2661/9830 are `DocumentationLinkIntegrityTest` alone — docs-only phase, no other suite movement, exactly the one allowed change. Carried into `progress.md` § *Test Status* verbatim from the run's own output. Post-run: one Pint `no_unused_imports` fix in the E1 test itself (FQCNs → imports; behaviour identical), Pint then PASS 487 files and the gate re-run green 3/3 |
-| P16-E3 | Trackers reconciliation & closure — `task-tracker.md` rows, `qa-tracker.md`, `progress.md` (row 16 + Documentation Status re-dated), `implementation-roadmap.md`; rows flip only with evidence | 16 | P2 | P16-E1, P16-E2 | REVIEW — 2026-11-04 — reconciled four surfaces against measured state: this file's P16 rows A–D DONE / E rows REVIEW with evidence (none flipped without one); `qa-tracker.md` measured 0 open / 0 pending; `progress.md` row 16 updated, rows 3 and 6 flipped to DONE on ledger aggregation (24/24 and 42/42 tasks DONE parsed from the tracker's own JSON), § *Test Status* set to the E2 run's exact numbers, § *Documentation Status* re-marked per-area with the audit that backs each (Testing/UI left bare "Complete" — not audited this phase, no false verification); `implementation-roadmap.md` phases 0–15 → DONE (11–16 were stale), 16 IN PROGRESS, 17 PLANNED — the four trackers now agree with each other and the repo |
+| P16-E1 | Link-integrity gate — new test pinning A2's mechanical properties (relative links resolve, info strings where the convention holds); sabotage-verified, <1 s | 16 | P1 | P16-A2 | DONE — closed 2026-11-05 by P17-D2 — `tests/Arch/DocumentationLinkIntegrityTest.php`: 3 gates (relative links resolve, heading hierarchy never skips, no table row starts with a double pipe) over every `docs/` Markdown file, fence-aware. Green 3/3 in <1 s; each gate sabotage-verified individually (broken link, h2→h4, `||` row) before being called a gate. The pipe gate paid for itself on first run: it caught `||` corruption in README rows the manual sweep had missed. **Closure evidence:** re-run green 3/3 in P17-C2's record and again 2026-11-05 over the Group D docs (including the new `final-release-summary.md`) |
+| P16-E2 | Full regression run — `pint --test`, `phpstan analyse`, `php artisan test`; counts recorded from the run, not hand-carried | 16 | P0 | all A–D | DONE — closed 2026-11-05 by P17-D2 — three gates on the final tree, all exit 0: Pint PASS (486 files), PHPStan exit 0 against the committed ledger, `php artisan test` **2665 passed / 9834 assertions, 9 risky**. The +4 tests / +4 assertions over Phase 15 Group E's 2661/9830 are `DocumentationLinkIntegrityTest` alone — docs-only phase, no other suite movement, exactly the one allowed change. Carried into `progress.md` § *Test Status* verbatim from the run's own output. Post-run: one Pint `no_unused_imports` fix in the E1 test itself (FQCNs → imports; behaviour identical), Pint then PASS 487 files and the gate re-run green 3/3. **Closure evidence:** superseded by a newer measurement of the same three gates on the same tree — P17-A1 re-ran the suite (2665/9834, exit 0, counts identical) and P17-B1/B2 re-ran Pint and PHPStan; the row is closed on Phase 17's log, not on a re-assertion of its own |
+| P16-E3 | Trackers reconciliation & closure — `task-tracker.md` rows, `qa-tracker.md`, `progress.md` (row 16 + Documentation Status re-dated), `implementation-roadmap.md`; rows flip only with evidence | 16 | P2 | P16-E1, P16-E2 | DONE — closed 2026-11-05 by P17-D2 — reconciled four surfaces against measured state: this file's P16 rows A–D DONE / E rows REVIEW with evidence (none flipped without one); `qa-tracker.md` measured 0 open / 0 pending; `progress.md` row 16 updated, rows 3 and 6 flipped to DONE on ledger aggregation (24/24 and 42/42 tasks DONE parsed from the tracker's own JSON), § *Test Status* set to the E2 run's exact numbers, § *Documentation Status* re-marked per-area with the audit that backs each (Testing/UI left bare "Complete" — not audited this phase, no false verification); `implementation-roadmap.md` phases 0–15 → DONE (11–16 were stale), 16 IN PROGRESS, 17 PLANNED — the four trackers now agree with each other and the repo. **Closure evidence:** its own claim "`qa-tracker.md` measured 0 open / 0 pending" was a different question from row-level reconciliation, and P17-D2 answered that one (99 scenario rows read against the suite). The three rows E3 wrote as REVIEW are now DONE (E1, E2 above); roadmap 16/17 flipped; `progress.md` rows 16 and 17 closed. What E3 deliberately left undone — Testing and UI had no verification row — is closed by P17-D1 |
 
 **Invariants (non-negotiable):** docs are corrected toward code-with-ADR, never toward aspiration; a contract the code broke is a defect with a regression test, not a doc rewrite; one check has one owner (no duplicate render/schema tests); no new Composer/npm package without an ADR; no runtime behaviour changes in this phase.
+
+---
+
+### Phase 17 — Full Regression & Final Review
+
+> Breakdown written 2026-11-04; **Groups A, B and C run 2026-11-04 and closed by
+> P17-D2 on 2026-11-05; Group D run and recorded 2026-11-05 — see
+> `docs/planning/phase-17-full-regression.md` § 11 and
+> `docs/planning/final-release-summary.md`.** Phase 17 is closed as a phase; the
+> work is uncommitted and awaits owner review (`AGENTS.md`: the owner commits).
+> Twelve tasks in four groups (A full-suite + coverage bars + UI render → B
+> Pint, PHPStan, dependency audits → C asset build, `optimize`, scheduler set →
+> D code-to-docs reconciliation, tracker closure, release summary). **This is a
+> run-and-record phase, not a build phase:** every A/B gate was built and
+> sabotage-verified in Phase 15 (coverage bars in `bin/coverage_gate.php`,
+> PHPStan level 8 + ADR-030 ledger, full-tree Pint, `composer audit` /
+> `npm audit` in CI) and the docs gates in Phase 16. The genuinely new work is
+> C2 (`optimize` + warm-cache page walk), C3 (the six scheduler entries audited
+> as a set), and D1–D3. Ten brief-vs-code conflicts recorded as D-1..D-12 in
+> the phase doc, the load-bearing ones being **Psalm is not installed and one
+> analyser owns the ledger**, **no tree-wide "zero queries in Blade" gate exists
+> (it is proven per page)**, **`qa-tracker.md` has 58 of 99 rows unreconciled so
+> a blanket CLOSED stamp would make the tracker lie**, and **the Vite build ships
+> a Tailwind stylesheet no layout loads while `AGENTS.md` says "No Tailwind"** —
+> an owner decision, reported not deleted. Phase 16 Group E must leave REVIEW
+> before P17-D2 flips any row.
+> Detail: `docs/planning/phase-17-full-regression.md`.
+
+| ID | Task | Phase | Priority | Depends On | Status |
+|----|------|-------|----------|-----------|--------|
+| P17-A1 | Comprehensive backend test run — `php artisan test` on the final tree; 0 failures/errors, the 9 risky accounted for not absorbed; every named surface shown present (Auth, User CRUD, RBAC, Settings, Flags, Notifications, Storage, Audit, API V1); the printed count quoted into `progress.md` verbatim | 17 | P0 | — | DONE — closed 2026-11-05 by P17-D2 — `XDEBUG_MODE=coverage php artisan test --coverage --min=85 --coverage-clover=build/coverage/clover.xml` on `feature/phase-17-full-regression`: exit 0, **`Tests: 9 risky, 2665 passed (9834 assertions)`**, Duration 763.70 s, 212 `PASS` class blocks, zero `FAIL`/`Error`. Counts identical to P16-E2's 2665/9834 — nothing in this phase has touched code, so a moved number would have been the finding; the run reports the same **9 risky** as P16-E2 (attribution P15-E1, accounted for not absorbed; matched **by count** — this run's printer emitted the summary line only, no per-test risky detail, so their identity was not re-proven by name). Every named surface verified present in the run log by class, not by assumption (Auth `WebSessionRevocationTest`, `User/User*`, `RbacPerformanceTest`, `VantagePermissionGateTest`, `ActionNamingConventionTest`, `SettingsPentestTest`, `SettingsUiRenderTest`, `FeatureFlagMiddlewareTest`, `StorageAuthorizationTest`+`BackupStrategyTest`, `ActionFirstAuditTest`+`AuditExportTest`, `ApiDocumentationTest`+`ApiErrorEnvelopeTest`+`OpenApiExportTest`, 19 `Api\V1` + 1 `Web\V1` classes). Unit/Feature/Arch all ran — plain command, no filter. Line quoted into `progress.md` § *Test Status* from the run's own output |
+| P17-A2 | Coverage threshold assertion — one instrumented run feeding `--min=85` + `bin/coverage_gate.php` (Actions ≥ 95 %, Policies = 100 %, `app/Http/Requests` ≥ 95 %); xdebug locally vs pcov in CI recorded as the cost; a miss is a gap list with owners, never a lowered bar | 17 | P0 | P17-A1 | DONE — closed 2026-11-05 by P17-D2 — one clover run feeds all four bars; `php bin/coverage_gate.php build/coverage/clover.xml` exits 0: **Actions 97.11 %** (1547/1593, bar 95) · **Policies 100 %** (31/31) · **Requests 98.09 %** (461/470, bar 95), and the run's own `--min=85` floor held with global **94.87 %** (5031/5303) read off the same file's `<project>` metrics. Every figure is unchanged from P15-E2 — the expected result of a docs-only interval, and the reason no bar or gate was touched. Local driver is **xdebug** (CI's coverage job uses pcov), so the 763.70 s wall clock is the cost of measuring, not a defect (D-11 honoured). No new gate written (rule § 2.2); no re-sabotage of a gate that did not change (D: P15-E2 already proved it). `app/Security` remains a non-namespace — security surface cited as the suites that ran inside A1 (D-3) |
+| P17-A3 | UI & Blade render regression — run the owners (`tests/Feature/UI/` 23 tests + the four page render suites) and the Phase 15 design-system sweeps; the "no direct DB queries in templates" property recorded as **proven per page by query-count gates**, with unproven pages named as a gap (D-4) | 17 | P1 | P17-A1 | DONE — closed 2026-11-05 by P17-D2 — owners run individually, all **OK**, no new file: `BladeComponentRenderTest` 12/114 · `FormViewRenderTest` 7/66 · `ResponsiveUiTest` 4/129 (= the 23) · `SettingsUiRenderTest` 14/358 · `RbacUiRenderTest` 20/114 · `NotificationUiRenderTest` 19/128 · `HealthUiRenderTest` 11/50 · and the **three the phase doc did not name** — `AuditLogUiRenderTest` 27/116 · `FeatureFlagUiRenderTest` 14/109 · `ApiDocsUiRenderTest` 9/38 — 137 tests green. Phase-doc omission, not a code gap: the tree has seven page render suites, § 3 said four. Design-system sweeps re-run as part of those files (forbidden `bg-white`/`bg-light`, `.table-responsive` wrapper, `@nonce` on every inline script) — nothing rewritten. D-4 holds and is now written down with names: **eleven** page groups carry a query-count gate (zero-on-warm-render or count-does-not-grow), and the unproven remainder is listed, not claimed — `users/create`, `users/show`, `profile/edit`, `sessions`, `notifications/show`, the six auth pages, `welcome`, layout partials other than sidebar and header bell. No global "views run zero queries" test invented. Record: `docs/base/testing/testing-matrix.md` § *UI render & view-query coverage* + phase doc § 11 |
+| P17-B1 | Code style gate — `vendor/bin/pint --test` full tree (PSR-12 preset, since P15-D2); exit 0 with file count recorded; failures fixed per file, not by adding ignores | 17 | P1 | — | DONE — closed 2026-11-05 by P17-D2 — `vendor/bin/pint --test` on `feature/phase-17-full-regression`: **exit 0, PASS 487 files** (PSR-12, whole tree). Nothing was reformatted and no ignore was added — the count is unchanged from P16-E2's post-fix 487, which is what a docs-only interval should produce. Exit code read from the tool (`cmd > log 2>&1; echo $?`), not from a pipeline tail |
+| P17-B2 | Static analysis — `vendor/bin/phpstan analyse --memory-limit=1G` at **level 8** over `app/` against the committed ADR-030 ledger; baseline entry count recorded, growth is a finding; Psalm declined (one analyser, one ledger — D-2) | 17 | P1 | — | DONE — closed 2026-11-05 by P17-D2 — `vendor/bin/phpstan analyse --memory-limit=1G`: **exit 0, `[OK] No errors`, 208 files at level 8** (Larastan ^3.14, ADR-030). Ledger measured from `phpstan-baseline.neon`: **310 entries** (2171 lines) — identical to the P15-D1 committed figure, so no debt grew and none was quietly paid; `reportUnmatchedIgnoredErrors: true` makes a stale entry fail the run, so exit 0 is also the proof the ledger still matches the code. No second analyser installed (D-2). `docs/base/testing/testing-strategy.md` left alone — it does not quote the entry count, so its figures are not stale (conditional Docs clause not triggered) |
+| P17-B3 | Dependency & vulnerability audit at the release tree — `composer audit --locked` + `npm audit --audit-level=high`, same thresholds CI uses per-PR and weekly; every advisory listed with package/severity/owner decision, dev-only vs runtime distinguished | 17 | P1 | — | DONE — closed 2026-11-05 by P17-D2 — release-tree read, not the CI schedule: `composer audit --locked` **exit 0** (`No security vulnerability advisories found.`) and `npm audit --audit-level=high` **exit 1 on the first read** — `vite 8.3.0 - 8.3.2`, **6 high advisories** (GHSA-698v-4r3x-3vcv, GHSA-r825-w8mm-5pxw, GHSA-587h-7wmj-h5pm, GHSA-9jrq-w75r-8gcw, GHSA-rq7h-c2jc-7f22, GHSA-vfpm-58rq-9qcg). **Risk class: dev-only** — `package.json` has no runtime dependencies at all (vite, laravel-vite-plugin, @tailwindcss/vite, tailwindcss, bootstrap, concurrently are devDependencies) and every issue is a dev-server or `launch-editor` behaviour that cannot exist in a built asset, so no shipped byte was exposed; but the step lives inside the `test` job and `deploy` is `needs: test`, so it blocked the release path. **Owner decision: upgrade** (asked, answered — not chosen by this task, per § 2.3). Applied `vite 8.3.0 → 8.3.5`, **`package-lock.json` only** (20 version entries, 81 lines; `package.json`'s `^8.0.0` already allowed it, no package added or removed, no ADR trigger). Verified with CI's own sequence: `npm ci` exit 0 → `npm run build` exit 0 (manifest 9 entries; `app-*.css` 49.62 kB, `app-*.js` 15.00 kB, fonts 2.35 kB) → `npm audit --audit-level=high` **exit 0, `found 0 vulnerabilities`**. D-8 untouched: the built Tailwind stylesheet is still loaded by no layout (C1's owner decision). `changelog.md` line added; no new workflow, no duplicated job (D-5) |
+| P17-C1 | Frontend asset compilation — `npm ci && npm run build`, exit 0 with bundle sizes recorded; settle the Tailwind conflict on paper: `resources/css/app.css` is a Vite input importing Tailwind while no layout links the built CSS (all CSS is self-hosted from `public/vendor/`) and `AGENTS.md` says "No Tailwind" — **owner decision, reported not unilaterally deleted** (D-8) | 17 | P1 | — | DONE — closed 2026-11-05 by P17-D2 — `npm ci` **exit 0** → `npm run build` **exit 0** (vite 8.3.5, the B3 bump; `✓ 9 modules transformed`, `✓ built in 4.12s`). Sizes from the manifest: `app-*.css` **49.62 kB** (gzip 9.29) · `app-*.js` **15.00 kB** (gzip 4.62) · `fonts-*.css` 2.35 kB · 6 font files · 9 entries total. D-8 measured, not assumed: `resources/css/app.css` is 9 lines (tailwind import, 2 `@source` hints, one `--font-sans` token) with **no project rule in it**; all three layouts `@vite` only the JS (`app.blade.php:61`, `guest.blade.php:31`, `auth.blade.php:83`) and neither entry carries a `css` array; `Paginator::useBootstrap()` (`AppServiceProvider:70-71`) means the Tailwind-classed pagination views never render; `@viteFonts()` appears nowhere, so the font CSS + 6 files are unreferenced and `--lbp-font: 'Instrument Sans'` (`theme.css:21`) falls back to `system-ui`. Dead bytes, not a broken page → **nothing deleted**, decision handed to the owner (drop the input + `tailwindcss`/`@tailwindcss/vite`, or load the CSS + amend `AGENTS.md` by ADR). `AGENTS.md` untouched |
+| P17-C2 | Cache optimization & warm-boot verification — `optimize:clear` → `optimize` (config/events/routes/views), then a page walk returning 200 with caches warm; `env()`-outside-config scan (currently zero) and no closures in `config/` recorded; DB-backed `SystemSetting` + feature-flag mutation proven still effective under a warm config cache; dev state restored afterwards | 17 | P1 | P17-C1 | DONE — closed 2026-11-05 by P17-D2 — **found the deploy blocker**: first `php artisan optimize` **exit 1** — `LogicException … value at "scramble.security_strategy.1.scheme" is non-serializable` (`ConfigCacheCommand.php:77` serialises via `eval(var_export())`, so a live `SecurityScheme` object in config breaks the documented deploy steps 6-8). Fixed in-group, behaviour unchanged: new `app/Support/OpenApi/BearerAuthSecurityStrategy.php` supplies the scheme as a constructor default, `config/scramble.php` is scalar again, and `tests/Arch/SerializableConfigTest.php` gates it (every object config leaf must have `__set_state` or be an enum). Re-run **exit 0**: config 44.78 ms · events 1.92 ms · routes 67.70 ms · views 1 s, all DONE. Sabotage-verified: putting the object back failed the gate naming that exact key and failed `config:cache` on the same key (first attempt was a false green — `bootstrap/cache/config.php` shadows the files until `config:clear`). **16 pages → 200** with caches warm (`/ /dashboard /users /users/create /profile /sessions /roles /permissions /features /settings /notifications/inbox /notifications/channels /activity-logs /health /pulse /docs/api`) in **one** login session — per-page re-login hits the `login` limiter (5/min identifier+IP, 10/min IP), and the limits were not raised. Runtime mutability proven under warm config: Pennant `notifications` OFF → inbox **403** → ON → **200**; `api_docs_public` false → true → guest `/docs/api` **200** → restored → **302** (DB reads, `DB::afterCommit` busting — the plan's § 5 "no closures ⇒ nothing to serialise" inference was wrong and is corrected there). `env()` outside `config/` re-scanned at **zero live calls**. `optimize:clear` **exit 0** afterwards — dev state restored. Post-change gates: Pint **PASS 489 files** (487 + the two new files), PHPStan **exit 0** 209 files ledger still 310, `ApiDocumentationTest` green 10/21 (the `bearerAuth` name survives the move). `tests/Arch/DocumentationLinkIntegrityTest` re-run 3/3 after the docs edits. Full suite re-measured: `php artisan test` **exit 0 — 2668 passed / 9837 assertions, 9 risky** (498.58 s); the +3 over A1's 2665/9834 is attributed by a per-class diff of the two logs — `SerializableConfigTest` 0→1 and `NoInlineFqnTest` 424→426 (one case per PHP file under `app/`+`tests/`, and this fix added two files) — nothing else moved. Findings filed, not fixed: `bin/fetch-page.sh` default credentials are stale (`LocalTest#2026` vs seeded `#Password123`, `SuperAdminSeeder:24`); local dev DB has a **Pending** migration (`2026_11_03_000000_remove_duplicate_expiry_settings`) deliberately **not** run |
+| P17-C3 | Scheduler & queue set audit — six entries in `routes/console.php` (`password-security-sweeps`, `system-backup` every-minute both self-gating on a stored time; `temp-storage-cleanup`, `notification-retention`, `audit-export-retention`, `vantage-retention` daily) cross-checked against `schedule:list`; the 00:00 collision answered (queues `sweeps` vs `backups`, `withoutOverlapping`/`onOneServer`, worker listening); `JobConventionTest` cited | 17 | P2 | — | DONE — closed 2026-11-05 by P17-D2 — `php artisan schedule:list` **exit 0**: exactly the six entries in the table, no seventh, none missing (`routes/console.php:124-259`). **The 00:00 question, answered: safe, because of the queue split rather than the guards** — both `everyMinute` closures self-gate off the same `app_timezone` clock, but dispatch to different queues (`sweeps` for `PasswordExpirySweep:44` + `InactivityLockSweep:41`, `backups` for `ExecuteSystemBackupJob:47`) and `bin/run-workers.sh` listens on both (`default,exports,sweeps` + a dedicated `queue:work backups`); defaults are not even the same minute (sweeps `00:00`, `SystemBackupSchedule::DEFAULT_TIME = '02:00'`, `backup_enabled = false` locally). Single-flight: all six `withoutOverlapping`, backup alone also `onOneServer` plus job-level `WithoutOverlapping('system-backup')->expireAfter(3600)` with `$tries = 1`, `$timeout = 1800`, `$maxExceptions = 1`; queue names verified against `App\Support\QueueName`, `JobConventionTest` cited as standing enforcement (green inside A1). Two things the command cannot show (D-9 confirmed): the every-minute closures print as names only — the second is a `dispatchIfDue()` indirection — and the Vantage entry prints its **command string** instead of its `->name('vantage-retention')` label, because `ScheduleListCommand.php:93` prefers `$event->command` when set: a printer quirk, the label is in the file. One overlap named, unchanged: `CleanTemporaryStorageJob` runs nightly **and** from `StorageCapacityGuard:301`, so two can be concurrent (`withoutOverlapping` guards the entry, not the ad-hoc dispatch) — idempotent by `temp_file_retention_hours`, so safe |
+| P17-D1 | Final code-to-docs reconciliation — re-date every `docs/base/` area in § *Documentation Status*, **including Testing and UI, which have no verification row today**; resolve or file the C1 CSS conflict; code-contradicts-contract = defect + regression test + `changelog.md`, not a doc edit; `docs/base/architecture.md` path correction honoured (D-9) | 17 | P1 | P17-A1..C3 | DONE — 2026-11-05 — Testing and UI now carry dated verification rows in `progress.md` § *Documentation Status* (the two Phase 16 left bare); the bars written into `docs/base/testing/testing-strategy.md` are the enforced ones from `bin/coverage_gate.php` plus the measured 2026-11-04 figures, and the P17-C2 gate is documented there; the D-9 path note is recorded against `docs/base/architecture/architecture.md`. The C1 conflict is **filed, not silently fixed**: `docs/base/ui/ui-adminlte-setup.md` now states the doc-vs-config contradiction with the measurements (`@vite` passes only the JS in all three layouts, no `css` array in the manifest, `@viteFonts()` unused, `Paginator::useBootstrap()`) and the two owner options — no code-contradicts-contract defect, so no new test or `changelog.md` line was owed. `DocumentationLinkIntegrityTest` green 3/3 over the edited tree |
+| P17-D2 | Tracker closure — reconcile `qa-tracker.md`'s **58 unreconciled rows** (49 PLANNED / 6 TODO / 3 PARTIAL of 99) against the suite row by row, close Phase 16's three REVIEW E rows on their own evidence, flip `task-tracker.md` / `progress.md` / `implementation-roadmap.md`; deferred runtime evidence and recorded delete-candidates must survive into § *Known Issues*, not vanish at closure (D-10) | 17 | P0 | P17-D1, P16-E1..E3 | DONE — 2026-11-05 — `qa-tracker.md`: all 99 scenario rows read against the suite; the 55 that still read PLANNED or TODO (of the 58 the plan named — the other 3 were already PARTIAL) now read **36 DONE / 5 PARTIAL / 13 UNPROVEN / 1 N/A**, whole file **77 DONE / 8 PARTIAL / 13 UNPROVEN / 1 N/A**, and every DONE row cites the test file and method whose assertion was opened and read. The 21 unproven/partial rows are **left open with the missing assertion named**, not stamped — three of them (QA-AUDIT-004, QA-AUDIT-008, QA-MON-010) are marked `PARTIAL — needs a human` because no automated test can close them. P16-E1/E2/E3 closed above. This file's nine Phase 17 A–C rows flipped from REVIEW to DONE on the run logs in `phase-17-full-regression.md` § *As implemented* (that section is the evidence line each row cites; the flip adds no new claim). The JSON ledger's 15 stale entries (P7-E1/E2/E6/E7, NOTIF-001..003, SEC-001..003, STOR-001/002, BACKUP-001, RETAIN-001, CACHE-002) reconciled against shipped code + their proving suites, CACHE-002 kept open as the deliberate deferral `progress.md` already records. `progress.md` rows 16/17 closed, § *Known Issues* now carries the deferred evidence and the delete-candidates; `implementation-roadmap.md` 16 and 17 → DONE |
+| P17-D3 | Final release summary — `docs/planning/final-release-summary.md`: delivered capabilities with their proving files, the measured bar and how CI enforces it, what stays **deferred as deferred** (real S3, restore round trip, live rebase, 9 risky, dead auth-request accessors), three deployment lines pointing at the runbook, and a verdict that does not exceed the evidence | 17 | P2 | P17-D2 | DONE — 2026-11-05 — `docs/planning/final-release-summary.md` written in the plan's five-part order: 14 capabilities each with the route gate (line-cited in `routes/web.php` / `routes/api.php` / `config/pulse.php`), the proving test paths (every one checked to exist) and its `docs/base/` design doc; the measured bar with the workflow job and trigger that enforces it (`ci-cd.yml` `test`/`deploy`, `testing.yml` `phpstan` per PR, `coverage` on schedule + release with pcov, `dependency-audit` weekly); **nine deferred items stated as deferred** (S3, restore round trip, live rebase, 9 risky matched by count only, the 21 open QA rows, the dead auth accessors, D-8, web-verify signature/expiry, log redaction as policy-not-mechanism, the un-gated pages + no i18n, the two Group C findings); three deploy lines pointing at `docs/base/operations/deployment.md`; verdict "shippable for its stated purpose" with § 3 as its boundary — no unqualified "100 % verified" anywhere |
+
+**Group A–C closure note (P17-D2, 2026-11-05):** the nine rows above (A1–A3, B1–B3, C1–C3) are closed on the measurements in `docs/planning/phase-17-full-regression.md` § *As implemented* — that section is their evidence line, and each row's Status cell already quotes its own numbers. Nothing in Group D changed code, so no measurement was re-taken to justify the flip and none of the counts moved. The Tailwind decision (D-8) and the 21 open QA rows remain the owner's, recorded in `docs/planning/final-release-summary.md` § 3.
+
+**Invariants (non-negotiable):** a number is quoted from a run, never carried from a doc; one check has one owner (no second render/schema/coverage gate); a missed bar is a gap list with owners, never a lowered threshold or a deleted/weakened test; no new analyser, linter, load tester or package without an ADR; the closing statement may not exceed the evidence — deferred items stay labelled deferred; nothing is committed by the implementing turn.
 
 ---
 
@@ -1655,8 +1701,8 @@ one. The test factory no longer repeats a username. Detail:
     "phase": 7,
     "priority": "P0",
     "depends_on": ["P7-C5", "P7-D10"],
-    "status": "PLANNED",
-    "note": "NOT STARTED. Must also cover the two cases the brief does not name and that are the ones that break: an undeclared slug 403s (fail-closed), and a slug declared in config but never activated 403s (the Pennant trap)."
+    "status": "DONE",
+    "note": "Written PLANNED as 'NOT STARTED' — closed 2026-11-05 by P17-D2. Must also cover the two cases the brief does not name and that are the ones that break: an undeclared slug 403s (fail-closed), and a slug declared in config but never activated 403s (the Pennant trap). | Closed 2026-11-05 by P17-D2: the fail-closed cases this note demanded exist and ran green in P17-A1 - tests/Feature/FeatureFlag/FeatureFlagMiddlewareTest.php, FeatureFlagRouteTest.php (test_a_flag_off_route_answers_, test_an_unknown_slug_is_a_), FeatureFlagBulkTest.php (test_bulk_action_refuses_an_undeclared_slug), FeatureFlagPentestTest.php, PendingFeatureFlagTest.php."
   },
   {
     "id": "P7-E2",
@@ -1664,8 +1710,8 @@ one. The test factory no longer repeats a username. Detail:
     "phase": 7,
     "priority": "P0",
     "depends_on": ["P7-D3"],
-    "status": "PLANNED",
-    "note": "NOT STARTED. Closes the item Group A left open — A4 asserts the trigger attributes but no controller existed to receive them."
+    "status": "DONE",
+    "note": "Written PLANNED as 'NOT STARTED' — closed 2026-11-05 by P17-D2. Closes the item Group A left open — A4 asserts the trigger attributes but no controller existed to receive them. | Closed 2026-11-05 by P17-D2: the POST-the-rendered-toggle round trip is proven by tests/Feature/FeatureFlag/FeatureFlagApiTest.php::test_a_manager_can_toggle_a_flag_through_the_api plus FeatureFlagRouteTest.php::test_toggling_flips_the_flag_and_audits_it and ::test_the_toggle_forgets_the_resolved_snapshot (store + cache bust + audit row)."
   },
   {
     "id": "P7-E3",
@@ -1700,8 +1746,8 @@ one. The test factory no longer repeats a username. Detail:
     "phase": 7,
     "priority": "P1",
     "depends_on": ["P7-F6"],
-    "status": "IN_PROGRESS",
-    "note": "The two doc DEFECTS closed in the Group A audit: feature-flags.md rewritten (Phase 7 catalogue with the 8 flags, the declare-does-not-activate trap, 403 settled against Pennant's 400 with the reasoning, the no-features.manage-bypass rule), and ui-architecture.md:158 relinked from ./feature-flags.md to ../features/feature-flags.md. Remaining: the trackers, which close with the phase, and feature-tracker.md row 24 — it reads 'done' today, which is wrong, because the table existed and nothing used it until Phase 7."
+    "status": "DONE",
+    "note": "The two doc DEFECTS closed in the Group A audit: feature-flags.md rewritten (Phase 7 catalogue with the 8 flags, the declare-does-not-activate trap, 403 settled against Pennant's 400 with the reasoning, the no-features.manage-bypass rule), and ui-architecture.md:158 relinked from ./feature-flags.md to ../features/feature-flags.md. Remaining: the trackers, which close with the phase, and feature-tracker.md row 24 — it reads 'done' today, which is wrong, because the table existed and nothing used it until Phase 7. | Closed 2026-11-05 by P17-D2: the two doc DEFECTS were already fixed (see the note above); what this row deferred - the trackers - was reconciled on 2026-11-05 (task-tracker.md, qa-tracker.md, progress.md, implementation-roadmap.md), and feature-tracker.md row 24 now reads done with the shipped Phase 7 evidence, so the wrongness this note recorded is gone."
   },
   {
     "id": "P7-E7",
@@ -1709,8 +1755,8 @@ one. The test factory no longer repeats a username. Detail:
     "phase": 7,
     "priority": "P0",
     "depends_on": ["P7-E4", "P7-E6"],
-    "status": "PLANNED",
-    "note": "NOT STARTED."
+    "status": "DONE",
+    "note": "Written PLANNED as 'NOT STARTED' — closed 2026-11-05 by P17-D2. | Closed 2026-11-05 by P17-D2: the verification this row names was run on the final tree by Phase 17 - php artisan test 2668 passed / 9837 assertions exit 0 (P17-A1 + the post-C2 re-measure), vendor/bin/pint --test PASS 489 files (P17-B1), npm run build exit 0 (P17-C1), view render suites green (P17-A3)."
   },
 
   {
@@ -1833,7 +1879,8 @@ one. The test factory no longer repeats a username. Detail:
     "depends_on": [
       "FOUND-003"
     ],
-    "status": "PLANNED"
+    "note": "Closed 2026-11-05 by P17-D2: the mail transport is operator-configurable and encrypted at rest - app/Http/Requests/V1/Notification/UpdateMailSettingsRequest.php, proven by tests/Feature/Notification/NotificationSettingsTest.php::test_a_manager_saves_the_transport_and_it_reaches_the_runtime_config and ::test_the_password_is_encrypted_at_rest_and_decrypted_for_the_transport.",
+    "status": "DONE"
   },
   {
     "id": "NOTIF-002",
@@ -1843,7 +1890,8 @@ one. The test factory no longer repeats a username. Detail:
     "depends_on": [
       "NOTIF-001"
     ],
-    "status": "PLANNED"
+    "note": "Closed 2026-11-05 by P17-D2: channels save, render and gate - NotificationSettingsTest.php::test_the_channel_switches_save_and_render_as_booleans plus the mail-configuration and channels render gates in tests/Feature/Notification/NotificationUiRenderTest.php.",
+    "status": "DONE"
   },
   {
     "id": "NOTIF-003",
@@ -1853,7 +1901,8 @@ one. The test factory no longer repeats a username. Detail:
     "depends_on": [
       "QUEUE-001"
     ],
-    "status": "PLANNED"
+    "note": "Closed 2026-11-05 by P17-D2: 8 classes in app/Notifications implement ShouldQueue (UserCreated, AccountStateChanged, ChangeEmailVerification, RolesChanged, ConfigurationChanged, UserRegistered, Register, AuditExportReady); the per-job standard is enforced by reflection in tests/Feature/Queue/JobConventionTest.php per docs/base/infrastructure/queue.md.",
+    "status": "DONE"
   },
   {
     "id": "AUDIT-001",
@@ -1957,7 +2006,7 @@ one. The test factory no longer repeats a username. Detail:
       "CACHE-001"
     ],
     "status": "PLANNED",
-    "note": "Deferred: base project has no application-level cached data requiring grouped invalidation. Pattern documented in cache.md; implement when a feature introduces cacheable data needing cache::tags() invalidation."
+    "note": "Deferred: base project has no application-level cached data requiring grouped invalidation. Pattern documented in cache.md; implement when a feature introduces cacheable data needing cache::tags() invalidation. | Still open by decision, not unfinished work: recorded in docs/planning/progress.md section Known Issues (Open) and in docs/base/infrastructure/cache.md. Reconciled 2026-11-05 by P17-D2 - no application-level cached data on this tree needs cache::tags() grouped invalidation."
   },
   {
     "id": "QUEUE-001",
@@ -2030,7 +2079,8 @@ one. The test factory no longer repeats a username. Detail:
     "depends_on": [
       "FOUND-003"
     ],
-    "status": "PLANNED"
+    "note": "Closed 2026-11-05 by P17-D2: app/Http/Middleware/AddSecurityHeaders.php, pinned by tests/Feature/Security/SecurityHeadersTest.php and ContentSecurityPolicyTest.php (nonce, frame-ancestors, 500 masking).",
+    "status": "DONE"
   },
   {
     "id": "SEC-002",
@@ -2040,7 +2090,8 @@ one. The test factory no longer repeats a username. Detail:
     "depends_on": [
       "SEC-001"
     ],
-    "status": "PLANNED"
+    "note": "Closed 2026-11-05 by P17-D2: config/cors.php is default-deny and pinned by tests/Feature/Security/CorsPolicyTest.php; CSRF runs through app/Http/Middleware/VerifyCsrfToken.php, pinned by SecurityAuditTest::test_web_state_changing_forms_require_csrf.",
+    "status": "DONE"
   },
   {
     "id": "SEC-003",
@@ -2050,7 +2101,8 @@ one. The test factory no longer repeats a username. Detail:
     "depends_on": [
       "SEC-001"
     ],
-    "status": "PLANNED"
+    "note": "Closed 2026-11-05 by P17-D2: every error leaves as the shared envelope via bootstrap/app.php withExceptions - tests/Feature/CrossCutting/ApiErrorEnvelopeTest.php::test_every_contract_status_is_emitted_in_the_shared_envelope against docs/base/api/error-contract.md.",
+    "status": "DONE"
   },
   {
     "id": "STOR-001",
@@ -2060,7 +2112,8 @@ one. The test factory no longer repeats a username. Detail:
     "depends_on": [
       "FOUND-003"
     ],
-    "status": "PLANNED"
+    "note": "Closed 2026-11-05 by P17-D2: config/filesystems.php declares local, public, tmp, secure_documents (private), backups and s3; disk behaviour pinned by tests/Feature/Storage/StorageDiskTest.php.",
+    "status": "DONE"
   },
   {
     "id": "STOR-002",
@@ -2071,7 +2124,8 @@ one. The test factory no longer repeats a username. Detail:
       "STOR-001",
       "AUDIT-005"
     ],
-    "status": "PLANNED"
+    "note": "Closed 2026-11-05 by P17-D2: audit exports land on the private secure_documents disk (app/Http/Controllers/Web/V1/StorageController.php:36); authorization, signing and cross-path replay proven by tests/Feature/Storage/StorageAuthorizationTest.php and tests/Feature/Audit/AuditExportTest.php.",
+    "status": "DONE"
   },
   {
     "id": "BACKUP-001",
@@ -2081,7 +2135,8 @@ one. The test factory no longer repeats a username. Detail:
     "depends_on": [
       "STOR-001"
     ],
-    "status": "PLANNED"
+    "note": "Closed 2026-11-05 by P17-D2: app/Services/Backup/SystemBackupRunner.php plus tests/Feature/Storage/BackupStrategyTest.php and the system-backup scheduler entry audited by P17-C3. Deferred as deferred: the backup-to-restore round trip has never been executed against a real dump (docs/planning/final-release-summary.md section 3).",
+    "status": "DONE"
   },
   {
     "id": "RETAIN-001",
@@ -2091,7 +2146,8 @@ one. The test factory no longer repeats a username. Detail:
     "depends_on": [
       "DB-001"
     ],
-    "status": "PLANNED"
+    "note": "Closed 2026-11-05 by P17-D2: four retention mechanisms ship and were audited as a set by P17-C3 - notification-retention, audit-export-retention and temp-storage-cleanup in routes/console.php plus vantage:prune behind config('vantage.enabled'); proven by tests/Feature/Storage/DataRetentionTest.php; docs/base/operations/retention.md corrected in Phase 16 C2.",
+    "status": "DONE"
   },
   {
     "id": "MONITOR-001",

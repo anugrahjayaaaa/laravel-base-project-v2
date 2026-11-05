@@ -64,7 +64,17 @@ Use model factories and seeders:
   clover run via `php bin/coverage_gate.php`. A missed bar is a gap list with
   owners, never a lowered threshold. Driver: pcov in CI.
 - Security scan integrated.
-- Architecture tests verify dependency rules.
+- Architecture tests verify dependency rules. Since P17-C2 that set includes
+  `tests/Arch/SerializableConfigTest.php`, which asserts every object-valued config
+  leaf defines `__set_state` (or is an enum) — `config:cache` serialises with
+  `var_export`/`eval`, so a live object in a config file is a deploy blocker the
+  feature suites cannot see (they boot the raw files).
+- Last measured on the release tree (2026-11-04, P17-A1/A2/B1/B2/C2): suite
+  **2668 passed / 9837 assertions, 9 risky**, exit 0; coverage global **94.87 %**,
+  Actions **97.11 %**, Policies **100 %**, Requests **98.09 %**, gate exit 0; Pint
+  **PASS 489 files**; PHPStan **exit 0** at level 8, ledger **310 entries**;
+  `composer audit --locked` and `npm audit --audit-level=high` both exit 0 (after
+  the vite 8.3.5 lockfile bump).
 
 ## CI/CD Pipeline
 
