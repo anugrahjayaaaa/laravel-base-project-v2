@@ -23,8 +23,8 @@
 | 15 | Comprehensive testing | P0 | DONE |
 | 16 | Documentation verification | P0 | DONE |
 | 17 | Full regression / final review | P0 | DONE |
-| 18 | General membership & loyalty system | P1 | PLANNED |
-| 19 | Basic POS engine & omnichannel payment gateway | P1 | PLANNED |
+| 18 | General membership & loyalty system | P1 | Group A in REVIEW; B–E PLANNED (voucher moved to 19) |
+| 19 | Basic POS engine & omnichannel payment gateway | P1 | PLANNED (voucher A-slice in REVIEW) |
 
 ## Dependency Map
 
@@ -223,17 +223,20 @@ email-verification-notice, password-change pages using AdminLTE auth layout.
 - Duration / expiry engine
 - Member dashboard & statistics
 - Automated expiry sweep + notification jobs
-- Member voucher & discount engine
+- ~~Member voucher & discount engine~~ — **moved to Phase 19 (owner decision
+  2026-11-05): voucher is its own domain — own flag, own menu, validated at payment time,
+  neither a membership nor a gateway feature**
 - Depends on: Phase 17 (foundation closed) — reuses the Phase 8 settings, Phase 7 feature
   flag, Phase 9 notification/queue and Phase 10 audit capabilities rather than adding new
   infrastructure
-- Breakdown: [phase-18-membership-loyalty.md](phase-18-membership-loyalty.md) — 19 tasks in
+- Breakdown: [phase-18-membership-loyalty.md](phase-18-membership-loyalty.md) — 18 tasks in
   five groups (A UI + flag → B data/Actions/controllers → C sweep + bulk notification →
   D RBAC/flag/audit → E tests + closure), written 2026-11-05 with seven brief-vs-code
   conflicts recorded (D-1..D-7) before any task is built: flag-off is **403, not 404**;
   `members` is a loyalty profile keyed to `users.id`, not a second identity; there is no
   WhatsApp channel; `lockForUpdate()` cannot be proven on the SQLite test connection
-- Status: PLANNED
+- Status: **Group A in REVIEW** (five member views + `member_loyalty` flag + render gate
+  shipped 2026-11-05); Groups B–E PLANNED
 
 ### Phase 19: Basic POS Engine & Omnichannel Payment Gateway
 - Point of Sales engine (self-service + cashier interface)
@@ -241,9 +244,13 @@ email-verification-notice, password-change pages using AdminLTE auth layout.
 - Omnichannel payment gateway configuration
 - Dynamic financial dashboard (revenue, tax/PPN/PPH, profitability)
 - Payment race-condition shield + atomic webhook handler
-- Depends on: Phase 18 (tier pricing and voucher discount are applied at the POS line) and
+- **Voucher domain** (moved in from Phase 18): own `vouchers` flag, own menu entry,
+  `vouchers.view`/`vouchers.manage`, `ValidateVoucherAction` deciding validity when a
+  payment presents a code
+- Depends on: Phase 18 (tier pricing and points are applied at the POS line; the voucher
+  now lives here, not there) and
   Phase 14 (gateway credentials are encrypted `SystemSetting` values, same pattern as SMTP)
-- Breakdown: [phase-19-pos-and-payment.md](phase-19-pos-and-payment.md) — 19 tasks in five
+- Breakdown: [phase-19-pos-and-payment.md](phase-19-pos-and-payment.md) — 22 tasks in five
   groups (A UI + flags → B data/shifts/sales/ESC-POS → C gateway order + webhook +
   credentials → D RBAC/flag/audit → E tests + closure), written 2026-11-05 with thirteen
   brief-vs-code conflicts recorded (D-1..D-13) before any task is built: **no product or
@@ -256,4 +263,5 @@ email-verification-notice, password-change pages using AdminLTE auth layout.
   whitelist and **inside** `SystemSetting::SECRET_KEYS` so `settings.manage` cannot repoint
   production money; Net Profit has no cost data; `mike42/escpos-php` needs an ADR before
   `composer require` and only its byte stream is testable here; flag-off is 403, not 404
-- Status: PLANNED
+- Status: PLANNED — except the voucher Group A slice (P19-A6), shipped 2026-11-05 and in
+  REVIEW

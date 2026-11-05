@@ -1,11 +1,14 @@
 # Phase 18 — General Membership & Loyalty System
 
-> Date: 2026-11-05 | Status: **PLANNED** (breakdown written 2026-11-05; no task started, no
-> code written) | Branch when scheduled: `feature/phase-18-membership-loyalty`
+> Date: 2026-11-05 | Status: **Group A in REVIEW** (views + `member_loyalty` flag shipped
+> 2026-11-05; voucher rows moved to Phase 19 — owner decision the same day) |
+> Branch when scheduled: `feature/phase-18-membership-loyalty`
 > Purpose: give the base project a membership domain — dynamic tiers, a subscription
 > duration/expiry engine, member statistics, automated expiry sweeps with bulk
-> notification, and a voucher/discount engine — built entirely on the primitives Phases
+> notification — built entirely on the primitives Phases
 > 1–17 already ship (RBAC, Pennant, `SystemSetting`, notifications + queues, audit, API v1).
+> **Vouchers moved out to Phase 19 (owner decision 2026-11-05): they are their own
+> domain — own flag, own menu, validated at payment time — not part of membership.**
 > Dependency chain: **A → B → C → D → E** (strictly sequential — see § 2.1).
 > Detail authority: this document. `task-tracker.md` holds the summary rows only.
 > Design authority: `docs/base/` (`AGENTS.md` § Before any task: docs win; a change to a
@@ -15,7 +18,14 @@
 
 ## 1. Scope
 
-Nineteen tasks in five groups (the brief's eighteen, with A4 split per D-4).
+Eighteen tasks in five groups (the brief's nineteen: A4 split per D-4, and the voucher
+tasks moved to Phase 19 — B5 is the pointer row).
+
+> **2026-11-05 owner adjustment:** every voucher row in this document (`P18-A2`'s voucher
+> view, `P18-B1`'s two voucher tables, `P18-B5`, `P18-B6`'s `VoucherController`,
+> `P18-D1`'s `vouchers.manage`, `P18-D3`'s `voucher.claimed`, `P18-E1`'s race test) ships
+> in **Phase 19** as the `vouchers` domain. The shipped voucher view already lives at
+> `resources/views/pages/vouchers/index.blade.php` under its own flag — see P19-A6.
 
 | Group | Subject | Nature |
 |---|---|---|
@@ -27,9 +37,10 @@ Nineteen tasks in five groups (the brief's eighteen, with A4 split per D-4).
 
 **Not in scope:**
 
-- **Spending anything.** No checkout, no order line, no tax, no receipt, no printing —
-  that is Phase 19. This phase models the tier, the subscription, the points balance and
-  the voucher, and makes the voucher *claimable*; it never applies a discount to a sale.
+- **Spending anything, and vouchers entirely.** No checkout, no order line, no tax, no
+  receipt, no printing — that is Phase 19. And since 2026-11-05 the voucher is *its own*
+  domain in Phase 19 (validated at payment time), not a membership deliverable: this
+  phase models the tier, the subscription and the points balance only.
 - A payment gateway, an idempotent webhook, or the race-condition shield around money
   movement (Phase 19).
 - A WhatsApp / third-party notification channel — see **D-3**.
@@ -73,9 +84,9 @@ writer is wrong regardless of working, per `docs/base/architecture/application-c
    `DB::transaction`, with the audit write **inside** that transaction
    (`AGENTS.md`: audits are written by the Action layer, never by an observer). Jobs and
    events dispatch **after** commit.
-5. **Voucher claim is atomic.** One transaction, `lockForUpdate()` on the voucher row
-   before the quota is read, a unique `(voucher_id, member_id)` usage row as the
-   idempotency backstop. The lock alone is not the guard — see **D-5**.
+5. ~~**Voucher claim is atomic.**~~ **Moved to Phase 19 (P19-B6)** — the voucher is its
+   own domain; the atomicity rules (one transaction, `lockForUpdate()` before the quota
+   read, unique `(voucher_id, member_id)` backstop) ship there unchanged.
 6. **Bulk notification is queued and chunked**, never a `foreach` inside the request.
 7. **Both channels.** A capability that exists on web exists on the API in the same group.
    `AGENTS.md`: *a capability is not delivered by the UI that shows it* — the Phase 9/10
@@ -103,15 +114,15 @@ here. Each is recorded rather than silently resolved, and each changes a task be
 | **D-2** | P18-B1: a `members` table | Spatie's `HasRoles` is wired on `App\Models\User`; `Gate`, `can:`, `syncRoles`, the session guard and `PermissionCatalog` all resolve against `User`. A parallel `members` identity would either be unable to hold a role at all, or become a second login-capable account system | `members` is a **loyalty profile keyed to the existing user**: `user_id` FK, unique. Tier roles sync onto the **`User`**, so `can:` keeps working unchanged. No new authn path |
 | **D-3** | P18-C2: chunked **WhatsApp**/Email alerts | Two channels exist: `mail` and `database` (`NotificationChannel::for()`, switches `notification_channel_mail` / `_database`). No WhatsApp driver, no broadcast channel, no credentials | C2 ships **mail + in-app**, reading the same global switches. A WhatsApp driver is an open owner decision (§ 8): new package → `changelog.md` + ADR + `SystemSetting` credentials, exactly the SMTP shape |
 | **D-4** | P18-A4: sidebar entries wired in Group A | `AppMenuComposer` deliberately rejects `#` placeholders — "the menu cannot advertise a screen that was never shipped" — and a Blade reference to `route('members.index')` throws while that route name does not exist. Group A may not create controllers | A4 splits: **A4a** (flag declaration in `config/pennant.php`, `FeatureFlagSeeder` row, `@feature`/`@can` guards inside the views) stays in A; **A4b** (the route group + the two sidebar entries) ships with **B6**, the first commit where the link target exists. The sequential rule is not bent; the task is re-cut |
-| **D-5** | P18-E1: `VoucherRaceConditionTest` proves the lock | `phpunit.xml` runs `DB_CONNECTION=sqlite`, `DB_DATABASE=:memory:`. SQLite takes no `SELECT … FOR UPDATE`: the statement parses and does nothing | The test proves what SQLite *can* prove — quota arithmetic, the unique-usage-row backstop, a second claim refused. The row lock itself is recorded as **deferred runtime evidence** needing a two-session MySQL probe, the same way Phase 14 left the restore round trip open |
-| **D-6** | P18-D1: `members.view`, `members.manage`, `vouchers.manage` | A bulk POST must map to its own permission (`AuthorizesBulkAction`, P6-C17); Phase 12 Group D found exactly this gap on `features/bulk-action` — a route comment claiming a permission the route never checked. A3's "notify all expiring members" **is** a bulk action | Four permissions: `members.view`, `members.manage`, `members.notify`, `vouchers.manage`. `members.notify` is the broadcast's own gate. Coarse `manage` over create/update/delete stays, matching `settings.manage`/`storage.manage` rather than the 11-verb `users.*` set |
+| **D-5** | P18-E1: `VoucherRaceConditionTest` proves the lock | `phpunit.xml` runs `DB_CONNECTION=sqlite`, `DB_DATABASE=:memory:`. SQLite takes no `SELECT … FOR UPDATE`: the statement parses and does nothing | Applies to every `lockForUpdate()` here, including the points ledger lock in B4: the test proves what SQLite *can* prove — balance arithmetic, a second redemption refused — and the row lock itself is recorded as **deferred runtime evidence** needing a two-session MySQL probe, the same way Phase 14 left the restore round trip open. The voucher race test moved with the voucher domain to **P19-E1** |
+| **D-6** | P18-D1: `members.view`, `members.manage`, `vouchers.manage` | A bulk POST must map to its own permission (`AuthorizesBulkAction`, P6-C17); Phase 12 Group D found exactly this gap on `features/bulk-action` — a route comment claiming a permission the route never checked. A3's "notify all expiring members" **is** a bulk action | Three permissions: `members.view`, `members.manage`, `members.notify`. `members.notify` is the broadcast's own gate; `vouchers.manage` moved to Phase 19 (P19-D1) with its domain. Coarse `manage` over create/update/delete stays, matching `settings.manage`/`storage.manage` rather than the 11-verb `users.*` set |
 | **D-7** | (unstated) a `Member` domain | `docs/base/architecture/naming-conventions.md` holds a domains table (9 rows as of P16-B2) and `ActionNamingConventionTest` is its owner | B3 adds `Member` to that table in the same commit as the first Action, not at closure |
 
 ---
 
 ## 4. Data model
 
-Six tables, all with `softDeletes()` where a row is operator-deletable
+Four tables, all with `softDeletes()` where a row is operator-deletable
 (`docs/base/data/soft-delete.md`), all timestamps, all MySQL + SQLite-compatible
 (the suite runs SQLite).
 
@@ -121,8 +132,9 @@ Six tables, all with `softDeletes()` where a row is operator-deletable
 | `members` | `id`, `user_id` (FK → `users.id`, **unique**), `member_number` (unique, string), `points_balance` `unsignedBigInteger` default 0, `joined_at` `timestamp`, `notes` `text` nullable | One profile per account (D-2). No second identity |
 | `member_subscriptions` | `id`, `member_id` FK, `member_tier_id` FK, `status` enum(`active`,`expired`,`cancelled`), `starts_at`, `expires_at`, `role_name` (the role actually applied — kept per-row so a later tier edit cannot revoke the wrong role) | `role_name` copied at activation is the fix for "tier renamed after the fact leaves a role orphaned". Index `(status, expires_at)` — the sweep's only query shape |
 | `member_point_histories` | `id`, `member_id` FK, `delta` `bigInteger` (signed), `balance_after` `unsignedBigInteger`, `reason` `string`, `actor_id` nullable FK → `users`, `reference_type`/`reference_id` nullable morph | Ledger, never edited: a correction is a new row. `balance_after` makes the ledger auditable without recomputation |
-| `vouchers` | `id`, `code` (unique, upper), `type` enum(`percentage`,`fixed`), `value` `decimal(12,2)`, `max_discount` `decimal(12,2)` nullable, `min_purchase` `decimal(12,2)` default 0, `quota` `unsignedInteger` nullable (null = unlimited), `claimed_count` `unsignedInteger` default 0, `per_member_limit` `unsignedTinyInteger` default 1, `starts_at`, `expires_at`, `is_active` | Money as `decimal`, never `float`. Nothing spends it in this phase (D-10 in § 8 open items) |
-| `voucher_usages` | `id`, `voucher_id` FK, `member_id` FK, `claimed_at`, `reference_type`/`reference_id` nullable | Unique `(voucher_id, member_id)` — the idempotency backstop the lock cannot be alone against (D-5) |
+
+The `vouchers` and `voucher_usages` tables moved to Phase 19 (§ 4 of
+`phase-19-pos-and-payment.md`) with the rest of the voucher domain.
 
 Migrations are named `2026_11_XX_000000_create_member_*` in dependency order, each with a
 working `down()` (`mysql` sessions and the Phase 14 migration-`down()` lesson).
@@ -153,16 +165,15 @@ no route touched.
 - **Tests**: `MemberUiRenderTest` (A5).
 - **Docs**: `docs/base/ui/ui-adminlte-setup.md` only if a new component appears (none expected).
 
-#### P18-A2 — Tier configuration & voucher views
-- **Task**: `resources/views/pages/members/tiers.blade.php`, `vouchers.blade.php`. Tier
-  rows edit name, slug, price, duration in days, point multiplier, assigned role
-  (select built from the existing roles, not free text) and active state. Voucher rows
-  edit code, type, value, `max_discount`, `min_purchase`, quota, per-member limit and the
-  start/expiry window.
+#### P18-A2 — Tier configuration view
+- **Task**: `resources/views/pages/members/tiers.blade.php`. Tier rows edit name, slug,
+  price, duration in days, point multiplier, assigned role (select built from the
+  existing roles, not free text) and active state.
+- **Moved**: the voucher view (`pages/members/vouchers.blade.php`) became `resources/views/pages/vouchers/index.blade.php`
+  under the `vouchers` flag on 2026-11-05 — its own domain, its own menu. See **P19-A6**.
 - **Acceptance**: the role select offers exactly the roles the viewer may assign; an
-  inactive tier/voucher renders its state distinctly; both tables are
-  `.table-responsive`; nothing in the view computes remaining quota.
-- **Tests**: `MemberUiRenderTest`.
+  inactive tier renders its state distinctly; the table is `.table-responsive`.
+- **Tests**: `MemberUiRenderTest` (the voucher render gate is `VoucherUiRenderTest`, P19-A6).
 
 #### P18-A3 — Member dashboard & expiry alert widget
 - **Task**: `resources/views/pages/members/dashboard.blade.php`: counters (members by
@@ -201,15 +212,16 @@ no route touched.
 - **Note**: rendering by fixture rather than by HTTP is forced by **D-4**, not chosen for
   speed. The HTTP round trip is proven in E1.
 
-### Group B — Data, business logic and the tier/subscription/voucher engine
+### Group B — Data, business logic and the tier/subscription engine
 
 Exit gate: migrations migrate up and down on SQLite; every Action covered by a unit test;
 `ActionNamingConventionTest` and `NoInlineFqnTest` green; both channels respond.
 
 #### P18-B1 — Migrations, models, factories
-- **Task**: the six tables of § 4; `App\Models\{Member,MemberTier,MemberSubscription,MemberPointHistory,Voucher,VoucherUsage}`
+- **Task**: the four tables of § 4; `App\Models\{Member,MemberTier,MemberSubscription,MemberPointHistory}`
   each `use Auditable` + `SoftDeletes` where the table says so; factories for every model;
-  `User` gains the `member()` has-one (no role logic on the model).
+  `User` gains the `member()` has-one (no role logic on the model). `Voucher`/`VoucherUsage`
+  ship with the voucher domain in **P19-B6**.
 - **Acceptance**: `migrate` then `migrate:rollback` exits 0; a `member` cannot exist
   without a `user`; `member_subscriptions` refuses two `active` rows for one member
   (unique partial shape enforced in the Action, the DB constraint recorded as the
@@ -217,14 +229,13 @@ Exit gate: migrations migrate up and down on SQLite; every Action covered by a u
 - **Tests**: `MemberModelTest` (relations, casts, the unique `user_id`).
 
 #### P18-B2 — Form Requests
-- **Task**: `app/Http/Requests/V1/Member/{StoreMemberRequest,UpdateMemberRequest,StoreMemberTierRequest,UpdateMemberTierRequest,StoreVoucherRequest,UpdateVoucherRequest,ClaimVoucherRequest,BroadcastMemberExpiryRequest}`
-  extending `BaseFormRequest`, each with a real `authorize()` returning the permission
+- **Task**: `app/Http/Requests/V1/Member/{StoreMemberRequest,UpdateMemberRequest,StoreMemberTierRequest,UpdateMemberTierRequest,BroadcastMemberExpiryRequest}`
+  extending `BaseFormRequest` — the voucher requests ship in **P19-B6** with their domain — each with a real `authorize()` returning the permission
   that performs the change (`members.create` is not in the catalogue — `members.manage`
   is, and `authorize()` names it), and `rules()` that call `$request->validated()` at the
   controller.
-- **Acceptance**: every numeric bound rejects out-of-range (quota ≥ 0, `duration_days`
-  ≥ 1, `min_purchase` ≥ 0, `max_discount` ≥ `value` for a capped percentage); a code is
-  normalised to uppercase and unique among non-deleted rows; `BroadcastMemberExpiryRequest`
+- **Acceptance**: every numeric bound rejects out-of-range (`duration_days`
+  ≥ 1, `point_multiplier` ≥ 1); a tier slug is normalised and unique among non-deleted rows; `BroadcastMemberExpiryRequest`
   authorizes on `members.notify` (D-6).
 - **Tests**: `MemberRequestTest` + the standing Requests coverage bar in
   `bin/coverage_gate.php` (≥ 95 %).
@@ -251,23 +262,20 @@ Exit gate: migrations migrate up and down on SQLite; every Action covered by a u
   correction is a new row, never an update.
 - **Tests**: `MemberPointsTest`.
 
-#### P18-B5 — Atomic voucher claim
-- **Task**: `app/Actions/V1/Member/ClaimVoucherAction` — inside `DB::transaction`:
-  `Voucher::where('code',…)->lockForUpdate()->firstOrFail()` → verify active window,
-  `is_active`, quota vs `claimed_count`, the member's usage count vs `per_member_limit` →
-  increment `claimed_count`, insert the usage row, audit `voucher.claimed`.
-- **Acceptance**: the unique `(voucher_id, member_id)` row means a double-submit cannot
-  claim twice even if the lock is inert (D-5); an exhausted quota is refused with the
-  error contract's code, not a `ValidationException` leaking to the envelope; a failed
-  claim rolls back both the counter and the usage row.
-- **Tests**: `VoucherRaceConditionTest` (E1).
+#### P18-B5 — Atomic voucher claim — **MOVED to Phase 19 (P19-B6)**
+Owner decision 2026-11-05: the voucher is its own domain — its own flag (`vouchers`), its
+own menu, and it is validated at payment time by POS, so the table pair, the Actions, the
+requests, the controller, the permissions, the `voucher.claimed` audit event and the race
+test all ship in Phase 19. The atomicity rules travel unchanged (one transaction,
+`lockForUpdate()` before the quota read, the unique `(voucher_id, member_id)` usage row as
+the idempotency backstop the lock cannot be alone against — D-5).
 
 #### P18-B6 — Controllers, routes, sidebar, API twins
-- **Task**: `app/Http/Controllers/Web/V1/{MemberController,MemberTierController,VoucherController,MemberDashboardController}`
-  (thin: resolve, delegate, `respond()`) and the `app/Http/Controllers/Api/V1/Member/*`
+- **Task**: `app/Http/Controllers/Web/V1/{MemberController,MemberTierController,MemberDashboardController}`
+  (thin: resolve, delegate, `respond()`) — `VoucherController` ships in **P19-B7** — and the `app/Http/Controllers/Api/V1/Member/*`
   twins + `app/Http/Resources/Api/V1` resources; the route groups in `routes/web.php` and
   `routes/api.php` carrying `feature:member_loyalty` + `can:` at the route; **A4b**: the
-  two `AppMenuComposer` entries with `'permission' => 'members.view'` and
+  `AppMenuComposer` entries with `'permission' => 'members.view'` and
   `'feature' => 'member_loyalty'`; Scramble annotations per
   `docs/base/api/api-architecture.md` § *API Conventions*.
 - **Acceptance**: the web and API capability tables diff clean by capability (the Phase 12
@@ -321,8 +329,9 @@ seventh entry.
 Exit gate: every refusal is a measured status code, not a comment claiming one.
 
 #### P18-D1 — Route authorization
-- **Task**: add `MEMBERS`/`VOUCHERS` to `app/Support/PermissionCatalog.php`
-  (`members.view`, `members.manage`, `members.notify`, `vouchers.manage`), let
+- **Task**: add `MEMBERS` to `app/Support/PermissionCatalog.php`
+  (`members.view`, `members.manage`, `members.notify` — `vouchers.*` ship in Phase 19,
+  P19-D1), let
   `PermissionSeeder` prune-orphan → create → assign, put `can:` on every route, map the
   bulk POST through `AuthorizesBulkAction` (D-6), and add the permissions to the role
   matrix.
@@ -343,24 +352,25 @@ Exit gate: every refusal is a measured status code, not a comment claiming one.
 
 #### P18-D3 — Audit events
 - **Task**: the four events (`member.subscribed`, `member.role_synced`,
-  `voucher.claimed`, `member.expired`) written by the Actions, plus a fifth the brief
-  omits because it cannot see the call site: `member.points_adjusted`, or the ledger has
-  mutations no trail explains.
+  `member.expired`, plus the one the brief omits because it cannot see the call site:
+  `member.points_adjusted`, or the ledger has mutations no trail explains) written by the
+  Actions. `voucher.claimed` ships with the voucher domain in Phase 19 (P19-D3).
 - **Acceptance**: each event is one `->audit()` call site enumerated from code, not from
   strings (the P16-D1 method), and appears in the Event Map; the audit row and the
   mutation commit or roll back together.
 - **Tests**: `MemberAuditTest`; `ActionFirstAuditTest` cited as the standing owner.
-- **Docs**: `docs/base/features/audit-trail.md` Event Map (48 → 53 events).
+- **Docs**: `docs/base/features/audit-trail.md` Event Map (48 → 52 events).
 
 ### Group E — Verification and closure
 
 #### P18-E1 — Feature test suite
-- **Task**: `tests/Feature/Member/{MemberSubscriptionTest,VoucherRaceConditionTest,MemberExpirySweepTest}.php`
+- **Task**: `tests/Feature/Member/{MemberSubscriptionTest,MemberExpirySweepTest}.php`
   plus the files named in B/C/D. Lifecycle: activate → role present → cancel → role
-  absent; sweep → status, role, audit, SYSTEM causer; claim → quota, double submit,
-  per-member limit, rollback.
-- **Acceptance**: the race test is **sabotage-verified** (remove the unique index and the
-  quota increment → red) and names in its own docblock what SQLite cannot prove (D-5).
+  absent; sweep → status, role, audit, SYSTEM causer; points → ledger sum equals balance,
+  over-redemption refused. (`VoucherRaceConditionTest` travels with the voucher domain to
+  **P19-E1**.)
+- **Acceptance**: the points-ledger test is **sabotage-verified** (remove the balance
+  guard → red) and names in its own docblock what SQLite cannot prove (D-5).
 - **Tests**: are the tests. Coverage must not lower a bar: global ≥ 85 %, Actions ≥ 95 %,
   Requests ≥ 95 %, Policies 100 % (`bin/coverage_gate.php`).
 
@@ -395,7 +405,8 @@ phase's invention: authorization lives on the route, audits live in the Action.
 
 Carried into `progress.md` so it does not vanish at closure:
 
-- the MySQL two-session voucher probe (D-5) — `lockForUpdate()` is untestable on SQLite;
+- ~~the MySQL two-session voucher probe (D-5)~~ — travels with the voucher domain to
+  Phase 19 § 7; this phase carries the same deferred proof for the points lock only;
 - the WhatsApp channel decision (§ 8) — unshipped by design, not by omission;
 - points **earn from a sale** has no caller until the Phase 19 POS engine exists. B4's
   manual admin earn/redeem is the shipped half, and is a real use case (an operator
@@ -409,4 +420,4 @@ Carried into `progress.md` so it does not vanish at closure:
 | O-1 | **D-2** — is `Member` a profile on `users` (recommended) or a second identity with its own login? | profile / second identity | Blocks B1. A second identity means a second authn surface, a second `User`-shaped model in every `can:` path, and new ADRs |
 | O-2 | **D-3** — WhatsApp driver | defer to Phase 19 / add package + ADR + `SystemSetting` credentials now | Not blocking: C2 ships mail + in-app either way |
 | O-3 | Points expiry | never expires / expires with the subscription | Not blocking for the schema; blocks the sweep's scope if "yes" (a second sweep) |
-| O-4 | Voucher `max_discount` and `min_purchase` semantics with no order total in Phase 18 | store + validate + document as spend-time inputs consumed by Phase 19 / drop until 19 | Not blocking; § 4 keeps the columns because Phase 19 needs them and adding a column later to a table with rows is a data migration |
+| O-4 | Voucher `max_discount` and `min_purchase` semantics with no order total in Phase 18 | **CLOSED 2026-11-05** — mooted by the move: the whole voucher domain (both columns included) ships in Phase 19 where an order total exists | Not blocking — resolved |
