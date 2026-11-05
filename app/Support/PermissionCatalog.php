@@ -114,6 +114,39 @@ class PermissionCatalog
     ];
 
     /**
+     * Membership & loyalty — Phase 18.
+     *
+     * `.notify` is separate from `.manage` for the same reason
+     * `notifications.send_test` is separate from its manage: a bulk mail to
+     * every member in an alert window is an outbound side effect, not an edit.
+     *
+     * The three trash actions split off `.manage` on the users/roles shape, one
+     * prefix for the whole module: a member profile and its tier configuration
+     * are both loyalty records, so a tier delete is not a separate capability
+     * from a member delete. `.force_delete` is its own name because it destroys
+     * the points history and the subscription rows that a soft delete keeps, and
+     * `.restore` because pulling a row back out of the trash is a different
+     * decision from putting it in.
+     *
+     * `.activate` / `.deactivate` split off `.manage` on the `users.*` shape:
+     * switching a loyalty profile off takes a person out of the programme, which
+     * is not the same decision as editing the price of a tier. One pair covers
+     * both lists — a tier is switched off for the same reason a member is.
+     *
+     * @var array<int, string>
+     */
+    private const MEMBERS = [
+        'members.view',
+        'members.manage',
+        'members.notify',
+        'members.delete',
+        'members.restore',
+        'members.force_delete',
+        'members.activate',
+        'members.deactivate',
+    ];
+
+    /**
      * Audit trail — the read-only viewer over the audit log.
      *
      * ponytail: `.export` is separate from `.view` for the reason
@@ -223,6 +256,7 @@ class PermissionCatalog
         'permissions' => 'permissions',
         'settings' => 'settings',
         'notifications' => 'notifications',
+        'members' => 'member_loyalty',
         // The resource is `audit`, the flag is `activity_logs`: the viewer was
         // named after the module before the flag existed. Spelled out here
         // rather than pluralised from the prefix, which is exactly how the two
@@ -271,6 +305,7 @@ class PermissionCatalog
             ...self::BACKUP,
             ...self::NOTIFICATIONS,
             ...self::FEATURES,
+            ...self::MEMBERS,
             ...self::AUDIT,
             ...self::PULSE,
             ...self::HEALTH,

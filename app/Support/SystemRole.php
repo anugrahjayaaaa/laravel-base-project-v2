@@ -24,13 +24,25 @@ class SystemRole
     public const USER = 'user';
 
     /**
+     * The role every account created through Add new member holds (Phase 18).
+     *
+     * It carries no permission: `PermissionSeeder`'s matrix grants it nothing,
+     * so an account created through Add new member can reach no screen — the
+     * member screens are gated on `members.view`, which staff and admins hold,
+     * not on this role. The name exists so the loyalty population is
+     * addressable ("who is a member?") and so P18-B3's tier role sync has a row
+     * to apply its tier role alongside.
+     */
+    public const MEMBER = 'member';
+
+    /**
      * Every system role name.
      *
      * @return array<int, string>
      */
     public static function names(): array
     {
-        return [self::SUPERADMIN, self::ADMIN, self::USER];
+        return [self::SUPERADMIN, self::ADMIN, self::USER, self::MEMBER];
     }
 
     /**

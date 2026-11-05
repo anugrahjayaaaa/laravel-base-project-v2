@@ -22,12 +22,18 @@ class DatabaseSeeder extends Seeder
             PermissionSeeder::class,
             SuperAdminSeeder::class,
             TimezoneSeeder::class,
+            // Before SystemSettingSeeder: `currency_code` names a row here, and
+            // the settings page builds its dropdown from these rows.
+            CurrencySeeder::class,
             SystemSettingSeeder::class,
             // After PermissionSeeder: the flags page is gated on
             // features.view / features.manage, and a flag with no store row
             // reads as OFF — so seeding them before anything can reach the
             // page avoids a window where every module looks disabled.
             FeatureFlagSeeder::class,
+            // Starter configuration, not demo rows: an install with no tiers has
+            // nothing to subscribe a member to.
+            MemberTierSeeder::class,
             UserSeeder::class,
         ]);
     }

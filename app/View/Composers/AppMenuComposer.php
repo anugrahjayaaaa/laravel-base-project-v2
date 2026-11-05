@@ -174,6 +174,45 @@ class AppMenuComposer
                 ],
             ],
             [
+                'label' => 'Membership',
+                'items' => [
+                    [
+                        'label' => 'Membership Dashboard',
+                        'icon' => 'fas fa-chart-line',
+                        'route' => 'membership.dashboard',
+                        'active' => 'membership.dashboard',
+                        'permission' => 'members.view',
+                        'feature' => 'member_loyalty',
+                    ],
+                    [
+                        'label' => 'Members',
+                        'icon' => 'fas fa-id-card',
+                        'route' => 'members.index',
+                        // `members.*` also matches the tier routes, so the Tiers
+                        // entry below names its own prefix and this one excludes
+                        // it. Without `except` both entries light up on every
+                        // tier page. The dashboard avoids the clash by carrying
+                        // the `membership.` route-name prefix instead.
+                        'active' => 'members.*',
+                        'except' => 'members.tiers*',
+                        'permission' => 'members.view',
+                        'feature' => 'member_loyalty',
+                    ],
+                    [
+                        'label' => 'Tiers',
+                        'icon' => 'fas fa-layer-group',
+                        'route' => 'members.tiers',
+                        // `members.tiers*`, not the exact name: the create and edit
+                        // pages are part of this screen, so the entry has to stay
+                        // lit while the operator is on them. The Members entry above
+                        // matches the whole prefix either way.
+                        'active' => 'members.tiers*',
+                        'permission' => 'members.view',
+                        'feature' => 'member_loyalty',
+                    ],
+                ]
+            ],
+            [
                 'label' => 'System',
                 'items' => [
                     [

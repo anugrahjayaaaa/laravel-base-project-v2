@@ -51,6 +51,10 @@ class PermissionSeeder extends Seeder
             // would need remembering in two places, and forgetting is invisible.
             SystemRole::ADMIN => PermissionCatalog::all(),
             SystemRole::USER => [],
+            // `member` is the loyalty population: an account created through Add
+            // new member. Empty for the same reason `user` is — a member reaches
+            // their own profile, not anyone else's screens.
+            SystemRole::MEMBER => [],
         ];
     }
 

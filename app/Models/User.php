@@ -9,6 +9,7 @@ use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -49,6 +50,17 @@ class User extends Authenticatable implements MustVerifyEmail
     protected function getDefaultGuardName(): string
     {
         return RoleLookup::guard();
+    }
+
+    /**
+     * The loyalty profile on this account (Phase 18, D-2). One per user; a
+     * tier's role is synced onto THIS model, never onto `Member`.
+     *
+     * @return HasOne<Member, $this>
+     */
+    public function member(): HasOne
+    {
+        return $this->hasOne(Member::class);
     }
 
     /**

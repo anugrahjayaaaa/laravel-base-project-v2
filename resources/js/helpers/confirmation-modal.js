@@ -12,6 +12,7 @@ import { escHtml, resolveAction } from './action-config.js';
 
     var MODAL_ID = 'confirmModal';
     var modal, form, header, title, message, submitBtn, iconEl;
+    var deactivationBlock, violationBox, reasonField;
 
     var VARIANT_META = {
         success: {
@@ -56,6 +57,13 @@ import { escHtml, resolveAction } from './action-config.js';
         message = el.querySelector('#confirmModalMessage');
         iconEl = el.querySelector('#confirmModalIcon');
         submitBtn = form.querySelector('#confirmModalSubmit') || form.querySelector('button[type="submit"]');
+        deactivationBlock = el.querySelector('#confirmModalDeactivation');
+        violationBox = el.querySelector('#confirmModalViolation');
+        reasonField = el.querySelector('#confirmModalReason');
+
+        if (deactivationBlock && violationBox) {
+            violationBox.addEventListener('change', syncReasonField);
+        }
 
         document.addEventListener('click', onTriggerClick);
         el.addEventListener('hidden.bs.modal', onHidden);
@@ -82,6 +90,8 @@ import { escHtml, resolveAction } from './action-config.js';
 
         modal._ctx = { action: actionUrl, method, variant: cfg.variant, trigger };
 
+        showDeactivationFields(trigger.hasAttribute('data-deactivation-fields'));
+
         title.textContent = cfg.title;
         message.innerHTML = cfg.msg.replace(/__ITEM__/g, '<b>' + escHtml(itemName) + '</b>');
         applyVariant(cfg.variant, cfg.icon);
@@ -105,6 +115,31 @@ import { escHtml, resolveAction } from './action-config.js';
         methodInput.value = method;
 
         modal.show();
+    }
+
+    /**
+     * The violation/reason pair exists for one trigger: deactivating a member.
+     * Hidden means disabled as well, so no other action can post those keys.
+     */
+    function showDeactivationFields(enabled) {
+        if (!deactivationBlock) return;
+
+        deactivationBlock.classList.toggle('d-none', !enabled);
+        deactivationBlock.querySelectorAll('input, textarea').forEach(function (field) {
+            field.disabled = !enabled;
+        });
+
+        syncReasonField();
+    }
+
+    // A sanction without a recorded reason is an accusation nobody wrote down,
+    // so the field is editable and required exactly while the switch is on.
+    function syncReasonField() {
+        if (!reasonField) return;
+
+        var on = violationBox.checked;
+        reasonField.disabled = !on;
+        reasonField.required = on;
     }
 
     function applyVariant(variant, iconOverride) {
