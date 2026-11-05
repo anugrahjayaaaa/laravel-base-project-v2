@@ -21,8 +21,8 @@
 | 13 | Security hardening | P0 | DONE |
 | 14 | Storage/backup/retention | P1 | DONE |
 | 15 | Comprehensive testing | P0 | DONE |
-| 16 | Documentation verification | P0 | IN PROGRESS |
-| 17 | Full regression / final review | P0 | IN PROGRESS |
+| 16 | Documentation verification | P0 | DONE |
+| 17 | Full regression / final review | P0 | DONE |
 
 ## Dependency Map
 
@@ -201,9 +201,13 @@ email-verification-notice, password-change pages using AdminLTE auth layout.
 ### Phase 16: Documentation Verification
 - Verify docs match code
 - Update as needed
-- Status: IN PROGRESS
+- Status: DONE (Group E closed 2026-11-05 by P17-D2 on the Phase 17 run logs)
 
 ### Phase 17: Full Regression / Final Review
 - End-to-end testing
 - Final review against Definition of Done
-- Status: IN PROGRESS — Groups A, B and C run and recorded 2026-11-04 (REVIEW); Group D PLANNED
+- Status: DONE — Groups A, B and C run and recorded 2026-11-04, Group D run
+  2026-11-05 (reconciliation, tracker closure, `docs/planning/final-release-summary.md`).
+  Every gate exited 0 on the final tree; what remains open is listed as deferred in
+  the release summary § 3 and in `progress.md` § *Known Issues*. Work sits in the
+  working tree uncommitted — the owner reviews and commits (`AGENTS.md`).

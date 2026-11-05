@@ -68,6 +68,23 @@ See ADR-002 for the full architectural decision.
 Vite compiles custom application assets (JS + Tailwind CSS) into
 `public/build/assets/` with content-based hashing for cache busting.
 
+> **Open conflict, named rather than resolved (P17-C1 / D-8, measured 2026-11-04).**
+> This section says Tailwind CSS, and `AGENTS.md` § *Stack* says "No Tailwind". Both
+> sentences describe the same tree, and P17-C1 measured which one the browser obeys:
+> `vite.config.js:9` still lists `resources/css/app.css` as an input (9 lines: the
+> Tailwind import, two `@source` hints, one `--font-sans` token — **no project rule**),
+> the build emits `app-*.css` at 49.62 kB, and **no layout loads it** — all three
+> `@vite(...)` calls pass only `resources/js/app.js`, and neither manifest entry
+> carries a `css` array. `Paginator::useBootstrap()` (`AppServiceProvider:70-71`) means
+> the Tailwind-classed pagination views the `@source` hint targets are never rendered,
+> and `@viteFonts()` appears nowhere, so the self-hosted font CSS and its six
+> `instrument-sans-*` files are unreferenced too: `--lbp-font: 'Instrument Sans'` in
+> `public/vendor/theme.css` resolves to the `system-ui` fallback. So the shipped pages
+> follow `AGENTS.md` and this section describes dead bytes. The owner decision is
+> between dropping the CSS input + `tailwindcss`/`@tailwindcss/vite`, or loading the
+> built CSS and amending `AGENTS.md` via ADR. Until it is made, this paragraph is the
+> record — do not "fix" either side unilaterally.
+
 ### When to Rebuild
 
 **Any change to `resources/js/` or `resources/css/` requires `npm run build`**.
@@ -81,7 +98,9 @@ npm run build   # generates public/build/assets/app-[hash].js
 ### What Vite Compiles
 
 - `resources/js/app.js` → imports `confirmation-modal.js`, `bulk-actions.js`
-- `resources/css/app.css` → Tailwind CSS + base styles
+- `resources/css/app.css` → Tailwind CSS and nothing else (no base styles live here;
+  every rule the pages use is in `public/vendor/theme.css` + the vendored
+  Bootstrap/AdminLTE CSS). Built but loaded by no layout — see the conflict note above.
 
 ### AdminLTE vs Vite
 

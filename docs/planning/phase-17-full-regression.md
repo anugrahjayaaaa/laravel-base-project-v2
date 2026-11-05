@@ -1,14 +1,18 @@
 # Phase 17 — Full Regression & Final Review
 
-> Date: 2026-11-04 | Status: **IN PROGRESS** (breakdown written 2026-11-04; **Groups A, B and C
-> run and recorded 2026-11-04 — see § 11**; Group D has not been executed) |
+> Date: 2026-11-04 | Status: **CLOSED (2026-11-05)** — breakdown written 2026-11-04;
+> **Groups A, B and C run and recorded 2026-11-04, Group D run and recorded
+> 2026-11-05 — see § 11.** All twelve tasks flipped DONE in `task-tracker.md` on the
+> evidence in this file; nothing is committed, so the phase awaits owner review.
+> Closure document: `docs/planning/final-release-summary.md`. |
 > Branch at implementation: `feature/phase-17-full-regression`
 > Purpose: run every gate once on the final tree, record the numbers the run
 > actually printed, reconcile the trackers to those numbers, and close the
 > roadmap — with the honesty rule that no row flips without evidence.
 > Dependency chain: **A ∥ B ∥ C** (independent runs) → **D1 → D2 → D3**.
 > Hard predecessor: **Phase 16 Group E must leave REVIEW before P17-D2 flips any
-> row** (P16-E1/E2/E3 are in REVIEW as of this writing).
+> row** (P16-E1/E2/E3 were in REVIEW when this was written — satisfied 2026-11-05,
+> closed by D2 on the Phase 17 run logs before any Phase 17 row flipped).
 > Detail authority: this document. `task-tracker.md` holds the summary rows only.
 > Design authority: `docs/base/` — Phase 17 verifies, it does not redefine.
 
@@ -728,5 +732,28 @@ planning trackers). Coverage was **not** re-instrumented: the change is one new
 measured on the tree before it; P17-A2's numbers are therefore dated to A1's run, not
 restated as post-C. If Group D wants a post-code coverage figure it must run the
 instrumented pass again.
+
+### Group D — run and recorded (2026-11-05)
+
+| Task | What ran | Result |
+|---|---|---|
+| P17-D1 | code-to-docs reconciliation | Testing and UI rows in `progress.md` § *Documentation Status* written with dated verification (the two Phase 16 left as bare "Complete"); `docs/base/testing/testing-strategy.md` now quotes the **enforced** bars from `bin/coverage_gate.php` plus the measured 2026-11-04 figures, and documents the P17-C2 `SerializableConfigTest` gate; the D-9 path note (`docs/base/architecture/architecture.md`) recorded; D-8 **filed, not deleted** — `docs/base/ui/ui-adminlte-setup.md` § *Asset Pipeline — Vite* carries the conflict note with the measurements and the two owner options. No code-contradicts-contract defect surfaced, so no new regression test and no `changelog.md` line was owed |
+| P17-D2 | tracker closure | `qa-tracker.md`: **99/99 scenario rows reconciled against the suite** — the 55 that were unreconciled now read 36 DONE / 5 PARTIAL / 13 UNPROVEN / 1 N/A; whole file **77 DONE / 8 PARTIAL / 13 UNPROVEN / 1 N/A**. Open rows each name the assertion they lack; three are `PARTIAL — needs a human` (QA-AUDIT-004, QA-AUDIT-008, QA-MON-010) and cannot be closed by an automated test. One scenario row's text corrected toward code (QA-AUTH-015 said 60 min; `config/auth.php:110` is 15). `task-tracker.md`: P16-E1/E2/E3 REVIEW → DONE on their own evidence (E2 closed because P17-A1/B1/B2 re-measured the same three gates on the same tree), P17-A1..C3 REVIEW → DONE citing this § 11 as their evidence line, P17-D1/D2/D3 written DONE; the JSON ledger's **15 stale entries** (P7-E1/E2/E6/E7, NOTIF-001..003, SEC-001..003, STOR-001/002, BACKUP-001, RETAIN-001) reconciled with a per-row evidence note, CACHE-002 kept PLANNED as the deliberate deferral. `progress.md`: rows 16 and 17 → DONE, the § *Test Status* closure paragraph replaced (it still read "Phase 15 is in progress"), § *Known Issues* now carries the deferred evidence, the 21 open QA rows, the delete-candidates, D-8 and the two Group C findings. `implementation-roadmap.md`: 16 and 17 → DONE |
+| P17-D3 | release summary | `docs/planning/final-release-summary.md` written: 14 capabilities (route gate + proving test paths + design doc), the measured bar with the workflow job and trigger that enforces it, **nine deferred items stated as deferred**, three deploy lines pointing at `docs/base/operations/deployment.md`, and a verdict of "shippable for its stated purpose" bounded by its § 3. Every cited test path was checked to exist before it was cited, and every relative link resolves |
+
+**Post-D verification.** Group D changed no PHP, so no code gate was re-run for a
+number it could not have moved. `tests/Arch/DocumentationLinkIntegrityTest` re-run over
+the edited tree (including the new file) is the mechanical half of D1's claim;
+`progress.md` § *Test Status* keeps **2668 / 9837 assertions / 9 risky** as the LIVE
+figure from C2's post-code re-measure — Group D adds no test, so a moved count would
+itself be the finding, and none moved. Coverage was again not re-instrumented: the
+A2 bars stand dated to A1's run, and nothing in Group D touched `app/` or `tests/`.
+
+**What Group D deliberately did not do.** It did not stamp the 21 open QA rows DONE to
+make the tracker read clean (D-10); it did not delete the Tailwind build input or edit
+`AGENTS.md` § *Stack* (D-8 is the owner's call); it did not run the Pending migration,
+raise a rate limit, or lower a bar (§ 2.3); and it committed nothing — the owner reviews
+and commits (`AGENTS.md` hard rule).
+
 
 

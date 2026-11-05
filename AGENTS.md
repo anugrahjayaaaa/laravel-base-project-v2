@@ -95,10 +95,15 @@ A declared flag is not an active flag: the `database` store is fail-closed, so
 `FeatureFlagSeeder` must write the row or the module 403s.
 
 ## Current state
-Phases 0–10 done, Phase 11 (monitoring) done, 12–17 planned.
-Full suite: 1959 tests / 6675 assertions (measured 2026-10-14, `feature/phase-10-audit-trail`). 5 benchmark tests
+Phases 0–17 complete. Phase 17 (full regression + closure) ran its gates
+2026-11-04 and closed its trackers 2026-11-05 on `feature/phase-17-full-regression`
+— uncommitted, awaiting owner review.
+Full suite: 2668 tests / 9837 assertions, 9 risky (measured 2026-11-04, same
+branch, after P17-C2's code change). 5 benchmark tests
 are intentionally assertion-free. Read `docs/planning/progress.md` for the live
-picture.
+picture and `docs/planning/final-release-summary.md` § 3 for what is still
+deferred (real S3, the restore round trip, live `timezone:rebase`, 21 open QA rows,
+the D-8 Tailwind decision).
 
 **A capability is not delivered by the UI that shows it.** Phase 10 shipped the
 audit trail and Phase 9 shipped notifications, and both were browser-only on the
