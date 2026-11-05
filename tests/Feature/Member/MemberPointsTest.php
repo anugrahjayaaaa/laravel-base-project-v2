@@ -2,7 +2,7 @@
 
 namespace Tests\Feature\Member;
 
-use App\Actions\V1\Member\ExpireMemberPointsAction;
+use App\Actions\V1\Member\MemberExpirePointsAction;
 use App\Models\Member;
 use App\Models\MemberPointHistory;
 use App\Models\Role;
@@ -151,7 +151,7 @@ class MemberPointsTest extends TestCase
             'reason' => 'Earlier earn',
         ]);
 
-        $this->assertSame(1, (new ExpireMemberPointsAction())->run());
+        $this->assertSame(1, (new MemberExpirePointsAction())->run());
 
         $this->assertSame(0, $member->fresh()->points_balance);
 
@@ -173,12 +173,12 @@ class MemberPointsTest extends TestCase
         SystemSetting::set('member_points_expiry_date', '');
         $member = $this->member(4000);
 
-        $this->assertSame(0, (new ExpireMemberPointsAction())->run());
+        $this->assertSame(0, (new MemberExpirePointsAction())->run());
         $this->assertSame(4000, $member->fresh()->points_balance);
 
         SystemSetting::set('member_points_expiry_date', now()->addDays(30)->toDateString());
 
-        $this->assertSame(0, (new ExpireMemberPointsAction())->run());
+        $this->assertSame(0, (new MemberExpirePointsAction())->run());
         $this->assertSame(4000, $member->fresh()->points_balance);
     }
 }
