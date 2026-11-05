@@ -91,6 +91,47 @@ class MemberTierTest extends TestCase
         $this->assertSame(1, Activity::where('event', 'member_tier.created')->count());
     }
 
+    /**
+     * The slug comes from the name, never from the payload: the form field is
+     * disabled, and an integration key that a hand-crafted POST could set to
+     * anything is not a key.
+     */
+    public function test_the_slug_is_generated_from_the_name_and_the_submitted_one_is_ignored(): void
+    {
+        $this->actingAsHolderOf(['members.manage']);
+
+        $this->post(route('members.tiers.store'), $this->tierPayload([
+            'name' => 'Gold Tier',
+            'slug' => 'whatever-i-typed',
+        ]))->assertRedirect(route('members.tiers'));
+
+        $this->assertDatabaseHas('member_tiers', ['name' => 'Gold Tier', 'slug' => 'gold-tier']);
+    }
+
+    public function test_renaming_a_tier_moves_its_slug_with_it(): void
+    {
+        $this->actingAsHolderOf(['members.manage']);
+
+        $tier = MemberTier::factory()->create(['name' => 'Gold', 'slug' => 'gold']);
+
+        $this->put(route('members.tiers.update', $tier), $this->tierPayload([
+            'name' => 'Gold Classic',
+        ]))->assertRedirect(route('members.tiers'));
+
+        $this->assertDatabaseHas('member_tiers', ['id' => $tier->id, 'slug' => 'gold-classic']);
+    }
+
+    public function test_a_name_that_generates_nothing_is_refused_on_the_name(): void
+    {
+        $this->actingAsHolderOf(['members.manage']);
+
+        $this->from(route('members.tiers.create'))
+            ->post(route('members.tiers.store'), $this->tierPayload(['name' => '   ']))
+            ->assertSessionHasErrors(['name', 'slug']);
+
+        $this->assertDatabaseCount('member_tiers', 0);
+    }
+
     public function test_the_role_picker_offers_no_superadmin_on_create_or_edit(): void
     {
         $this->actingAsHolderOf(['members.manage']);
@@ -150,6 +191,25 @@ class MemberTierTest extends TestCase
         $this->get(route('members.tiers'))->assertOk()->assertSee('Rp 35.000,00', false);
     }
 
+    public function test_the_tier_list_searches_and_paginates_like_the_other_lists(): void
+    {
+        $this->actingAsHolderOf(['members.view']);
+
+        MemberTier::factory()->create(['name' => 'Diamond', 'slug' => 'diamond']);
+        MemberTier::factory()->count(11)->create();
+
+        $this->get(route('members.tiers', ['search' => 'Diamond']))
+            ->assertOk()
+            ->assertSee('Diamond')
+            ->assertSee('value="Diamond"', false);
+
+        // 12 rows, 10 per page: a second page link and the full total.
+        $this->get(route('members.tiers'))
+            ->assertOk()
+            ->assertSee('12 entries', false)
+            ->assertSee('page=2', false);
+    }
+
     public function test_the_default_seeder_lands_three_tiers_at_the_documented_prices(): void
     {
         $this->seed(MemberTierSeeder::class);
@@ -175,9 +235,9 @@ class MemberTierTest extends TestCase
         $this->assertFalse(MemberTier::withTrashed()->where('slug', 'gold')->firstOrFail()->trashed());
     }
 
-    public function test_a_manager_trashes_an_unused_tier(): void
+    public function test_the_delete_permission_trashes_an_unused_tier(): void
     {
-        $this->actingAsHolderOf(['members.manage']);
+        $this->actingAsHolderOf(['members.delete']);
 
         $tier = MemberTier::factory()->create(['name' => 'Bronze', 'slug' => 'bronze']);
 
@@ -189,7 +249,7 @@ class MemberTierTest extends TestCase
 
     public function test_a_tier_with_subscriptions_on_it_refuses_to_be_deleted(): void
     {
-        $this->actingAsHolderOf(['members.manage']);
+        $this->actingAsHolderOf(['members.delete']);
 
         $tier = MemberTier::factory()->create(['name' => 'Gold', 'slug' => 'gold']);
         $member = Member::factory()->create();
@@ -235,6 +295,27 @@ class MemberTierTest extends TestCase
         $this->delete(route('members.tiers.destroy', $tier))->assertForbidden();
 
         $this->assertDatabaseHas('member_tiers', ['id' => $tier->id, 'deleted_at' => null]);
+    }
+
+    /**
+     * The edit page owns a Danger Zone, the create page does not: there is no row
+     * to trash before the first save, and a card with a dead button in it reads as
+     * a feature that broke rather than one that does not apply.
+     */
+    public function test_the_edit_page_offers_the_trash_button_and_the_create_page_does_not(): void
+    {
+        $this->actingAsHolderOf(['members.manage', 'members.delete']);
+
+        $tier = MemberTier::factory()->create(['name' => 'Gold', 'slug' => 'gold']);
+
+        $this->get(route('members.tiers.edit', $tier))
+            ->assertOk()
+            ->assertSee('Danger Zone')
+            ->assertSee('data-action="'.route('members.tiers.destroy', $tier).'"', escape: false);
+
+        $this->get(route('members.tiers.create'))
+            ->assertOk()
+            ->assertDontSee('Danger Zone', false);
     }
 
     public function test_the_flag_refuses_the_tier_writes_too(): void

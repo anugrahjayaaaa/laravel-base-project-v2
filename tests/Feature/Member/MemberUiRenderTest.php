@@ -80,6 +80,10 @@ class MemberUiRenderTest extends TestCase
             'expires_at' => '2026-12-01',
             'show_url' => '/members/1',
             'delete_url' => '/members/1',
+            'activate_url' => null,
+            'deactivate_url' => null,
+            'restore_url' => null,
+            'force_delete_url' => null,
             'user_url' => '/users/3',
             'is_trashed' => false,
             'user_email' => 'jaya@example.test',
@@ -101,10 +105,15 @@ class MemberUiRenderTest extends TestCase
                 'active' => ['delete'],
                 'expired' => ['delete'],
                 'cancelled' => ['delete'],
-                'trashed' => ['restore'],
+                'trashed' => ['restore', 'force_delete'],
             ],
-            'bulkKeys' => ['delete' => 'delete', 'restore' => 'restore'],
-            'filters' => ['search' => '', 'sort' => 'member_number', 'direction' => 'asc'],
+            'bulkKeys' => ['delete' => 'delete', 'restore' => 'restore', 'force_delete' => 'force_delete'],
+            'tabs' => [
+                $this->obj(['label' => 'Active', 'url' => '/members?status=active', 'count' => 4, 'active' => true]),
+                $this->obj(['label' => 'Inactive', 'url' => '/members?status=inactive', 'count' => 2, 'active' => false]),
+                $this->obj(['label' => 'Trash', 'url' => '/members?status=trashed', 'count' => 1, 'active' => false]),
+            ],
+            'filters' => ['search' => '', 'sort' => 'member_number', 'direction' => 'asc', 'status' => 'active'],
             'members' => new LengthAwarePaginator(
                 $members,
                 count($members),
@@ -119,6 +128,43 @@ class MemberUiRenderTest extends TestCase
             'tierBadges' => [
                 $this->obj(['name' => 'Gold', 'badge_variant' => 'warning', 'count' => 12]),
             ],
+        ], $overrides);
+    }
+
+    /**
+     * The tiers list view model, as `MemberTierIndexAction` shapes it.
+     *
+     * @param  array<int, object>  $tiers
+     * @return array<string, mixed>
+     */
+    private function tierListData(array $tiers = [], array $overrides = []): array
+    {
+        return array_merge([
+            'indexUrl' => '/members',
+            'tiersUrl' => '/members/tiers',
+            'createUrl' => '/members/tiers/create',
+            'bulkUrl' => '/members/tiers/bulk-action',
+            'bulkStates' => [
+                'active' => ['delete'],
+                'inactive' => ['delete'],
+                'trashed' => ['restore', 'force_delete'],
+            ],
+            'bulkKeys' => ['delete' => 'delete', 'restore' => 'restore', 'force_delete' => 'force_delete'],
+            'tabs' => [
+                $this->obj(['label' => 'Active', 'url' => '/members/tiers?status=active', 'count' => 1, 'active' => true]),
+                $this->obj(['label' => 'Inactive', 'url' => '/members/tiers?status=inactive', 'count' => 1, 'active' => false]),
+                $this->obj(['label' => 'Trash', 'url' => '/members/tiers?status=trashed', 'count' => 1, 'active' => false]),
+            ],
+            'status' => 'active',
+            'filters' => ['search' => '', 'status' => 'active'],
+            'counts' => ['active' => 1, 'inactive' => 1, 'trashed' => 1],
+            'tiers' => new LengthAwarePaginator(
+                $tiers,
+                count($tiers),
+                10,
+                1,
+                ['path' => '/members/tiers']
+            ),
         ], $overrides);
     }
 
@@ -153,6 +199,8 @@ class MemberUiRenderTest extends TestCase
                 'is_trashed' => true,
                 'bulk_state' => 'trashed',
                 'delete_url' => null,
+                'restore_url' => '/members/4/restore',
+                'force_delete_url' => '/members/4/force',
                 'show_url' => '/members/4',
             ]),
         ]));
@@ -171,6 +219,15 @@ class MemberUiRenderTest extends TestCase
         // A trashed row is marked distinctly and lost its delete trigger.
         $this->assertStringContainsString('>DELETED<', $html);
         $this->assertSame(3, substr_count($html, 'data-action-type="delete"'), 'every live row offers exactly one delete trigger');
+
+        // Only the trashed row carries the two trash-tab triggers.
+        $this->assertStringContainsString('data-action="/members/4/restore"', $html);
+        $this->assertStringContainsString('data-action="/members/4/force"', $html);
+        $this->assertSame(1, substr_count($html, 'data-action-type="restore"'));
+        $this->assertSame(1, substr_count($html, 'data-action-type="force_delete"'));
+
+        // The tabs arrive as a view model, so no Blade builds a query string.
+        $this->assertStringContainsString('href="/members?status=trashed"', $html);
 
         // Bulk bar carries the shared driver's contract, not a hand-built URL.
         $this->assertStringContainsString('data-bulk-route="/members/bulk-action"', $html);
@@ -331,26 +388,37 @@ class MemberUiRenderTest extends TestCase
     {
         $this->signIn('superadmin');
 
-        $html = $this->render('pages.members.tiers', [
-            'indexUrl' => '/members',
-            'createUrl' => '/members/tiers/create',
-            'tiers' => [
-                $this->obj([
-                    'id' => 1, 'name' => 'Gold', 'slug' => 'gold',
-                    'price_display' => 'Rp 100.000,00',
-                    'duration_days' => 100, 'point_multiplier' => '2.00', 'role_name' => 'gold-member',
-                    'is_active' => true,
-                    'edit_url' => '/members/tiers/1/edit', 'delete_url' => '/members/tiers/1',
-                ]),
-                $this->obj([
-                    'id' => 2, 'name' => 'Silver', 'slug' => 'silver',
-                    'price_display' => 'Rp 70.000,00',
-                    'duration_days' => 60, 'point_multiplier' => '1.50', 'role_name' => null,
-                    'is_active' => false,
-                    'edit_url' => '/members/tiers/2/edit', 'delete_url' => '/members/tiers/2',
-                ]),
-            ],
-        ]);
+        $html = $this->render('pages.members.tiers', $this->tierListData([
+            $this->obj([
+                'id' => 1, 'name' => 'Gold', 'slug' => 'gold',
+                'price_display' => 'Rp 100.000,00',
+                'duration_days' => 100, 'point_multiplier' => '2.00', 'role_name' => 'gold-member',
+                'is_active' => true, 'is_trashed' => false,
+                'edit_url' => '/members/tiers/1/edit', 'delete_url' => '/members/tiers/1',
+                'activate_url' => null, 'deactivate_url' => '/members/tiers/1/deactivate',
+                'restore_url' => null, 'force_delete_url' => null,
+            ]),
+            $this->obj([
+                'id' => 2, 'name' => 'Silver', 'slug' => 'silver',
+                'price_display' => 'Rp 70.000,00',
+                'duration_days' => 60, 'point_multiplier' => '1.50', 'role_name' => null,
+                'is_active' => false, 'is_trashed' => false,
+                'edit_url' => '/members/tiers/2/edit', 'delete_url' => '/members/tiers/2',
+                'activate_url' => '/members/tiers/2/activate', 'deactivate_url' => null,
+                'restore_url' => null, 'force_delete_url' => null,
+            ]),
+            // The tab that used not to exist: a trashed tier is a row with
+            // Restore and Permanent Delete on it, not a row that vanished.
+            $this->obj([
+                'id' => 3, 'name' => 'Bronze', 'slug' => 'bronze',
+                'price_display' => 'Rp 40.000,00',
+                'duration_days' => 30, 'point_multiplier' => '1.00', 'role_name' => null,
+                'is_active' => true, 'is_trashed' => true,
+                'edit_url' => null, 'delete_url' => null,
+                'activate_url' => null, 'deactivate_url' => null,
+                'restore_url' => '/members/tiers/3/restore', 'force_delete_url' => '/members/tiers/3/force',
+            ]),
+        ]));
 
         $this->assertStringContainsString('Rp 100.000,00', $html, 'the price did not arrive pre-formatted');
         $this->assertStringContainsString('>INACTIVE<', $html, 'the inactive tier does not render distinctly');
@@ -358,6 +426,16 @@ class MemberUiRenderTest extends TestCase
         $this->assertStringContainsString('href="/members/tiers/1/edit"', $html);
         $this->assertStringContainsString('data-action="/members/tiers/2"', $html);
         $this->assertStringContainsString('data-method="DELETE"', $html);
+        // A trashed row keeps its name visible, loses Edit, and carries the two
+        // trash actions the list was built to offer.
+        $this->assertStringContainsString('>Bronze<', $html, 'the trashed tier is missing from the list');
+        $this->assertStringContainsString('data-action="/members/tiers/3/restore"', $html);
+        $this->assertStringContainsString('data-action="/members/tiers/3/force"', $html);
+        $this->assertStringNotContainsString('href="/members/tiers/3/edit"', $html, 'a trashed tier offers Edit');
+        // Bulk bar carries the shared driver's contract, not a hand-built URL.
+        $this->assertStringContainsString('data-bulk-route="/members/tiers/bulk-action"', $html);
+        $this->assertStringContainsString('data-bulk-field="tier_ids[]"', $html);
+        $this->assertStringContainsString('data-status="trashed"', $html);
         // The inline per-row editor is gone: a read-only list has no field in it.
         $this->assertStringNotContainsString('name="point_multiplier"', $html, 'the tier list still carries an inline editor');
     }
@@ -374,6 +452,7 @@ class MemberUiRenderTest extends TestCase
             'currencySymbol' => 'Rp',
             'roleOptions' => ['member' => 'member', 'staff' => 'staff'],
             'tier' => null,
+            'deleteUrl' => null,
         ]);
 
         $this->assertStringContainsString('action="/members/tiers"', $html);
@@ -381,6 +460,9 @@ class MemberUiRenderTest extends TestCase
         $this->assertStringNotContainsString('value="superadmin"', $html, 'the picker offered superadmin');
         $this->assertStringContainsString('Price (Rp)', $html, 'the price field does not name its currency');
         $this->assertStringContainsString('name="is_active" value="0"', $html, 'the boolean checkbox lost its hidden-input pair');
+        // A tier that does not exist yet has nothing to trash: no card, not an
+        // empty box pointing at a route with no row behind it.
+        $this->assertStringNotContainsString('Danger Zone', $html, 'the create form offers a delete for a tier that has no row');
 
         // An existing tier pre-fills, so an operator editing one is not typing
         // the row back in from the list.
@@ -392,10 +474,16 @@ class MemberUiRenderTest extends TestCase
             'currencySymbol' => 'Rp',
             'roleOptions' => ['member' => 'member'],
             'tier' => $this->obj(['name' => 'Gold', 'slug' => 'gold', 'price' => '100000.00', 'duration_days' => 100, 'point_multiplier' => '2.00', 'role_name' => 'member', 'is_active' => true, 'sort_order' => 3]),
+            'deleteUrl' => '/members/tiers/1',
         ]);
         $this->assertStringContainsString('value="PUT"', $edit);
         $this->assertStringContainsString('value="Gold"', $edit);
         $this->assertStringContainsString('_method', $edit);
+        // The Danger Zone carries its button once the row exists — same shape the
+        // member profile uses.
+        $this->assertStringContainsString('Danger Zone', $edit);
+        $this->assertStringContainsString('data-action="/members/tiers/1"', $edit);
+        $this->assertStringContainsString('data-method="DELETE"', $edit);
     }
 
     public function test_the_dashboard_renders_with_zero_subscriptions_and_a_gated_broadcast(): void
@@ -435,23 +523,25 @@ class MemberUiRenderTest extends TestCase
         // reads, not decoration the flag test never exercises.
         $this->signIn('staff');
 
-        $index = $this->render('pages.members.index', $this->indexData([$this->memberRow()]));
+        // The stub carries a deactivate URL so the guard below has something to
+        // take away: with null URLs there is no button to miss.
+        $index = $this->render('pages.members.index', $this->indexData([
+            $this->memberRow(['deactivate_url' => '/members/1/deactivate']),
+        ]));
         $this->assertStringNotContainsString('Create Member', $index, 'the create button ignored members.manage');
         $this->assertStringNotContainsString('data-action-type="delete"', $index, 'the row delete ignored members.manage');
+        $this->assertStringNotContainsString('data-action="/members/1/deactivate"', $index, 'the row deactivate ignored members.deactivate');
 
-        $tiers = $this->render('pages.members.tiers', [
-            'indexUrl' => '/members',
-            'createUrl' => '/members/tiers/create',
-            'tiers' => [$this->obj([
-                'id' => 1, 'name' => 'Gold', 'slug' => 'gold', 'price_display' => 'Rp 100.000,00',
-                'duration_days' => 100, 'point_multiplier' => '2.00', 'role_name' => null,
-                'is_active' => true,
-                'edit_url' => '/members/tiers/1/edit', 'delete_url' => '/members/tiers/1',
-            ])],
-        ]);
+        $tiers = $this->render('pages.members.tiers', $this->tierListData([$this->obj([
+            'id' => 1, 'name' => 'Gold', 'slug' => 'gold', 'price_display' => 'Rp 100.000,00',
+            'duration_days' => 100, 'point_multiplier' => '2.00', 'role_name' => null,
+            'is_active' => true, 'is_trashed' => false,
+            'edit_url' => '/members/tiers/1/edit', 'delete_url' => '/members/tiers/1',
+            'activate_url' => null, 'deactivate_url' => '/members/tiers/1/deactivate',
+            'restore_url' => null, 'force_delete_url' => null,
+        ])]));
         $this->assertStringNotContainsString('Create Tier', $tiers, 'the create button ignored members.manage');
-        $this->assertStringNotContainsString('data-action="/members/tiers/1"', $tiers, 'the row delete ignored members.manage');
-        $this->assertStringContainsString('Read only', $tiers);
+        $this->assertStringNotContainsString('data-action="/members/tiers/1"', $tiers, 'the row delete ignored members.delete');
 
         $dashboard = $this->render('pages.members.dashboard', [
             'indexUrl' => '/members',

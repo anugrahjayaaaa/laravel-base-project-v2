@@ -52,9 +52,12 @@ class MemberDeleteTest extends TestCase
         return $user;
     }
 
-    public function test_a_manager_trashes_the_profile_and_the_account_stays_alive(): void
+    public function test_the_delete_permission_trashes_the_profile_and_the_account_stays_alive(): void
     {
-        $this->actingAsHolderOf(['members.manage']);
+        // `members.delete`, not `members.manage`: trashing is its own permission
+        // from Phase 18's trash tabs onward, so the holder of one is not the
+        // holder of the other.
+        $this->actingAsHolderOf(['members.delete']);
 
         $member = Member::factory()->create(['member_number' => 'MBR-000300']);
 
@@ -65,6 +68,17 @@ class MemberDeleteTest extends TestCase
         $this->assertNotNull(User::find($member->user_id), 'the login account is not deleted here');
 
         $this->assertTrue(Activity::where('event', 'member.deleted')->exists());
+    }
+
+    public function test_manage_alone_does_not_trash_a_profile(): void
+    {
+        $this->actingAsHolderOf(['members.manage']);
+
+        $member = Member::factory()->create();
+
+        $this->delete(route('members.destroy', $member))->assertForbidden();
+
+        $this->assertNotNull(Member::find($member->id));
     }
 
     public function test_a_viewer_cannot_trash_a_profile(): void
@@ -81,7 +95,8 @@ class MemberDeleteTest extends TestCase
 
     public function test_the_flag_switches_delete_off(): void
     {
-        $this->actingAsHolderOf(['members.manage']);
+        // Holds the permission, so the 403 below can only come from the flag.
+        $this->actingAsHolderOf(['members.delete']);
 
         $member = Member::factory()->create();
 
@@ -95,7 +110,7 @@ class MemberDeleteTest extends TestCase
 
     public function test_a_delete_for_a_profile_already_in_the_trash_writes_no_audit_row(): void
     {
-        $this->actingAsHolderOf(['members.manage']);
+        $this->actingAsHolderOf(['members.delete']);
 
         $member = Member::factory()->create();
         $member->delete();

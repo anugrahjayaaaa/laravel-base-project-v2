@@ -1027,3 +1027,29 @@ re-invented, and `app/` is one tree with one owner.
 **Related**: P15-D1, `docs/planning/phase-15-comprehensive-testing.md` § 6 and
 § 8 (D-3, D-7), `phpstan.neon`, `phpstan-baseline.neon`,
 `docs/base/testing/testing-strategy.md`
+
+## ADR-031: member list tabs partition by the profile's `is_active`, not by subscription liveness
+
+**Date**: 2026-11-05 · **Status**: Accepted · **Relates to**: Phase 18 (membership), `docs/base/features/membership.md` § lists/tabs
+
+**Context**: The members tabs were defined as *active = `is_active` AND a live subscription*
+(P18 design). Operators read the tabs as the member's own state, and the two meanings
+produced three visible bugs: a lapsed-but-undeactivated profile sat in Inactive offering
+only the Deactivate (violation/reason) modal; activating a forfeited member left it in
+Inactive (no live subscription to qualify for Active); and a first fix that gated the
+Deactivate button on the badge removed the state button entirely from lapsed rows.
+
+**Decision**: `MemberIndexAction::query()` / `counts()` partition Active vs Inactive by
+`members.is_active` alone — the same switch the Activate / Deactivate button pair writes,
+mirroring the users list. Subscription state remains presentation only (the row badge:
+ACTIVE / EXPIRED / CANCELLED / NONE). The confirmation modal's reason field is
+disabled-and-not-required until the violation switch is on.
+
+**Alternatives considered**: gate the Deactivate affordance on the badge (rejected — it
+removed the button from lapsed rows, the outcome the owner explicitly refused); keep the
+conjunctive tabs and auto-renew subscriptions on activate (rejected — activation is not a
+renewal, per the action's own contract).
+
+**Consequences**: A deactivated-then-activated member returns to Active carrying a
+CANCELLED/EXPIRED badge until they buy the next period; `MemberTrashTest` and
+`MemberStateTest` pin the new partition.

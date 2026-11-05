@@ -82,7 +82,7 @@ class MemberWebTest extends TestCase
         $this->get('/members/'.$member->id)->assertOk()->assertSee('Welcome bonus');
     }
 
-    public function test_the_created_member_affordance_is_live_and_the_unbuilt_ones_are_not(): void
+    public function test_the_bulk_and_trash_affordances_are_live(): void
     {
         [$member] = $this->memberWithHistory();
         $this->signIn('superadmin');
@@ -92,10 +92,10 @@ class MemberWebTest extends TestCase
         $this->get('/members')
             ->assertOk()
             ->assertSee('Create Member')
-            ->assertDontSee('data-bulk-route', false);
+            ->assertSee('data-bulk-route', false);
         $this->get('/members/tiers')->assertOk()->assertSee('Create Tier');
         $this->get('/members/dashboard')->assertOk()->assertDontSee('Notify Expiring Members', false);
-        // The points form ships; the subscribe and delete forms still do not.
+        // The points form ships; the subscribe form still does not.
         $this->get('/members/'.$member->id)->assertOk()->assertSee('Adjust Points');
         $this->get('/members/'.$member->id)->assertOk()->assertDontSee('member_tier_id');
     }
@@ -137,5 +137,40 @@ class MemberWebTest extends TestCase
             ->assertSee('Members')
             ->assertSee('Tiers')
             ->assertSee('Membership Dashboard');
+    }
+
+    /**
+     * One highlighted entry per page. `members.*` is true for `members.tiers`
+     * too, so the Tiers screen used to light up Members beside it — the sidebar
+     * claiming the operator was on two screens at once.
+     */
+    public function test_exactly_one_membership_entry_highlights_per_page(): void
+    {
+        $this->signIn('superadmin');
+
+        [$member, $tier] = $this->memberWithHistory();
+
+        foreach ([
+            '/members',
+            '/members/tiers',
+            '/members/tiers/create',
+            '/members/tiers/'.$tier->id.'/edit',
+            '/members/dashboard',
+            '/members/'.$member->id,
+        ] as $uri) {
+            $html = $this->get($uri)->assertOk()->getContent();
+
+            // Scoped to the sidebar on purpose: the list screens now carry their
+            // own `nav-link active` tab, and counting those would answer "two
+            // highlighted items" for a page whose sidebar is correct.
+            $start = strpos($html, '<aside class="app-sidebar');
+            $sidebar = substr($html, $start, strpos($html, '</aside>', $start) - $start);
+
+            $this->assertSame(
+                1,
+                substr_count($sidebar, 'nav-link active'),
+                "not exactly one active sidebar item on {$uri}"
+            );
+        }
     }
 }
