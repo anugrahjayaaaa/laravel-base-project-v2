@@ -252,7 +252,7 @@ a `ValidationException` on `name`, which renders back onto the list with the sha
 
 ## Points
 
-`AdjustMemberPointsAction` posts one signed movement, in two mutually exclusive modes
+`MemberAdjustPointsAction` posts one signed movement, in two mutually exclusive modes
 (`MemberPointsAdjustRequest::after()` refuses giving both, and refuses a zero delta):
 
 - `delta` — points, positive or negative.
@@ -269,7 +269,7 @@ rule; a per-tier factor is a second one.`
 
 ### Annual expiry
 
-`ExpireMemberPointsAction` (driven by `MemberPointsExpirySweepJob`, queue `sweeps`, daily at
+`MemberExpirePointsAction` (driven by `MemberPointsExpirySweepJob`, queue `sweeps`, daily at
 00:00, `withoutOverlapping`) reads `member_points_expiry_date` and does nothing when it is
 empty or still in the future. When it is due it chunks members with a positive balance
 (500 at a time), zeroes the balance, appends one `Annual points expiry` ledger row per
@@ -290,9 +290,9 @@ rendered in the Membership & Loyalty card on `/settings`:
 |---|---|---|
 | `member_expiry_alert_window_days` | 14 | `MemberDashboardAction` — the expiring-soon window |
 | `member_number_prefix` | `MBR` | `Member::nextMemberNumber()` — prefix of a generated number |
-| `member_points_expiry_date` | `''` (never expire) | `ExpireMemberPointsAction` |
-| `member_points_earn_amount` | 50000 | `AdjustMemberPointsAction::fromPurchase()` |
-| `member_points_earn_value` | 1000 | `AdjustMemberPointsAction::fromPurchase()` |
+| `member_points_expiry_date` | `''` (never expire) | `MemberExpirePointsAction` |
+| `member_points_earn_amount` | 50000 | `MemberAdjustPointsAction::fromPurchase()` |
+| `member_points_earn_value` | 1000 | `MemberAdjustPointsAction::fromPurchase()` |
 
 The money unit itself — `currency_code` — is **not** one of them. It is a global display
 choice, so it sits in the Localization card next to the system timezone and belongs to no flag:

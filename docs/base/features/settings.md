@@ -215,10 +215,10 @@ of truth. `P8-E1a` proves every numeric bound rejects a value outside it.
 
 `member_points_expiry_date` is opt-in on purpose: `SystemSettingSeeder` ships it
 empty, because a date nobody chose would zero every member's balance. When
-`ExpireMemberPointsAction` runs it advances the key one year at a time to the
+`MemberExpirePointsAction` runs it advances the key one year at a time to the
 next anniversary strictly after today, so the stored value is always the *next*
 reset, not the one that just happened. `member_points_earn_*` are read by
-`AdjustMemberPointsAction`: either at 0 switches earning off, and a purchase
+`MemberAdjustPointsAction`: either at 0 switches earning off, and a purchase
 below one whole step earns nothing rather than rounding up.
 
 Both lifetime pairs are a number plus its unit, stored separately because the

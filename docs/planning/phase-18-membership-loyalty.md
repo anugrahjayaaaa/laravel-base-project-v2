@@ -286,7 +286,7 @@ Exit gate: migrations migrate up and down on SQLite; every Action covered by a u
   ledger's last `balance_after` equals `points_balance` for every fixture member; a
   correction is a new row, never an update.
 - **Tests**: `MemberPointsTest`.
-- **Shipped 2026-11-05 (partial, owner request)**: `AdjustMemberPointsAction` is the manual
+- **Shipped 2026-11-05 (partial, owner request)**: `MemberAdjustPointsAction` is the manual
   half — one signed `delta`, *or* a `purchase_amount` converted by the System Setting rule
   (`member_points_earn_amount` → `member_points_earn_value`, Rp 50.000 → 1.000 by default).
   Same shape the brief asked for: one transaction, `Member::whereKey()->lockForUpdate()`
@@ -322,7 +322,7 @@ the idempotency backstop the lock cannot be alone against — D-5).
   controllers and three sidebar entries (Members, Membership Dashboard, Tiers) are shipped and green in `MemberWebTest`. The create
   The create screen **is** routed as of 2026-11-05 (owner request): `members.create` +
   `members.store` (`MemberCreateAction`, `can:members.manage`) and `members.points`
-  (`AdjustMemberPointsAction`, `can:members.manage`) joined the four reads, so
+  (`MemberAdjustPointsAction`, `can:members.manage`) joined the four reads, so
   `MemberIndexAction` hands a real `createUrl` and the detail page renders the Adjust
   Points card. What remains here: subscribe / cancel / bulk / delete writes and the API
   twins + Scramble — those URLs are still null and their affordances still disappear.
@@ -479,5 +479,5 @@ Carried into `progress.md` so it does not vanish at closure:
 |---|---|---|---|
 | O-1 | **D-2** — is `Member` a profile on `users` (recommended) or a second identity with its own login? | profile / second identity | **CLOSED 2026-11-05** — profile, and the owner asked for the flow to match "new user": `MemberCreateAction` delegates the account half to `UserCreateAction` (generated temp password, `must_change_password`, verification mail), and the new `member` system role is fixed, not chosen | Not blocking — resolved |
 | O-2 | **D-3** — WhatsApp driver | defer to Phase 19 / add package + ADR + `SystemSetting` credentials now | Not blocking: C2 ships mail + in-app either way |
-| O-3 | Points expiry | never expires / expires with the subscription | **CLOSED 2026-11-05** — neither, on the owner's wording ("yang di-0-kan point member, bukan saldo"): a global, **optional** `member_points_expiry_date` in System Setting (empty = never expire). `ExpireMemberPointsAction` zeroes every positive `points_balance`, writes one `Annual points expiry` ledger row per member, then advances the date a whole year so the stored value is always the *next* reset. `MemberPointsExpirySweepJob` runs it daily on `sweeps`. The subscription-linked variant is not built | Not blocking — resolved |
+| O-3 | Points expiry | never expires / expires with the subscription | **CLOSED 2026-11-05** — neither, on the owner's wording ("yang di-0-kan point member, bukan saldo"): a global, **optional** `member_points_expiry_date` in System Setting (empty = never expire). `MemberExpirePointsAction` zeroes every positive `points_balance`, writes one `Annual points expiry` ledger row per member, then advances the date a whole year so the stored value is always the *next* reset. `MemberPointsExpirySweepJob` runs it daily on `sweeps`. The subscription-linked variant is not built | Not blocking — resolved |
 | O-4 | Voucher `max_discount` and `min_purchase` semantics with no order total in Phase 18 | **CLOSED 2026-11-05** — mooted by the move: the whole voucher domain (both columns included) ships in Phase 19 where an order total exists | Not blocking — resolved |

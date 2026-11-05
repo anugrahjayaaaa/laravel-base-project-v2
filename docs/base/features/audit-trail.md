@@ -234,8 +234,8 @@ come from model observers — `ActionFirstAuditTest` pins that property.
 | `member.deleted` | `MemberDeleteAction` | the admin; properties carry `member_number`, captured before the trash |
 | `member.restored` | `MemberRestoreAction` | the admin; properties carry `target_id`, `member_number` |
 | `member.force_deleted` | `MemberForceDeleteAction` | the admin; properties carry `member_number` plus the `subscriptions` and `point_history_rows` counts captured **before** the cascade — the cascade deletes those rows, so the counts are the only surviving record of what one click destroyed. No `target_id`: the row it named no longer exists |
-| `member.points_adjusted` | `AdjustMemberPointsAction` | the admin; properties carry `delta`, `balance_before`, `balance_after`, `reason` |
-| `member.points_expired` | `ExpireMemberPointsAction` (the daily `member-points-expiry` schedule) | `SYSTEM` marker in properties — no logged-in actor exists |
+| `member.points_adjusted` | `MemberAdjustPointsAction` | the admin; properties carry `delta`, `balance_before`, `balance_after`, `reason` |
+| `member.points_expired` | `MemberExpirePointsAction` (the daily `member-points-expiry` schedule) | `SYSTEM` marker in properties — no logged-in actor exists |
 | `member.deactivated` | `MemberDeactivateAction` | the admin; properties carry `member_number`, and the state an activation has to be rebuilt from: `last_tier`, `points_balance`, `remaining_days` (rounded **up** — a member who loses part of a day lost a day), `violation`, `reason`. The reason exists nowhere else, so this row is the only record of why the switch was thrown |
 | `member.activated` | `MemberActivateAction` | the admin; properties carry `target_id`, `member_number`, `resumed_tier`, `resumed_expires_at` — the new expiry is the old one plus the time spent paused, and no subscription is created |
 
