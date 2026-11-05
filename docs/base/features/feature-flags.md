@@ -346,6 +346,7 @@ middleware does. See ADR-024.
 | `storage_management` | `storage.view`, `storage.manage`, `backup.execute` — resources `storage` and `backup`, one flag |
 | *no flag* | `features.view`, `features.manage`, `api_docs.view` — deliberately unmapped: the toggle page cannot be behind a toggle, and the API document describes every module, so it must vanish with none of them |
 | `sessions` | none — these flags own no permissions |
+| `member_loyalty` | `members.view`, `members.manage`, `members.notify` — resource `members`. `manage` alone is not enough to create a member: that path assigns the `member` role, so `users.assign_roles` is required too (`MemberCreateTest`). The flag also owns five `settings` keys (`member_expiry_alert_window_days`, `member_number_prefix`, `member_points_expiry_date`, `member_points_earn_amount`, `member_points_earn_value`), so saving the settings form with the flag off strips them. `currency_code` is deliberately not among them — how money is written is a global display choice, not a loyalty feature (`docs/base/features/settings.md` § Localization) |
 
 `PermissionFeatureMapTest` keeps the map behind this table honest: it fails when a
 resource is missing an entry, when a mapped flag is not declared, and when the

@@ -33,15 +33,22 @@ User → Role → Permissions
 | `superadmin` | **none** — access from `Gate::before` | System administrator |
 | `admin` | the entire catalogue | Project administrator (delegated superadmin) |
 | `user` | none | Standard user |
+| `member` | none | Loyalty profile created from the members screen (`SystemRole::MEMBER`, Phase 18) — a login account that can log in and nothing more. The name exists so the loyalty population is addressable ("who is a member?"); P18-B3's tier role sync is planned to apply a tier role *alongside* it, and is not built yet |
 
 `superadmin` holds no permission rows on purpose. Its access comes from
 `Gate::before` in `App\Providers\AuthServiceProvider`, so a permission added to
 the catalogue never requires re-seeding that role, and editing a role's
-permission set can never strip a superadmin of a capability.
+permission set can never strip a superadmin of a capability. The bypass is keyed
+on the `superadmin` name alone (`User::isSuperAdmin()`): `admin`, `user` and
+`member` are ordinary roles whose permissions can be edited and whose accounts
+can be demoted, so a fourth system role does not widen it. What `member` DOES
+inherit from being a system role is `SystemRole::isSystem()` protection —
+`RoleDeleteAction` and `RoleForceDeleteAction` refuse it, and
+`RoleBulkActionHandler` reports it as a system row.
 
 ## System Role Protection
 
-System roles (`superadmin`, `admin`, `user`) are distinct from custom roles and carry
+System roles (`superadmin`, `admin`, `user`, `member`) are distinct from custom roles and carry
 special protection rules.
 
 ### Protected System Operations

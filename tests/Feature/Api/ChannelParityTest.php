@@ -144,6 +144,13 @@ class ChannelParityTest extends TestCase
             'why' => 'The inbox expands a notification in place and previews a channel. Neither is a fact an API client needs; both are presentation of a row the list already returned.',
         ],
 
+        // ---- Membership: the read-only slice (Phase 18, D-4 amendment) ----
+        'membership screens' => [
+            'only' => 'web',
+            'web' => ['members.index', 'members.show', 'members.tiers', 'membership.dashboard', 'members.create', 'members.store', 'members.points', 'members.destroy', 'members.tiers.create', 'members.tiers.store', 'members.tiers.edit', 'members.tiers.update', 'members.tiers.destroy'],
+            'why' => 'Answered at the moment the routes were added, not at the phase sweep: the owner pulled P18-B1 and the read half of P18-B6 forward so the sidebar has real link targets, and the API twins are the other half of P18-B6. Every member and tier write route (member create form, store, points adjust, profile trash, tier create/edit/update/destroy) is web-only for the same reason — `member` is a login-carrying profile, and a headless client that needs to issue points or price tiers can already be built once `Api/V1/Member` lands. Revisit then; until now no member capability exists on the API channel at all.',
+        ],
+
         // ---- Auth (form pages are web; the actions are on both) ----
         'auth login' => ['web' => ['login', 'login.submit'], 'api' => ['auth.login']],
         'auth logout' => ['web' => ['logout'], 'api' => ['auth.logout']],

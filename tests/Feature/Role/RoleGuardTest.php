@@ -101,7 +101,7 @@ class RoleGuardTest extends TestCase
         $guard = RoleLookup::guard();
 
         $this->assertSame(
-            ['admin', 'superadmin', 'user'],
+            ['admin', 'member', 'superadmin', 'user'],
             Role::where('guard_name', $guard)->orderBy('name')->pluck('name')->all()
         );
 
@@ -112,7 +112,7 @@ class RoleGuardTest extends TestCase
     {
         $this->seed(RoleSeeder::class);
 
-        $this->assertSame(3, Role::count(), 're-seeding must not duplicate roles');
+        $this->assertSame(4, Role::count(), 're-seeding must not duplicate roles');
     }
 
     public function test_the_role_picker_offers_each_name_once(): void
@@ -127,7 +127,7 @@ class RoleGuardTest extends TestCase
         $this->assertSame($offered->unique()->values()->all(), $offered->values()->all());
         // assignable() is guard-scoped only — it does not filter by viewer, so
         // superadmin is still here. Visibility is visibleTo()'s job.
-        $this->assertSame(['admin', 'superadmin', 'user'], $offered->all());
+        $this->assertSame(['admin', 'member', 'superadmin', 'user'], $offered->all());
     }
 
     public function test_creating_a_user_assigns_the_role_on_the_resolved_guard(): void
@@ -197,7 +197,7 @@ class RoleGuardTest extends TestCase
 
         // The viewer here is not a superadmin, so `superadmin` is not offered.
         // The point of the test is that each name appears ONCE, not which names.
-        $this->assertSame(['admin', 'user'], array_values($roles->all()));
+        $this->assertSame(['admin', 'member', 'user'], array_values($roles->all()));
     }
 
     public function test_the_user_forms_offer_each_role_name_once(): void

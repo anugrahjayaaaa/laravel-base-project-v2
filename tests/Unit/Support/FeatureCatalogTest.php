@@ -144,6 +144,24 @@ class FeatureCatalogTest extends TestCase
         }
     }
 
+    /**
+     * `currency_code` writes money for the whole app (tier prices and the points
+     * earning rule), so it must belong to no flag: switching a module off cannot
+     * take away the operator's ability to say how amounts are written.
+     */
+    public function test_the_display_currency_belongs_to_no_feature_flag(): void
+    {
+        $this->seed(SystemSettingSeeder::class);
+
+        $owned = array_merge(...array_map(
+            fn (array $group): array => $group['keys'],
+            array_values(FeatureCatalog::settingGroups())
+        ));
+
+        $this->assertNotContains('currency_code', $owned);
+        $this->assertContains('currency_code', DB::table('system_settings')->pluck('key')->all());
+    }
+
     public function test_a_disabled_flags_setting_group_reads_inactive(): void
     {
         $this->seed(SystemSettingSeeder::class);

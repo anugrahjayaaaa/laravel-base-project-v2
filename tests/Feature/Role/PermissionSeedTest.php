@@ -72,8 +72,12 @@ class PermissionSeedTest extends TestCase
         // The expected list is updated HERE rather than the assertion loosened:
         // a stale list is a stale fixture, and dropping the assertion would
         // leave the guard guarding nothing at all.
+        //
+        // `members` joins in Phase 18 Group B, in the same change that registers
+        // the four member reads behind `feature:member_loyalty` +
+        // `->can('members.view')`.
         $this->assertEqualsCanonicalizing(
-            ['users', 'roles', 'permissions', 'settings', 'storage', 'backup', 'notifications', 'features', 'audit', 'pulse', 'health', 'queues', 'api_docs'],
+            ['users', 'roles', 'permissions', 'settings', 'storage', 'backup', 'notifications', 'features', 'audit', 'pulse', 'health', 'queues', 'api_docs', 'members'],
             array_keys(PermissionCatalog::grouped()),
             'The catalogue has a group with no feature behind it.'
         );

@@ -1,7 +1,11 @@
 # Phase 18 — General Membership & Loyalty System
 
 > Date: 2026-11-05 | Status: **Group A in REVIEW** (views + `member_loyalty` flag shipped
-> 2026-11-05; voucher rows moved to Phase 19 — owner decision the same day) |
+> 2026-11-05; voucher rows moved to Phase 19 — owner decision the same day). **Partial B,
+> C and D also in REVIEW on this branch**: `P18-B1`, the read half of `P18-B6`, the
+> create/points writes, `P18-B4`'s manual half, the points-expiry sweep from `P18-C`'s
+> family, and `P18-D1`'s `members.view` / `members.manage` gates — see § 1's second
+> adjustment note and the per-task rows. C1/C2/D2/D3/E1 not built. |
 > Branch when scheduled: `feature/phase-18-membership-loyalty`
 > Purpose: give the base project a membership domain — dynamic tiers, a subscription
 > duration/expiry engine, member statistics, automated expiry sweeps with bulk
@@ -26,6 +30,26 @@ tasks moved to Phase 19 — B5 is the pointer row).
 > `P18-D1`'s `vouchers.manage`, `P18-D3`'s `voucher.claimed`, `P18-E1`'s race test) ships
 > in **Phase 19** as the `vouchers` domain. The shipped voucher view already lives at
 > `resources/views/pages/vouchers/index.blade.php` under its own flag — see P19-A6.
+
+> **Second 2026-11-05 owner adjustment** (six asks, all shipped on this branch):
+> `member_points_expiry_date` + the earn pair + the alert window moved out of code into
+> System Setting (`member_expiry_alert_window_days` replaces the `MemberDashboardAction`
+> constant, and `MemberDashboardAction` reads it with a 14-day fallback); the three
+> Members / Tiers / Dashboard entries now sit under their own **Membership** sidebar label
+> instead of Management, still dropping with the `member_loyalty` flag; an **Add new
+> member** form posts to `members.store` and creates a `User` + `Member` with the fixed
+> `member` role (`App\Support\SystemRole::MEMBER`, no permissions — see O-1); a manual
+> **Adjust Points** card posts to `members.points` (see B4); and `MemberDemoSeeder`
+> (10 members, tiers, subscriptions, ledger) is runnable but deliberately **not** wired
+> into `DatabaseSeeder` — demo rows must never land in a production seed.
+>
+> Why the Tiers link was dead before this: `AppMenuComposer::visible()` filters
+> `Route::has()` **first**, so an entry naming `members.tier` (a route that did not exist)
+> was dropped silently — no error, no log, no link. The `'permission' => 'tiers.view'` on
+> the same entry pointed at a permission `PermissionCatalog` never had. Not a missing
+> controller: the controller and the route existed as `MemberTierController` +
+> `members.tiers`; the entry pointed at the wrong name. `MemberWebTest` now asserts all
+> three labels, so a silently-dropped entry cannot pass again.
 
 | Group | Subject | Nature |
 |---|---|---|
@@ -113,7 +137,7 @@ here. Each is recorded rather than silently resolved, and each changes a task be
 | **D-1** | P18-D2: flag disabled → **HTTP 404** | **403.** `EnsureFeatureIsEnabled` carries a docblock that settles exactly this question ("Why 403, not 404", 2026-10-01, reversing an earlier 404), Phase 12 recorded it as conflict D-1 — "flags return 403, not 404 … not to be *fixed* into a bug" — and 62 tests across web + API pin it | P18-D2 asserts **403**. Changing it is an ADR, not a phase task |
 | **D-2** | P18-B1: a `members` table | Spatie's `HasRoles` is wired on `App\Models\User`; `Gate`, `can:`, `syncRoles`, the session guard and `PermissionCatalog` all resolve against `User`. A parallel `members` identity would either be unable to hold a role at all, or become a second login-capable account system | `members` is a **loyalty profile keyed to the existing user**: `user_id` FK, unique. Tier roles sync onto the **`User`**, so `can:` keeps working unchanged. No new authn path |
 | **D-3** | P18-C2: chunked **WhatsApp**/Email alerts | Two channels exist: `mail` and `database` (`NotificationChannel::for()`, switches `notification_channel_mail` / `_database`). No WhatsApp driver, no broadcast channel, no credentials | C2 ships **mail + in-app**, reading the same global switches. A WhatsApp driver is an open owner decision (§ 8): new package → `changelog.md` + ADR + `SystemSetting` credentials, exactly the SMTP shape |
-| **D-4** | P18-A4: sidebar entries wired in Group A | `AppMenuComposer` deliberately rejects `#` placeholders — "the menu cannot advertise a screen that was never shipped" — and a Blade reference to `route('members.index')` throws while that route name does not exist. Group A may not create controllers | A4 splits: **A4a** (flag declaration in `config/pennant.php`, `FeatureFlagSeeder` row, `@feature`/`@can` guards inside the views) stays in A; **A4b** (the route group + the two sidebar entries) ships with **B6**, the first commit where the link target exists. The sequential rule is not bent; the task is re-cut |
+| **D-4** | P18-A4: sidebar entries wired in Group A | `AppMenuComposer` deliberately rejects `#` placeholders — "the menu cannot advertise a screen that was never shipped" — and a Blade reference to `route('members.index')` throws while that route name does not exist. Group A may not create controllers | A4 splits: **A4a** (flag declaration in `config/pennant.php`, `FeatureFlagSeeder` row, `@feature`/`@can` guards inside the views) stays in A; **A4b** (the route group + the two sidebar entries) ships with **B6**, the first commit where the link target exists. The sequential rule is not bent; the task is re-cut. **Amended 2026-11-05**: the owner asked for the member screens in the sidebar, and `AppMenuComposer` drops an entry whose route does not resolve — so A4b's read half could not ship without B1 and the four GET routes. `P18-B1` and the read half of `P18-B6` (four read Actions, three thin web controllers, `members.view` on every route, three sidebar entries — the brief's two plus Tiers, which the A2 screen needs a door of its own) shipped together as a read-only slice. D-4's contract still holds: no member Blade file calls `route()` — the Actions hand every URL over as a variable, and a **null write URL removes the affordance instead of rendering a button that 404s** (`MemberUiRenderTest::test_null_write_urls_take_away_every_write_affordance`) |
 | **D-5** | P18-E1: `VoucherRaceConditionTest` proves the lock | `phpunit.xml` runs `DB_CONNECTION=sqlite`, `DB_DATABASE=:memory:`. SQLite takes no `SELECT … FOR UPDATE`: the statement parses and does nothing | Applies to every `lockForUpdate()` here, including the points ledger lock in B4: the test proves what SQLite *can* prove — balance arithmetic, a second redemption refused — and the row lock itself is recorded as **deferred runtime evidence** needing a two-session MySQL probe, the same way Phase 14 left the restore round trip open. The voucher race test moved with the voucher domain to **P19-E1** |
 | **D-6** | P18-D1: `members.view`, `members.manage`, `vouchers.manage` | A bulk POST must map to its own permission (`AuthorizesBulkAction`, P6-C17); Phase 12 Group D found exactly this gap on `features/bulk-action` — a route comment claiming a permission the route never checked. A3's "notify all expiring members" **is** a bulk action | Three permissions: `members.view`, `members.manage`, `members.notify`. `members.notify` is the broadcast's own gate; `vouchers.manage` moved to Phase 19 (P19-D1) with its domain. Coarse `manage` over create/update/delete stays, matching `settings.manage`/`storage.manage` rather than the 11-verb `users.*` set |
 | **D-7** | (unstated) a `Member` domain | `docs/base/architecture/naming-conventions.md` holds a domains table (9 rows as of P16-B2) and `ActionNamingConventionTest` is its owner | B3 adds `Member` to that table in the same commit as the first Action, not at closure |
@@ -210,7 +234,8 @@ no route touched.
 - **Acceptance**: the file passes with the application under maintenance; each gate is
   sabotage-verified individually before it is called a gate (the house rule since P16-E1).
 - **Note**: rendering by fixture rather than by HTTP is forced by **D-4**, not chosen for
-  speed. The HTTP round trip is proven in E1.
+  speed. The HTTP round trip is proven in E1 — its member half arrived early, in
+  `MemberWebTest`, with the read-only slice on 2026-11-05.
 
 ### Group B — Data, business logic and the tier/subscription engine
 
@@ -261,6 +286,16 @@ Exit gate: migrations migrate up and down on SQLite; every Action covered by a u
   ledger's last `balance_after` equals `points_balance` for every fixture member; a
   correction is a new row, never an update.
 - **Tests**: `MemberPointsTest`.
+- **Shipped 2026-11-05 (partial, owner request)**: `AdjustMemberPointsAction` is the manual
+  half — one signed `delta`, *or* a `purchase_amount` converted by the System Setting rule
+  (`member_points_earn_amount` → `member_points_earn_value`, Rp 50.000 → 1.000 by default).
+  Same shape the brief asked for: one transaction, `Member::whereKey()->lockForUpdate()`
+  re-read before the arithmetic, a stored `balance_after`, a redemption below zero refused
+  with no ledger row, a correction posted as another row. `EarnMemberPointsAction` /
+  `RedeemMemberPointsAction` as POS-driven classes stay in **Phase 19** with the checkout
+  that would call them (points spent as a discount, the cashier note, the printable
+  receipt, and the tier `point_multiplier` interaction — the manual action deliberately
+  applies the one global rule, not the per-tier factor).
 
 #### P18-B5 — Atomic voucher claim — **MOVED to Phase 19 (P19-B6)**
 Owner decision 2026-11-05: the voucher is its own domain — its own flag (`vouchers`), its
@@ -283,12 +318,32 @@ the idempotency backstop the lock cannot be alone against — D-5).
   `$request->validate()`; `php artisan route:list` shows the gate on every write route;
   the sidebar entry disappears with the flag off for a superadmin too.
 - **Tests**: `MemberWebTest`, `MemberApiTest`; `ApiDocumentationTest` is the drift gate.
-- **Docs**: `docs/base/api/*` shapes, new `docs/base/features/membership.md`.
+- **Read-only slice already live (2026-11-05, see D-4)**: the four GET routes, the three web
+  controllers and three sidebar entries (Members, Membership Dashboard, Tiers) are shipped and green in `MemberWebTest`. The create
+  The create screen **is** routed as of 2026-11-05 (owner request): `members.create` +
+  `members.store` (`MemberCreateAction`, `can:members.manage`) and `members.points`
+  (`AdjustMemberPointsAction`, `can:members.manage`) joined the four reads, so
+  `MemberIndexAction` hands a real `createUrl` and the detail page renders the Adjust
+  Points card. What remains here: subscribe / cancel / bulk / delete writes and the API
+  twins + Scramble — those URLs are still null and their affordances still disappear.
+  A consequence the brief did not predict: creating a member assigns a role, and role
+  assignment is its own permission (`users.assign_roles`, `RoleAssignAction`). So
+  `members.manage` alone is a **403** on the store, by design — a member is a login
+  account, and an operator who cannot hand out roles must not hand out accounts.
+  `MemberCreateTest` pins both halves.
+  One naming detail the brief could not predict: the dashboard route is `membership.dashboard`,
+  not `members.dashboard` — the sidebar marks an entry active with `fnmatch` against
+  `members.*`, which has no pipe alternation, so a `members.` prefix would highlight two
+  entries at once. The URI stays `/members/dashboard`.
+  The channel question is answered at the moment the routes landed (the Phase 12 rule):
+  `ChannelParityTest` carries them as a declared one-sided capability, `membership screens`,
+  with the reason; it becomes a two-sided entry when `Api/V1/Member` ships.
+- **Docs**: `docs/base/api/*` shapes, new `docs/base/features/membership.md` (written 2026-11-05 for the shipped slice — API section still empty because the twins have not landed).
 
 ### Group C — Background processing
 
 Exit gate: `JobConventionTest` green with the two new jobs; `schedule:list` shows the
-seventh entry.
+eighth entry (seven today — `member-points-expiry` landed early, see C3's count note).
 
 #### P18-C1 — Expiry sweep job
 - **Task**: `app/Jobs/MemberSubscriptionExpirySweepJob` on `QueueName::SWEEPS` (an
@@ -323,6 +378,11 @@ seventh entry.
 - **Acceptance**: `php artisan schedule:list` prints seven entries; the new one is not on
   the minute the other sweeps use (the P17-C3 collision question, answered for the new
   entry); `docs/base/infrastructure/queue.md` and the runbook's schedule table gain the row.
+  **Count note 2026-11-05**: `member-points-expiry` (the annual points reset behind
+  `member_points_expiry_date`, O-3) shipped early with the write slice, so
+  `schedule:list` already prints **seven** at `0 0 * * *`. C1's subscription sweep is the
+  **eighth** entry, not the seventh — and it shares midnight with the points sweep, so the
+  collision question in this row is live, not hypothetical.
 
 ### Group D — Enforcement (RBAC, flag, audit)
 
@@ -417,7 +477,7 @@ Carried into `progress.md` so it does not vanish at closure:
 
 | # | Question | Options | Blocking? |
 |---|---|---|---|
-| O-1 | **D-2** — is `Member` a profile on `users` (recommended) or a second identity with its own login? | profile / second identity | Blocks B1. A second identity means a second authn surface, a second `User`-shaped model in every `can:` path, and new ADRs |
+| O-1 | **D-2** — is `Member` a profile on `users` (recommended) or a second identity with its own login? | profile / second identity | **CLOSED 2026-11-05** — profile, and the owner asked for the flow to match "new user": `MemberCreateAction` delegates the account half to `UserCreateAction` (generated temp password, `must_change_password`, verification mail), and the new `member` system role is fixed, not chosen | Not blocking — resolved |
 | O-2 | **D-3** — WhatsApp driver | defer to Phase 19 / add package + ADR + `SystemSetting` credentials now | Not blocking: C2 ships mail + in-app either way |
-| O-3 | Points expiry | never expires / expires with the subscription | Not blocking for the schema; blocks the sweep's scope if "yes" (a second sweep) |
+| O-3 | Points expiry | never expires / expires with the subscription | **CLOSED 2026-11-05** — neither, on the owner's wording ("yang di-0-kan point member, bukan saldo"): a global, **optional** `member_points_expiry_date` in System Setting (empty = never expire). `ExpireMemberPointsAction` zeroes every positive `points_balance`, writes one `Annual points expiry` ledger row per member, then advances the date a whole year so the stored value is always the *next* reset. `MemberPointsExpirySweepJob` runs it daily on `sweeps`. The subscription-linked variant is not built | Not blocking — resolved |
 | O-4 | Voucher `max_discount` and `min_purchase` semantics with no order total in Phase 18 | **CLOSED 2026-11-05** — mooted by the move: the whole voucher domain (both columns included) ships in Phase 19 where an order total exists | Not blocking — resolved |

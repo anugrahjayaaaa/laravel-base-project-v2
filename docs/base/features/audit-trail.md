@@ -226,6 +226,26 @@ come from model observers — `ActionFirstAuditTest` pins that property.
 | `role.created` / `role.updated` | `PersistsRole` via `RoleCreateAction` / `RoleUpdateAction` |
 | `role.deleted` / `role.restored` / `role.force_deleted` | `RoleDeleteAction` / `RoleRestoreAction` / `RoleForceDeleteAction` |
 
+### Member & loyalty (subject: `Member`)
+
+| Event | Written by | Causer |
+|-------|-----------|--------|
+| `member.created` | `MemberCreateAction` | the admin (also writes `user.created` through `UserCreateAction`) |
+| `member.deleted` | `MemberDeleteAction` | the admin; properties carry `member_number`, captured before the trash |
+| `member.points_adjusted` | `AdjustMemberPointsAction` | the admin; properties carry `delta`, `balance_before`, `balance_after`, `reason` |
+| `member.points_expired` | `ExpireMemberPointsAction` (the daily `member-points-expiry` schedule) | `SYSTEM` marker in properties — no logged-in actor exists |
+
+Ledger semantics (stored `balance_after`, a correction is another row, what the annual
+reset does and does not touch) are in [membership.md](membership.md) § Points.
+
+### Member tiers (subject: `MemberTier`)
+
+| Event | Written by | Causer |
+|-------|-----------|--------|
+| `member_tier.created` | `MemberTierCreateAction` | the admin; properties carry `tier_name`, `slug` |
+| `member_tier.updated` | `MemberTierUpdateAction` | the admin; properties carry **only the fields that changed**, each as `from`/`to` (`UserUpdateAction`'s shape) |
+| `member_tier.deleted` | `MemberTierDeleteAction` | the admin; properties carry `tier_name`, `slug` captured before the trash. A tier still carrying subscriptions is refused, so no row is written |
+
 ### Feature flags (subject: the flag row)
 
 | Event | Written by |
