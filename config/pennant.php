@@ -127,6 +127,32 @@ return [
             'description' => 'Per-attempt job history, failure detail, retry chains and live queue depth.',
             'settings' => ['queue_retry_rate_limit_per_minute'],
         ],
+        'member_loyalty' => [
+            'label' => 'Membership & Loyalty',
+            'group' => 'Membership',
+            'description' => 'Member profiles, tiers, subscriptions, points and the expiry sweep.',
+            // The five keys the Membership card on /settings edits. Off flag →
+            // SystemSettingsUpdateAction strips them, so a save cannot write a
+            // value no reader will consult. `currency_code` is deliberately NOT
+            // here: it is a display choice for every money amount in the app
+            // (the Localization card), not a loyalty feature, so switching
+            // membership off must not stop an operator from setting it.
+            'settings' => [
+                'member_expiry_alert_window_days',
+                'member_number_prefix',
+                'member_points_expiry_date',
+                'member_points_earn_amount',
+                'member_points_earn_value',
+            ],
+        ],
+        'vouchers' => [
+            'label' => 'Vouchers',
+            // Its own domain: vouchers are validated at payment time by POS, not
+            // owned by membership and not owned by the gateway — so it gets its
+            // own kill switch, menu and permissions (moved out of Phase 18).
+            'group' => 'Sales',
+            'description' => 'Voucher codes, quotas and validity windows; checked when a payment applies one.',
+        ],
     ],
 
     /*
