@@ -23,6 +23,8 @@
 | 15 | Comprehensive testing | P0 | DONE |
 | 16 | Documentation verification | P0 | DONE |
 | 17 | Full regression / final review | P0 | DONE |
+| 18 | General membership & loyalty system | P1 | PLANNED |
+| 19 | Basic POS engine & omnichannel payment gateway | P1 | PLANNED |
 
 ## Dependency Map
 
@@ -52,6 +54,10 @@ API (Phase 12)
 Observability (Phase 11)
     ↓
 Testing / Hardening (Phases 13-17)
+    ↓
+Membership & Loyalty (Phase 18)
+    ↓
+POS & Payment Gateway (Phase 19)
 ```
 
 ## Phase Details
@@ -211,3 +217,43 @@ email-verification-notice, password-change pages using AdminLTE auth layout.
   Every gate exited 0 on the final tree; what remains open is listed as deferred in
   the release summary § 3 and in `progress.md` § *Known Issues*. Work sits in the
   working tree uncommitted — the owner reviews and commits (`AGENTS.md`).
+
+### Phase 18: General Membership & Loyalty System
+- Dynamic membership tiers
+- Duration / expiry engine
+- Member dashboard & statistics
+- Automated expiry sweep + notification jobs
+- Member voucher & discount engine
+- Depends on: Phase 17 (foundation closed) — reuses the Phase 8 settings, Phase 7 feature
+  flag, Phase 9 notification/queue and Phase 10 audit capabilities rather than adding new
+  infrastructure
+- Breakdown: [phase-18-membership-loyalty.md](phase-18-membership-loyalty.md) — 19 tasks in
+  five groups (A UI + flag → B data/Actions/controllers → C sweep + bulk notification →
+  D RBAC/flag/audit → E tests + closure), written 2026-11-05 with seven brief-vs-code
+  conflicts recorded (D-1..D-7) before any task is built: flag-off is **403, not 404**;
+  `members` is a loyalty profile keyed to `users.id`, not a second identity; there is no
+  WhatsApp channel; `lockForUpdate()` cannot be proven on the SQLite test connection
+- Status: PLANNED
+
+### Phase 19: Basic POS Engine & Omnichannel Payment Gateway
+- Point of Sales engine (self-service + cashier interface)
+- ESC/POS thermal printing
+- Omnichannel payment gateway configuration
+- Dynamic financial dashboard (revenue, tax/PPN/PPH, profitability)
+- Payment race-condition shield + atomic webhook handler
+- Depends on: Phase 18 (tier pricing and voucher discount are applied at the POS line) and
+  Phase 14 (gateway credentials are encrypted `SystemSetting` values, same pattern as SMTP)
+- Breakdown: [phase-19-pos-and-payment.md](phase-19-pos-and-payment.md) — 19 tasks in five
+  groups (A UI + flags → B data/shifts/sales/ESC-POS → C gateway order + webhook +
+  credentials → D RBAC/flag/audit → E tests + closure), written 2026-11-05 with thirteen
+  brief-vs-code conflicts recorded (D-1..D-13) before any task is built: **no product or
+  stock table exists in the schema** (B1 must add `products`; how a product is created is
+  open decision O-1); Livewire/Alpine are not installed and the CSP forbids them;
+  `Illuminate\Support\CircuitBreaker` is absent from this install while `Http::retry`/
+  `Http::timeout` are native — and a gateway retry is only safe with our own deterministic
+  `order_id`; the webhook's race shield must be an atomic conditional update plus a unique
+  event key (SQLite ignores `FOR UPDATE`); gateway keys stay **out** of the settings
+  whitelist and **inside** `SystemSetting::SECRET_KEYS` so `settings.manage` cannot repoint
+  production money; Net Profit has no cost data; `mike42/escpos-php` needs an ADR before
+  `composer require` and only its byte stream is testable here; flag-off is 403, not 404
+- Status: PLANNED
