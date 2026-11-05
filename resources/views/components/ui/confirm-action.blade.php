@@ -15,6 +15,11 @@
     // 'button' | 'input'. See the @if above the <button>.
     'tag' => 'button',
     'title' => null,
+    // Member deactivation only: the modal has to ask whether this is a sanction
+    // before it submits, because that answer decides whether the paid period is
+    // forfeited or paused. Every other trigger leaves it false and the block
+    // stays hidden and disabled, so it submits nothing.
+    'deactivationFields' => false,
     // Legacy overrides. Per design-system.md every action should read
     // ACTION_CONFIG, but the user form's Unlock has always carried its own
     // copy, and changing the words a user reads is not a formatting fix. Omit
@@ -62,6 +67,7 @@
         @if($message) data-message="{{ $message }}" @endif
         @if($variant) data-variant="{{ $variant }}" @endif
         @if($icon) data-icon="{{ $icon }}" @endif
+        @if($deactivationFields) data-deactivation-fields="1" @endif
         class="{{ $class }}">
     {{ $slot }}
 </button>
