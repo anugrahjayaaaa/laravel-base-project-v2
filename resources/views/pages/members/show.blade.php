@@ -89,7 +89,7 @@
                                             <td>{{ $subscription->expires_at }}</td>
                                             <td>
                                                 <div class="d-flex align-items-center justify-content-end gap-1">
-                                                    @can('members.manage')
+                                                    @can('members.update')
                                                         @if ($subscription->cancel_url)
                                                             <x-ui.confirm-action :action="$subscription->cancel_url" method="POST" :item-name="$subscription->tier_name"
                                                                 label="Cancel Subscription" title="Cancel Subscription"
@@ -151,7 +151,7 @@
                     </div>
                 </div>
 
-                @can('members.manage')
+                @can('members.update')
                     {{-- adjustUrl is null for a trashed profile: the Action would
                          fail on a row nothing can read. --}}
                     @if ($adjustUrl && !$member->is_trashed)
@@ -222,7 +222,7 @@
                     </ul>
                 </div>
 
-                @can('members.manage')
+                @can('members.update')
                     @if ($subscribeUrl)
                         <div class="card border-0 shadow-sm mb-4">
                             <div class="card-header bg-transparent border-bottom py-2">

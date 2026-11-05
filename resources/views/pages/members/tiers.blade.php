@@ -40,7 +40,7 @@
                             @endforeach
                         </ul>
                     </div>
-                    @can('members.manage')
+                    @can('members.tiers.create')
                         <a href="{{ $createUrl }}" class="btn btn-primary d-inline-flex align-items-center gap-2">
                             <i class="bi bi-plus-lg"></i> Create Tier
                         </a>
@@ -73,9 +73,9 @@
                                 {{-- One permission per action, the way the users and roles bars
                                      do it: the endpoint maps the same pairs back, so this only
                                      stops the caller being offered something they would lose. --}}
-                                @can('members.delete')<option value="delete">Move to Trash</option>@endcan
-                                @can('members.restore')<option value="restore">Restore</option>@endcan
-                                @can('members.force_delete')<option value="force_delete">Permanent Delete</option>@endcan
+                                @can('members.tiers.delete')<option value="delete">Move to Trash</option>@endcan
+                                @can('members.tiers.restore')<option value="restore">Restore</option>@endcan
+                                @can('members.tiers.force_delete')<option value="force_delete">Permanent Delete</option>@endcan
                             </select>
                             <button type="button" class="btn btn-sm btn-primary" id="bulkApplyBtn">Apply</button>
                             <button type="button" class="btn btn-sm btn-outline-secondary" id="bulkClearBtn">Clear</button>
@@ -134,7 +134,7 @@
                                                  and no trash trigger, a live one no Restore
                                                  and no Permanent Delete. --}}
                                             @if ($tier->edit_url)
-                                                @can('members.manage')
+                                                @can('members.tiers.update')
                                                     <a href="{{ $tier->edit_url }}" class="btn btn-sm btn-outline-primary"
                                                         title="Edit"><i class="fas fa-pen"></i></a>
                                                 @endcan
@@ -144,7 +144,7 @@
                                                 of logging in, which a tier never does. The
                                                 modal gets the words that match the row. --}}
                                             @if ($tier->activate_url)
-                                                @can('members.activate')
+                                                @can('members.tiers.activate')
                                                     <x-ui.confirm-action :action="$tier->activate_url" method="POST"
                                                         :item-name="$tier->name" label="Activate" title="Activate"
                                                         variant="success"
@@ -155,7 +155,7 @@
                                                 @endcan
                                             @endif
                                             @if ($tier->deactivate_url)
-                                                @can('members.deactivate')
+                                                @can('members.tiers.deactivate')
                                                     <x-ui.confirm-action :action="$tier->deactivate_url" method="POST"
                                                         :item-name="$tier->name" label="Deactivate" title="Deactivate"
                                                         message="Deactivate <b>__BOLD__</b>? Members already on it keep their subscription."
@@ -165,7 +165,7 @@
                                                 @endcan
                                             @endif
                                             @if ($tier->delete_url)
-                                                @can('members.delete')
+                                                @can('members.tiers.delete')
                                                     <x-ui.confirm-action :action="$tier->delete_url" method="DELETE"
                                                         action-type="delete" :item-name="$tier->name"
                                                         label="Move to Trash" title="Move to Trash"
@@ -175,7 +175,7 @@
                                                 @endcan
                                             @endif
                                             @if ($tier->restore_url)
-                                                @can('members.restore')
+                                                @can('members.tiers.restore')
                                                     <x-ui.confirm-action :action="$tier->restore_url" method="POST"
                                                         action-type="restore" :item-name="$tier->name" label="Restore"
                                                         title="Restore" class="btn btn-sm btn-outline-success">
@@ -184,7 +184,7 @@
                                                 @endcan
                                             @endif
                                             @if ($tier->force_delete_url)
-                                                @can('members.force_delete')
+                                                @can('members.tiers.force_delete')
                                                     <x-ui.confirm-action :action="$tier->force_delete_url"
                                                         method="DELETE" action-type="force_delete"
                                                         :item-name="$tier->name" label="Permanent Delete"

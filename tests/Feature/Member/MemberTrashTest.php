@@ -27,7 +27,7 @@ use Tests\TestCase;
  * tab, every single-row trash action, and the bulk path that loops them is here.
  *
  * `members.delete` / `.restore` / `.force_delete` are asserted as separate
- * permissions: a caller holding `members.manage` edits, and does not remove.
+ * permissions: a caller holding `members.update` edits, and does not remove.
  */
 class MemberTrashTest extends TestCase
 {
@@ -122,7 +122,7 @@ class MemberTrashTest extends TestCase
 
     public function test_the_tier_trash_tab_shows_a_trashed_tier(): void
     {
-        $this->actingAsHolderOf(['members.view', 'members.restore', 'members.force_delete']);
+        $this->actingAsHolderOf(['members.tiers.view', 'members.tiers.restore', 'members.tiers.force_delete']);
 
         $tier = MemberTier::factory()->create(['name' => 'Bronze', 'slug' => 'bronze']);
         $tier->delete();
@@ -142,7 +142,7 @@ class MemberTrashTest extends TestCase
 
     public function test_a_status_that_is_not_a_tab_is_refused(): void
     {
-        $this->actingAsHolderOf(['members.view']);
+        $this->actingAsHolderOf(['members.view', 'members.tiers.view']);
 
         // A typo in a bookmarked tab is a redirect back with the error, not a
         // silently unfiltered list.
@@ -207,7 +207,7 @@ class MemberTrashTest extends TestCase
 
     public function test_a_tier_with_subscriptions_on_it_refuses_to_be_force_deleted(): void
     {
-        $this->actingAsHolderOf(['members.force_delete']);
+        $this->actingAsHolderOf(['members.tiers.force_delete']);
 
         $tier = MemberTier::factory()->create(['name' => 'Gold', 'slug' => 'gold']);
         $this->liveMember('MBR-000406');
@@ -223,9 +223,9 @@ class MemberTrashTest extends TestCase
         $this->assertNotNull(MemberTier::withTrashed()->find($tier->id), 'a tier in use was destroyed');
     }
 
-    public function test_manage_alone_is_refused_on_every_trash_route(): void
+    public function test_update_alone_is_refused_on_every_trash_route(): void
     {
-        $this->actingAsHolderOf(['members.manage']);
+        $this->actingAsHolderOf(['members.update', 'members.tiers.update']);
 
         $member = $this->liveMember('MBR-000407');
         $member->delete();
@@ -276,7 +276,7 @@ class MemberTrashTest extends TestCase
 
     public function test_bulk_delete_trashes_the_selection_of_tiers(): void
     {
-        $this->actingAsHolderOf(['members.delete']);
+        $this->actingAsHolderOf(['members.tiers.delete']);
 
         $gold = MemberTier::factory()->create(['name' => 'Gold', 'slug' => 'gold']);
         $silver = MemberTier::factory()->create(['name' => 'Silver', 'slug' => 'silver']);
@@ -292,7 +292,7 @@ class MemberTrashTest extends TestCase
 
     public function test_a_bulk_tier_trash_aborts_when_one_tier_in_the_selection_is_in_use(): void
     {
-        $this->actingAsHolderOf(['members.delete']);
+        $this->actingAsHolderOf(['members.tiers.delete']);
 
         $inUse = MemberTier::factory()->create(['name' => 'Gold', 'slug' => 'gold']);
         $unused = MemberTier::factory()->create(['name' => 'Silver', 'slug' => 'silver']);

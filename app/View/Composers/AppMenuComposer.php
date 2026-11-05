@@ -207,7 +207,7 @@ class AppMenuComposer
                         // lit while the operator is on them. The Members entry above
                         // matches the whole prefix either way.
                         'active' => 'members.tiers*',
-                        'permission' => 'members.view',
+                        'permission' => 'members.tiers.view',
                         'feature' => 'member_loyalty',
                     ],
                 ]

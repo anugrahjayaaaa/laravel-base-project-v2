@@ -54,7 +54,7 @@ class MemberDeleteTest extends TestCase
 
     public function test_the_delete_permission_trashes_the_profile_and_the_account_stays_alive(): void
     {
-        // `members.delete`, not `members.manage`: trashing is its own permission
+        // `members.delete`, not `members.update`: trashing is its own permission
         // from Phase 18's trash tabs onward, so the holder of one is not the
         // holder of the other.
         $this->actingAsHolderOf(['members.delete']);
@@ -72,7 +72,7 @@ class MemberDeleteTest extends TestCase
 
     public function test_manage_alone_does_not_trash_a_profile(): void
     {
-        $this->actingAsHolderOf(['members.manage']);
+        $this->actingAsHolderOf(['members.update']);
 
         $member = Member::factory()->create();
 

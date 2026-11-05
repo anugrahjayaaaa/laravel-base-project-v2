@@ -1053,3 +1053,36 @@ renewal, per the action's own contract).
 **Consequences**: A deactivated-then-activated member returns to Active carrying a
 CANCELLED/EXPIRED badge until they buy the next period; `MemberTrashTest` and
 `MemberStateTest` pin the new partition.
+
+## ADR-032: `members.*` and `members.tiers.*` are two permission sets on the `users.*` suffix shape
+
+**Date**: 2026-11-06 · **Status**: Accepted · **Relates to**: Phase 18 (membership), supersedes
+Phase 18 D-6's coarse `manage` and its 2026-11-05 removal-only amendment,
+`docs/base/features/membership.md` § Routes
+
+**Context**: Phase 18 shipped one set — `members.view` / `members.manage` / `members.notify` —
+shared by member profiles and tier configuration (`BulkMemberTierRequest::bulkEntityPrefix()`
+answered `members`). Two operators of the same module therefore held identical powers: whoever
+could reprice a tier could trash a member's points history, and the sidebar, the bulk bar and
+every `@can` guard on the tier pages read the same string as the members pages. Meanwhile
+`members.manage` was an outlier in the catalogue: `users.*` and `roles.*` name the verb the
+screen actually performs.
+
+**Decision**: Two catalogue entries, each on the users suffix shape.
+`members.{view,create,update,delete,restore,force_delete,activate,deactivate}` plus
+`members.notify`; `members.tiers.{view,create,update,delete,restore,force_delete,activate,deactivate}`.
+No `.manage` anywhere in the membership module. Routes, Form Requests, the tier blades and
+`AppMenuComposer`'s Tiers entry take the matching name; `BulkMemberTierRequest`'s prefix is
+`members.tiers`, so a tier bulk action maps to `members.tiers.<action>`. `MemberTierRequest`
+serves create and edit with one class and authorizes by method (`POST` →
+`members.tiers.create`, `PUT` → `members.tiers.update`), which is what the two route gates carry.
+
+**Alternatives considered**: keep one set and rename `manage` → `update` (rejected — leaves
+pricing and profile destruction under one grant); split `MemberTierRequest` into two classes
+(rejected — seven identical rules duplicated for one line of authorize).
+
+**Consequences**: `members.notify` stays the only suffix outside the users shape. Existing
+roles re-derive from `PermissionCatalog::all()` at seed time, so a role that held
+`members.manage` must be re-granted explicitly — `admin` / `superadmin` inherit through the
+catalogue and are unaffected. `RbacApiTest`'s catalogue listing needs `per_page=100` now that
+the list is longer.

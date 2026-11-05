@@ -45,22 +45,22 @@ All inside `Route::middleware('feature:member_loyalty')`; authorization is on th
 | Route | Name | Permission |
 |---|---|---|
 | `GET /members` | `members.index` | `members.view` |
-| `GET /members/create` | `members.create` | `members.manage` |
-| `POST /members` | `members.store` | `members.manage` |
-| `GET /members/tiers` | `members.tiers` | `members.view` |
-| `GET /members/tiers/create` | `members.tiers.create` | `members.manage` |
-| `POST /members/tiers` | `members.tiers.store` | `members.manage` |
-| `GET /members/tiers/{tier}/edit` | `members.tiers.edit` | `members.manage` |
-| `PUT /members/tiers/{tier}` | `members.tiers.update` | `members.manage` |
-| `POST /members/tiers/{tier}/activate` | `members.tiers.activate` | `members.activate` |
-| `POST /members/tiers/{tier}/deactivate` | `members.tiers.deactivate` | `members.deactivate` |
-| `DELETE /members/tiers/{tier}` | `members.tiers.destroy` | `members.delete` |
-| `POST /members/tiers/{tier}/restore` | `members.tiers.restore` | `members.restore` |
-| `DELETE /members/tiers/{tier}/force` | `members.tiers.force-delete` | `members.force_delete` |
+| `GET /members/create` | `members.create` | `members.create` |
+| `POST /members` | `members.store` | `members.create` |
+| `GET /members/tiers` | `members.tiers` | `members.tiers.view` |
+| `GET /members/tiers/create` | `members.tiers.create` | `members.tiers.create` |
+| `POST /members/tiers` | `members.tiers.store` | `members.tiers.create` |
+| `GET /members/tiers/{tier}/edit` | `members.tiers.edit` | `members.tiers.update` |
+| `PUT /members/tiers/{tier}` | `members.tiers.update` | `members.tiers.update` |
+| `POST /members/tiers/{tier}/activate` | `members.tiers.activate` | `members.tiers.activate` |
+| `POST /members/tiers/{tier}/deactivate` | `members.tiers.deactivate` | `members.tiers.deactivate` |
+| `DELETE /members/tiers/{tier}` | `members.tiers.destroy` | `members.tiers.delete` |
+| `POST /members/tiers/{tier}/restore` | `members.tiers.restore` | `members.tiers.restore` |
+| `DELETE /members/tiers/{tier}/force` | `members.tiers.force-delete` | `members.tiers.force_delete` |
 | `POST /members/tiers/bulk-action` | `members.tiers.bulk-action` | per action (see below) |
 | `GET /members/dashboard` | `membership.dashboard` | `members.view` |
 | `GET /members/{member}` | `members.show` | `members.view` |
-| `POST /members/{member}/points` | `members.points` | `members.manage` |
+| `POST /members/{member}/points` | `members.points` | `members.update` |
 | `POST /members/{member}/activate` | `members.activate` | `members.activate` |
 | `POST /members/{member}/deactivate` | `members.deactivate` | `members.deactivate` |
 | `DELETE /members/{member}` | `members.destroy` | `members.delete` |
@@ -74,12 +74,19 @@ destroyed in one click. `{member}` is bound `withTrashed()` (a trashed profile s
 so those two routes carry an `abort_unless($member->trashed(), 404)` instead. Same protection,
 two mechanisms, because the two bindings differ.
 
+**Two permission sets, not one** (ADR-032). `members.*` is the member profile and
+`members.tiers.*` is tier configuration; the suffix list of each is the `users.*` shape —
+`view` / `create` / `update` / `delete` / `restore` / `force_delete` / `activate` /
+`deactivate` — with `members.notify` as the one addition. There is no `members.manage`: one
+"manage" made Add-member, a points adjustment and a tier price edit a single decision, and the
+users list never had it.
+
 **Removing is its own permission, three ways** — `members.delete` (to the trash),
 `members.restore`, `members.force_delete` — the way users and roles already split them.
-`members.manage` edits and does not remove. The bulk endpoints carry no `can:` on the route:
+`members.update` edits and does not remove. The bulk endpoints carry no `can:` on the route:
 `BulkMemberRequest` / `BulkMemberTierRequest` use the shared `AuthorizesBulkAction`, which maps
-the body's `action` to `<prefix>.<suffix>` — so `delete` needs `members.delete` and a tier bulk
-call is authorised by the same set as a member one (tiers share the `members` prefix). An action
+the body's `action` to `<prefix>.<suffix>` — so `delete` needs `members.delete` while a tier bulk
+call is authorised by `members.tiers.delete` (its `bulkEntityPrefix()` is `members.tiers`). An action
 with no matching permission (e.g. `lock`, which only users have) is a 403, not a fallthrough.
 Each handler's `getValidItems()` narrows first: `delete` acts only on live rows, `restore` and
 `force_delete` only on trashed ones, so a mixed selection touches what it may and ignores the
@@ -164,7 +171,7 @@ from `member_number_prefix`. The row's unique index stays the last line of defen
 shows the number in a **disabled** field — a disabled input carries no `name`, so a forged
 `member_number` in the payload is not validated and not read.
 
-**`members.manage` alone is a 403 here.** Handing out a role is its own permission
+**`members.create` without `users.assign_roles` is a 403 here.** Handing out a role is its own permission
 (`users.assign_roles`, enforced by `RoleAssignAction`), so an operator who cannot assign
 roles cannot create login accounts. Both halves are pinned by `MemberCreateTest`.
 
@@ -211,7 +218,7 @@ they keep "Back to Tiers" / "Back to Member List" (`docs/base/ui/design-system.m
 **The tier edit page owns a Danger Zone**, the same card the member profile uses: copy, the shared
 `x-ui.confirm-action` modal, and `members.tiers.destroy` behind it. The create page renders no card —
 there is no row to trash yet — and the list keeps its per-row delete, so the two affordances point at
-one route with one Action. Both cards sit behind `@can('members.delete')`, not `members.manage`.
+one route with one Action. Both sit behind `@can('members.tiers.delete')`, not `members.tiers.update`.
 
 **A trashed tier is a row, not a ghost.** The list used to read the default scope, so trashing one
 removed its only route back — no Restore, no Permanent Delete, nothing on screen. `status=trashed`
@@ -341,11 +348,11 @@ in Blade), `MemberCreateTest` (account + role + mail + refusal paths), `MemberPo
 update / delete routes, one audit row each, the superadmin refusal, the slug generated from the
 name on both paths, the Danger Zone on the edit page only, formatted prices, seeder idempotency, the in-use delete refusal, a trashed
 slug still taken, gates and flag), `MemberDeleteTest` (the trashing itself: `members.delete`
-trashes, `members.manage` alone is refused, the account survives, the flag switches it off),
+trashes, `members.update` alone is refused, the account survives, the flag switches it off),
 `MemberTrashTest` (what each tab shows and hides, the tier trash tab that used to be unreachable, the
 two-step guard on a live row, the cascade a force delete takes with it, the per-action permission
 split, and the bulk path on both lists — including a mixed selection and a batch aborted by one
 in-use tier), `MemberStateTest` (the activate/deactivate pair on both lists: the tier switch and
-its audit row, a trashed tier unreachable from the state routes, `members.manage` alone refused,
+its audit row, a trashed tier unreachable from the state routes, `members.update` alone refused,
 pause versus forfeit, the reason requirement, the paused days handed back on reactivation, the
 Inactive tab and the icon+tooltip affordances).

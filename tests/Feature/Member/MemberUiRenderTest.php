@@ -22,7 +22,7 @@ use Tests\TestCase;
  *
  * The viewer signs in as superadmin: `members.*` permissions are added to
  * the catalogue in D1, and Gate::before is the only way a Group-A fixture
- * render passes a `@can('members.manage')` guard today. The staff case is
+ * render passes a `@can('members.create')` guard today. The staff case is
  * asserted separately — a guard nobody tested is a guard that may be gone.
  */
 class MemberUiRenderTest extends TestCase
@@ -528,8 +528,8 @@ class MemberUiRenderTest extends TestCase
         $index = $this->render('pages.members.index', $this->indexData([
             $this->memberRow(['deactivate_url' => '/members/1/deactivate']),
         ]));
-        $this->assertStringNotContainsString('Create Member', $index, 'the create button ignored members.manage');
-        $this->assertStringNotContainsString('data-action-type="delete"', $index, 'the row delete ignored members.manage');
+        $this->assertStringNotContainsString('Create Member', $index, 'the create button ignored members.create');
+        $this->assertStringNotContainsString('data-action-type="delete"', $index, 'the row delete ignored members.delete');
         $this->assertStringNotContainsString('data-action="/members/1/deactivate"', $index, 'the row deactivate ignored members.deactivate');
 
         $tiers = $this->render('pages.members.tiers', $this->tierListData([$this->obj([
@@ -540,7 +540,7 @@ class MemberUiRenderTest extends TestCase
             'activate_url' => null, 'deactivate_url' => '/members/tiers/1/deactivate',
             'restore_url' => null, 'force_delete_url' => null,
         ])]));
-        $this->assertStringNotContainsString('Create Tier', $tiers, 'the create button ignored members.manage');
+        $this->assertStringNotContainsString('Create Tier', $tiers, 'the create button ignored members.tiers.create');
         $this->assertStringNotContainsString('data-action="/members/tiers/1"', $tiers, 'the row delete ignored members.delete');
 
         $dashboard = $this->render('pages.members.dashboard', [

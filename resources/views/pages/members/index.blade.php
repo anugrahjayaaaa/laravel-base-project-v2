@@ -65,7 +65,7 @@
                             @endforeach
                         </ul>
                     </div>
-                    @can('members.manage')
+                    @can('members.create')
                         {{-- createUrl is null until the write routes ship (B6):
                              no route, no button — never a link to nowhere. --}}
                         @if ($createUrl)

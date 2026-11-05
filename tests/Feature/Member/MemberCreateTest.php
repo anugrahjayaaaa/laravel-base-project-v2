@@ -72,7 +72,7 @@ class MemberCreateTest extends TestCase
 
     public function test_the_form_renders_for_a_manager(): void
     {
-        $this->actingAsHolderOf(['members.manage', 'users.assign_roles']);
+        $this->actingAsHolderOf(['members.create', 'users.assign_roles']);
 
         $this->get(route('members.create'))
             ->assertOk()
@@ -93,7 +93,7 @@ class MemberCreateTest extends TestCase
 
     public function test_creating_a_member_makes_a_user_with_the_member_role_and_a_verification_mail(): void
     {
-        $this->actingAsHolderOf(['members.manage', 'users.assign_roles']);
+        $this->actingAsHolderOf(['members.create', 'users.assign_roles']);
 
         $response = $this->post(route('members.store'), $this->payload());
 
@@ -116,7 +116,7 @@ class MemberCreateTest extends TestCase
 
     public function test_creating_a_member_without_role_assignment_permission_is_refused(): void
     {
-        $this->actingAsHolderOf(['members.manage']);
+        $this->actingAsHolderOf(['members.create']);
 
         $this->post(route('members.store'), $this->payload())->assertForbidden();
 
@@ -126,7 +126,7 @@ class MemberCreateTest extends TestCase
 
     public function test_the_member_number_follows_the_configured_prefix_and_counts_up(): void
     {
-        $this->actingAsHolderOf(['members.manage', 'users.assign_roles']);
+        $this->actingAsHolderOf(['members.create', 'users.assign_roles']);
 
         SystemSetting::set('member_number_prefix', 'ANG');
         SystemSetting::bustCache();
@@ -142,7 +142,7 @@ class MemberCreateTest extends TestCase
 
     public function test_a_soft_deleted_member_number_is_never_issued_twice(): void
     {
-        $this->actingAsHolderOf(['members.manage', 'users.assign_roles']);
+        $this->actingAsHolderOf(['members.create', 'users.assign_roles']);
 
         Member::factory()->create(['member_number' => 'MBR-000009']);
         Member::query()->delete();
@@ -154,7 +154,7 @@ class MemberCreateTest extends TestCase
 
     public function test_a_forged_member_number_in_the_payload_is_not_stored(): void
     {
-        $this->actingAsHolderOf(['members.manage', 'users.assign_roles']);
+        $this->actingAsHolderOf(['members.create', 'users.assign_roles']);
 
         $this->post(route('members.store'), $this->payload() + ['member_number' => 'MBR-999999']);
 
@@ -163,7 +163,7 @@ class MemberCreateTest extends TestCase
 
     public function test_a_duplicate_email_is_rejected(): void
     {
-        $this->actingAsHolderOf(['members.manage', 'users.assign_roles']);
+        $this->actingAsHolderOf(['members.create', 'users.assign_roles']);
 
         User::factory()->create(['email' => 'new.member@example.com']);
 
@@ -175,7 +175,7 @@ class MemberCreateTest extends TestCase
 
     public function test_the_flag_switches_the_whole_flow_off(): void
     {
-        $this->actingAsHolderOf(['members.manage', 'users.assign_roles']);
+        $this->actingAsHolderOf(['members.create', 'users.assign_roles']);
 
         Feature::deactivate('member_loyalty');
         Feature::flushCache();

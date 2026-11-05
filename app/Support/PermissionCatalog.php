@@ -116,34 +116,50 @@ class PermissionCatalog
     /**
      * Membership & loyalty — Phase 18.
      *
-     * `.notify` is separate from `.manage` for the same reason
-     * `notifications.send_test` is separate from its manage: a bulk mail to
-     * every member in an alert window is an outbound side effect, not an edit.
+     * The suffix list is `users.*` one-for-one: `view` / `create` / `update` /
+     * the three trash actions / the on-off pair. There is no `.manage` — the
+     * users list is the reference and it never had one; a single "manage" would
+     * make the Add-member button and a points adjustment one decision.
      *
-     * The three trash actions split off `.manage` on the users/roles shape, one
-     * prefix for the whole module: a member profile and its tier configuration
-     * are both loyalty records, so a tier delete is not a separate capability
-     * from a member delete. `.force_delete` is its own name because it destroys
-     * the points history and the subscription rows that a soft delete keeps, and
-     * `.restore` because pulling a row back out of the trash is a different
-     * decision from putting it in.
-     *
-     * `.activate` / `.deactivate` split off `.manage` on the `users.*` shape:
-     * switching a loyalty profile off takes a person out of the programme, which
-     * is not the same decision as editing the price of a tier. One pair covers
-     * both lists — a tier is switched off for the same reason a member is.
+     * `.notify` is the one addition: a bulk mail to every member in an alert
+     * window is an outbound side effect, not an edit, so it is separate for the
+     * same reason `notifications.send_test` is separate from its manage.
      *
      * @var array<int, string>
      */
     private const MEMBERS = [
         'members.view',
-        'members.manage',
+        'members.create',
+        'members.update',
         'members.notify',
         'members.delete',
         'members.restore',
         'members.force_delete',
         'members.activate',
         'members.deactivate',
+    ];
+
+    /**
+     * Member tier configuration — its own permission set, not folded into
+     * `members.*`.
+     *
+     * A tier is a price list; a member is a person in the programme. Whoever
+     * maintains pricing should not thereby be able to trash member profiles
+     * (or the reverse), so the two lists authorize separately even though the
+     * tier pages live under `/members/tiers`. Same suffix shape as MEMBERS
+     * minus `.notify`, which only makes sense against the member population.
+     *
+     * @var array<int, string>
+     */
+    private const MEMBER_TIERS = [
+        'members.tiers.view',
+        'members.tiers.create',
+        'members.tiers.update',
+        'members.tiers.delete',
+        'members.tiers.restore',
+        'members.tiers.force_delete',
+        'members.tiers.activate',
+        'members.tiers.deactivate',
     ];
 
     /**
@@ -306,6 +322,7 @@ class PermissionCatalog
             ...self::NOTIFICATIONS,
             ...self::FEATURES,
             ...self::MEMBERS,
+            ...self::MEMBER_TIERS,
             ...self::AUDIT,
             ...self::PULSE,
             ...self::HEALTH,

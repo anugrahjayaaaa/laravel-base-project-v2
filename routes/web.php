@@ -6,6 +6,9 @@ use App\Http\Controllers\Web\V1\Auth\AuthController;
 use App\Http\Controllers\Web\V1\DashboardController;
 use App\Http\Controllers\Web\V1\FeatureController;
 use App\Http\Controllers\Web\V1\HealthController;
+use App\Http\Controllers\Web\V1\MemberController;
+use App\Http\Controllers\Web\V1\MemberDashboardController;
+use App\Http\Controllers\Web\V1\MemberTierController;
 use App\Http\Controllers\Web\V1\NotificationController;
 use App\Http\Controllers\Web\V1\NotificationInboxController;
 use App\Http\Controllers\Web\V1\PermissionController;
@@ -16,6 +19,7 @@ use App\Http\Controllers\Web\V1\SystemBackupController;
 use App\Http\Controllers\Web\V1\SystemSettingController;
 use App\Http\Controllers\Web\V1\UserStateController;
 use App\Http\Controllers\Web\V1\UserController;
+use App\Models\Member;
 use App\Models\User;
 use Illuminate\Support\Facades\Route;
 use Storvia\Vantage\Http\Controllers\QueueMonitorController;
@@ -211,6 +215,73 @@ Route::middleware(['auth:web,sanctum', 'verified', 'password.change.required', '
     Route::middleware('feature:permissions')->group(function () {
 
         Route::get('/permissions', [PermissionController::class, 'index'])->name('permissions.index')->can('permissions.view');
+    });
+
+    // ---------------------------------------------------------------------------
+    // Membership & loyalty — Phase 18 (P18-B1 pulled forward by the owner
+    // 2026-11-05, with the Add new member and points write paths).
+    //
+    // `membership.dashboard` is named off the `members.` prefix on purpose:
+    // the sidebar matches `active` with fnmatch, and a `members.dashboard`
+    // route name would light up the Members entry (`members.*`) on both
+    // pages at once.
+    //
+    // Writes take the users suffixes: `members.create` for the create form and its
+    // store, `members.update` for the edit-side routes. Creating a member also creates an
+    // account, so `MemberCreateAction` additionally goes through
+    // `RoleAssignAction`, which holds its own `users.assign_roles` check.
+    // ---------------------------------------------------------------------------
+    Route::middleware('feature:member_loyalty')->group(function () {
+        Route::get('/members', [MemberController::class, 'index'])->name('members.index')->can('members.view');
+        Route::get('/members/create', [MemberController::class, 'create'])->name('members.create')->can('members.create');
+        Route::post('/members', [MemberController::class, 'store'])->name('members.store')->can('members.create');
+        Route::get('/members/tiers', [MemberTierController::class, 'index'])->name('members.tiers')->can('members.tiers.view');
+        // The tier write routes are `/members/tiers/*` rather than `/tiers/*` so
+        // they sit inside the same `feature:member_loyalty` group as the list
+        // that links to them. `{tier}` resolves through
+        // the default (non-trashed) scope, so a delete for a tier already in the
+        // trash 404s instead of writing a second audit row.
+        Route::get('/members/tiers/create', [MemberTierController::class, 'create'])->name('members.tiers.create')->can('members.tiers.create');
+        Route::post('/members/tiers', [MemberTierController::class, 'store'])->name('members.tiers.store')->can('members.tiers.create');
+        Route::get('/members/tiers/{tier}/edit', [MemberTierController::class, 'edit'])->name('members.tiers.edit')->can('members.tiers.update')->whereNumber('tier');
+        Route::put('/members/tiers/{tier}', [MemberTierController::class, 'update'])->name('members.tiers.update')->can('members.tiers.update')->whereNumber('tier');
+        // Switch a tier off without editing it. `{tier}` resolves through the
+        // default scope, so a trashed tier 404s here: its way back is Restore.
+        Route::post('/members/tiers/{tier}/activate', [MemberTierController::class, 'activate'])->name('members.tiers.activate')->can('members.tiers.activate')->whereNumber('tier');
+        Route::post('/members/tiers/{tier}/deactivate', [MemberTierController::class, 'deactivate'])->name('members.tiers.deactivate')->can('members.tiers.deactivate')->whereNumber('tier');
+        Route::delete('/members/tiers/{tier}', [MemberTierController::class, 'destroy'])->name('members.tiers.destroy')->can('members.tiers.delete')->whereNumber('tier');
+        // Raw id, not the implicit {tier} binding: that resolves through the
+        // SoftDeletes scope and 404s the exact rows these two exist for. The
+        // controller looks the tier up with onlyTrashed(), so a live id cannot
+        // be restored or destroyed here.
+        Route::post('/members/tiers/{tier}/restore', [MemberTierController::class, 'restore'])->name('members.tiers.restore')->can('members.tiers.restore')->whereNumber('tier');
+        Route::delete('/members/tiers/{tier}/force', [MemberTierController::class, 'forceDelete'])->name('members.tiers.force-delete')->can('members.tiers.force_delete')->whereNumber('tier');
+        // Not route-gated, same reason as users.bulk-action: the permission
+        // depends on the action in the body, so BulkMemberTierRequest maps it.
+        Route::post('/members/tiers/bulk-action', [MemberTierController::class, 'bulkAction'])->name('members.tiers.bulk-action')->middleware('throttle:bulk-action');
+        Route::get('/members/dashboard', [MemberDashboardController::class, 'index'])->name('membership.dashboard')->can('members.view');
+        Route::bind('member', fn ($id) => Member::withTrashed()->findOrFail($id));
+        Route::get('/members/{member}', [MemberController::class, 'show'])->name('members.show')->can('members.view')->whereNumber('member');
+        Route::post('/members/{member}/points', [MemberController::class, 'points'])->name('members.points')->can('members.update')->whereNumber('member');
+        // The member's own on/off switch, beside the subscription state it is
+        // independent of. `{member}` resolves withTrashed, so both controllers
+        // refuse a trashed profile rather than auditing a change to nothing.
+        Route::post('/members/{member}/activate', [MemberController::class, 'activate'])->name('members.activate')->can('members.activate')->whereNumber('member');
+        Route::post('/members/{member}/deactivate', [MemberController::class, 'deactivate'])->name('members.deactivate')->can('members.deactivate')->whereNumber('member');
+        // Soft delete of the profile only; the login account is deleted on the
+        // users screen. The `{member}` binding resolves withTrashed, so a hand
+        //-crafted DELETE for an already-trashed row is answered by
+        // `MemberDeleteAction` without a second audit row.
+        Route::delete('/members/{member}', [MemberController::class, 'destroy'])->name('members.destroy')->can('members.delete')->whereNumber('member');
+        // The `{member}` binding resolves withTrashed so a trashed row reaches the
+        // controller at all; the `abort_unless($member->trashed(), 404)` inside is
+        // what keeps a live profile from being destroyed in one click without
+        // going through the trash first.
+        Route::post('/members/{member}/restore', [MemberController::class, 'restore'])->name('members.restore')->can('members.restore')->whereNumber('member');
+        Route::delete('/members/{member}/force', [MemberController::class, 'forceDelete'])->name('members.force-delete')->can('members.force_delete')->whereNumber('member');
+        // Not route-gated: BulkMemberRequest maps the body's action to
+        // `members.delete` / `members.restore` / `members.force_delete`.
+        Route::post('/members/bulk-action', [MemberController::class, 'bulkAction'])->name('members.bulk-action')->middleware('throttle:bulk-action');
     });
 
     // ---------------------------------------------------------------------------
