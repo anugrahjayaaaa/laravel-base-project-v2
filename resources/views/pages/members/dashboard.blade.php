@@ -42,7 +42,7 @@
                     <div class="card-header bg-transparent border-bottom py-2 d-flex justify-content-between align-items-center gap-2 flex-wrap">
                         <h5 class="card-title mb-0 fw-semibold">Expiring within {{ $alertWindowDays }} days</h5>
                         @can('members.notify')
-                            {{-- broadcastUrl is null until the notify route ships (B6). --}}
+                            {{-- A null URL removes the trigger, not breaks the page (D-4). --}}
                             @if ($broadcastUrl)
                                 <x-ui.confirm-action :action="$broadcastUrl" method="POST"
                                     label="Send Expiry Alerts" title="Send Expiry Alerts"
