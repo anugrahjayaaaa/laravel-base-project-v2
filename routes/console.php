@@ -3,6 +3,7 @@
 use App\Enums\AuditExportStatus;
 use App\Jobs\CleanTemporaryStorageJob;
 use App\Jobs\InactivityLockSweep;
+use App\Jobs\MemberPointsExpirySweepJob;
 use App\Jobs\PasswordExpirySweep;
 use App\Jobs\QueueFailureProbe;
 use App\Models\AuditExport;
@@ -162,6 +163,18 @@ Schedule::call(function (SystemBackupSchedule $schedule): void {
 Schedule::job(new CleanTemporaryStorageJob())
     ->daily()
     ->name('temp-storage-cleanup')
+    ->withoutOverlapping();
+
+/**
+ * Daily points-expiry check (Phase 18, O-3).
+ *
+ * `member_points_expiry_date` is the next annual reset date or empty. The job
+ * costs one settings read when the date has not arrived, which is every day
+ * except the one the operator chose.
+ */
+Schedule::job(new MemberPointsExpirySweepJob())
+    ->daily()
+    ->name('member-points-expiry')
     ->withoutOverlapping();
 
 /**
