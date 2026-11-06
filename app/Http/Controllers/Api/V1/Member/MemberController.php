@@ -9,6 +9,7 @@ use App\Actions\V1\Member\MemberBulkActionHandler;
 use App\Actions\V1\Member\MemberCreateAction;
 use App\Actions\V1\Member\MemberDeactivateAction;
 use App\Actions\V1\Member\MemberDeleteAction;
+use App\Actions\V1\Member\MemberExpiryBroadcastAction;
 use App\Actions\V1\Member\MemberForceDeleteAction;
 use App\Actions\V1\Member\MemberIndexAction;
 use App\Actions\V1\Member\MemberRestoreAction;
@@ -18,7 +19,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\V1\Member\BulkMemberRequest;
 use App\Http\Requests\V1\Member\MemberCreateRequest;
 use App\Http\Requests\V1\Member\MemberDeactivateRequest;
-use App\Http\Requests\V1\Member\MemberPointsAdjustRequest;
+use App\Http\Requests\V1\Member\MemberAdjustPointsRequest;
 use App\Http\Requests\V1\Member\MemberQueryRequest;
 use App\Http\Requests\V1\Member\MemberSubscribeRequest;
 use App\Http\Resources\Api\V1\Member\MemberPointHistoryResource;
@@ -53,6 +54,7 @@ class MemberController extends Controller
         private readonly MemberDeleteAction $deleteAction,
         private readonly MemberRestoreAction $restoreAction,
         private readonly MemberForceDeleteAction $forceDeleteAction,
+        private readonly MemberExpiryBroadcastAction $broadcastAction,
         private readonly BulkActionProcessor $bulkProcessor,
         private readonly MemberBulkActionHandler $bulkHandler,
     ) {
@@ -114,7 +116,7 @@ class MemberController extends Controller
      * take the balance below zero — `MemberAdjustPointsAction` refuses the
      * write before it opens the ledger row.
      */
-    public function points(MemberPointsAdjustRequest $request, Member $member): JsonResponse
+    public function points(MemberAdjustPointsRequest $request, Member $member): JsonResponse
     {
         $this->pointsAction->run($member, $request->validated(), $request->user());
 
@@ -148,6 +150,18 @@ class MemberController extends Controller
         $this->subscriptionCancelAction->run($subscription, $request->user());
 
         return $this->respond('Subscription cancelled successfully.');
+    }
+
+    /**
+     * Queue the bulk expiry warning run — the API twin of the dashboard
+     * button, same Action, so neither channel decides the window alone.
+     * No request data to read: the route's `can:members.notify` is the gate.
+     */
+    public function broadcastExpiry(): JsonResponse
+    {
+        $this->broadcastAction->run();
+
+        return $this->respond('Expiry notifications queued successfully.');
     }
 
     /**

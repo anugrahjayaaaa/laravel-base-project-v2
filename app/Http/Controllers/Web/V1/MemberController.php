@@ -19,7 +19,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\V1\Member\BulkMemberRequest;
 use App\Http\Requests\V1\Member\MemberCreateRequest;
 use App\Http\Requests\V1\Member\MemberDeactivateRequest;
-use App\Http\Requests\V1\Member\MemberPointsAdjustRequest;
+use App\Http\Requests\V1\Member\MemberAdjustPointsRequest;
 use App\Http\Requests\V1\Member\MemberQueryRequest;
 use App\Http\Requests\V1\Member\MemberSubscribeRequest;
 use App\Models\Member;
@@ -98,7 +98,7 @@ class MemberController extends Controller
             ->with('status', 'Member created. Their verification link is on its way.');
     }
 
-    public function points(MemberPointsAdjustRequest $request, Member $member): RedirectResponse
+    public function points(MemberAdjustPointsRequest $request, Member $member): RedirectResponse
     {
         $this->pointsAction->run($member, $request->validated(), $request->user());
 

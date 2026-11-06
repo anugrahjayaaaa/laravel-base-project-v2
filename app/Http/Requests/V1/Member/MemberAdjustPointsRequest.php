@@ -15,7 +15,7 @@ use Illuminate\Validation\Validator;
  * arithmetic. Exactly one of them must arrive, which is the part only a
  * cross-field rule can check.
  */
-class MemberPointsAdjustRequest extends BaseFormRequest
+class MemberAdjustPointsRequest extends BaseFormRequest
 {
     public function authorize(): bool
     {

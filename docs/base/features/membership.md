@@ -279,7 +279,7 @@ a `ValidationException` on `name`, which renders back onto the list with the sha
 ## Points
 
 `MemberAdjustPointsAction` posts one signed movement, in two mutually exclusive modes
-(`MemberPointsAdjustRequest::after()` refuses giving both, and refuses a zero delta):
+(`MemberAdjustPointsRequest::after()` refuses giving both, and refuses a zero delta):
 
 - `delta` — points, positive or negative.
 - `purchase_amount` — rupiah, converted by the configured earn rule (§ Settings).
@@ -364,16 +364,17 @@ re-separates existing numbers; it never re-prices them.
 
 ## Demo data
 
-`database/seeders/MemberDemoSeeder.php` — ten members (`MBR-000101`…`MBR-000110`), each on one
-of the three seeded tiers in `sort_order`, a subscription whose status is **derived** from
-`expires_at` (joined dates are spread back far enough that the shortest tier has already
-lapsed, so the demo set shows both ACTIVE and EXPIRED without either being asserted), and a
-ledger whose last `balance_after` equals the balance. Run with
+`database/seeders/MemberDemoSeeder.php` — ten known accounts `member1`…`member10`
+(`memberX@member.com`, shared dev password `#Password123`, verified emails, the `member`
+role, a random seeded tier each), laid out so every dashboard state is always on screen:
+member1-3 active with the period far away, member4-6 inactive (user and profile both off,
+period `expired`), member7-8 expiring inside 14 days, member9-10 inside 7 — the two window
+bands the alert widget and the *Notify Expiring Members* run address. Run with
 `php artisan db:seed --class=Database\Seeders\MemberDemoSeeder`; it calls `MemberTierSeeder`
-itself and the `member` role must exist first (`db:seed --class=RoleSeeder`). It is **not**
-wired into `DatabaseSeeder` — demo rows must never land in a production seed. It creates users
-directly instead of through `MemberCreateAction`, which would mail ten inboxes and fill the
-audit trail with noise.
+itself and the `member` role must exist first (`db:seed --class=RoleSeeder`). Re-running
+repairs a partial run without duplicating rows. It is **not** wired into `DatabaseSeeder` —
+demo rows must never land in a production seed. It creates users directly instead of through
+`MemberCreateAction`, which would mail ten inboxes and fill the audit trail with noise.
 
 ## Not in this slice (Phase 19 / later P18 rows)
 
