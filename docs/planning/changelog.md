@@ -742,3 +742,13 @@ Each entry contains:
 | **Reason** | Point adjustment is a consequence of a sale, and the sale lands in Phase 19's checkout; a manual box on the profile invites ledger entries that no transaction explains. The API half survives because corrections are a legitimate programmatic act, not a screen. |
 | **Impact** | No permission, flag, table or ledger change — one surface removed. Anyone relying on the web form loses it; `POST /api/v1/members/{id}/points` behaves exactly as before. Gates targeted: `tests/Feature/Member` + `Api/V1/Member` + `ChannelParityTest` 139 passed / 650 assertions, Pint PASS 570 files, PHPStan `[OK] No errors`; work uncommitted. |
 | **Related** | P18-B4, P18-B6, Phase 19 (checkout), `docs/base/features/membership.md` § Points |
+
+## 2026-11-06 — Group D closes as proof, not new code: every route walked, every event enumerated
+
+| Field | Value |
+|-------|-------|
+| **Date** | 2026-11-06 |
+| **Change** | P18-D1/D2/D3 verified. `MemberWebTest` gained two loops that walk all 25 web member/tier routes — once as staff (zero permissions), once flag-off as superadmin — replacing the three hand-picked screens the old tests checked; `MemberApiTest`'s permission and flag loops gained `api.v1.members.broadcast-expiry`, the P18-C2 route they had missed. Audit events were enumerated from `->audit()` call sites under `app/Actions/V1/Member/` (P16-D1 method): 19 events, all present in the Event Map. No `MemberAuthorizationTest` / `MemberAuditTest` files were created — the planned names described a shape, and the existing route loops plus the per-Action suites already carry the acceptance. |
+| **Reason** | Group D's exit gate is "every refusal is a measured status code, not a comment claiming one". The B/C slices shipped the gates route by route; what they left unproven was completeness — screens sampled instead of the table walked, one API route outside the loops. |
+| **Impact** | Zero production-code change; only tests and docs. A future member route added without `can:` or `feature:` now fails a loop until it is listed, which is the drift this group exists to catch. Gates targeted: Member + API-Member + ChannelParity + Role 400 passed / 1842 assertions, Audit 309 passed, Pint PASS 570 files, PHPStan `[OK] No errors`; uncommitted at time of writing, work left for owner REVIEW. |
+| **Related** | P18-D1, P18-D2, P18-D3, D-1, D-6, `docs/base/features/audit-trail.md` |

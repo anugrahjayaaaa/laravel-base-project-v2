@@ -279,6 +279,7 @@ class MemberApiTest extends TestCase
             ['POST', 'api.v1.members.points'],
             ['POST', 'api.v1.members.subscribe'],
             ['POST', 'api.v1.members.subscriptions.cancel'],
+            ['POST', 'api.v1.members.broadcast-expiry'],
             ['DELETE', 'api.v1.members.destroy'],
             ['POST', 'api.v1.members.restore'],
             ['DELETE', 'api.v1.members.force-delete'],

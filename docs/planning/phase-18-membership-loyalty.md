@@ -468,6 +468,12 @@ Exit gate: every refusal is a measured status code, not a comment claiming one.
   `role_has_permissions` rows.
 - **Tests**: `MemberAuthorizationTest` (the `StorageAuthorizationTest` shape); update the
   catalogue-drift guards.
+- **Verified 2026-11-06**: no separate `MemberAuthorizationTest` file — the acceptance is
+  carried by the route loops that grew into it. `MemberWebTest` now walks **all 25 web member
+  routes** with staff (zero permissions) and with the flag off for a superadmin, each 403;
+  `MemberApiTest`'s loops gained the P18-C2 `api.v1.members.broadcast-expiry` that had slipped
+  out of them, so both channels are proven by the table, not by hand-picked screens. The
+  broadcast refusal for a caller without `members.notify` ships in `MemberExpiryNotificationTest`.
 
 #### P18-D2 — Feature-flag enforcement
 - **Task**: `feature:member_loyalty` on every member route group, web and API.
@@ -476,6 +482,10 @@ Exit gate: every refusal is a measured status code, not a comment claiming one.
   flipped still finishes its current chunk; an undeclared slug fails closed.
 - **Tests**: covered by the existing per-slug flag middleware shape — the new slug is
   asserted, no parallel suite invented.
+- **Verified 2026-11-06**: the flag-off half of the `MemberWebTest` loop above now covers all
+  25 web routes for a superadmin (previously three screens); the API loops already walked every
+  member and tier route. Sweeps check the flag inside `handle()` (`reason=feature_off`), proven
+  in `MemberExpirySweepTest`.
 
 #### P18-D3 — Audit events
 - **Task**: the four events (`member.subscribed`, `member.role_synced`,
@@ -487,6 +497,11 @@ Exit gate: every refusal is a measured status code, not a comment claiming one.
   mutation commit or roll back together.
 - **Tests**: `MemberAuditTest`; `ActionFirstAuditTest` cited as the standing owner.
 - **Docs**: `docs/base/features/audit-trail.md` Event Map (48 → 52 events).
+- **Verified 2026-11-06**: no `MemberAuditTest` file — every event is asserted by the suite
+  that owns its Action. Enumerating `->audit()` call sites under `app/Actions/V1/Member/`
+  yields 19 events (12 `member.*`, 7 `member_tier.*`); all 19 have Event Map rows, and the
+  write-inside-transaction rule is proven by the refusal tests (a refused points move, cancel
+  or in-use tier delete leaves no audit row). `ActionFirstAuditTest` passes untouched.
 
 ### Group E — Verification and closure
 

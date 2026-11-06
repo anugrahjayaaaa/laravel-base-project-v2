@@ -8,6 +8,7 @@ use App\Models\MemberSubscription;
 use App\Models\MemberTier;
 use App\Models\RoleLookup;
 use App\Models\User;
+use App\Http\Middleware\VerifyCsrfToken;
 use Database\Seeders\FeatureFlagSeeder;
 use Database\Seeders\PermissionSeeder;
 use Database\Seeders\RoleSeeder;
@@ -102,25 +103,39 @@ class MemberWebTest extends TestCase
         $this->get('/members/'.$member->id)->assertOk()->assertDontSee('Adjust Points');
     }
 
-    public function test_a_viewer_without_members_view_is_refused_on_every_screen(): void
+    /**
+     * P18-D1's acceptance, whole: staff holds zero permissions, so every
+     * address the module registers — reads, writes, bulk, trash — must 403.
+     * A hand-checked screen proves one route; the loop proves the table.
+     */
+    public function test_a_caller_with_no_permission_is_refused_on_every_member_route(): void
     {
-        [$member] = $this->memberWithHistory();
+        // Same opt-out the standing member POST suites use: the gate is the
+        // subject here, the session token is not.
+        $this->withoutMiddleware(VerifyCsrfToken::class);
         $this->signIn('staff');
+        $addresses = $this->addresses();
 
-        $this->get('/members')->assertForbidden();
-        $this->get('/members/tiers')->assertForbidden();
-        $this->get('/members/dashboard')->assertForbidden();
-        $this->get('/members/'.$member->id)->assertForbidden();
+        foreach ($this->memberRoutes() as [$method, $name]) {
+            $this->json($method, route($name, $addresses))->assertForbidden();
+        }
     }
 
-    public function test_the_flag_refuses_even_a_superadmin(): void
+    /**
+     * P18-D2's web half, whole: the flag answers 403 (not the brief's 404,
+     * D-1) on every route for the one role that normally bypasses every gate.
+     */
+    public function test_the_flag_refuses_even_a_superadmin_on_every_member_route(): void
     {
+        $this->withoutMiddleware(VerifyCsrfToken::class);
         $this->signIn('superadmin');
         Feature::deactivate('member_loyalty');
+        Feature::flushCache();
+        $addresses = $this->addresses();
 
-        $this->get('/members')->assertForbidden();
-        $this->get('/members/tiers')->assertForbidden();
-        $this->get('/members/dashboard')->assertForbidden();
+        foreach ($this->memberRoutes() as [$method, $name]) {
+            $this->json($method, route($name, $addresses))->assertForbidden();
+        }
     }
 
     public function test_the_sidebar_offers_members_only_to_a_viewer_who_may(): void
@@ -174,5 +189,60 @@ class MemberWebTest extends TestCase
                 "not exactly one active sidebar item on {$uri}"
             );
         }
+    }
+
+    /**
+     * Every web route the module registers, method and name together. The
+     * table and `routes/web.php` are supposed to be the same list — this is
+     * the test that keeps them that way.
+     *
+     * @return array<int, array{0: string, 1: string}>
+     */
+    private function memberRoutes(): array
+    {
+        return [
+            ['GET', 'members.index'],
+            ['GET', 'members.create'],
+            ['POST', 'members.store'],
+            ['GET', 'members.show'],
+            ['POST', 'members.subscribe'],
+            ['POST', 'members.subscriptions.cancel'],
+            ['POST', 'members.activate'],
+            ['POST', 'members.deactivate'],
+            ['DELETE', 'members.destroy'],
+            ['POST', 'members.restore'],
+            ['DELETE', 'members.force-delete'],
+            ['POST', 'members.bulk-action'],
+            ['GET', 'members.tiers'],
+            ['GET', 'members.tiers.create'],
+            ['POST', 'members.tiers.store'],
+            ['GET', 'members.tiers.edit'],
+            ['PUT', 'members.tiers.update'],
+            ['POST', 'members.tiers.activate'],
+            ['POST', 'members.tiers.deactivate'],
+            ['DELETE', 'members.tiers.destroy'],
+            ['POST', 'members.tiers.restore'],
+            ['DELETE', 'members.tiers.force-delete'],
+            ['POST', 'members.tiers.bulk-action'],
+            ['GET', 'membership.dashboard'],
+            ['POST', 'membership.broadcast-expiry'],
+        ];
+    }
+
+    /**
+     * Real rows for the parameterised routes: a missing id answers 404 from
+     * the binding before the gate is consulted, which would prove nothing.
+     *
+     * @return array<string, int>
+     */
+    private function addresses(): array
+    {
+        [$member, $tier] = $this->memberWithHistory();
+
+        return [
+            'member' => $member->id,
+            'subscription' => $member->subscriptions()->first()->id,
+            'tier' => $tier->id,
+        ];
     }
 }
