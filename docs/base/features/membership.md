@@ -12,9 +12,9 @@ rows and what still ships are in `docs/planning/task-tracker.md`.
 
 | Layer | State |
 |---|---|
-| Backend web | Shipped: `Web/V1/{MemberController,MemberTierController,MemberDashboardController}` — reads, member creation, subscribe/cancel, tier CRUD, trash, state switches, bulk |
+| Backend web | Shipped: `Web/V1/{MemberController,MemberTierController,MemberDashboardController}` — reads, member creation, subscribe/cancel, tier CRUD, trash, state switches, bulk. `Web/V1\DashboardController` also swaps `/dashboard` for the member's own dashboard (§ The member's own dashboard) |
 | Backend API | Shipped for everything the web channel offers except the three read-only screens (`GET /members/create`, `GET /members/tiers/{tier}/edit`, `GET /members/dashboard`): `Api/V1/Member/{MemberController,MemberTierController}` + `MemberResource`, `MemberSubscriptionResource`, `MemberTierResource`, `MemberPointHistoryResource`. Every route runs the same Actions and the same Form Requests, so the guards are not restated |
-| AdminLTE UI | `resources/views/pages/members/{index,create,show,tiers,tier-form,dashboard}.blade.php` |
+| AdminLTE UI | `resources/views/pages/members/{index,create,show,tiers,tier-form,dashboard,my-dashboard}.blade.php` |
 
 The API is independently usable: a non-browser client can register a member, price tiers,
 issue and cancel a period, move points, use the trash and queue an expiry broadcast —
@@ -345,6 +345,28 @@ rolled-back read. The dashboard's *Notify Expiring Members* button is a confirm-
 inside `@can('members.notify')` — a viewer with `members.view` sees the expiring table but no
 button, and the route itself 403s the same caller, so screen and gate cannot disagree.
 
+## The member's own dashboard
+
+`GET /dashboard` (`dashboard`) is the one screen a `member` account can reach: the route
+carries no `can:` gate, and the `member` system role holds no permission, so every other
+screen 403s. `DashboardController` therefore renders `pages/members/my-dashboard.blade.php`
+from `MemberSelfDashboardAction` when the signed-in account has a loyalty profile **and**
+`member_loyalty` is on — `FeatureCatalog::isActive()`, the same helper `EnsureFeatureIsEnabled`
+uses, so a flag-off module never gets its tables read from an ungated route. Anyone else, and
+a member whose flag went off, gets the application dashboard unchanged.
+
+The view model is the same contract as the other member read Actions: tier name, subscription
+status label + badge variant, `starts_at` / `expires_at` / days remaining, `points_balance`,
+and the last 10 ledger rows (`created_at`, `reason`, signed delta, `balance_after`) — all
+primitives, nothing computed in Blade, no `route()` call (there is no other member screen to
+link to, so the page would be advertising a 403). Status is read exactly as
+`MemberShowAction::row()` reads it: the live period if there is one, otherwise the most recent,
+so a lapsed member sees the tier they had rather than an empty card; a deactivated profile is
+INACTIVE whatever its subscription did.
+
+No new route, no new permission, no API twin: it is the same profile the caller already owns,
+and `GET /api/v1/members/{member}` already answers it programmatically.
+
 ## Settings
 
 Five keys, all gated on `member_loyalty`'s `settings` group in `config/pennant.php` and
@@ -402,7 +424,9 @@ button, its API twin and both sweeps ship with Group C.
 `tests/Feature/Member/` — `MemberWebTest` (routes, gates, flag, sidebar labels, exactly one
 active sidebar item per page),
 `MemberUiRenderTest` (fixture render, null-URL affordance removal, no DB/route/inline script
-in Blade), `MemberCreateTest` (account + role + mail + refusal paths), `MemberPointsTest`
+in Blade), `MemberSelfDashboardTest` (the member's own `/dashboard`: tier + expiry + ledger of
+the signed-in profile only, empty states with no period and no ledger rows, flag off → the
+application dashboard, a staff user unaffected), `MemberCreateTest` (account + role + mail + refusal paths), `MemberPointsTest`
 (ledger, earn rule, negative-balance refusal, annual reset), `MemberTierTest` (tier create /
 update / delete routes, one audit row each, the superadmin refusal, the slug generated from the
 name on both paths, the Danger Zone on the edit page only, formatted prices, seeder idempotency, the in-use delete refusal, a trashed
