@@ -18,13 +18,13 @@ class MemberTierRequest extends BaseFormRequest
 {
     /**
      * One class for both forms, two permissions: writing a new tier is
-     * `members.tiers.create` and editing an existing one is
-     * `members.tiers.update` — the same pair the routes carry, so a clerk who
+     * `member_tiers.create` and editing an existing one is
+     * `member_tiers.update` — the same pair the routes carry, so a clerk who
      * may price a new tier cannot silently rewrite a live one.
      */
     public function authorize(): bool
     {
-        $ability = $this->isMethod('post') ? 'members.tiers.create' : 'members.tiers.update';
+        $ability = $this->isMethod('post') ? 'member_tiers.create' : 'member_tiers.update';
 
         return $this->user()?->can($ability) ?? false;
     }

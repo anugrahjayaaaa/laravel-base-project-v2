@@ -235,27 +235,27 @@ Route::middleware(['auth:web,sanctum', 'verified', 'password.change.required', '
         Route::get('/members', [MemberController::class, 'index'])->name('members.index')->can('members.view');
         Route::get('/members/create', [MemberController::class, 'create'])->name('members.create')->can('members.create');
         Route::post('/members', [MemberController::class, 'store'])->name('members.store')->can('members.create');
-        Route::get('/members/tiers', [MemberTierController::class, 'index'])->name('members.tiers')->can('members.tiers.view');
+        Route::get('/members/tiers', [MemberTierController::class, 'index'])->name('members.tiers')->can('member_tiers.view');
         // The tier write routes are `/members/tiers/*` rather than `/tiers/*` so
         // they sit inside the same `feature:member_loyalty` group as the list
         // that links to them. `{tier}` resolves through
         // the default (non-trashed) scope, so a delete for a tier already in the
         // trash 404s instead of writing a second audit row.
-        Route::get('/members/tiers/create', [MemberTierController::class, 'create'])->name('members.tiers.create')->can('members.tiers.create');
-        Route::post('/members/tiers', [MemberTierController::class, 'store'])->name('members.tiers.store')->can('members.tiers.create');
-        Route::get('/members/tiers/{tier}/edit', [MemberTierController::class, 'edit'])->name('members.tiers.edit')->can('members.tiers.update')->whereNumber('tier');
-        Route::put('/members/tiers/{tier}', [MemberTierController::class, 'update'])->name('members.tiers.update')->can('members.tiers.update')->whereNumber('tier');
+        Route::get('/members/tiers/create', [MemberTierController::class, 'create'])->name('members.tiers.create')->can('member_tiers.create');
+        Route::post('/members/tiers', [MemberTierController::class, 'store'])->name('members.tiers.store')->can('member_tiers.create');
+        Route::get('/members/tiers/{tier}/edit', [MemberTierController::class, 'edit'])->name('members.tiers.edit')->can('member_tiers.update')->whereNumber('tier');
+        Route::put('/members/tiers/{tier}', [MemberTierController::class, 'update'])->name('members.tiers.update')->can('member_tiers.update')->whereNumber('tier');
         // Switch a tier off without editing it. `{tier}` resolves through the
         // default scope, so a trashed tier 404s here: its way back is Restore.
-        Route::post('/members/tiers/{tier}/activate', [MemberTierController::class, 'activate'])->name('members.tiers.activate')->can('members.tiers.activate')->whereNumber('tier');
-        Route::post('/members/tiers/{tier}/deactivate', [MemberTierController::class, 'deactivate'])->name('members.tiers.deactivate')->can('members.tiers.deactivate')->whereNumber('tier');
-        Route::delete('/members/tiers/{tier}', [MemberTierController::class, 'destroy'])->name('members.tiers.destroy')->can('members.tiers.delete')->whereNumber('tier');
+        Route::post('/members/tiers/{tier}/activate', [MemberTierController::class, 'activate'])->name('members.tiers.activate')->can('member_tiers.activate')->whereNumber('tier');
+        Route::post('/members/tiers/{tier}/deactivate', [MemberTierController::class, 'deactivate'])->name('members.tiers.deactivate')->can('member_tiers.deactivate')->whereNumber('tier');
+        Route::delete('/members/tiers/{tier}', [MemberTierController::class, 'destroy'])->name('members.tiers.destroy')->can('member_tiers.delete')->whereNumber('tier');
         // Raw id, not the implicit {tier} binding: that resolves through the
         // SoftDeletes scope and 404s the exact rows these two exist for. The
         // controller looks the tier up with onlyTrashed(), so a live id cannot
         // be restored or destroyed here.
-        Route::post('/members/tiers/{tier}/restore', [MemberTierController::class, 'restore'])->name('members.tiers.restore')->can('members.tiers.restore')->whereNumber('tier');
-        Route::delete('/members/tiers/{tier}/force', [MemberTierController::class, 'forceDelete'])->name('members.tiers.force-delete')->can('members.tiers.force_delete')->whereNumber('tier');
+        Route::post('/members/tiers/{tier}/restore', [MemberTierController::class, 'restore'])->name('members.tiers.restore')->can('member_tiers.restore')->whereNumber('tier');
+        Route::delete('/members/tiers/{tier}/force', [MemberTierController::class, 'forceDelete'])->name('members.tiers.force-delete')->can('member_tiers.force_delete')->whereNumber('tier');
         // Not route-gated, same reason as users.bulk-action: the permission
         // depends on the action in the body, so BulkMemberTierRequest maps it.
         Route::post('/members/tiers/bulk-action', [MemberTierController::class, 'bulkAction'])->name('members.tiers.bulk-action')->middleware('throttle:bulk-action');

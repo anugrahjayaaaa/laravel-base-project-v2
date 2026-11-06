@@ -11,7 +11,7 @@ use Illuminate\Validation\Rule;
  * Validates a bulk tier action submitted by the tiers index bulk bar.
  *
  * The prefix is `members.tiers`: tier configuration authorizes separately from
- * member profiles, so `members.tiers.delete` covers the tier trash and
+ * member profiles, so `member_tiers.delete` covers the tier trash and
  * `members.delete` does not reach this endpoint.
  */
 class BulkMemberTierRequest extends BaseFormRequest
@@ -26,7 +26,7 @@ class BulkMemberTierRequest extends BaseFormRequest
 
     protected function bulkEntityPrefix(): string
     {
-        return 'members.tiers';
+        return 'member_tiers';
     }
 
     /**

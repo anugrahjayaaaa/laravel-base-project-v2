@@ -152,14 +152,14 @@ class PermissionCatalog
      * @var array<int, string>
      */
     private const MEMBER_TIERS = [
-        'members.tiers.view',
-        'members.tiers.create',
-        'members.tiers.update',
-        'members.tiers.delete',
-        'members.tiers.restore',
-        'members.tiers.force_delete',
-        'members.tiers.activate',
-        'members.tiers.deactivate',
+        'member_tiers.view',
+        'member_tiers.create',
+        'member_tiers.update',
+        'member_tiers.delete',
+        'member_tiers.restore',
+        'member_tiers.force_delete',
+        'member_tiers.activate',
+        'member_tiers.deactivate',
     ];
 
     /**
@@ -273,6 +273,10 @@ class PermissionCatalog
         'settings' => 'settings',
         'notifications' => 'notifications',
         'members' => 'member_loyalty',
+        // Tier pricing is its own resource prefix so a permission name stays
+        // `{resource}.{action}` (the gate `PermissionCatalogTest` enforces), but
+        // it is the same module: one flag governs both lists.
+        'member_tiers' => 'member_loyalty',
         // The resource is `audit`, the flag is `activity_logs`: the viewer was
         // named after the module before the flag existed. Spelled out here
         // rather than pluralised from the prefix, which is exactly how the two

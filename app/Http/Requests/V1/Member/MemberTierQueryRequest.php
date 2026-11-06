@@ -14,7 +14,7 @@ class MemberTierQueryRequest extends BaseFormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()?->can('members.tiers.view') ?? false;
+        return $this->user()?->can('member_tiers.view') ?? false;
     }
 
     /** @return array<string, mixed> */

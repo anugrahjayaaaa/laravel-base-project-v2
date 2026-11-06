@@ -291,17 +291,17 @@ Route::prefix('v1')->group(function () {
         Route::middleware('feature:member_loyalty')->group(function () {
             Route::get('/members', [ApiMemberController::class, 'index'])->name('api.v1.members.index')->can('members.view');
             Route::post('/members', [ApiMemberController::class, 'store'])->name('api.v1.members.store')->can('members.create');
-            Route::get('/members/tiers', [ApiMemberTierController::class, 'index'])->name('api.v1.members.tiers.index')->can('members.tiers.view');
-            Route::post('/members/tiers', [ApiMemberTierController::class, 'store'])->name('api.v1.members.tiers.store')->can('members.tiers.create');
-            Route::put('/members/tiers/{tier}', [ApiMemberTierController::class, 'update'])->name('api.v1.members.tiers.update')->can('members.tiers.update')->whereNumber('tier');
-            Route::post('/members/tiers/{tier}/activate', [ApiMemberTierController::class, 'activate'])->name('api.v1.members.tiers.activate')->can('members.tiers.activate')->whereNumber('tier');
-            Route::post('/members/tiers/{tier}/deactivate', [ApiMemberTierController::class, 'deactivate'])->name('api.v1.members.tiers.deactivate')->can('members.tiers.deactivate')->whereNumber('tier');
-            Route::delete('/members/tiers/{tier}', [ApiMemberTierController::class, 'destroy'])->name('api.v1.members.tiers.destroy')->can('members.tiers.delete')->whereNumber('tier');
+            Route::get('/members/tiers', [ApiMemberTierController::class, 'index'])->name('api.v1.members.tiers.index')->can('member_tiers.view');
+            Route::post('/members/tiers', [ApiMemberTierController::class, 'store'])->name('api.v1.members.tiers.store')->can('member_tiers.create');
+            Route::put('/members/tiers/{tier}', [ApiMemberTierController::class, 'update'])->name('api.v1.members.tiers.update')->can('member_tiers.update')->whereNumber('tier');
+            Route::post('/members/tiers/{tier}/activate', [ApiMemberTierController::class, 'activate'])->name('api.v1.members.tiers.activate')->can('member_tiers.activate')->whereNumber('tier');
+            Route::post('/members/tiers/{tier}/deactivate', [ApiMemberTierController::class, 'deactivate'])->name('api.v1.members.tiers.deactivate')->can('member_tiers.deactivate')->whereNumber('tier');
+            Route::delete('/members/tiers/{tier}', [ApiMemberTierController::class, 'destroy'])->name('api.v1.members.tiers.destroy')->can('member_tiers.delete')->whereNumber('tier');
             // Raw id for the two trash steps, matching the web twin: the `{tier}`
             // binding resolves the live scope, so a trashed tier would 404 on the
             // only two routes that exist for it.
-            Route::post('/members/tiers/{tier}/restore', [ApiMemberTierController::class, 'restore'])->name('api.v1.members.tiers.restore')->can('members.tiers.restore')->whereNumber('tier');
-            Route::delete('/members/tiers/{tier}/force', [ApiMemberTierController::class, 'forceDelete'])->name('api.v1.members.tiers.force-delete')->can('members.tiers.force_delete')->whereNumber('tier');
+            Route::post('/members/tiers/{tier}/restore', [ApiMemberTierController::class, 'restore'])->name('api.v1.members.tiers.restore')->can('member_tiers.restore')->whereNumber('tier');
+            Route::delete('/members/tiers/{tier}/force', [ApiMemberTierController::class, 'forceDelete'])->name('api.v1.members.tiers.force-delete')->can('member_tiers.force_delete')->whereNumber('tier');
             Route::post('/members/tiers/bulk-action', [ApiMemberTierController::class, 'bulkAction'])->name('api.v1.members.tiers.bulk-action')->middleware('throttle:bulk-action');
             Route::get('/members/{member}', [ApiMemberController::class, 'show'])->name('api.v1.members.show')->can('members.view')->whereNumber('member');
             Route::post('/members/{member}/points', [ApiMemberController::class, 'points'])->name('api.v1.members.points')->can('members.update')->whereNumber('member');

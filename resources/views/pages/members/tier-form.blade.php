@@ -183,9 +183,9 @@
 
                 {{-- The card is the button: no delete URL (a tier that does not
                      exist yet) means no card. Same rule as the member profile, and
-                     `members.tiers.delete` is the route's own gate, so the trigger does not
+                     `member_tiers.delete` is the route's own gate, so the trigger does not
                      appear for a caller it would refuse. --}}
-                @can('members.tiers.delete')
+                @can('member_tiers.delete')
                     @if ($deleteUrl)
                         <div class="card border-0 shadow-sm mb-4">
                             <div class="card-header bg-transparent border-bottom py-2">
