@@ -63,7 +63,6 @@ All inside `Route::middleware('feature:member_loyalty')`; authorization is on th
 | `GET /members/dashboard` | `membership.dashboard` | `members.view` |
 | `POST /members/dashboard/broadcast-expiry` | `membership.broadcast-expiry` | `members.notify` |
 | `GET /members/{member}` | `members.show` | `members.view` |
-| `POST /members/{member}/points` | `members.points` | `members.update` |
 | `POST /members/{member}/subscribe` | `members.subscribe` | `members.update` |
 | `POST /members/subscriptions/{subscription}/cancel` | `members.subscriptions.cancel` | `members.update` |
 | `POST /members/{member}/activate` | `members.activate` | `members.activate` |
@@ -88,6 +87,9 @@ three web GETs that exist only to render a form or a screen (`members.create`,
 `members.tiers.edit`, `membership.dashboard`) have no twin: an API client posts the payload or
 reads the subscription rows directly. `api.v1.members.show` answers with the profile plus its
 `subscriptions` and `points` arrays, so the badge the web table derives is left to the client.
+The asymmetry runs the other way for `points` alone: the web route and its Adjust Points card
+were removed 2026-11-06 by owner decision — a balance move belongs to the Phase 19 checkout that
+earned it — while the endpoint stays for programmatic corrections.
 
 **Two permission sets, not one** (ADR-032). `members.*` is the member profile and
 `members.tiers.*` is tier configuration; the suffix list of each is the `users.*` shape —
@@ -279,7 +281,10 @@ a `ValidationException` on `name`, which renders back onto the list with the sha
 ## Points
 
 `MemberAdjustPointsAction` posts one signed movement, in two mutually exclusive modes
-(`MemberAdjustPointsRequest::after()` refuses giving both, and refuses a zero delta):
+(`MemberAdjustPointsRequest::after()` refuses giving both, and refuses a zero delta). It is
+reachable only through `POST /api/v1/members/{member}/points` since 2026-11-06 (owner): the
+manual card on the member page was removed because Phase 19's checkout earns the points, and
+the endpoint stays for programmatic corrections:
 
 - `delta` — points, positive or negative.
 - `purchase_amount` — rupiah, converted by the configured earn rule (§ Settings).

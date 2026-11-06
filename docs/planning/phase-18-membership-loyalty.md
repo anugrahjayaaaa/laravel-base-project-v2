@@ -6,7 +6,9 @@
 > (`tests/Feature/Member` + `tests/Feature/Api/V1/Member` + `tests/Feature/CrossCutting`
 > 192 passed / 1168 assertions, Pint PASS 561 files, PHPStan `[OK] No errors`), with
 > `BroadcastMemberExpiryRequest` rolled into **P18-C2** — the owner moved it to the group
-> that ships the broadcast route it guards, and C2 shipped it. **C: `MemberSubscriptionExpirySweepJob`
+> that ships the broadcast route it guards, and C2 shipped the route, then dropped the request:
+> `rules()` was empty and `can:members.notify` on the route is the gate (body-less trigger routes
+> take the plain no-request shape, like `activate`/`cancel`). **C: `MemberSubscriptionExpirySweepJob`
 > (C1), `SendMemberExpiryNotificationJob` + `MemberExpiryWarningNotification` + the broadcast
 > route on both channels (C2), the eighth `schedule:list` entry at 00:30 (C3) — proven by
 > `MemberExpirySweepTest` (6) + `MemberExpiryNotificationTest` (9), full `tests/Feature/Member`
@@ -46,7 +48,10 @@ tasks moved to Phase 19 — B5 is the pointer row).
 > instead of Management, still dropping with the `member_loyalty` flag; an **Add new
 > member** form posts to `members.store` and creates a `User` + `Member` with the fixed
 > `member` role (`App\Support\SystemRole::MEMBER`, no permissions — see O-1); a manual
-> **Adjust Points** card posts to `members.points` (see B4); and `MemberDemoSeeder`
+> **Adjust Points** card posts to `members.points` (see B4; **the card and its web route were
+> removed 2026-11-06 by owner decision — a balance move belongs to the Phase 19 checkout, and
+> `POST /api/v1/members/{member}/points` stays for programmatic corrections**); and
+> `MemberDemoSeeder`
 > (10 members, tiers, subscriptions, ledger) is runnable but deliberately **not** wired
 > into `DatabaseSeeder` — demo rows must never land in a production seed.
 >
@@ -265,11 +270,13 @@ Exit gate: migrations migrate up and down on SQLite; every Action covered by a u
   extending `BaseFormRequest` — the voucher requests ship in **P19-B6** with their domain — each with a real `authorize()` returning the permission
   that performs the change (`members.create` is not in the catalogue — `members.manage`
   is, and `authorize()` names it), and `rules()` that call `$request->validated()` at the
-  controller. **Amended 2026-11-06 (owner): `BroadcastMemberExpiryRequest` ships with
-  P18-C2, together with the broadcast route it guards; the rest of Group B is DONE.**
+  controller. **Amended 2026-11-06 (owner): `BroadcastMemberExpiryRequest` moved to
+  P18-C2 with the broadcast route it guards — and was deleted there the same day: an empty
+  `rules()` behind a route that already names `members.notify` is the dead-weight shape the
+  conventions call out for body-less state routes; the rest of Group B is DONE.**
 - **Acceptance**: every numeric bound rejects out-of-range (`duration_days`
-  ≥ 1, `point_multiplier` ≥ 1); a tier slug is normalised and unique among non-deleted rows; `BroadcastMemberExpiryRequest`
-  authorizes on `members.notify` (D-6).
+  ≥ 1, `point_multiplier` ≥ 1); a tier slug is normalised and unique among non-deleted rows; the expiry broadcast authorizes on
+  `members.notify` on the route (D-6; the request died, the permission rule did not).
 - **Tests**: `MemberRequestTest` + the standing Requests coverage bar in
   `bin/coverage_gate.php` (≥ 95 %).
 
@@ -304,6 +311,10 @@ Exit gate: migrations migrate up and down on SQLite; every Action covered by a u
   that would call them (points spent as a discount, the cashier note, the printable
   receipt, and the tier `point_multiplier` interaction — the manual action deliberately
   applies the one global rule, not the per-tier factor).
+- **Owner revision 2026-11-06**: the Adjust Points card and the web `members.points` route
+  were removed — manual balance moves belong to the Phase 19 checkout, not to the profile
+  page. The Action, `MemberAdjustPointsRequest` and the API endpoint are unchanged;
+  `MemberPointsTest` now drives the API route.
 
 #### P18-B5 — Atomic voucher claim — **MOVED to Phase 19 (P19-B6)**
 Owner decision 2026-11-05: the voucher is its own domain — its own flag (`vouchers`), its
@@ -405,14 +416,15 @@ prints eight entries with `member-subscription-expiry` at `30 0 * * *`.**
   joins it); the `notifications` retention sweep reaps the rows it writes.
 - **Tests**: `MemberExpiryNotificationTest`; a benchmark test for the chunking, matching
   `NotificationBenchmarkTest`.
-  **Shipped 2026-11-06**: `BroadcastMemberExpiryRequest` (authorizes on `members.notify`,
-  D-6), `MemberExpiryBroadcastAction` (reads `member_expiry_alert_window_days` with the
-  14-day fallback; the constant is public and `MemberDashboardAction` reads the same key),
+  **Shipped 2026-11-06**: the broadcast routes carry `can:members.notify` (D-6 —
+  no request class: empty payload, the route gate is the authorization, proven by the
+  `members.update`-alone refusal), `MemberExpiryBroadcastAction` (reads `member_expiry_alert_window_days` with the
+  14-day fallback read inline — owner revision 2026-11-06: no cross-Action constant, a `private const … = MemberExpiryBroadcastAction::DEFAULT_ALERT_WINDOW_DAYS` can shadow the stored setting; `MemberDashboardAction` reads the same key the same way),
   `POST /members/dashboard/broadcast-expiry` (`membership.broadcast-expiry`) and its API
   twin `api.v1.members.broadcast-expiry`, both `can:members.notify` inside the flag group —
   `ChannelParityTest` gains the two-sided `expiry broadcast` capability (`membership dashboard`
   stays the sole one-sided read entry), so
-  `BroadcastMemberExpiryRequest` is no longer the outstanding Group B loose end. The job collapses a member's
+  the Group B loose end closed as a route gate, not a class. The job collapses a member's
   periods to the earliest expiry and sends one `MemberExpiryWarningNotification` per member
   (`$afterCommit = true`, mail + in-app per D-3). Two facts the tests pin: the benchmark
   assertion counts **per channel** — 1 000 members become 2 000 `SendQueuedNotifications`
