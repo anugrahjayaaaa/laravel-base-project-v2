@@ -12,12 +12,14 @@ rows and what still ships are in `docs/planning/task-tracker.md`.
 
 | Layer | State |
 |---|---|
-| Backend web | Shipped for the reads + member creation + manual points + tier CRUD: `Web/V1/{MemberController,MemberTierController,MemberDashboardController}` |
-| Backend API | **Not built.** No `Api/V1/Member`, no resources, no Scramble. `ChannelParityTest` holds the nineteen web routes as the declared one-sided capability `membership screens` until the twins land |
+| Backend web | Shipped: `Web/V1/{MemberController,MemberTierController,MemberDashboardController}` — reads, member creation, points, subscribe/cancel, tier CRUD, trash, state switches, bulk |
+| Backend API | Shipped for everything the web channel offers except the three read-only screens (`GET /members/create`, `GET /members/tiers/{tier}/edit`, `GET /members/dashboard`): `Api/V1/Member/{MemberController,MemberTierController}` + `MemberResource`, `MemberSubscriptionResource`, `MemberTierResource`, `MemberPointHistoryResource`. Every route runs the same Actions and the same Form Requests, so the guards are not restated |
 | AdminLTE UI | `resources/views/pages/members/{index,create,show,tiers,tier-form,dashboard}.blade.php` |
 
-The API is not independently usable yet — that is P18-B6's remaining half, not a gap in
-the web slice.
+The API is independently usable: a non-browser client can register a member, price tiers,
+issue and cancel a period, move points and use the trash — `ChannelParityTest` records each
+of those as a two-sided capability. `membership dashboard` is the declared one-sided
+exception, with its reason.
 
 ## Data model
 
@@ -61,6 +63,8 @@ All inside `Route::middleware('feature:member_loyalty')`; authorization is on th
 | `GET /members/dashboard` | `membership.dashboard` | `members.view` |
 | `GET /members/{member}` | `members.show` | `members.view` |
 | `POST /members/{member}/points` | `members.points` | `members.update` |
+| `POST /members/{member}/subscribe` | `members.subscribe` | `members.update` |
+| `POST /members/subscriptions/{subscription}/cancel` | `members.subscriptions.cancel` | `members.update` |
 | `POST /members/{member}/activate` | `members.activate` | `members.activate` |
 | `POST /members/{member}/deactivate` | `members.deactivate` | `members.deactivate` |
 | `DELETE /members/{member}` | `members.destroy` | `members.delete` |
@@ -73,6 +77,16 @@ raw id and re-read it through `onlyTrashed()` — the two-step that stops a live
 destroyed in one click. `{member}` is bound `withTrashed()` (a trashed profile stays readable),
 so those two routes carry an `abort_unless($member->trashed(), 404)` instead. Same protection,
 two mechanisms, because the two bindings differ.
+
+**The API mirrors the table, one prefix deeper.** `routes/api.php` group
+`feature:member_loyalty` declares `api.v1.members.{index,store,show,points,subscribe,subscriptions.cancel,destroy,restore,force-delete,activate,deactivate,bulk-action}`
+and `api.v1.members.tiers.{index,store,update,destroy,restore,force-delete,activate,deactivate,bulk-action}`
+under `/api/v1/members…` — same verbs, same `can:` per route, same two bulk endpoints with no
+route-level `can:` (`throttle:bulk-action`, permission decided from the body's `action`). The
+three web GETs that exist only to render a form or a screen (`members.create`,
+`members.tiers.edit`, `membership.dashboard`) have no twin: an API client posts the payload or
+reads the subscription rows directly. `api.v1.members.show` answers with the profile plus its
+`subscriptions` and `points` arrays, so the badge the web table derives is left to the client.
 
 **Two permission sets, not one** (ADR-032). `members.*` is the member profile and
 `members.tiers.*` is tier configuration; the suffix list of each is the `users.*` shape —
@@ -98,11 +112,10 @@ shape. Both lists render them the way the users row does: icon only, the action 
 
 - **Tier** — `member_tiers.is_active`, the same column the tier form's `Active` switch writes.
   New subscriptions stop; rows already subscribed to the tier keep running, which is exactly the
-  case `MemberTierDeleteAction` refuses to trash. **Renewal rule (P18-B3, to enforce when the
-  subscribe path is built):** a member on a deactivated tier keeps their current tier valid until
-  `member_subscriptions.expires_at`, but cannot renew or extend it while `is_active` is `false` —
-  `ActivateMemberSubscriptionAction` must refuse an inactive tier with a `ValidationException`,
-  not silently re-activate the tier.
+  case `MemberTierDeleteAction` refuses to trash. **Renewal rule:** a member on a deactivated tier
+  keeps their current tier valid until `member_subscriptions.expires_at`, but cannot renew or
+  extend it while `is_active` is `false` — `MemberSubscriptionActivateAction` refuses an inactive
+  tier with a `ValidationException` and never re-activates the tier.
 - **Member** — `members.is_active`, the profile's own switch, independent of the subscription's.
   `MemberDeactivateAction` asks one question, and the modal carries it: *is this a violation?*
   - violation → the live subscription goes `cancelled`. The paid period is forfeit by the
@@ -136,10 +149,11 @@ membership page.
 
 **Views render no URLs of their own** (D-4): every `route()` is resolved by the Action and
 arrives as a variable, and a **null write URL removes the affordance** rather than render a
-button that 404s. Trashing, restore, force-delete and the bulk bar are live; subscribe and
-cancel are still unbuilt, so those URLs are `null` today and their buttons are absent — which is
-the contract working, not a missing feature. The detail page links the profile to the account
-behind it (`user_url`, shown only to a viewer who holds `users.view`).
+button that 404s. Trashing, restore, force-delete, the bulk bar, subscribe and cancel are live;
+`subscribeUrl` is null exactly when no new period may be issued — the profile is trashed or a
+live period already runs — and a subscription's `cancel_url` is null once it is cancelled. The
+detail page links the profile to the account behind it (`user_url`, shown only to a viewer who
+holds `users.view`).
 
 **Both lists have tabs, and the tabs are the Action's work.** `MemberIndexAction` and
 `MemberTierIndexAction` return a `tabs` array of `{label, url, count, active}` objects —
@@ -337,10 +351,10 @@ audit trail with noise.
 ## Not in this slice (Phase 19 / later P18 rows)
 
 Points spent or applied as a discount at a transaction, the cashier UI, a printable points
-receipt, the tier `point_multiplier` interaction, the subscribe path (issuing a new period from
-the member page — `subscribeUrl` and `cancel_url` in `MemberShowAction` are still null; a
-deactivation pauses or forfeits the period a member already holds, it never issues one), the
-expiry broadcast, and every API twin.
+receipt, the tier `point_multiplier` interaction, and the expiry broadcast. Subscribe and cancel
+are **not** on that list any more: `members.subscribe` / `members.subscriptions.cancel` (and
+their API twins) issue and end a period from the member page, which is the only subscribe path
+this slice has — the cashier still has none.
 
 ## Tests
 
@@ -359,4 +373,15 @@ split, and the bulk path on both lists — including a mixed selection and a bat
 in-use tier), `MemberStateTest` (the activate/deactivate pair on both lists: the tier switch and
 its audit row, a trashed tier unreachable from the state routes, `members.update` alone refused,
 pause versus forfeit, the reason requirement, the paused days handed back on reactivation, the
-Inactive tab and the icon+tooltip affordances).
+Inactive tab and the icon+tooltip affordances), `MemberSubscriptionTest` (the engine Actions and
+the two routes on top of them: the role copied per row, the second-live-period and retired-tier
+refusals, cancel revoking only what that row applied, `members.view` alone refused on both POSTs,
+and the detail page's `subscribeUrl` / `tierOptions` / `cancel_url` across no period → live →
+cancelled).
+`tests/Feature/Api/V1/Member/` — `MemberApiTest` and `MemberTierApiTest`: the read shape, the
+per-route `can:` loop (a zero-permission caller 403s on every address), the write paths, the
+trash two-step, the per-action bulk permission, and the flag off → 403 for a superadmin. Cross
+channel: `ChannelParityTest` declares each capability on both sides, and
+`ResponseParityTest::test_members_index_returns_the_same_facts_on_both_channels()` /
+`test_member_tiers_return_the_same_facts_on_both_channels()` pin the shared rows and the field
+sets each channel is allowed to add.

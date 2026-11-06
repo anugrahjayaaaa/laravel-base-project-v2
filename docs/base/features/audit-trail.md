@@ -238,6 +238,9 @@ come from model observers — `ActionFirstAuditTest` pins that property.
 | `member.points_expired` | `MemberExpirePointsAction` (the daily `member-points-expiry` schedule) | `SYSTEM` marker in properties — no logged-in actor exists |
 | `member.deactivated` | `MemberDeactivateAction` | the admin; properties carry `member_number`, and the state an activation has to be rebuilt from: `last_tier`, `points_balance`, `remaining_days` (rounded **up** — a member who loses part of a day lost a day), `violation`, `reason`. The reason exists nowhere else, so this row is the only record of why the switch was thrown |
 | `member.activated` | `MemberActivateAction` | the admin; properties carry `target_id`, `member_number`, `resumed_tier`, `resumed_expires_at` — the new expiry is the old one plus the time spent paused, and no subscription is created |
+| `member.subscribed` | `MemberSubscriptionActivateAction` | the admin; properties carry `member_number`, `subscription_id`, `tier_name`, `expires_at`. Refused (no row) when the tier is inactive or the member already holds a live period |
+| `member.role_synced` | `MemberSubscriptionActivateAction` / `MemberSubscriptionCancelAction` | the admin; properties carry `member_number`, `role_name`, `change` (`applied` / `revoked`). Written only when the tier carries a role; the revoke is skipped when another live period still needs the same role |
+| `member.subscription_cancelled` | `MemberSubscriptionCancelAction` | the admin; properties carry `member_number`, `subscription_id`, `tier_name`. A row already cancelled writes nothing, so double-cancelling does not fill the trail with no-ops |
 
 Ledger semantics (stored `balance_after`, a correction is another row, what the annual
 reset does and does not touch) are in [membership.md](membership.md) § Points.

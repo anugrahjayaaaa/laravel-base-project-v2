@@ -321,11 +321,12 @@ the idempotency backstop the lock cannot be alone against — D-5).
 - **Read-only slice already live (2026-11-05, see D-4)**: the four GET routes, the three web
   controllers and three sidebar entries (Members, Membership Dashboard, Tiers) are shipped and green in `MemberWebTest`. The create
   The create screen **is** routed as of 2026-11-05 (owner request): `members.create` +
-  `members.store` (`MemberCreateAction`, `can:members.manage`) and `members.points`
-  (`MemberAdjustPointsAction`, `can:members.manage`) joined the four reads, so
+  `members.store` (`MemberCreateAction`, `can:members.create`) and `members.points`
+  (`MemberAdjustPointsAction`, `can:members.update`) joined the four reads, so
   `MemberIndexAction` hands a real `createUrl` and the detail page renders the Adjust
-  Points card. What remains here: subscribe / cancel / bulk / delete writes and the API
-  twins + Scramble — those URLs are still null and their affordances still disappear.
+  Points card. What this row still owed at the time: the subscribe / cancel writes and the
+  API twins + Scramble — those URLs were still null and their affordances still
+  disappeared.
   A consequence the brief did not predict: creating a member assigns a role, and role
   assignment is its own permission (`users.assign_roles`, `RoleAssignAction`). So
   `members.manage` alone is a **403** on the store, by design — a member is a login
@@ -335,10 +336,27 @@ the idempotency backstop the lock cannot be alone against — D-5).
   not `members.dashboard` — the sidebar marks an entry active with `fnmatch` against
   `members.*`, which has no pipe alternation, so a `members.` prefix would highlight two
   entries at once. The URI stays `/members/dashboard`.
-  The channel question is answered at the moment the routes landed (the Phase 12 rule):
-  `ChannelParityTest` carries them as a declared one-sided capability, `membership screens`,
-  with the reason; it becomes a two-sided entry when `Api/V1/Member` ships.
-- **Docs**: `docs/base/api/*` shapes, new `docs/base/features/membership.md` (written 2026-11-05 for the shipped slice — API section still empty because the twins have not landed).
+  The channel question is answered at the moment the routes land (the Phase 12 rule): while
+  the twins were missing `ChannelParityTest` carried these as the declared one-sided
+  capability `membership screens`; that entry is gone now that `Api/V1/Member` ships.
+- **Shipped 2026-11-06 (owner request, "subscribe/cancel + API twins")**:
+  `members.subscribe` + `members.subscriptions.cancel` (web) put the P18-B3 Actions behind a
+  route for the first time — `MemberSubscribeRequest` resolves the tier, the controller stays
+  thin, and `MemberShowAction` now hands real `subscribeUrl` / `tierOptions` / `cancel_url`,
+  which is why no Blade changed: the buttons were already conditional on those keys. Their
+  nulls are decisions, not gaps — `subscribeUrl` is null for a trashed profile or a member who
+  already holds a live period, `cancel_url` for a period that is already cancelled.
+  `Api/V1/Member/{MemberController,MemberTierController}` + the four resources are the API
+  half: 21 routes under `feature:member_loyalty`, the same Actions and the same Form Requests,
+  the same per-route `can:`. `MemberIndexAction::query()` / `MemberTierIndexAction::query()`
+  went public instead of being copied — one query per listing, decoration left to each
+  channel, which is what makes `ResponseParityTest` able to compare the rows at all. The
+  parity map is now capability-by-capability (`member list`, `member read`, `member create`,
+  `member points adjust`, `member subscribe`, `subscription cancel`, the delete/restore/force
+  /activate/deactivate/bulk pair for both lists, `tier list`, `tier create`, `tier update`),
+  with `membership dashboard` the one remaining one-sided entry and its stated reason.
+- **Docs**: `docs/base/api/*` shapes, `docs/base/features/membership.md` (written 2026-11-05
+  for the shipped slice, its Layers / Routes / Tests sections updated 2026-11-06 for the API).
 
 ### Group C — Background processing
 
