@@ -98,7 +98,11 @@ shape. Both lists render them the way the users row does: icon only, the action 
 
 - **Tier** — `member_tiers.is_active`, the same column the tier form's `Active` switch writes.
   New subscriptions stop; rows already subscribed to the tier keep running, which is exactly the
-  case `MemberTierDeleteAction` refuses to trash.
+  case `MemberTierDeleteAction` refuses to trash. **Renewal rule (P18-B3, to enforce when the
+  subscribe path is built):** a member on a deactivated tier keeps their current tier valid until
+  `member_subscriptions.expires_at`, but cannot renew or extend it while `is_active` is `false` —
+  `ActivateMemberSubscriptionAction` must refuse an inactive tier with a `ValidationException`,
+  not silently re-activate the tier.
 - **Member** — `members.is_active`, the profile's own switch, independent of the subscription's.
   `MemberDeactivateAction` asks one question, and the modal carries it: *is this a violation?*
   - violation → the live subscription goes `cancelled`. The paid period is forfeit by the
