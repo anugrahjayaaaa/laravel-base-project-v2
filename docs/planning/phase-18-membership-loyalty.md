@@ -1,13 +1,18 @@
 # Phase 18 — General Membership & Loyalty System
 
-> Date: 2026-11-05 | Status: **Groups A and B DONE (2026-11-06)** — A shipped 2026-11-05
-> (views + `member_loyalty` flag; voucher rows moved to Phase 19 — owner decision the same
-> day); B closed on the re-run exit gate (`tests/Feature/Member` + `tests/Feature/Api/V1/Member`
-> + `tests/Feature/CrossCutting` 192 passed / 1168 assertions, Pint PASS 561 files, PHPStan
-> `[OK] No errors`), with `BroadcastMemberExpiryRequest` rolled into **P18-C2** — the owner
-> moved it to the group that ships the broadcast route it guards. **Partial C (points-expiry
-> sweep) and D1/D2 in REVIEW**: `P18-B4`'s manual half and `P18-D1`'s gates. C1–C3, D3, E1–E2
-> not built. |
+> Date: 2026-11-05 | Status: **Groups A and B DONE (2026-11-06), Group C in REVIEW
+> (2026-11-06)** — A shipped 2026-11-05 (views + `member_loyalty` flag; voucher rows moved
+> to Phase 19 — owner decision the same day); B closed on the re-run exit gate
+> (`tests/Feature/Member` + `tests/Feature/Api/V1/Member` + `tests/Feature/CrossCutting`
+> 192 passed / 1168 assertions, Pint PASS 561 files, PHPStan `[OK] No errors`), with
+> `BroadcastMemberExpiryRequest` rolled into **P18-C2** — the owner moved it to the group
+> that ships the broadcast route it guards, and C2 shipped it. **C: `MemberSubscriptionExpirySweepJob`
+> (C1), `SendMemberExpiryNotificationJob` + `MemberExpiryWarningNotification` + the broadcast
+> route on both channels (C2), the eighth `schedule:list` entry at 00:30 (C3) — proven by
+> `MemberExpirySweepTest` (6) + `MemberExpiryNotificationTest` (9), full `tests/Feature/Member`
+> 113 passed / 531 assertions, `JobConventionTest` + `ChannelParityTest` + `NotificationCopyTest`
+> green, `tests/Arch` 620 passed, Pint PASS 570 files, PHPStan `[OK] No errors`; uncommitted,
+> awaiting owner REVIEW.** D1/D2 stay as the B slices recorded them; D3 and E1–E2 not built. |
 > Branch when scheduled: `feature/phase-18-membership-loyalty`
 > Purpose: give the base project a membership domain — dynamic tiers, a subscription
 > duration/expiry engine, member statistics, automated expiry sweeps with bulk
@@ -365,6 +370,8 @@ the idempotency backstop the lock cannot be alone against — D-5).
 
 Exit gate: `JobConventionTest` green with the two new jobs; `schedule:list` shows the
 eighth entry (seven today — `member-points-expiry` landed early, see C3's count note).
+**Ran 2026-11-06: both green — `JobConventionTest` passes with the two new jobs, `schedule:list`
+prints eight entries with `member-subscription-expiry` at `30 0 * * *`.**
 
 #### P18-C1 — Expiry sweep job
 - **Task**: `app/Jobs/MemberSubscriptionExpirySweepJob` on `QueueName::SWEEPS` (an
@@ -378,6 +385,12 @@ eighth entry (seven today — `member-points-expiry` landed early, see C3's coun
   no `public $queue`; `request_id` is never a constructor argument; a second run claims
   zero rows.
 - **Tests**: `MemberExpirySweepTest` (E1), `JobConventionTest` (already blanket-enforcing).
+  **Shipped 2026-11-06**: the job plus `MemberSubscriptionExpireAction` (status → `expired`,
+  the role the row applied revoked through the `RevokesSubscriptionRole` trait now shared
+  with the cancel Action — a role another live period still needs survives, the base role
+  always does), `member.expired` audited inside the transaction with `causer = 'SYSTEM'`,
+  `chunkById(500)`, flag off = log and return. A second run claims zero rows.
+  `MemberExpirySweepTest` 6 tests green; `JobConventionTest` green without edits.
 
 #### P18-C2 — Queued bulk expiry notification
 - **Task**: `app/Jobs/SendMemberExpiryNotificationJob` chunking the alert window and
@@ -392,6 +405,21 @@ eighth entry (seven today — `member-points-expiry` landed early, see C3's coun
   joins it); the `notifications` retention sweep reaps the rows it writes.
 - **Tests**: `MemberExpiryNotificationTest`; a benchmark test for the chunking, matching
   `NotificationBenchmarkTest`.
+  **Shipped 2026-11-06**: `BroadcastMemberExpiryRequest` (authorizes on `members.notify`,
+  D-6), `MemberExpiryBroadcastAction` (reads `member_expiry_alert_window_days` with the
+  14-day fallback; the constant is public and `MemberDashboardAction` reads the same key),
+  `POST /members/dashboard/broadcast-expiry` (`membership.broadcast-expiry`) and its API
+  twin `api.v1.members.broadcast-expiry`, both `can:members.notify` inside the flag group —
+  `ChannelParityTest` gains the two-sided `expiry broadcast` capability (`membership dashboard`
+  stays the sole one-sided read entry), so
+  `BroadcastMemberExpiryRequest` is no longer the outstanding Group B loose end. The job collapses a member's
+  periods to the earliest expiry and sends one `MemberExpiryWarningNotification` per member
+  (`$afterCommit = true`, mail + in-app per D-3). Two facts the tests pin: the benchmark
+  assertion counts **per channel** — 1 000 members become 2 000 `SendQueuedNotifications`
+  jobs, 1 000 of them the mail one — and this suite overrides
+  `shouldFakeNotifications(): false`, because the global fake in `Tests\TestCase` would
+  otherwise swallow every real queue-out and the 1 000-count would assert against nothing.
+  `NotificationCopyTest` gained the class. 9 tests green.
 
 #### P18-C3 — Scheduler entry
 - **Task**: one `routes/console.php` entry — daily, `withoutOverlapping()`, `onOneServer()`,
@@ -404,6 +432,12 @@ eighth entry (seven today — `member-points-expiry` landed early, see C3's coun
   `schedule:list` already prints **seven** at `0 0 * * *`. C1's subscription sweep is the
   **eighth** entry, not the seventh — and it shares midnight with the points sweep, so the
   collision question in this row is live, not hypothetical.
+  **Shipped 2026-11-06**: the collision is answered by staggering — the subscription sweep
+  runs at `00:30`, half an hour off the points sweep's midnight, both `dailyAt`, named,
+  `onOneServer()->withoutOverlapping()`, dispatched to `sweeps` via `Schedule::job()`; the
+  flag check lives inside the job (a scheduled entry has no HTTP flag middleware to lean
+  on). `schedule:list` prints eight. `queue.md` and the runbook schedule table gained the
+  row.
 
 ### Group D — Enforcement (RBAC, flag, audit)
 

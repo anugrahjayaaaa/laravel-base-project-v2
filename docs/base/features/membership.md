@@ -17,9 +17,9 @@ rows and what still ships are in `docs/planning/task-tracker.md`.
 | AdminLTE UI | `resources/views/pages/members/{index,create,show,tiers,tier-form,dashboard}.blade.php` |
 
 The API is independently usable: a non-browser client can register a member, price tiers,
-issue and cancel a period, move points and use the trash — `ChannelParityTest` records each
-of those as a two-sided capability. `membership dashboard` is the declared one-sided
-exception, with its reason.
+issue and cancel a period, move points, use the trash and queue an expiry broadcast —
+`ChannelParityTest` records each of those as a two-sided capability. `membership dashboard`
+is the declared one-sided exception, with its reason.
 
 ## Data model
 
@@ -61,6 +61,7 @@ All inside `Route::middleware('feature:member_loyalty')`; authorization is on th
 | `DELETE /members/tiers/{tier}/force` | `members.tiers.force-delete` | `members.tiers.force_delete` |
 | `POST /members/tiers/bulk-action` | `members.tiers.bulk-action` | per action (see below) |
 | `GET /members/dashboard` | `membership.dashboard` | `members.view` |
+| `POST /members/dashboard/broadcast-expiry` | `membership.broadcast-expiry` | `members.notify` |
 | `GET /members/{member}` | `members.show` | `members.view` |
 | `POST /members/{member}/points` | `members.points` | `members.update` |
 | `POST /members/{member}/subscribe` | `members.subscribe` | `members.update` |
@@ -79,7 +80,7 @@ so those two routes carry an `abort_unless($member->trashed(), 404)` instead. Sa
 two mechanisms, because the two bindings differ.
 
 **The API mirrors the table, one prefix deeper.** `routes/api.php` group
-`feature:member_loyalty` declares `api.v1.members.{index,store,show,points,subscribe,subscriptions.cancel,destroy,restore,force-delete,activate,deactivate,bulk-action}`
+`feature:member_loyalty` declares `api.v1.members.{index,store,show,points,subscribe,subscriptions.cancel,broadcast-expiry,destroy,restore,force-delete,activate,deactivate,bulk-action}`
 and `api.v1.members.tiers.{index,store,update,destroy,restore,force-delete,activate,deactivate,bulk-action}`
 under `/api/v1/members…` — same verbs, same `can:` per route, same two bulk endpoints with no
 route-level `can:` (`throttle:bulk-action`, permission decided from the body's `action`). The
@@ -306,6 +307,32 @@ account is ended by this job.**
 The job refuses to run when the flag is off (it logs `reason=feature_off`) — the flag is the
 kill switch for the sweep as well as the screens.
 
+### Subscription expiry sweep
+
+`MemberSubscriptionExpireAction` (driven by `MemberSubscriptionExpirySweepJob`, queue
+`sweeps`, daily at **00:30** — staggered half an hour off the points sweep's midnight, so the
+two sweeps never race for the same chunk of workers) scans live, unpaused periods with
+`expires_at <= now()` in `chunkById(500)`, sets each to `expired`, and revokes only the role
+that row applied — through `RevokesSubscriptionRole`, the same trait the cancel Action uses,
+so a role another live period still needs survives, and the base role always does. Audits
+`member.expired` with `properties.causer = SYSTEM` inside the transaction. Idempotent: a
+second run claims zero rows, and periods inside their window or frozen by a pause are not
+rows it ever sees. Flag off → log and return, same as the points sweep.
+
+### Notifying expiring members
+
+`POST /members/dashboard/broadcast-expiry` (`membership.broadcast-expiry`, `members.notify`)
+does one thing: `MemberExpiryBroadcastAction` reads `member_expiry_alert_window_days` (14
+fallback) and pushes `SendMemberExpiryNotificationJob` — the request returns before any
+message is sent, and the API twin (`api.v1.members.broadcast-expiry`) queues the same run.
+The job scans live periods inside the window grouped per member (the **earliest** expiry wins
+when one member holds several), then `Notification::send`s one
+`MemberExpiryWarningNotification` per member on the switches' channels — mail + in-app only
+(D-3: no WhatsApp driver exists) — with `$afterCommit = true`, so nothing goes out for a
+rolled-back read. The dashboard's *Notify Expiring Members* button is a confirm-action trigger
+inside `@can('members.notify')` — a viewer with `members.view` sees the expiring table but no
+button, and the route itself 403s the same caller, so screen and gate cannot disagree.
+
 ## Settings
 
 Five keys, all gated on `member_loyalty`'s `settings` group in `config/pennant.php` and
@@ -313,7 +340,7 @@ rendered in the Membership & Loyalty card on `/settings`:
 
 | Key | Default | Read by |
 |---|---|---|
-| `member_expiry_alert_window_days` | 14 | `MemberDashboardAction` — the expiring-soon window |
+| `member_expiry_alert_window_days` | 14 | `MemberDashboardAction` — the expiring-soon window; `MemberExpiryBroadcastAction` — the size of the queued run |
 | `member_number_prefix` | `MBR` | `Member::nextMemberNumber()` — prefix of a generated number |
 | `member_points_expiry_date` | `''` (never expire) | `MemberExpirePointsAction` |
 | `member_points_earn_amount` | 50000 | `MemberAdjustPointsAction::fromPurchase()` |
@@ -351,10 +378,11 @@ audit trail with noise.
 ## Not in this slice (Phase 19 / later P18 rows)
 
 Points spent or applied as a discount at a transaction, the cashier UI, a printable points
-receipt, the tier `point_multiplier` interaction, and the expiry broadcast. Subscribe and cancel
-are **not** on that list any more: `members.subscribe` / `members.subscriptions.cancel` (and
+receipt, and the tier `point_multiplier` interaction. Subscribe and cancel are **not**
+on that list any more: `members.subscribe` / `members.subscriptions.cancel` (and
 their API twins) issue and end a period from the member page, which is the only subscribe path
-this slice has — the cashier still has none.
+this slice has — the cashier still has none. Neither is the expiry broadcast: the dashboard
+button, its API twin and both sweeps ship with Group C.
 
 ## Tests
 
@@ -377,7 +405,13 @@ Inactive tab and the icon+tooltip affordances), `MemberSubscriptionTest` (the en
 the two routes on top of them: the role copied per row, the second-live-period and retired-tier
 refusals, cancel revoking only what that row applied, `members.view` alone refused on both POSTs,
 and the detail page's `subscribeUrl` / `tierOptions` / `cancel_url` across no period → live →
-cancelled).
+cancelled), `MemberExpirySweepTest` (the sweep: expired + role revoked + `SYSTEM` audit, a role
+another live period still needs survives, paused rows untouched, a second run claims zero,
+window rows untouched, the flag stops it), `MemberExpiryNotificationTest` (the broadcast: the
+saved window is read at trigger time, `members.update` alone refused — notify is its own gate
+(D-6), the API twin queues the same run and 403s with the flag off, one message per member not
+per subscription, the earliest expiry wins, nothing sends while the flag is off, and 1 000
+members become 1 000 queued mail deliveries without this process opening SMTP).
 `tests/Feature/Api/V1/Member/` — `MemberApiTest` and `MemberTierApiTest`: the read shape, the
 per-route `can:` loop (a zero-permission caller 403s on every address), the write paths, the
 trash two-step, the per-action bulk permission, and the flag off → 403 for a superadmin. Cross

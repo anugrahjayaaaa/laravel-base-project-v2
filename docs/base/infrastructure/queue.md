@@ -31,7 +31,7 @@ is written).
 |---|---|---|
 | `QueueName::EXPORTS` | `exports` | `GenerateAuditExport` — heavy, IO-bound, user-initiated |
 | `QueueName::BACKUPS` | `backups` | `ExecuteSystemBackupJob` — heavy, IO-bound, scheduled or operator-triggered; one attempt, a partial artifact is retried by an operator. Rides the `backups` connection, consumed by `bin/run-workers.sh backups` |
-| `QueueName::SWEEPS` | `sweeps` | `PasswordExpirySweep`, `InactivityLockSweep`, `CleanTemporaryStorageJob`, `MemberPointsExpirySweepJob` — scheduled / threshold-triggered, idempotent, never urgent |
+| `QueueName::SWEEPS` | `sweeps` | `PasswordExpirySweep`, `InactivityLockSweep`, `CleanTemporaryStorageJob`, `MemberPointsExpirySweepJob`, `MemberSubscriptionExpirySweepJob`, `SendMemberExpiryNotificationJob` — scheduled / threshold-triggered, idempotent, never urgent |
 
 The queue is set **on the instance** (`$this->onQueue(...)` in the constructor),
 never as a `public $queue` property: `Queueable` already declares `$queue`, and
