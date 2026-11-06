@@ -1099,3 +1099,75 @@ roles re-derive from `PermissionCatalog::all()` at seed time, so a role that hel
 `members.manage` must be re-granted explicitly — `admin` / `superadmin` inherit through the
 catalogue and are unaffected. `RbacApiTest`'s catalogue listing needs `per_page=100` now that
 the list is longer.
+
+## ADR-033: the general app dashboard is its own phase; POS & payment moves 19 → 20
+
+**Date**: 2026-11-06 · **Status**: Accepted · **Relates to**: `docs/planning/implementation-roadmap.md`,
+`docs/planning/phase-18-membership-loyalty.md` § Group F, `docs/planning/phase-19-general-dashboard.md`,
+`docs/planning/phase-20-pos-and-payment.md`
+
+**Context**: The dashboard work arrived as one owner request and split into two audiences on
+inspection: member lifecycle metrics (growth, renewal, tenure, at-risk) read the membership
+tables, and platform metrics (registration, verification, sessions, security feed) read
+`users` / `sessions` / `activities` / `failed_login_attempts` and no membership table at all.
+They also have different owners and different gates — `members.view` versus a new
+`dashboard.view`. Leaving both in Phase 18's Group F, or in Phase 19's financial dashboard,
+would have made one screen answer two questions with two permission sets.
+
+**Decision**: **Phase 18** = General Membership & Loyalty System, extended with **Group F —
+Membership Analytics Dashboard** (P18-F1..F4, PLANNED). **Phase 19** = General App Dashboard &
+Platform Health Metrics (P19-A1..D2, PLANNED, new breakdown
+`docs/planning/phase-19-general-dashboard.md`). **Phase 20** = Basic POS Engine & Omnichannel
+Payment Gateway — the former Phase 19, file renamed and every `P19-*` task ID inside it
+renumbered to `P20-*`, plus every reference to it across `docs/planning/`. No later phase
+exists yet, so the +1 shift touches one phase and nothing after it.
+
+**Alternatives considered**: fold the general dashboard into Phase 18 as a second group
+(rejected — one flag, one menu, two unrelated data domains, and Phase 18's rows are closed);
+fold it into Phase 20's financial dashboard (rejected — that dashboard is created by the
+ledger Phase 20 writes, and the platform metrics have nothing to do with money); renumber
+without a written decision (rejected — task IDs are referenced from `membership.md`, the
+changelog and the trackers, and a silent re-key makes the ledger untraceable).
+
+**Consequences**: Historical rows that name "Phase 19" for POS now read "Phase 20" —
+including the delivered evidence text in `task-tracker.md`, `progress.md` and `changelog.md`.
+The renumbering was mechanical (`P19-` → `P20-`, `Phase 19` → `Phase 20`, filename) so a
+reference is consistent across the planning tree, but it means **a P-number is not a stable
+identifier across a resequencing**; the phase doc, not the ID, is the authority for what a
+task was. **Carried as known-stale, deliberately not edited** (the owner's scope lock for this
+change is `docs/planning/` only): `docs/base/features/membership.md` has three mentions of
+"Phase 19" that mean POS — § Points (balance move belongs to the checkout), § Points (the
+manual card removal), and the heading "Not in this slice (Phase 19 / later P18 rows)". They
+now point at the dashboard phase. One sed pass over `docs/base/` closes it; it needs the
+owner's go-ahead because `docs/base/` is design authority, not planning.
+
+## ADR-034: `/dashboard` stays the ungated landing route and chooses content by caller
+
+**Date**: 2026-11-06 · **Status**: Accepted (forward-looking; the branch it protects shipped
+2026-11-06 as P18-E3) · **Relates to**: Phase 18 P18-E3, Phase 19 D-1,
+`docs/base/features/membership.md` § The member's own dashboard
+
+**Context**: `GET /dashboard` is where login sends every account and carries no `can:` gate,
+by design — the `user` and `member` system roles hold **no permissions** (`PermissionSeeder`
+grants them none), so any gate on the landing route 403s the majority of accounts off the page
+they land on. Phase 18 shipped a member-facing dashboard by branching that route on the
+caller's loyalty profile. Phase 19's brief asks for `dashboard.view` on "the general
+dashboard", which read literally would put a permission on that same route.
+
+**Decision**: `/dashboard` keeps no permission and keeps branching: a loyalty profile with
+`member_loyalty` on → the member dashboard (P18-E3); otherwise, for a caller holding
+`dashboard.view`, the Phase 19 general dashboard; otherwise the existing application status
+card. The Phase 19 screen also gets its own address (`/dashboard/overview`, route
+`general.dashboard`) carrying `can:dashboard.view` + `feature:general_dashboard`, and that is
+where the gate lives.
+
+**Alternatives considered**: gate `/dashboard` itself (rejected — it 403s `user` and `member`
+accounts on login, and a half-adopted gate is worse than none because the redirect target
+still has to answer); give members their own landing route and change the login redirect
+(rejected — more moving parts for the same page, and the delivered branch already works).
+
+**Consequences**: one route, three possible responses, each with its own regression test
+(P19-D1 must prove the low-privilege landing path; `MemberSelfDashboardTest` already proves the
+member half and the flag-off half). A caller who can see both dashboards sees the member one —
+the profile is the narrower audience. If a fourth audience ever appears, this becomes a
+resolver rather than an `if` chain.

@@ -739,9 +739,9 @@ Each entry contains:
 |-------|-------|
 | **Date** | 2026-11-06 |
 | **Change** | Owner decision: the web `members.points` route, the Adjust Points card in `pages/members/show.blade.php`, `MemberController::points()`, and the `adjustUrl`/`earnRule` keys in `MemberShowAction` are deleted. Kept by design: `MemberAdjustPointsAction`, `MemberAdjustPointsRequest`, and `api.v1.members.points` with its Scramble docs — the endpoint stays for programmatic corrections. Tests follow the path, not the deletion: `MemberPointsTest` posts to the API route (Sanctum, JSON assertions), `ChannelParityTest` declares `member points adjust` one-sided `api` with the reason, the points-form render test and its fixture keys left `MemberUiRenderTest`, and `MemberWebTest` now asserts the card's absence. Docs: `membership.md` (routes table, API-mirror note, Points section), phase-18 B4/B6 revision notes, tracker B4/B6 rows, `progress.md`. |
-| **Reason** | Point adjustment is a consequence of a sale, and the sale lands in Phase 19's checkout; a manual box on the profile invites ledger entries that no transaction explains. The API half survives because corrections are a legitimate programmatic act, not a screen. |
+| **Reason** | Point adjustment is a consequence of a sale, and the sale lands in Phase 20's checkout; a manual box on the profile invites ledger entries that no transaction explains. The API half survives because corrections are a legitimate programmatic act, not a screen. |
 | **Impact** | No permission, flag, table or ledger change — one surface removed. Anyone relying on the web form loses it; `POST /api/v1/members/{id}/points` behaves exactly as before. Gates targeted: `tests/Feature/Member` + `Api/V1/Member` + `ChannelParityTest` 139 passed / 650 assertions, Pint PASS 570 files, PHPStan `[OK] No errors`; work uncommitted. |
-| **Related** | P18-B4, P18-B6, Phase 19 (checkout), `docs/base/features/membership.md` § Points |
+| **Related** | P18-B4, P18-B6, Phase 20 (checkout), `docs/base/features/membership.md` § Points |
 
 ## 2026-11-06 — Group D closes as proof, not new code: every route walked, every event enumerated
 
