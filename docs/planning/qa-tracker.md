@@ -177,6 +177,17 @@ rather than from PHPUnit.
 | QA-SET-003 | Verify cache invalidation on settings change | Functional | Settings | DONE — `SystemSetting::set()` busts via `DB::afterCommit`; `SET-005` records the transaction-read hazard that motivated it |
 | QA-SET-004 | Verify only authorized users can change settings | Authorization | Settings | DONE — guest, no-permission, and `settings.view`-only are each refused in `SettingsPentestTest`, web and API |
 
+### Membership QA
+
+| ID | Scenario | Category | Feature | Status |
+|----|----------|----------|---------|--------|
+| QA-MEM-001 | Verify a subscription issues the tier role, ends, and is revoked only when no other live period needs it | Functional | Members | DONE — `MemberSubscriptionTest::test_activate_applies_the_tier_role_without_dropping_the_base_role` + `::test_cancel_revokes_only_the_applied_role_and_audits` + `::test_cancel_keeps_the_role_when_another_live_period_still_uses_it`; the scheduled path is the same rule through `RevokesSubscriptionRole`, proven in `MemberExpirySweepTest::test_the_sweep_expires_lapsed_periods_and_revokes_the_role_they_applied` |
+| QA-MEM-002 | Verify every member and tier route is refused without the permission and with the flag off, on both channels | Authorization | Members | DONE — `MemberWebTest` loops all 25 web routes twice (staff with zero permissions, then flag-off for a superadmin) and `MemberApiTest` / `MemberTierApiTest` loop the module routes the same way; flag-off answers **403, not 404** (Phase 18 D-1) |
+| QA-MEM-003 | Verify a points deduction cannot go below zero and leaves no ledger row when refused | Validation | Members | DONE — `MemberApiTest::test_over_redemption_is_refused_before_any_ledger_row` and `MemberPointsTest::test_deducting_more_than_the_balance_is_refused` (both the balance and `MemberPointHistory::count()` asserted). Sabotage-verified 2026-11-06: disabling the guard in `MemberAdjustPointsAction` turns the test red. **The row lock itself is unproven here — `lockForUpdate()` is inert on the SQLite test connection (D-5), see the deferred item in `progress.md` § Known Issues** |
+| QA-MEM-004 | Verify the API channel exposes the same member capabilities as the web channel | API | Members | DONE — `ChannelParityTest` declares every member and tier capability two-sided, with `membership dashboard` and the one-sided `member points adjust` (API-only since 2026-11-06) as recorded exceptions; `ResponseParityTest` diffs the list rows themselves |
+| QA-MEM-005 | Verify the bulk expiry warning queues one mail per member and sends nothing inside the request | Regression | Members | DONE — `MemberExpiryNotificationTest::test_one_thousand_expiring_members_become_one_thousand_small_queued_sends` and `::test_a_member_with_two_expiring_periods_is_mailed_once_not_twice`; `::test_an_edit_permission_alone_cannot_mail_every_member` pins the `members.notify` gate |
+| QA-MEM-006 | Verify the tier price list cannot name `superadmin` and refuses a price edit by a reader | Security | Members | DONE — `MemberTierApiTest::test_superadmin_cannot_be_posted_as_the_tier_role` (the select and the FormRequest validate against the same `MemberTier::assignableRoleOptions()`) + `::test_a_tier_reader_cannot_change_the_price_list`; `MemberTierTest` holds the web twin (`::test_a_payload_naming_superadmin_is_refused`, `::test_a_viewer_cannot_reach_any_tier_write_route`) |
+
 ## Reconciliation (2026-11-04, P17-D2)
 
 55 rows (49 PLANNED + 6 TODO) had not been reconciled with the suite since the QA list
@@ -193,6 +204,10 @@ docs move toward code-with-ADR): QA-AUTH-015 said 60 minutes where `config/auth.
 defaults to 15, and QA-AUTH-016 said 3/hour where `AuthServiceProvider.php:198-205` is
 `Limit::perMinute` on `password_forgot_rate_limit` (default 3). QA-AUTH-017 is recorded
 N/A: no admin-initiated password reset exists on either channel.
+
+Phase 18 added the six Membership rows above on 2026-11-06, each citing the assertion that
+proves it, so the tracker now holds **105 rows: 83 DONE / 8 PARTIAL / 13 UNPROVEN / 1 N/A**.
+The 21 open rows are unchanged — none of them describes a membership capability.
 
 ### Gap list with owners (what a follow-up phase would need)
 

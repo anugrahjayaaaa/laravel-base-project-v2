@@ -12,7 +12,7 @@ rows and what still ships are in `docs/planning/task-tracker.md`.
 
 | Layer | State |
 |---|---|
-| Backend web | Shipped: `Web/V1/{MemberController,MemberTierController,MemberDashboardController}` — reads, member creation, points, subscribe/cancel, tier CRUD, trash, state switches, bulk |
+| Backend web | Shipped: `Web/V1/{MemberController,MemberTierController,MemberDashboardController}` — reads, member creation, subscribe/cancel, tier CRUD, trash, state switches, bulk |
 | Backend API | Shipped for everything the web channel offers except the three read-only screens (`GET /members/create`, `GET /members/tiers/{tier}/edit`, `GET /members/dashboard`): `Api/V1/Member/{MemberController,MemberTierController}` + `MemberResource`, `MemberSubscriptionResource`, `MemberTierResource`, `MemberPointHistoryResource`. Every route runs the same Actions and the same Form Requests, so the guards are not restated |
 | AdminLTE UI | `resources/views/pages/members/{index,create,show,tiers,tier-form,dashboard}.blade.php` |
 
@@ -49,16 +49,16 @@ All inside `Route::middleware('feature:member_loyalty')`; authorization is on th
 | `GET /members` | `members.index` | `members.view` |
 | `GET /members/create` | `members.create` | `members.create` |
 | `POST /members` | `members.store` | `members.create` |
-| `GET /members/tiers` | `members.tiers` | `members.tiers.view` |
-| `GET /members/tiers/create` | `members.tiers.create` | `members.tiers.create` |
-| `POST /members/tiers` | `members.tiers.store` | `members.tiers.create` |
-| `GET /members/tiers/{tier}/edit` | `members.tiers.edit` | `members.tiers.update` |
-| `PUT /members/tiers/{tier}` | `members.tiers.update` | `members.tiers.update` |
-| `POST /members/tiers/{tier}/activate` | `members.tiers.activate` | `members.tiers.activate` |
-| `POST /members/tiers/{tier}/deactivate` | `members.tiers.deactivate` | `members.tiers.deactivate` |
-| `DELETE /members/tiers/{tier}` | `members.tiers.destroy` | `members.tiers.delete` |
-| `POST /members/tiers/{tier}/restore` | `members.tiers.restore` | `members.tiers.restore` |
-| `DELETE /members/tiers/{tier}/force` | `members.tiers.force-delete` | `members.tiers.force_delete` |
+| `GET /members/tiers` | `members.tiers` | `member_tiers.view` |
+| `GET /members/tiers/create` | `member_tiers.create` | `member_tiers.create` |
+| `POST /members/tiers` | `members.tiers.store` | `member_tiers.create` |
+| `GET /members/tiers/{tier}/edit` | `members.tiers.edit` | `member_tiers.update` |
+| `PUT /members/tiers/{tier}` | `member_tiers.update` | `member_tiers.update` |
+| `POST /members/tiers/{tier}/activate` | `member_tiers.activate` | `member_tiers.activate` |
+| `POST /members/tiers/{tier}/deactivate` | `member_tiers.deactivate` | `member_tiers.deactivate` |
+| `DELETE /members/tiers/{tier}` | `members.tiers.destroy` | `member_tiers.delete` |
+| `POST /members/tiers/{tier}/restore` | `member_tiers.restore` | `member_tiers.restore` |
+| `DELETE /members/tiers/{tier}/force` | `members.tiers.force-delete` | `member_tiers.force_delete` |
 | `POST /members/tiers/bulk-action` | `members.tiers.bulk-action` | per action (see below) |
 | `GET /members/dashboard` | `membership.dashboard` | `members.view` |
 | `POST /members/dashboard/broadcast-expiry` | `membership.broadcast-expiry` | `members.notify` |
@@ -92,7 +92,7 @@ were removed 2026-11-06 by owner decision — a balance move belongs to the Phas
 earned it — while the endpoint stays for programmatic corrections.
 
 **Two permission sets, not one** (ADR-032). `members.*` is the member profile and
-`members.tiers.*` is tier configuration; the suffix list of each is the `users.*` shape —
+`member_tiers.*` is tier configuration; the suffix list of each is the `users.*` shape —
 `view` / `create` / `update` / `delete` / `restore` / `force_delete` / `activate` /
 `deactivate` — with `members.notify` as the one addition. There is no `members.manage`: one
 "manage" made Add-member, a points adjustment and a tier price edit a single decision, and the
@@ -103,7 +103,7 @@ users list never had it.
 `members.update` edits and does not remove. The bulk endpoints carry no `can:` on the route:
 `BulkMemberRequest` / `BulkMemberTierRequest` use the shared `AuthorizesBulkAction`, which maps
 the body's `action` to `<prefix>.<suffix>` — so `delete` needs `members.delete` while a tier bulk
-call is authorised by `members.tiers.delete` (its `bulkEntityPrefix()` is `members.tiers`). An action
+call is authorised by `member_tiers.delete` (its `bulkEntityPrefix()` is `member_tiers`). An action
 with no matching permission (e.g. `lock`, which only users have) is a 403, not a fallthrough.
 Each handler's `getValidItems()` narrows first: `delete` acts only on live rows, `restore` and
 `force_delete` only on trashed ones, so a mixed selection touches what it may and ignores the
@@ -133,10 +133,17 @@ shape. Both lists render them the way the users row does: icon only, the action 
   subscription: the member buys the next period themselves or at the cashier.
 
 Neither route touches the login account — that is `users.deactivate`, a different permission on a
-different table. The violation switch and reason field live in the shared confirmation modal
-(`layouts/partials/modals/confirmation.blade.php`), hidden **and disabled** until a trigger asks
-for them: `x-ui.confirm-action` with `:deactivation-fields="true"` emits
-`data-deactivation-fields`, and the driver enables the block per trigger. Inside an enabled block
+different table. The violation switch and reason field are **pushed into** the shared
+confirmation modal, not written into it: `pages/members/index.blade.php` owns the block and
+emits it with `@push('confirmModalFields')`, and `layouts/partials/modals/confirmation.blade.php`
+renders `@stack('confirmModalFields')` in its body. The distinction is not cosmetic — that modal
+partial is `@include`d by `layouts/app.blade.php`, so a block hardcoded there ships on every
+authenticated page in the app, which is how the feature-flag and notification screens came to
+carry a membership control (`MemberWebTest::test_the_deactivation_fields_ship_only_on_the_member_list`
+is the gate that keeps it on this page). A trigger asks for the block by rendering
+`x-ui.confirm-action` with `:deactivation-fields="true"`, which emits `data-deactivation-fields`,
+and the driver enables it per trigger; on any other page the block is not in the DOM at all.
+Inside an enabled block
 the reason field stays disabled and not-required until the violation switch is turned on — toggle
 off, reason disabled; toggle on, reason editable and required. Every other action
 submits neither key.
@@ -239,7 +246,7 @@ they keep "Back to Tiers" / "Back to Member List" (`docs/base/ui/design-system.m
 **The tier edit page owns a Danger Zone**, the same card the member profile uses: copy, the shared
 `x-ui.confirm-action` modal, and `members.tiers.destroy` behind it. The create page renders no card —
 there is no row to trash yet — and the list keeps its per-row delete, so the two affordances point at
-one route with one Action. Both sit behind `@can('members.tiers.delete')`, not `members.tiers.update`.
+one route with one Action. Both sit behind `@can('member_tiers.delete')`, not `member_tiers.update`.
 
 **A trashed tier is a row, not a ghost.** The list used to read the default scope, so trashing one
 removed its only route back — no Restore, no Permanent Delete, nothing on screen. `status=trashed`

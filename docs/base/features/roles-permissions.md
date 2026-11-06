@@ -188,7 +188,17 @@ Do not add a permission name to this table by hand — `App\Support\PermissionCa
 is the source of truth and this table mirrors it. An earlier revision of this
 document listed `roles.manage`, `permissions.assign` and
 `feature_flags.manage`, none of which exist: exactly the drift a hand-typed list
-produces.
+produces. What is listed here is the four resources that existed when the
+convention was written; the catalogue has grown past them, so read
+`PermissionCatalog::all()` for the live set.
+
+**One dot, always.** `PermissionCatalogTest` asserts every name matches
+`{resource}.{action}`, and it is the resource prefix that decides which flag
+governs the permission (`FEATURE_BY_RESOURCE`). A nested name like
+`members.tiers.view` fails both: it is not one dot, and its prefix would be a
+resource nobody mapped. That is why tier pricing is the `member_tiers` resource
+rather than a sub-namespace of `members` — the pages still live under
+`/members/tiers`, and the two sets still authorize separately.
 
 ## User State Permissions
 

@@ -23,6 +23,11 @@ use Tests\TestCase;
  * Points: the manual adjustment (the earning rule applied to a purchase
  * amount), the guard against a negative balance, and the annual expiry the
  * settings date drives (Phase 18, P18-B4 + O-3).
+ *
+ * What SQLite cannot prove (D-5): `MemberAdjustPointsAction` re-reads the balance
+ * under `lockForUpdate()`, and SQLite ignores `FOR UPDATE`, so these tests cover
+ * the arithmetic and the refusal — the row lock itself is deferred runtime
+ * evidence needing a MySQL two-session probe (`docs/planning/phase-18 § 3 D-5`).
  */
 class MemberPointsTest extends TestCase
 {
@@ -158,6 +163,13 @@ class MemberPointsTest extends TestCase
         $this->assertSame(0, $reset->balance_after);
         $this->assertSame('Annual points expiry', $reset->reason);
         $this->assertTrue(Activity::where('event', 'member.points_expired')->exists());
+
+        // The balance is the ledger, not a second source of truth.
+        $this->assertSame(
+            Member::find($member->id)->points_balance,
+            (int) MemberPointHistory::where('member_id', $member->id)->sum('delta'),
+            'a ledger that no longer sums to the balance cannot be reconciled'
+        );
 
         $this->assertSame(
             now()->addYear()->toDateString(),

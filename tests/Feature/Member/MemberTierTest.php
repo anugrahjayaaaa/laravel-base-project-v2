@@ -80,7 +80,7 @@ class MemberTierTest extends TestCase
 
     public function test_a_manager_creates_a_tier_and_the_row_is_audited_once(): void
     {
-        $this->actingAsHolderOf(['members.tiers.create']);
+        $this->actingAsHolderOf(['member_tiers.create']);
 
         $this->post(route('members.tiers.store'), $this->tierPayload())
             ->assertRedirect(route('members.tiers'));
@@ -98,7 +98,7 @@ class MemberTierTest extends TestCase
      */
     public function test_the_slug_is_generated_from_the_name_and_the_submitted_one_is_ignored(): void
     {
-        $this->actingAsHolderOf(['members.tiers.create']);
+        $this->actingAsHolderOf(['member_tiers.create']);
 
         $this->post(route('members.tiers.store'), $this->tierPayload([
             'name' => 'Gold Tier',
@@ -110,7 +110,7 @@ class MemberTierTest extends TestCase
 
     public function test_renaming_a_tier_moves_its_slug_with_it(): void
     {
-        $this->actingAsHolderOf(['members.tiers.update']);
+        $this->actingAsHolderOf(['member_tiers.update']);
 
         $tier = MemberTier::factory()->create(['name' => 'Gold', 'slug' => 'gold']);
 
@@ -123,7 +123,7 @@ class MemberTierTest extends TestCase
 
     public function test_a_name_that_generates_nothing_is_refused_on_the_name(): void
     {
-        $this->actingAsHolderOf(['members.tiers.create']);
+        $this->actingAsHolderOf(['member_tiers.create']);
 
         $this->from(route('members.tiers.create'))
             ->post(route('members.tiers.store'), $this->tierPayload(['name' => '   ']))
@@ -134,7 +134,7 @@ class MemberTierTest extends TestCase
 
     public function test_the_role_picker_offers_no_superadmin_on_create_or_edit(): void
     {
-        $this->actingAsHolderOf(['members.tiers.create', 'members.tiers.update']);
+        $this->actingAsHolderOf(['member_tiers.create', 'member_tiers.update']);
 
         // RoleSeeder creates it, so its absence in the markup is the filter's
         // doing and not a missing row.
@@ -148,7 +148,7 @@ class MemberTierTest extends TestCase
 
     public function test_a_payload_naming_superadmin_is_refused(): void
     {
-        $this->actingAsHolderOf(['members.tiers.create']);
+        $this->actingAsHolderOf(['member_tiers.create']);
 
         $this->from(route('members.tiers.create'))
             ->post(route('members.tiers.store'), $this->tierPayload(['role_name' => 'superadmin']))
@@ -159,7 +159,7 @@ class MemberTierTest extends TestCase
 
     public function test_a_manager_edits_a_tier_and_only_the_changed_fields_are_audited(): void
     {
-        $this->actingAsHolderOf(['members.tiers.update']);
+        $this->actingAsHolderOf(['member_tiers.update']);
 
         $tier = MemberTier::factory()->create(['name' => 'Gold', 'slug' => 'gold', 'duration_days' => 100]);
 
@@ -182,7 +182,7 @@ class MemberTierTest extends TestCase
 
     public function test_the_list_prints_the_price_in_the_configured_currency(): void
     {
-        $this->actingAsHolderOf(['members.tiers.view', 'members.tiers.create']);
+        $this->actingAsHolderOf(['member_tiers.view', 'member_tiers.create']);
 
         $this->post(route('members.tiers.store'), $this->tierPayload(['name' => 'Bronze', 'slug' => 'bronze', 'price' => 35000]));
 
@@ -193,7 +193,7 @@ class MemberTierTest extends TestCase
 
     public function test_the_tier_list_searches_and_paginates_like_the_other_lists(): void
     {
-        $this->actingAsHolderOf(['members.tiers.view']);
+        $this->actingAsHolderOf(['member_tiers.view']);
 
         MemberTier::factory()->create(['name' => 'Diamond', 'slug' => 'diamond']);
         MemberTier::factory()->count(11)->create();
@@ -237,7 +237,7 @@ class MemberTierTest extends TestCase
 
     public function test_the_delete_permission_trashes_an_unused_tier(): void
     {
-        $this->actingAsHolderOf(['members.tiers.delete']);
+        $this->actingAsHolderOf(['member_tiers.delete']);
 
         $tier = MemberTier::factory()->create(['name' => 'Bronze', 'slug' => 'bronze']);
 
@@ -249,7 +249,7 @@ class MemberTierTest extends TestCase
 
     public function test_a_tier_with_subscriptions_on_it_refuses_to_be_deleted(): void
     {
-        $this->actingAsHolderOf(['members.tiers.delete']);
+        $this->actingAsHolderOf(['member_tiers.delete']);
 
         $tier = MemberTier::factory()->create(['name' => 'Gold', 'slug' => 'gold']);
         $member = Member::factory()->create();
@@ -269,7 +269,7 @@ class MemberTierTest extends TestCase
 
     public function test_a_trashed_slugs_name_is_still_taken_and_the_form_says_so(): void
     {
-        $this->actingAsHolderOf(['members.tiers.create']);
+        $this->actingAsHolderOf(['member_tiers.create']);
 
         $tier = MemberTier::factory()->create(['name' => 'Gold', 'slug' => 'gold']);
         $tier->delete();
@@ -284,7 +284,7 @@ class MemberTierTest extends TestCase
 
     public function test_a_viewer_cannot_reach_any_tier_write_route(): void
     {
-        $this->actingAsHolderOf(['members.tiers.view']);
+        $this->actingAsHolderOf(['member_tiers.view']);
 
         $tier = MemberTier::factory()->create();
 
@@ -304,7 +304,7 @@ class MemberTierTest extends TestCase
      */
     public function test_the_edit_page_offers_the_trash_button_and_the_create_page_does_not(): void
     {
-        $this->actingAsHolderOf(['members.tiers.create', 'members.tiers.update', 'members.tiers.delete']);
+        $this->actingAsHolderOf(['member_tiers.create', 'member_tiers.update', 'member_tiers.delete']);
 
         $tier = MemberTier::factory()->create(['name' => 'Gold', 'slug' => 'gold']);
 
@@ -320,7 +320,7 @@ class MemberTierTest extends TestCase
 
     public function test_the_flag_refuses_the_tier_writes_too(): void
     {
-        $this->actingAsHolderOf(['members.tiers.create']);
+        $this->actingAsHolderOf(['member_tiers.create']);
         Feature::deactivate('member_loyalty');
 
         $this->get(route('members.tiers.create'))->assertForbidden();

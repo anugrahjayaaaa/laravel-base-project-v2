@@ -235,8 +235,30 @@ email-verification-notice, password-change pages using AdminLTE auth layout.
   conflicts recorded (D-1..D-7) before any task is built: flag-off is **403, not 404**;
   `members` is a loyalty profile keyed to `users.id`, not a second identity; there is no
   WhatsApp channel; `lockForUpdate()` cannot be proven on the SQLite test connection
-- Status: **Group A in REVIEW** (five member views + `member_loyalty` flag + render gate
-  shipped 2026-11-05); Groups B–E PLANNED
+- Status: **DONE (Group E closed 2026-11-06, tree uncommitted awaiting owner)** — A–D shipped
+  and closed on their own gates; E2's full-suite run came back **red on its first pass
+  (3 failures, 2910 passed)**, and those three failures were the phase's findings rather than
+  noise: the eight `members.tiers.*` slugs broke the `{resource}.{action}` naming gate, and the
+  member deactivation "violation" switch had been added to the **global** confirmation modal, so
+  two read-only UI render gates saw a control they assert is absent. Both were fixed (renamed
+  `member_tiers.*` with a data migration; the switch moved to `@push('confirmModalFields')` on the
+  member list with a regression test), and the closure run is green: **2923 tests / 11152
+  assertions / 9 risky, exit 0**, coverage **global 94.31 %, Actions 96.62 %, Policies 100 %,
+  Requests 98.10 %**, Pint PASS 571 files, PHPStan `[OK] No errors` at 310 ledger entries. Detail in
+  `docs/planning/task-tracker.md` § Phase 18 and `progress.md` § *Test Status*. Delivered:
+  six `pages/members/*` views, `member_loyalty` flag declared **and** seeded, four tables
+  (`member_tiers`, `members`, `member_subscriptions`, `member_point_histories`), the tier CRUD
+  with `App\Support\Money` pricing, the member create/state/trash/bulk flows, the subscription
+  activate/cancel engine with the tier role synced onto the **`User`**, the points ledger with
+  the System Setting earn rule and the annual reset, the daily expiry sweep on `sweeps` (the
+  eighth `schedule:list` entry), the chunked bulk expiry warning (mail + in-app, D-3), 25 web
+  routes and their API twins under one permission set, and the seventeen member-module
+  slugs behind them (nine `members.*` + eight `member_tiers.*`, each write route naming its
+  own, both resources mapped to the one `member_loyalty` flag). **The voucher engine left for Phase 19 (owner 2026-11-05)**;
+  no spend/checkout path exists yet — Phase 19 B2 spends the points this phase deliberately
+  left unspent. Deferred: the MySQL two-session proof of the points row lock (D-5) and the
+  WhatsApp channel (O-2, unshipped by design). Work sits in the working tree **uncommitted** —
+  the owner reviews and commits (`AGENTS.md`).
 
 ### Phase 19: Basic POS Engine & Omnichannel Payment Gateway
 - Point of Sales engine (self-service + cashier interface)

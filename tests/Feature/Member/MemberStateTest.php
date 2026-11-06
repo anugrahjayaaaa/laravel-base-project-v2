@@ -77,7 +77,7 @@ class MemberStateTest extends TestCase
 
     public function test_deactivating_a_tier_switches_it_off_and_records_one_audit_row(): void
     {
-        $this->actingAsHolderOf(['members.tiers.deactivate']);
+        $this->actingAsHolderOf(['member_tiers.deactivate']);
 
         $tier = MemberTier::factory()->create(['name' => 'Silver', 'is_active' => true]);
 
@@ -89,7 +89,7 @@ class MemberStateTest extends TestCase
 
     public function test_activating_a_tier_switches_it_back_on(): void
     {
-        $this->actingAsHolderOf(['members.tiers.activate']);
+        $this->actingAsHolderOf(['member_tiers.activate']);
 
         $tier = MemberTier::factory()->create(['name' => 'Silver', 'is_active' => false]);
 
@@ -105,7 +105,7 @@ class MemberStateTest extends TestCase
      */
     public function test_a_trashed_tier_is_not_available_to_the_state_routes(): void
     {
-        $this->actingAsHolderOf(['members.tiers.activate']);
+        $this->actingAsHolderOf(['member_tiers.activate']);
 
         $tier = MemberTier::factory()->create(['is_active' => false]);
         $tier->delete();
@@ -116,7 +116,7 @@ class MemberStateTest extends TestCase
 
     public function test_a_caller_holding_only_update_is_refused_every_state_route(): void
     {
-        $this->actingAsHolderOf(['members.update', 'members.tiers.update']);
+        $this->actingAsHolderOf(['members.update', 'member_tiers.update']);
 
         $member = $this->memberWithDaysLeft('MBR-000500');
         $tier = MemberTier::factory()->create();
@@ -264,8 +264,8 @@ class MemberStateTest extends TestCase
 
     public function test_the_lists_render_the_state_buttons_as_icons_with_a_name_on_hover(): void
     {
-        $this->actingAsHolderOf(['members.view', 'members.tiers.view', 'members.activate', 'members.deactivate',
-            'members.tiers.activate', 'members.tiers.deactivate', 'members.tiers.update']);
+        $this->actingAsHolderOf(['members.view', 'member_tiers.view', 'members.activate', 'members.deactivate',
+            'member_tiers.activate', 'member_tiers.deactivate', 'member_tiers.update']);
 
         $member = $this->memberWithDaysLeft('MBR-000506');
         $tier = MemberTier::factory()->create(['name' => 'Silver', 'is_active' => true]);

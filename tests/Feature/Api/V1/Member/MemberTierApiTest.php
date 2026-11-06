@@ -73,7 +73,7 @@ class MemberTierApiTest extends TestCase
     {
         $tier = MemberTier::factory()->create(['name' => 'Gold', 'price' => 100000, 'sort_order' => 3]);
 
-        Sanctum::actingAs($this->userWith('members.tiers.view'));
+        Sanctum::actingAs($this->userWith('member_tiers.view'));
 
         $this->getJson(route('api.v1.members.tiers.index'))
             ->assertOk()
@@ -88,7 +88,7 @@ class MemberTierApiTest extends TestCase
     {
         $tier = MemberTier::factory()->create();
 
-        Sanctum::actingAs($this->userWith('members.tiers.view'));
+        Sanctum::actingAs($this->userWith('member_tiers.view'));
 
         $this->postJson(route('api.v1.members.tiers.store'), $this->tierPayload())->assertForbidden();
         $this->putJson(route('api.v1.members.tiers.update', $tier), $this->tierPayload('Renamed'))->assertForbidden();
@@ -110,7 +110,7 @@ class MemberTierApiTest extends TestCase
 
     public function test_a_holder_of_tiers_create_can_add_and_edit_a_tier(): void
     {
-        Sanctum::actingAs($this->userWith('members.tiers.create', 'members.tiers.update'));
+        Sanctum::actingAs($this->userWith('member_tiers.create', 'member_tiers.update'));
 
         $response = $this->postJson(route('api.v1.members.tiers.store'), $this->tierPayload())
             ->assertCreated()
@@ -124,7 +124,7 @@ class MemberTierApiTest extends TestCase
 
     public function test_superadmin_cannot_be_posted_as_the_tier_role(): void
     {
-        Sanctum::actingAs($this->userWith('members.tiers.create'));
+        Sanctum::actingAs($this->userWith('member_tiers.create'));
 
         $this->postJson(route('api.v1.members.tiers.store'), ['role_name' => 'superadmin'] + $this->tierPayload())
             ->assertStatus(422)
@@ -140,7 +140,7 @@ class MemberTierApiTest extends TestCase
 
         MemberSubscription::factory()->create(['member_id' => $member->id, 'member_tier_id' => $tier->id]);
 
-        Sanctum::actingAs($this->userWith('members.tiers.delete'));
+        Sanctum::actingAs($this->userWith('member_tiers.delete'));
 
         $this->deleteJson(route('api.v1.members.tiers.destroy', $tier))->assertStatus(422);
 
@@ -151,7 +151,7 @@ class MemberTierApiTest extends TestCase
     {
         $tier = MemberTier::factory()->create();
 
-        Sanctum::actingAs($this->userWith('members.tiers.delete', 'members.tiers.restore', 'members.tiers.force_delete'));
+        Sanctum::actingAs($this->userWith('member_tiers.delete', 'member_tiers.restore', 'member_tiers.force_delete'));
 
         // The raw-id routes only accept a row already in the trash.
         $this->postJson(route('api.v1.members.tiers.restore', $tier))->assertNotFound();
@@ -168,7 +168,7 @@ class MemberTierApiTest extends TestCase
     {
         $tier = MemberTier::factory()->create(['is_active' => true]);
 
-        Sanctum::actingAs($this->userWith('members.tiers.deactivate', 'members.tiers.activate'));
+        Sanctum::actingAs($this->userWith('member_tiers.deactivate', 'member_tiers.activate'));
 
         $this->postJson(route('api.v1.members.tiers.deactivate', $tier))->assertOk();
         $this->assertDatabaseHas('member_tiers', ['id' => $tier->id, 'is_active' => false]);
@@ -181,7 +181,7 @@ class MemberTierApiTest extends TestCase
     {
         $tier = MemberTier::factory()->create();
 
-        Sanctum::actingAs($this->userWith('members.tiers.delete'));
+        Sanctum::actingAs($this->userWith('member_tiers.delete'));
 
         $this->postJson(route('api.v1.members.tiers.bulk-action'), ['action' => 'restore', 'tier_ids' => [$tier->id]])
             ->assertForbidden();

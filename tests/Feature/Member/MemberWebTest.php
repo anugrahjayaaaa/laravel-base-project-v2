@@ -52,6 +52,24 @@ class MemberWebTest extends TestCase
         return $user;
     }
 
+    /**
+     * The sanction fields are the member page's own. They live in the confirm
+     * modal, and that modal partial is rendered by `layouts/app.blade.php` for
+     * every page — which is how a membership-only control ended up in the
+     * feature-flag and notification screens' HTML and turned two read-only
+     * render gates red (P18-E2). The fields arrive by `@push`, so the gate is
+     * "here, and nowhere else".
+     */
+    public function test_the_deactivation_fields_ship_only_on_the_member_list(): void
+    {
+        $this->signIn('superadmin');
+
+        $this->get('/members')->assertOk()->assertSee('confirmModalViolation', false);
+
+        $this->get('/users')->assertOk()->assertDontSee('confirmModalViolation', false);
+        $this->get(route('features.index'))->assertOk()->assertDontSee('confirmModalViolation', false);
+    }
+
     /** @return array{0: Member, 1: MemberTier} */
     private function memberWithHistory(): array
     {

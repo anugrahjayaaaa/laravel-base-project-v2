@@ -536,7 +536,7 @@ class MemberUiRenderTest extends TestCase
             'activate_url' => null, 'deactivate_url' => '/members/tiers/1/deactivate',
             'restore_url' => null, 'force_delete_url' => null,
         ])]));
-        $this->assertStringNotContainsString('Create Tier', $tiers, 'the create button ignored members.tiers.create');
+        $this->assertStringNotContainsString('Create Tier', $tiers, 'the create button ignored member_tiers.create');
         $this->assertStringNotContainsString('data-action="/members/tiers/1"', $tiers, 'the row delete ignored members.delete');
 
         $dashboard = $this->render('pages.members.dashboard', [

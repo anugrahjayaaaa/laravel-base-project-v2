@@ -77,7 +77,7 @@ class PermissionSeedTest extends TestCase
         // the four member reads behind `feature:member_loyalty` +
         // `->can('members.view')`.
         $this->assertEqualsCanonicalizing(
-            ['users', 'roles', 'permissions', 'settings', 'storage', 'backup', 'notifications', 'features', 'audit', 'pulse', 'health', 'queues', 'api_docs', 'members'],
+            ['users', 'roles', 'permissions', 'settings', 'storage', 'backup', 'notifications', 'features', 'audit', 'pulse', 'health', 'queues', 'api_docs', 'members', 'member_tiers'],
             array_keys(PermissionCatalog::grouped()),
             'The catalogue has a group with no feature behind it.'
         );

@@ -1077,6 +1077,19 @@ No `.manage` anywhere in the membership module. Routes, Form Requests, the tier 
 serves create and edit with one class and authorizes by method (`POST` →
 `members.tiers.create`, `PUT` → `members.tiers.update`), which is what the two route gates carry.
 
+**Amended 2026-11-06 (P18-E2)**: the tier set ships as **`member_tiers.{view,create,update,delete,restore,force_delete,activate,deactivate}`**, not
+`members.tiers.*`. The full-suite run's `PermissionCatalogTest` gates every name on
+`{resource}.{action}` — one dot — and the two-dot form was the only slug in the catalogue that
+broke it. The split this ADR decides is unchanged (two sets, users suffix shape, no `.manage`);
+what changed is that tiers are a **resource prefix** rather than a sub-namespace, which is also
+what `member_tiers` already is as a table. `FEATURE_BY_RESOURCE` therefore gained
+`'member_tiers' => 'member_loyalty'` so the prefix still resolves to the membership flag — one
+module, two resources, one kill switch — and `2026_11_06_000000_rename_member_tier_permissions`
+renames the seeded rows in place (`role_has_permissions` keys on the id, so grants survive).
+**Route names keep `members.tiers`** (`members.tiers.index`, `api.v1.members.tiers.*`): a URL
+path is not an ability, and renaming those would break every client and bookmark for a naming
+tidy-up.
+
 **Alternatives considered**: keep one set and rename `manage` → `update` (rejected — leaves
 pricing and profile destruction under one grant); split `MemberTierRequest` into two classes
 (rejected — seven identical rules duplicated for one line of authorize).
