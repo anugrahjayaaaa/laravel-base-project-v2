@@ -1,11 +1,13 @@
 # Phase 18 — General Membership & Loyalty System
 
-> Date: 2026-11-05 | Status: **Group A in REVIEW** (views + `member_loyalty` flag shipped
-> 2026-11-05; voucher rows moved to Phase 19 — owner decision the same day). **Partial B,
-> C and D also in REVIEW on this branch**: `P18-B1`, the read half of `P18-B6`, the
-> create/points writes, `P18-B4`'s manual half, the points-expiry sweep from `P18-C`'s
-> family, and `P18-D1`'s `members.view` / `members.manage` gates — see § 1's second
-> adjustment note and the per-task rows. C1/C2/D2/D3/E1 not built. |
+> Date: 2026-11-05 | Status: **Groups A and B DONE (2026-11-06)** — A shipped 2026-11-05
+> (views + `member_loyalty` flag; voucher rows moved to Phase 19 — owner decision the same
+> day); B closed on the re-run exit gate (`tests/Feature/Member` + `tests/Feature/Api/V1/Member`
+> + `tests/Feature/CrossCutting` 192 passed / 1168 assertions, Pint PASS 561 files, PHPStan
+> `[OK] No errors`), with `BroadcastMemberExpiryRequest` rolled into **P18-C2** — the owner
+> moved it to the group that ships the broadcast route it guards. **Partial C (points-expiry
+> sweep) and D1/D2 in REVIEW**: `P18-B4`'s manual half and `P18-D1`'s gates. C1–C3, D3, E1–E2
+> not built. |
 > Branch when scheduled: `feature/phase-18-membership-loyalty`
 > Purpose: give the base project a membership domain — dynamic tiers, a subscription
 > duration/expiry engine, member statistics, automated expiry sweeps with bulk
@@ -258,7 +260,8 @@ Exit gate: migrations migrate up and down on SQLite; every Action covered by a u
   extending `BaseFormRequest` — the voucher requests ship in **P19-B6** with their domain — each with a real `authorize()` returning the permission
   that performs the change (`members.create` is not in the catalogue — `members.manage`
   is, and `authorize()` names it), and `rules()` that call `$request->validated()` at the
-  controller.
+  controller. **Amended 2026-11-06 (owner): `BroadcastMemberExpiryRequest` ships with
+  P18-C2, together with the broadcast route it guards; the rest of Group B is DONE.**
 - **Acceptance**: every numeric bound rejects out-of-range (`duration_days`
   ≥ 1, `point_multiplier` ≥ 1); a tier slug is normalised and unique among non-deleted rows; `BroadcastMemberExpiryRequest`
   authorizes on `members.notify` (D-6).
