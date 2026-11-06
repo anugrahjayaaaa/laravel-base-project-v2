@@ -263,6 +263,12 @@ Route::middleware(['auth:web,sanctum', 'verified', 'password.change.required', '
         Route::bind('member', fn ($id) => Member::withTrashed()->findOrFail($id));
         Route::get('/members/{member}', [MemberController::class, 'show'])->name('members.show')->can('members.view')->whereNumber('member');
         Route::post('/members/{member}/points', [MemberController::class, 'points'])->name('members.points')->can('members.update')->whereNumber('member');
+        // A membership period is a member write: the tier row only names the
+        // price and the length, the role it carries is applied to the account
+        // here. `{subscription}` is the period row itself, so the cancel path
+        // revokes the role THAT row applied, not the tier's current one.
+        Route::post('/members/{member}/subscribe', [MemberController::class, 'subscribe'])->name('members.subscribe')->can('members.update')->whereNumber('member');
+        Route::post('/members/subscriptions/{subscription}/cancel', [MemberController::class, 'cancelSubscription'])->name('members.subscriptions.cancel')->can('members.update')->whereNumber('subscription');
         // The member's own on/off switch, beside the subscription state it is
         // independent of. `{member}` resolves withTrashed, so both controllers
         // refuse a trashed profile rather than auditing a change to nothing.

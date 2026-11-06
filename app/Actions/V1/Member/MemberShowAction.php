@@ -5,16 +5,17 @@ namespace App\Actions\V1\Member;
 use App\Models\Member;
 use App\Models\MemberPointHistory;
 use App\Models\MemberSubscription;
+use App\Models\MemberTier;
 use App\Models\SystemSetting;
 use App\Support\Money;
 
 /**
- * The member detail view model (Phase 18, read-only slice).
+ * The member detail view model (Phase 18).
  *
  * The ledger and the subscription history arrive as plain objects — the view
- * renders what it is handed and computes nothing. `adjustUrl` and `delete_url`
- * are live; `subscribeUrl` and `cancel_url` stay null until B6 ships their
- * routes.
+ * renders what it is handed and computes nothing. A null URL means "no
+ * affordance", which is what stops a trashed profile or an already cancelled
+ * period from offering an action that would only be refused.
  */
 class MemberShowAction
 {
@@ -22,6 +23,11 @@ class MemberShowAction
     public function run(Member $member): array
     {
         $member->load(['user', 'subscriptions.tier', 'pointHistories']);
+
+        // One live period is the whole condition for offering another: the
+        // Action refuses a second one, so the form stays hidden rather than
+        // posting a guaranteed 422.
+        $hasLivePeriod = $member->subscriptions->contains(fn (MemberSubscription $s) => $s->isLive());
 
         return [
             'indexUrl' => route('members.index'),
@@ -31,8 +37,8 @@ class MemberShowAction
             ).' earns '.number_format(
                 SystemSetting::getInt('member_points_earn_value', 1000)
             ).' points',
-            'subscribeUrl' => null,
-            'tierOptions' => [],
+            'subscribeUrl' => ($member->trashed() || $hasLivePeriod) ? null : route('members.subscribe', $member),
+            'tierOptions' => $this->tierOptions(),
             'member' => $this->row($member),
             'subscriptions' => $member->subscriptions
                 ->map(fn (MemberSubscription $s) => (object) [
@@ -46,7 +52,9 @@ class MemberShowAction
                     'role_name' => $s->role_name,
                     'starts_at' => $s->starts_at->format('Y-m-d'),
                     'expires_at' => $s->expires_at->format('Y-m-d'),
-                    'cancel_url' => null,
+                    'cancel_url' => $s->status === MemberSubscription::STATUS_CANCELLED
+                        ? null
+                        : route('members.subscriptions.cancel', $s),
                 ])
                 ->all(),
             'points' => $member->pointHistories
@@ -59,6 +67,23 @@ class MemberShowAction
                 ])
                 ->all(),
         ];
+    }
+
+    /**
+     * The tiers a new period can be bought on. A retired tier is absent, which
+     * is the same rule `MemberSubscriptionActivateAction` applies.
+     *
+     * @return array<int, string>
+     */
+    private function tierOptions(): array
+    {
+        return MemberTier::active()
+            ->orderBy('sort_order')
+            ->get()
+            ->mapWithKeys(fn (MemberTier $tier) => [
+                $tier->id => $tier->name.' — '.Money::format($tier->price).' / '.$tier->duration_days.' days',
+            ])
+            ->all();
     }
 
     private function row(Member $member): object

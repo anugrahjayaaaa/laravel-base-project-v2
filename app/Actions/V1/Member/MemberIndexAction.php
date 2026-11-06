@@ -66,7 +66,11 @@ class MemberIndexAction
     }
 
     /**
-     * The list the tabs switch between.
+     * The list the tabs switch between, as raw rows.
+     *
+     * Public because the API twin serializes exactly these rows: a listing that
+     * filters differently per channel is the drift `ResponseParityTest` exists
+     * to catch, so the query is shared and only the decoration differs.
      *
      * The tabs partition by the profile's own `is_active` flag — the same switch
      * the Activate / Deactivate buttons offer, so a row's tab and its state
@@ -81,7 +85,7 @@ class MemberIndexAction
      *
      * @return LengthAwarePaginator<int, Member>
      */
-    private function query(?string $search, string $sort, string $direction, string $status): LengthAwarePaginator
+    public function query(?string $search, string $sort, string $direction, string $status): LengthAwarePaginator
     {
         return Member::with(['user', 'subscriptions.tier'])
             ->when($search, fn ($q) => $q->where(

@@ -32,6 +32,11 @@ class MemberTierIndexAction
         $counts = $this->counts();
         $tiers = $this->query($search, $status);
 
+        // The decoration stays on this side of the split: the API twin reads the
+        // same rows and serializes them itself, so `route()` lives only in the
+        // screen-building path.
+        $tiers->setCollection($tiers->getCollection()->map(fn (MemberTier $tier) => $this->row($tier)));
+
         return [
             'indexUrl' => route('members.index'),
             'tiersUrl' => route('members.tiers'),
@@ -52,11 +57,14 @@ class MemberTierIndexAction
     }
 
     /**
-     * @return LengthAwarePaginator<int, object>
+     * The rows behind the tabs, undecorated — the API twin serializes these
+     * same rows, so the filter lives once.
+     *
+     * @return LengthAwarePaginator<int, MemberTier>
      */
-    private function query(?string $search, string $status): LengthAwarePaginator
+    public function query(?string $search, string $status): LengthAwarePaginator
     {
-        $tiers = MemberTier::query()
+        return MemberTier::query()
             ->when($search, fn ($q) => $q->where(
                 fn ($s) => $s->where('name', 'like', "%{$search}%")
                     ->orWhere('slug', 'like', "%{$search}%")
@@ -67,10 +75,6 @@ class MemberTierIndexAction
             ->orderBy('sort_order')
             ->paginate(10)
             ->withQueryString();
-
-        $tiers->setCollection($tiers->getCollection()->map(fn (MemberTier $tier) => $this->row($tier)));
-
-        return $tiers;
     }
 
     private function row(MemberTier $tier): object

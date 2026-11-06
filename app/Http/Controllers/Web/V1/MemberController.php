@@ -13,13 +13,17 @@ use App\Actions\V1\Member\MemberForceDeleteAction;
 use App\Actions\V1\Member\MemberIndexAction;
 use App\Actions\V1\Member\MemberRestoreAction;
 use App\Actions\V1\Member\MemberShowAction;
+use App\Actions\V1\Member\MemberSubscriptionActivateAction;
+use App\Actions\V1\Member\MemberSubscriptionCancelAction;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\V1\Member\BulkMemberRequest;
 use App\Http\Requests\V1\Member\MemberCreateRequest;
 use App\Http\Requests\V1\Member\MemberDeactivateRequest;
 use App\Http\Requests\V1\Member\MemberPointsAdjustRequest;
 use App\Http\Requests\V1\Member\MemberQueryRequest;
+use App\Http\Requests\V1\Member\MemberSubscribeRequest;
 use App\Models\Member;
+use App\Models\MemberSubscription;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -38,6 +42,8 @@ class MemberController extends Controller
         private readonly MemberShowAction $showAction,
         private readonly MemberCreateAction $createAction,
         private readonly MemberAdjustPointsAction $pointsAction,
+        private readonly MemberSubscriptionActivateAction $subscriptionActivateAction,
+        private readonly MemberSubscriptionCancelAction $subscriptionCancelAction,
         private readonly MemberActivateAction $activateAction,
         private readonly MemberDeactivateAction $deactivateAction,
         private readonly MemberDeleteAction $deleteAction,
@@ -97,6 +103,35 @@ class MemberController extends Controller
         $this->pointsAction->run($member, $request->validated(), $request->user());
 
         return back()->with('status', 'Points adjusted.');
+    }
+
+    /**
+     * Issue a membership period on the tier the operator picked.
+     *
+     * The tier role lands on the account, not on the profile, which is why this
+     * route is gated like a member write and not like a tier one.
+     */
+    public function subscribe(MemberSubscribeRequest $request, Member $member): RedirectResponse
+    {
+        abort_if($member->trashed(), 404);
+
+        $this->subscriptionActivateAction->run($member, $request->tier(), $request->user());
+
+        return back()->with('status', "Subscription activated for {$member->member_number}.");
+    }
+
+    /**
+     * End a period early.
+     *
+     * The `{subscription}` binding is the row the detail page listed, so the
+     * role revoked is the one THAT row applied — never whatever the tier
+     * points at today.
+     */
+    public function cancelSubscription(Request $request, MemberSubscription $subscription): RedirectResponse
+    {
+        $this->subscriptionCancelAction->run($subscription, $request->user());
+
+        return back()->with('status', 'Subscription cancelled.');
     }
 
     /**
