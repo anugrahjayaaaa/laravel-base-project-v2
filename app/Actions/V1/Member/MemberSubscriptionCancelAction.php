@@ -2,9 +2,8 @@
 
 namespace App\Actions\V1\Member;
 
-use App\Models\Member;
+use App\Actions\V1\Member\Concerns\RevokesSubscriptionRole;
 use App\Models\MemberSubscription;
-use App\Models\RoleLookup;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 
@@ -18,6 +17,8 @@ use Illuminate\Support\Facades\DB;
  */
 class MemberSubscriptionCancelAction
 {
+    use RevokesSubscriptionRole;
+
     public function run(MemberSubscription $subscription, ?User $causer = null): void
     {
         if ($subscription->status === MemberSubscription::STATUS_CANCELLED) {
@@ -56,23 +57,5 @@ class MemberSubscriptionCancelAction
                 'tier_name' => $subscription->tier?->name,
             ]);
         });
-    }
-
-    /**
-     * The status write already ran, so `currentlyActive` no longer sees this row;
-     * a hit here is a different live period carrying the same role.
-     */
-    private function roleStillLive(Member $member, string $roleName): bool
-    {
-        return $member->subscriptions()->currentlyActive()->where('role_name', $roleName)->exists();
-    }
-
-    private function removeRole(User $user, string $roleName): void
-    {
-        $target = array_values(
-            array_filter($user->roles->pluck('name')->all(), fn (string $name): bool => $name !== $roleName)
-        );
-
-        $user->syncRoles(RoleLookup::findMany($target)->values()->all());
     }
 }

@@ -12,26 +12,17 @@ use Illuminate\Support\Carbon;
  * The membership dashboard view model (Phase 18, read-only slice).
  *
  * Counters leave as primitives; the expiring widget is an empty list until
- * rows exist, never a Blade-made zero. `broadcastUrl` is null until B6 ships
- * the notify route, and the broadcast itself is a queued job (C2), not this
- * request.
+ * rows exist, never a Blade-made zero. `broadcastUrl` is the C2 notify route,
+ * and the broadcast itself is a queued job, not this request.
  */
 class MemberDashboardAction
 {
-    /**
-     * Days ahead that count as "expiring soon", from `member_expiry_alert_window_days`.
-     * The fallback is the value the seeder writes, so an install that never saved
-     * the settings page renders the same window it always did.
-     */
-    private const DEFAULT_ALERT_WINDOW_DAYS = 14;
-
     /** @return array<string, mixed> */
     public function run(): array
     {
-        $alertWindowDays = SystemSetting::getInt(
-            'member_expiry_alert_window_days',
-            self::DEFAULT_ALERT_WINDOW_DAYS
-        );
+        // The fallback is the value the seeder writes — same shape as every
+        // other SystemSetting reader in the app; the stored setting wins.
+        $alertWindowDays = SystemSetting::getInt('member_expiry_alert_window_days', 14);
 
         $windowEnd = Carbon::now()->addDays($alertWindowDays);
 
@@ -50,7 +41,7 @@ class MemberDashboardAction
 
         return [
             'indexUrl' => route('members.index'),
-            'broadcastUrl' => null,
+            'broadcastUrl' => route('membership.broadcast-expiry'),
             'alertWindowDays' => $alertWindowDays,
             'stats' => [
                 (object) ['label' => 'Active members', 'value' => MemberSubscription::currentlyActive()->distinct()->count('member_id')],

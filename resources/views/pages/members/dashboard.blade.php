@@ -48,7 +48,7 @@
                                     label="Send Expiry Alerts" title="Send Expiry Alerts"
                                     message="Every member with a subscription inside the alert window receives one mail and one in-app notification. Nothing is sent until the change is confirmed."
                                     variant="warning"
-                                    class="btn btn-sm btn-warning d-inline-flex align-items-center gap-2">
+                                    class="btn btn-sm btn-warning ms-auto d-inline-flex align-items-center gap-2">
                                     <i class="bi bi-bell"></i> Notify Expiring Members
                                 </x-ui.confirm-action>
                             @endif

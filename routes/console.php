@@ -4,6 +4,7 @@ use App\Enums\AuditExportStatus;
 use App\Jobs\CleanTemporaryStorageJob;
 use App\Jobs\InactivityLockSweep;
 use App\Jobs\MemberPointsExpirySweepJob;
+use App\Jobs\MemberSubscriptionExpirySweepJob;
 use App\Jobs\PasswordExpirySweep;
 use App\Jobs\QueueFailureProbe;
 use App\Models\AuditExport;
@@ -175,6 +176,23 @@ Schedule::job(new CleanTemporaryStorageJob())
 Schedule::job(new MemberPointsExpirySweepJob())
     ->daily()
     ->name('member-points-expiry')
+    ->withoutOverlapping();
+
+/**
+ * Daily subscription-expiry sweep (Phase 18, P18-C3) — the eighth entry.
+ *
+ * `withoutOverlapping()` stops one sweep running twice; it does not stop two
+ * DIFFERENT sweeps starting in the same minute, and midnight already belongs to
+ * `member-points-expiry`. Half past zero answers the P17-C3 collision question
+ * for this entry: the two sweeps share the `sweeps` queue, so a worker is busy
+ * with one when the other lands regardless — the stagger keeps their scan
+ * bursts (and their DB load) off the same tick. The flag kill switch lives in
+ * the job, not here, like every other sweep in this file.
+ */
+Schedule::job(new MemberSubscriptionExpirySweepJob())
+    ->dailyAt('00:30')
+    ->name('member-subscription-expiry')
+    ->onOneServer()
     ->withoutOverlapping();
 
 /**

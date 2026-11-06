@@ -307,6 +307,7 @@ Route::prefix('v1')->group(function () {
             Route::post('/members/{member}/points', [ApiMemberController::class, 'points'])->name('api.v1.members.points')->can('members.update')->whereNumber('member');
             Route::post('/members/{member}/subscribe', [ApiMemberController::class, 'subscribe'])->name('api.v1.members.subscribe')->can('members.update')->whereNumber('member');
             Route::post('/members/subscriptions/{subscription}/cancel', [ApiMemberController::class, 'cancelSubscription'])->name('api.v1.members.subscriptions.cancel')->can('members.update')->whereNumber('subscription');
+            Route::post('/members/broadcast-expiry', [ApiMemberController::class, 'broadcastExpiry'])->name('api.v1.members.broadcast-expiry')->can('members.notify');
             Route::post('/members/{member}/activate', [ApiMemberController::class, 'activate'])->name('api.v1.members.activate')->can('members.activate')->whereNumber('member');
             Route::post('/members/{member}/deactivate', [ApiMemberController::class, 'deactivate'])->name('api.v1.members.deactivate')->can('members.deactivate')->whereNumber('member');
             Route::delete('/members/{member}', [ApiMemberController::class, 'destroy'])->name('api.v1.members.destroy')->can('members.delete')->whereNumber('member');
