@@ -2,9 +2,11 @@
 
 namespace Tests\Feature\Notification;
 
+use App\Models\Member;
 use App\Models\User;
 use App\Notifications\AccountStateChangedNotification;
 use App\Notifications\ConfigurationChangedNotification;
+use App\Notifications\MemberExpiryWarningNotification;
 use App\Notifications\RegisterNotification;
 use App\Notifications\RolesChangedNotification;
 use App\Notifications\UserCreatedNotification;
@@ -12,6 +14,7 @@ use App\Notifications\UserRegisteredNotification;
 use Database\Seeders\PermissionSeeder;
 use Database\Seeders\RoleSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Spatie\Permission\PermissionRegistrar;
 use Tests\TestCase;
@@ -276,6 +279,8 @@ class NotificationCopyTest extends TestCase
                 'id' => 2, 'username' => 'ana', 'name' => 'Ana Silva', 'email' => 'ana@example.test',
             ]),
             '#none' => null,
+            '@member' => Member::factory()->make(['member_number' => 'MBR-000001']),
+            '@expires' => Carbon::parse('2026-11-20 09:00:00'),
         ];
 
         $args = [];
@@ -365,6 +370,9 @@ class NotificationCopyTest extends TestCase
             'new registration' => [UserRegisteredNotification::class, [
                 ['as' => 'operator', 'args' => ['@subject', '#causer']],
                 ['as' => 'operator, no actor', 'args' => ['@subject', '#none']],
+            ]],
+            'member expiry warning' => [MemberExpiryWarningNotification::class, [
+                ['as' => 'self', 'args' => ['@member', '@expires']],
             ]],
         ];
     }

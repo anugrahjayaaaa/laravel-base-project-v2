@@ -156,6 +156,7 @@ class ChannelParityTest extends TestCase
         'member points adjust' => ['web' => ['members.points'], 'api' => ['members.points']],
         'member subscribe' => ['web' => ['members.subscribe'], 'api' => ['members.subscribe']],
         'subscription cancel' => ['web' => ['members.subscriptions.cancel'], 'api' => ['members.subscriptions.cancel']],
+        'expiry broadcast' => ['web' => ['membership.broadcast-expiry'], 'api' => ['members.broadcast-expiry']],
         'member delete' => ['web' => ['members.destroy'], 'api' => ['members.destroy']],
         'member restore' => ['web' => ['members.restore'], 'api' => ['members.restore']],
         'member force delete' => ['web' => ['members.force-delete'], 'api' => ['members.force-delete']],

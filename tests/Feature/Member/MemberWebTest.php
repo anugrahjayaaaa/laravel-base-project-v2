@@ -94,7 +94,7 @@ class MemberWebTest extends TestCase
             ->assertSee('Create Member')
             ->assertSee('data-bulk-route', false);
         $this->get('/members/tiers')->assertOk()->assertSee('Create Tier');
-        $this->get('/members/dashboard')->assertOk()->assertDontSee('Notify Expiring Members', false);
+        $this->get('/members/dashboard')->assertOk()->assertSee('Notify Expiring Members');
         // The points form ships; the subscribe form still does not.
         $this->get('/members/'.$member->id)->assertOk()->assertSee('Adjust Points');
         $this->get('/members/'.$member->id)->assertOk()->assertDontSee('member_tier_id');
