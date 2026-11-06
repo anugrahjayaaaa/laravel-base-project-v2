@@ -13,9 +13,9 @@ use Database\Seeders\FeatureFlagSeeder;
 use Database\Seeders\PermissionSeeder;
 use Database\Seeders\RoleSeeder;
 use Database\Seeders\SystemSettingSeeder;
-use App\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Pennant\Feature;
+use Laravel\Sanctum\Sanctum;
 use Spatie\Activitylog\Models\Activity;
 use Tests\TestCase;
 
@@ -32,10 +32,6 @@ class MemberPointsTest extends TestCase
     {
         parent::setUp();
 
-        // The POST assertions are about the gate and the ledger, so the CSRF
-        // middleware is opted out the same way the standing role suites do it.
-        $this->withoutMiddleware(VerifyCsrfToken::class);
-
         $this->seed(RoleSeeder::class);
         $this->seed(PermissionSeeder::class);
         $this->seed(FeatureFlagSeeder::class);
@@ -47,7 +43,9 @@ class MemberPointsTest extends TestCase
     {
         $user = User::factory()->create(['email_verified_at' => now()]);
         $user->assignRole('admin');
-        $this->actingAs($user);
+        // The web form is gone (owner 2026-11-06, points move at the Phase 19
+        // checkout); the same Action, Request and gates stay reachable here.
+        Sanctum::actingAs($user);
 
         return $user;
     }
@@ -62,8 +60,8 @@ class MemberPointsTest extends TestCase
         $this->manager();
         $member = $this->member(1000);
 
-        $this->post(route('members.points', $member), ['delta' => -300, 'reason' => 'Wrong entry'])
-            ->assertSessionHasNoErrors();
+        $this->postJson(route('api.v1.members.points', $member), ['delta' => -300, 'reason' => 'Wrong entry'])
+            ->assertSuccessful();
 
         $this->assertSame(700, $member->fresh()->points_balance);
 
@@ -85,8 +83,8 @@ class MemberPointsTest extends TestCase
 
         $member = $this->member(0);
 
-        $this->post(route('members.points', $member), ['purchase_amount' => 175000, 'reason' => 'Counter sale'])
-            ->assertSessionHasNoErrors();
+        $this->postJson(route('api.v1.members.points', $member), ['purchase_amount' => 175000, 'reason' => 'Counter sale'])
+            ->assertSuccessful();
 
         // 175.000 / 50.000 = 3 whole steps, the partial remainder earns nothing.
         $this->assertSame(3000, $member->fresh()->points_balance);
@@ -98,8 +96,8 @@ class MemberPointsTest extends TestCase
         $this->manager();
         $member = $this->member(200);
 
-        $this->post(route('members.points', $member), ['delta' => -500, 'reason' => 'Too much'])
-            ->assertSessionHasErrors('delta');
+        $this->postJson(route('api.v1.members.points', $member), ['delta' => -500, 'reason' => 'Too much'])
+            ->assertJsonValidationErrors('delta');
 
         $this->assertSame(200, $member->fresh()->points_balance);
         $this->assertSame(0, MemberPointHistory::count(), 'a refused write must leave no ledger row');
@@ -110,14 +108,14 @@ class MemberPointsTest extends TestCase
         $this->manager();
         $member = $this->member();
 
-        $this->post(route('members.points', $member), [
+        $this->postJson(route('api.v1.members.points', $member), [
             'delta' => 100,
             'purchase_amount' => 50000,
             'reason' => 'Both',
-        ])->assertSessionHasErrors('delta');
+        ])->assertJsonValidationErrors('delta');
 
-        $this->post(route('members.points', $member), ['reason' => 'Neither'])
-            ->assertSessionHasErrors('delta');
+        $this->postJson(route('api.v1.members.points', $member), ['reason' => 'Neither'])
+            ->assertJsonValidationErrors('delta');
     }
 
     public function test_a_viewer_cannot_adjust_points_and_the_flag_closes_the_route(): void
@@ -126,17 +124,17 @@ class MemberPointsTest extends TestCase
         $role = Role::create(['name' => 'viewer_only', 'guard_name' => RoleLookup::guard()]);
         $role->syncPermissions(['members.view']);
         $user->syncRoles([$role->name]);
-        $this->actingAs($user);
+        Sanctum::actingAs($user);
 
         $member = $this->member();
 
-        $this->post(route('members.points', $member), ['delta' => 10, 'reason' => 'Nope'])->assertForbidden();
+        $this->postJson(route('api.v1.members.points', $member), ['delta' => 10, 'reason' => 'Nope'])->assertForbidden();
 
         Feature::deactivate('member_loyalty');
         Feature::flushCache();
 
         $this->manager();
-        $this->post(route('members.points', $member), ['delta' => 10, 'reason' => 'Flag off'])->assertForbidden();
+        $this->postJson(route('api.v1.members.points', $member), ['delta' => 10, 'reason' => 'Flag off'])->assertForbidden();
     }
 
     public function test_the_annual_reset_zeroes_balances_and_moves_the_date_a_year_forward(): void

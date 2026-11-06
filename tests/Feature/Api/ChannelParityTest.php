@@ -153,7 +153,11 @@ class ChannelParityTest extends TestCase
         'member list' => ['web' => ['members.index'], 'api' => ['members.index']],
         'member read' => ['web' => ['members.show'], 'api' => ['members.show']],
         'member create' => ['web' => ['members.create', 'members.store'], 'api' => ['members.store']],
-        'member points adjust' => ['web' => ['members.points'], 'api' => ['members.points']],
+        'member points adjust' => [
+            'only' => 'api',
+            'api' => ['members.points'],
+            'why' => 'Owner decision 2026-11-06: the manual form left the member page — a balance move belongs to the checkout that earned it (Phase 19) — while the API endpoint stays for programmatic corrections, so the capability has one address by design, not by omission.',
+        ],
         'member subscribe' => ['web' => ['members.subscribe'], 'api' => ['members.subscribe']],
         'subscription cancel' => ['web' => ['members.subscriptions.cancel'], 'api' => ['members.subscriptions.cancel']],
         'expiry broadcast' => ['web' => ['membership.broadcast-expiry'], 'api' => ['members.broadcast-expiry']],

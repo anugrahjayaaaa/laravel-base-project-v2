@@ -260,9 +260,13 @@ Route::middleware(['auth:web,sanctum', 'verified', 'password.change.required', '
         // depends on the action in the body, so BulkMemberTierRequest maps it.
         Route::post('/members/tiers/bulk-action', [MemberTierController::class, 'bulkAction'])->name('members.tiers.bulk-action')->middleware('throttle:bulk-action');
         Route::get('/members/dashboard', [MemberDashboardController::class, 'index'])->name('membership.dashboard')->can('members.view');
+        // Warning every expiring member by mail is its own decision from editing
+        // one, so `members.notify` — not `members.manage` — gates it (D-6).
+        Route::post('/members/dashboard/broadcast-expiry', [MemberDashboardController::class, 'broadcastExpiry'])->name('membership.broadcast-expiry')->can('members.notify');
         Route::bind('member', fn ($id) => Member::withTrashed()->findOrFail($id));
         Route::get('/members/{member}', [MemberController::class, 'show'])->name('members.show')->can('members.view')->whereNumber('member');
-        Route::post('/members/{member}/points', [MemberController::class, 'points'])->name('members.points')->can('members.update')->whereNumber('member');
+        // No web points route (owner 2026-11-06): manual balance moves belong to
+        // the Phase 19 checkout, and the API twin stays for programmatic ones.
         // A membership period is a member write: the tier row only names the
         // price and the length, the role it carries is applied to the account
         // here. `{subscription}` is the period row itself, so the cancel path

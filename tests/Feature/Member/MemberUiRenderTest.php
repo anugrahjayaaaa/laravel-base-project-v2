@@ -308,8 +308,6 @@ class MemberUiRenderTest extends TestCase
 
         $html = $this->render('pages.members.show', [
             'indexUrl' => '/members',
-            'adjustUrl' => '/members/1/points',
-            'earnRule' => 'Rp 50.000 earns 1.000 points',
             'subscribeUrl' => '/members/1/subscriptions',
             'tierOptions' => [3 => 'Gold — 365 days'],
             'member' => $this->memberRow([
@@ -369,8 +367,6 @@ class MemberUiRenderTest extends TestCase
         // The empty ledger/history states render as text, not as blanks.
         $empty = $this->render('pages.members.show', [
             'indexUrl' => '/members',
-            'adjustUrl' => null,
-            'earnRule' => 'Rp 50.000 earns 1.000 points',
             'subscribeUrl' => null,
             'tierOptions' => [],
             'member' => $this->memberRow(['delete_url' => null, 'tier_name' => null, 'notes' => null]),
@@ -552,32 +548,6 @@ class MemberUiRenderTest extends TestCase
             'membersByTier' => [],
         ]);
         $this->assertStringNotContainsString('data-action="/members/notify-expiring"', $dashboard, 'the broadcast trigger ignored members.notify');
-    }
-
-    public function test_the_adjust_points_form_appears_only_with_a_write_url(): void
-    {
-        $this->signIn('superadmin');
-
-        $base = [
-            'indexUrl' => '/members',
-            'subscribeUrl' => null,
-            'tierOptions' => [],
-            'member' => $this->memberRow(),
-            'subscriptions' => [],
-            'points' => [],
-        ];
-
-        $with = $this->render('pages.members.show', [...$base,
-            'adjustUrl' => '/members/1/points',
-            'earnRule' => 'Rp 50.000 earns 1.000 points',
-        ]);
-        $this->assertStringContainsString('action="/members/1/points"', $with);
-
-        $without = $this->render('pages.members.show', [...$base,
-            'adjustUrl' => null,
-            'earnRule' => 'Points earning is off',
-        ]);
-        $this->assertStringNotContainsString('Adjust Points', $without, 'a null adjustUrl still rendered its form');
     }
 
     public function test_null_write_urls_take_away_every_write_affordance(): void

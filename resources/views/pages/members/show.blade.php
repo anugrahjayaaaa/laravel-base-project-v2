@@ -151,58 +151,10 @@
                     </div>
                 </div>
 
-                @can('members.update')
-                    {{-- adjustUrl is null for a trashed profile: the Action would
-                         fail on a row nothing can read. --}}
-                    @if ($adjustUrl && !$member->is_trashed)
-                        <div class="card border-0 shadow-sm mb-4">
-                            <div class="card-header bg-transparent border-bottom py-3">
-                                <h5 class="card-title mb-0 fw-semibold">Adjust Points</h5>
-                            </div>
-                            <form method="POST" action="{{ $adjustUrl }}">
-                                @csrf
-                                <div class="card-body p-4">
-                                    <div class="row g-3">
-                                        <div class="col-md-4">
-                                            <label for="delta" class="form-label">Points</label>
-                                            <input type="number" name="delta" id="delta"
-                                                class="form-control @error('delta') is-invalid @enderror"
-                                                value="{{ old('delta') }}" placeholder="e.g. -500">
-                                            @error('delta')
-                                                <div class="invalid-feedback">{{ $message }}</div>
-                                            @enderror
-                                            <div class="form-text">Use a negative number to deduct.</div>
-                                        </div>
-                                        <div class="col-md-4">
-                                            <label for="purchase_amount" class="form-label">Or Purchase (Rp)</label>
-                                            <input type="number" name="purchase_amount" id="purchase_amount"
-                                                class="form-control @error('purchase_amount') is-invalid @enderror"
-                                                value="{{ old('purchase_amount') }}" placeholder="e.g. 150000">
-                                            @error('purchase_amount')
-                                                <div class="invalid-feedback">{{ $message }}</div>
-                                            @enderror
-                                            <div class="form-text">{{ $earnRule }}.</div>
-                                        </div>
-                                        <div class="col-md-4">
-                                            <label for="reason" class="form-label">Reason</label>
-                                            <input type="text" name="reason" id="reason"
-                                                class="form-control @error('reason') is-invalid @enderror"
-                                                value="{{ old('reason') }}" placeholder="Why the balance moved">
-                                            @error('reason')
-                                                <div class="invalid-feedback">{{ $message }}</div>
-                                            @enderror
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="card-footer bg-body-tertiary border-top py-3 d-flex justify-content-end">
-                                    <button type="submit" class="btn btn-primary d-inline-flex align-items-center gap-2">
-                                        <i class="bi bi-check-lg"></i> Save Adjustment
-                                    </button>
-                                </div>
-                            </form>
-                        </div>
-                    @endif
-                @endcan
+                {{-- No Adjust Points form by owner decision 2026-11-06: a balance
+                     move belongs to the checkout that earned it (Phase 19), not to
+                     a manual box on the profile. `POST /api/v1/members/{id}/points`
+                     stays for programmatic corrections. --}}
             </div>
 
             <div class="col-lg-4 col-12">

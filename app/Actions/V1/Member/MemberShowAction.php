@@ -6,7 +6,6 @@ use App\Models\Member;
 use App\Models\MemberPointHistory;
 use App\Models\MemberSubscription;
 use App\Models\MemberTier;
-use App\Models\SystemSetting;
 use App\Support\Money;
 
 /**
@@ -31,12 +30,6 @@ class MemberShowAction
 
         return [
             'indexUrl' => route('members.index'),
-            'adjustUrl' => route('members.points', $member),
-            'earnRule' => Money::format(
-                SystemSetting::getInt('member_points_earn_amount', 50000)
-            ).' earns '.number_format(
-                SystemSetting::getInt('member_points_earn_value', 1000)
-            ).' points',
             'subscribeUrl' => ($member->trashed() || $hasLivePeriod) ? null : route('members.subscribe', $member),
             'tierOptions' => $this->tierOptions(),
             'member' => $this->row($member),

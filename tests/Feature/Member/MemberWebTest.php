@@ -95,9 +95,11 @@ class MemberWebTest extends TestCase
             ->assertSee('data-bulk-route', false);
         $this->get('/members/tiers')->assertOk()->assertSee('Create Tier');
         $this->get('/members/dashboard')->assertOk()->assertSee('Notify Expiring Members');
-        // The points form ships; the subscribe form still does not.
-        $this->get('/members/'.$member->id)->assertOk()->assertSee('Adjust Points');
-        $this->get('/members/'.$member->id)->assertOk()->assertDontSee('member_tier_id');
+        // Points have no web form by owner decision 2026-11-06: Phase 19's
+        // checkout moves the balance. This member holds a live period, so the
+        // subscribe card is correctly absent too — the points card is the one
+        // that must never come back.
+        $this->get('/members/'.$member->id)->assertOk()->assertDontSee('Adjust Points');
     }
 
     public function test_a_viewer_without_members_view_is_refused_on_every_screen(): void

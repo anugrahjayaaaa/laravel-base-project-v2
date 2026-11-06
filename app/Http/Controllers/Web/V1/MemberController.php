@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Web\V1;
 
 use App\Actions\V1\BulkAction\BulkActionProcessor;
-use App\Actions\V1\Member\MemberAdjustPointsAction;
 use App\Actions\V1\Member\MemberActivateAction;
 use App\Actions\V1\Member\MemberBulkActionHandler;
 use App\Actions\V1\Member\MemberCreateAction;
@@ -19,7 +18,6 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\V1\Member\BulkMemberRequest;
 use App\Http\Requests\V1\Member\MemberCreateRequest;
 use App\Http\Requests\V1\Member\MemberDeactivateRequest;
-use App\Http\Requests\V1\Member\MemberAdjustPointsRequest;
 use App\Http\Requests\V1\Member\MemberQueryRequest;
 use App\Http\Requests\V1\Member\MemberSubscribeRequest;
 use App\Models\Member;
@@ -41,7 +39,6 @@ class MemberController extends Controller
         private readonly MemberIndexAction $indexAction,
         private readonly MemberShowAction $showAction,
         private readonly MemberCreateAction $createAction,
-        private readonly MemberAdjustPointsAction $pointsAction,
         private readonly MemberSubscriptionActivateAction $subscriptionActivateAction,
         private readonly MemberSubscriptionCancelAction $subscriptionCancelAction,
         private readonly MemberActivateAction $activateAction,
@@ -96,13 +93,6 @@ class MemberController extends Controller
 
         return redirect()->route('members.show', $member)
             ->with('status', 'Member created. Their verification link is on its way.');
-    }
-
-    public function points(MemberAdjustPointsRequest $request, Member $member): RedirectResponse
-    {
-        $this->pointsAction->run($member, $request->validated(), $request->user());
-
-        return back()->with('status', 'Points adjusted.');
     }
 
     /**
