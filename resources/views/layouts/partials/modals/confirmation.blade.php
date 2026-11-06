@@ -12,25 +12,12 @@
                 </div>
                 <div class="modal-body">
                     <p id="confirmModalMessage">Are you sure?</p>
-                    {{-- Member deactivation only. Hidden AND disabled, so a trigger
-                         that does not ask for it cannot submit these keys by
-                         accident; the driver enables the block per trigger. The
-                         hidden 0 ahead of the checkbox is what makes an unchecked
-                         box arrive as violation=0 instead of arriving as nothing. --}}
-                    <div id="confirmModalDeactivation" class="d-none mt-3">
-                        <div class="form-check form-switch">
-                            <input type="hidden" name="violation" value="0" disabled>
-                            <input class="form-check-input" type="checkbox" role="switch"
-                                id="confirmModalViolation" name="violation" value="1" disabled>
-                            <label class="form-check-label" for="confirmModalViolation">Violation of rules</label>
-                        </div>
-                        <div class="mt-2">
-                            <label class="form-label fs-7" for="confirmModalReason">Reason</label>
-                            <textarea id="confirmModalReason" name="reason" class="form-control"
-                                rows="3" maxlength="500" disabled></textarea>
-                            <div class="form-text">Goes on the audit trail. Required for a violation.</div>
-                        </div>
-                    </div>
+                    {{-- Page-specific extra fields, pushed by the screen whose
+                         trigger needs them (member deactivation today). This
+                         partial is inside `layouts/app.blade.php`, so anything
+                         hardcoded here ships on every page in the app — which is
+                         exactly what the read-only UI render gates assert away. --}}
+                    @stack('confirmModalFields')
                     <div id="confirmModalError" class="alert alert-danger d-none mt-2 mb-0"></div>
                 </div>
                 <div class="modal-footer">

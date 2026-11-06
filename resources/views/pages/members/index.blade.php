@@ -3,6 +3,30 @@
      a missing route name throws. B6's controllers supply these keys. --}}
 @extends('layouts.app', ['title' => 'Members'])
 
+{{-- Deactivation asks one question no other action has: is this a sanction? The
+     answer decides whether the paid period is forfeited or paused, so it goes on
+     the audit trail. Hidden AND disabled by default — the driver enables the
+     block only for a trigger that carries `data-deactivation-fields`, and the
+     hidden 0 ahead of the checkbox is what makes an unchecked box arrive as
+     violation=0 instead of arriving as nothing. Pushed into the shared confirm
+     modal rather than hardcoded in it, so no other page ships these inputs. --}}
+@push('confirmModalFields')
+    <div id="confirmModalDeactivation" class="d-none mt-3">
+        <div class="form-check form-switch">
+            <input type="hidden" name="violation" value="0" disabled>
+            <input class="form-check-input" type="checkbox" role="switch"
+                id="confirmModalViolation" name="violation" value="1" disabled>
+            <label class="form-check-label" for="confirmModalViolation">Violation of rules</label>
+        </div>
+        <div class="mt-2">
+            <label class="form-label fs-7" for="confirmModalReason">Reason</label>
+            <textarea id="confirmModalReason" name="reason" class="form-control"
+                rows="3" maxlength="500" disabled></textarea>
+            <div class="form-text">Goes on the audit trail. Required for a violation.</div>
+        </div>
+    </div>
+@endpush
+
 @section('content')
     @feature('member_loyalty')
         <div class="content-header mb-3">
