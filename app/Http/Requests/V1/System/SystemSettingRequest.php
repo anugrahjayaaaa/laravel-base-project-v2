@@ -214,6 +214,30 @@ class SystemSettingRequest extends BaseFormRequest
             'backup_retention_daily' => ['nullable', 'integer', 'min:1', 'max:90'],
             'backup_retention_weekly' => ['nullable', 'integer', 'min:1', 'max:52'],
             'backup_retention_monthly' => ['nullable', 'integer', 'min:1', 'max:60'],
+
+            // Phase 18 — membership & loyalty. The six keys `member_loyalty`
+            // owns in config/pennant.php: a save while that flag is off is
+            // stripped by SystemSettingsUpdateAction, exactly as the storage and
+            // backup keys are.
+            //
+            // The expiry date is nullable because empty is the answer "points
+            // never expire" — the owner asked for the reset to be optional. The
+            // rest are not: the web form always posts them and an API client's
+            // omitted key is backfilled from storage, so a `nullable` here would
+            // let a payload write an empty value a reader then has to guess a
+            // fallback for. `alpha_num` is the prefix's bound: it is glued to the
+            // number with a `-`, so a space or a dash in it makes the series
+            // ambiguous to read back.
+            'member_expiry_alert_window_days' => ['integer', 'min:1', 'max:365'],
+            'member_number_prefix' => ['string', 'alpha_num', 'max:10'],
+            'member_points_expiry_date' => ['nullable', 'date_format:Y-m-d'],
+            'member_points_earn_amount' => ['integer', 'min:0', 'max:1000000000'],
+            'member_points_earn_value' => ['integer', 'min:0', 'max:1000000'],
+            // Every money amount the app displays carries this currency's symbol
+            // (`App\Support\Money`). `exists` rather than a free-text code: an
+            // unknown one has no symbol and no separator convention, so it would
+            // print amounts that look right and are not.
+            'currency_code' => ['nullable', 'string', 'size:3', 'exists:currencies,code'],
         ];
     }
 
