@@ -31,7 +31,14 @@ cheat sheet; that guide is the contract.
   Leave the work in the working tree and say what is staged; the owner commits.
   (2026-11-04: `git commit` was run after a task because a previous turn had
   asked for it — the permission does not carry over to later turns.)
-- Run `php artisan test` before declaring done. Tests green or it is not done.
+- **Run only the tests you wrote or touched** — `php artisan test tests/Feature/<Dir>`
+  (or the single file). Never run the full suite unless the owner asks for it in that
+  turn: it costs ~10 minutes and every gate it owns has a targeted equivalent
+  (catalogue drift → `tests/Feature/Role`, channel parity → `tests/Feature/Api/ChannelParityTest.php`,
+  sidebar/route drift → `tests/Feature/Role/GateDUiGatingTest.php`, docs → `tests/Arch`).
+  The full suite belongs to a closure task (P-E2 style), not to a feature slice.
+  `vendor/bin/pint --test` and `vendor/bin/phpstan analyse` stay repo-wide — they are fast.
+  Tests green or it is not done.
 - **Never write an inline FQCN** (`\App\Models\User::query()`) — in `app/`, in
   `tests/`, anywhere. `use` it at the top and write `User::query()`. Only
   docblocks, comments, runtime strings and the global namespace (`\Closure`,
