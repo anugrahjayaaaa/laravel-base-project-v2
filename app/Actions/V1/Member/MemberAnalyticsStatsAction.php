@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\DB;
 /**
  * Membership analytics view model (P18-F2): growth, retention and lifecycle risk.
  *
- * Non-financial only — money is Phase 20's dashboard. Nothing here writes a row.
+ * Non-financial only — money is Phase 19's dashboard. Nothing here writes a row.
  *
  * Two rules shape it:
  * - one conditional aggregate per metric instead of one per bucket, so a twelve-

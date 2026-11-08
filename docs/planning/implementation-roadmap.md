@@ -23,9 +23,9 @@
 | 15 | Comprehensive testing | P0 | DONE |
 | 16 | Documentation verification | P0 | DONE |
 | 17 | Full regression / final review | P0 | DONE |
-| 18 | General membership & loyalty system | P1 | Group A in REVIEW; B–E PLANNED (voucher moved to 20); **Group F added 2026-11-06** |
-| 19 | General app dashboard & platform health metrics | P1 | PLANNED (breakdown written 2026-11-06) |
-| 20 | Basic POS engine & omnichannel payment gateway | P1 | PLANNED (voucher A-slice in REVIEW; renumbered from 19 on 2026-11-06) |
+| 18 | General membership & loyalty system | P1 | Group A in REVIEW; B–E PLANNED (voucher moved to 19); **Group F added 2026-11-06** |
+| 19 | Basic POS engine & omnichannel payment gateway | P1 | PLANNED (voucher A-slice in REVIEW; renumbered 20 → 19 on 2026-11-08, ADR-035) |
+| 20 | General app dashboard & platform health metrics | P1 | PLANNED (breakdown written 2026-11-06) |
 
 ## Dependency Map
 
@@ -58,10 +58,10 @@ Testing / Hardening (Phases 13-17)
     ↓
 Membership & Loyalty (Phase 18)
     ↓
-POS & Payment Gateway (Phase 20)
+POS & Payment Gateway (Phase 19)
 
 Side branch (added 2026-11-06, no membership dependency — it reads users/sessions only):
-General App Dashboard (Phase 19) — free to run after Phase 17, in either order with 18/20
+General App Dashboard (Phase 20) — free to run after Phase 17, in either order with 18/19
 ```
 
 ## Phase Details
@@ -227,7 +227,7 @@ email-verification-notice, password-change pages using AdminLTE auth layout.
 - Duration / expiry engine
 - Member dashboard & statistics
 - Automated expiry sweep + notification jobs
-- ~~Member voucher & discount engine~~ — **moved to Phase 20 (owner decision
+- ~~Member voucher & discount engine~~ — **moved to Phase 19 (owner decision
   2026-11-05): voucher is its own domain — own flag, own menu, validated at payment time,
   neither a membership nor a gateway feature**
 - Depends on: Phase 17 (foundation closed) — reuses the Phase 8 settings, Phase 7 feature
@@ -264,8 +264,8 @@ email-verification-notice, password-change pages using AdminLTE auth layout.
   eighth `schedule:list` entry), the chunked bulk expiry warning (mail + in-app, D-3), 25 web
   routes and their API twins under one permission set, and the seventeen member-module
   slugs behind them (nine `members.*` + eight `member_tiers.*`, each write route naming its
-  own, both resources mapped to the one `member_loyalty` flag). **The voucher engine left for Phase 20 (owner 2026-11-05)**;
-  no spend/checkout path exists yet — Phase 20 B2 spends the points this phase deliberately
+  own, both resources mapped to the one `member_loyalty` flag). **The voucher engine left for Phase 19 (owner 2026-11-05)**;
+  no spend/checkout path exists yet — Phase 19 B2 spends the points this phase deliberately
   left unspent. Deferred: the MySQL two-session proof of the points row lock (D-5) and the
   WhatsApp channel (O-2, unshipped by design). Work sits in the working tree **uncommitted** —
   the owner reviews and commits (`AGENTS.md`).
@@ -274,32 +274,7 @@ email-verification-notice, password-change pages using AdminLTE auth layout.
   it also absorbs the delivered member-facing `/dashboard`, which held the ID `P18-F1` until
   this group was written and is now `P18-E3` (D-8).
 
-### Phase 19: General App Dashboard & Platform Health Metrics
-- Platform-wide staff dashboard: registered users, email verification health, profile
-  completeness, active sessions
-- Registration growth trend with a dynamic timeframe filter (7d / 30d / 90d / 1y / custom)
-- Account status breakdown, profile completion checklist, security event feed (failed logins,
-  locked accounts) read from the tables Phase 3/6/10 already write
-- **Split from membership on 2026-11-06 by owner decision**: member analytics stay in
-  Phase 18 Group F, one screen per audience; POS & payment moved out of this number to
-  **Phase 20**
-- Depends on: Phase 17 only. It reads `users`, `sessions`, `activities` and
-  `failed_login_attempts` — no membership table. It does **not** depend on Phase 18, but it
-  shares `/dashboard` with the member-facing screen shipped 2026-11-06 (P18-E3), and that
-  branch is where `dashboard.view` has to land: the landing route stays ungated or a
-  permissionless account 403s off the page login sends it to (phase doc D-1, ADR-034)
-- Breakdown: [phase-19-general-dashboard.md](phase-19-general-dashboard.md) — 12 tasks in four
-  groups (A UI + filters + render gate → B aggregator + health read + controller → C
-  permission + flag + audit decision → D tests + closure), written 2026-11-06 with eight
-  brief-vs-code conflicts recorded (D-1..D-8) before any task is built: **no profile fields
-  exist to score** (O-1); the Action name is verb-first; health and sessions are already
-  answered by `/health`, `/sessions` and Pulse; audit convention says reads are not audited
-  and a per-pageview `dashboard.viewed` is a write on every landing (O-2); **no chart library
-  is installed and CSP blocks inline JS** (O-3); `pages/dashboard/index.blade.php` must
-  replace `pages/dashboard.blade.php` in the same commit
-- Status: **PLANNED (breakdown written 2026-11-06, no task started, no code written)**
-
-### Phase 20: Basic POS Engine & Omnichannel Payment Gateway
+### Phase 19: Basic POS Engine & Omnichannel Payment Gateway
 - Point of Sales engine (self-service + cashier interface)
 - ESC/POS thermal printing
 - Omnichannel payment gateway configuration
@@ -311,7 +286,7 @@ email-verification-notice, password-change pages using AdminLTE auth layout.
 - Depends on: Phase 18 (tier pricing and points are applied at the POS line; the voucher
   now lives here, not there) and
   Phase 14 (gateway credentials are encrypted `SystemSetting` values, same pattern as SMTP)
-- Breakdown: [phase-20-pos-and-payment.md](phase-20-pos-and-payment.md) — 22 tasks in five
+- Breakdown: [phase-19-pos-and-payment.md](phase-19-pos-and-payment.md) — 22 tasks in five
   groups (A UI + flags → B data/shifts/sales/ESC-POS → C gateway order + webhook +
   credentials → D RBAC/flag/audit → E tests + closure), written 2026-11-05 with thirteen
   brief-vs-code conflicts recorded (D-1..D-13) before any task is built: **no product or
@@ -324,5 +299,29 @@ email-verification-notice, password-change pages using AdminLTE auth layout.
   whitelist and **inside** `SystemSetting::SECRET_KEYS` so `settings.manage` cannot repoint
   production money; Net Profit has no cost data; `mike42/escpos-php` needs an ADR before
   `composer require` and only its byte stream is testable here; flag-off is 403, not 404
-- Status: PLANNED — except the voucher Group A slice (P20-A6), shipped 2026-11-05 and in
+- Status: PLANNED — except the voucher Group A slice (P19-A6), shipped 2026-11-05 and in
   REVIEW
+### Phase 20: General App Dashboard & Platform Health Metrics
+- Platform-wide staff dashboard: registered users, email verification health, profile
+  completeness, active sessions
+- Registration growth trend with a dynamic timeframe filter (7d / 30d / 90d / 1y / custom)
+- Account status breakdown, profile completion checklist, security event feed (failed logins,
+  locked accounts) read from the tables Phase 3/6/10 already write
+- **Split from membership on 2026-11-06 by owner decision**: member analytics stay in
+  Phase 18 Group F, one screen per audience; POS & payment moved out of this number to
+  **Phase 19**
+- Depends on: Phase 17 only. It reads `users`, `sessions`, `activities` and
+  `failed_login_attempts` — no membership table. It does **not** depend on Phase 18, but it
+  shares `/dashboard` with the member-facing screen shipped 2026-11-06 (P18-E3), and that
+  branch is where `dashboard.view` has to land: the landing route stays ungated or a
+  permissionless account 403s off the page login sends it to (phase doc D-1, ADR-034)
+- Breakdown: [phase-20-general-dashboard.md](phase-20-general-dashboard.md) — 12 tasks in four
+  groups (A UI + filters + render gate → B aggregator + health read + controller → C
+  permission + flag + audit decision → D tests + closure), written 2026-11-06 with eight
+  brief-vs-code conflicts recorded (D-1..D-8) before any task is built: **no profile fields
+  exist to score** (O-1); the Action name is verb-first; health and sessions are already
+  answered by `/health`, `/sessions` and Pulse; audit convention says reads are not audited
+  and a per-pageview `dashboard.viewed` is a write on every landing (O-2); **no chart library
+  is installed and CSP blocks inline JS** (O-3); `pages/dashboard/index.blade.php` must
+  replace `pages/dashboard.blade.php` in the same commit
+- Status: **PLANNED (breakdown written 2026-11-06, no task started, no code written)**

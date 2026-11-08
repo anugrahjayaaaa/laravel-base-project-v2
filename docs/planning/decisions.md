@@ -1102,9 +1102,12 @@ the list is longer.
 
 ## ADR-033: the general app dashboard is its own phase; POS & payment moves 19 → 20
 
-**Date**: 2026-11-06 · **Status**: Accepted · **Relates to**: `docs/planning/implementation-roadmap.md`,
-`docs/planning/phase-18-membership-loyalty.md` § Group F, `docs/planning/phase-19-general-dashboard.md`,
-`docs/planning/phase-20-pos-and-payment.md`
+**Date**: 2026-11-06 · **Status**: Accepted — the split stands; the *numbering* is superseded
+by ADR-035 (2026-11-08: the two phases exchanged numbers, POS & payment is Phase 19 again).
+Body kept as written — including its 2026-11-06 numbering and file paths, which ADR-035
+renamed. · **Relates to**: `docs/planning/implementation-roadmap.md`,
+`docs/planning/phase-18-membership-loyalty.md` § Group F, `docs/planning/phase-20-general-dashboard.md`,
+`docs/planning/phase-19-pos-and-payment.md`
 
 **Context**: The dashboard work arrived as one owner request and split into two audiences on
 inspection: member lifecycle metrics (growth, renewal, tenure, at-risk) read the membership
@@ -1144,20 +1147,20 @@ owner's go-ahead because `docs/base/` is design authority, not planning.
 ## ADR-034: `/dashboard` stays the ungated landing route and chooses content by caller
 
 **Date**: 2026-11-06 · **Status**: Accepted (forward-looking; the branch it protects shipped
-2026-11-06 as P18-E3) · **Relates to**: Phase 18 P18-E3, Phase 19 D-1,
+2026-11-06 as P18-E3) · **Relates to**: Phase 18 P18-E3, Phase 20 D-1,
 `docs/base/features/membership.md` § The member's own dashboard
 
 **Context**: `GET /dashboard` is where login sends every account and carries no `can:` gate,
 by design — the `user` and `member` system roles hold **no permissions** (`PermissionSeeder`
 grants them none), so any gate on the landing route 403s the majority of accounts off the page
 they land on. Phase 18 shipped a member-facing dashboard by branching that route on the
-caller's loyalty profile. Phase 19's brief asks for `dashboard.view` on "the general
+caller's loyalty profile. Phase 20's brief asks for `dashboard.view` on "the general
 dashboard", which read literally would put a permission on that same route.
 
 **Decision**: `/dashboard` keeps no permission and keeps branching: a loyalty profile with
 `member_loyalty` on → the member dashboard (P18-E3); otherwise, for a caller holding
-`dashboard.view`, the Phase 19 general dashboard; otherwise the existing application status
-card. The Phase 19 screen also gets its own address (`/dashboard/overview`, route
+`dashboard.view`, the Phase 20 general dashboard; otherwise the existing application status
+card. The Phase 20 screen also gets its own address (`/dashboard/overview`, route
 `general.dashboard`) carrying `can:dashboard.view` + `feature:general_dashboard`, and that is
 where the gate lives.
 
@@ -1167,7 +1170,48 @@ still has to answer); give members their own landing route and change the login 
 (rejected — more moving parts for the same page, and the delivered branch already works).
 
 **Consequences**: one route, three possible responses, each with its own regression test
-(P19-D1 must prove the low-privilege landing path; `MemberSelfDashboardTest` already proves the
+(P20-D1 must prove the low-privilege landing path; `MemberSelfDashboardTest` already proves the
 member half and the flag-off half). A caller who can see both dashboards sees the member one —
 the profile is the narrower audience. If a fourth audience ever appears, this becomes a
 resolver rather than an `if` chain.
+
+## ADR-035: Phase 19 and Phase 20 exchange numbers — POS & payment runs first
+
+**Date**: 2026-11-08 · **Status**: Accepted · **Supersedes**: ADR-033's *numbering* only
+(the Phase 18 / dashboard split it records is unchanged) · **Relates to**:
+`docs/planning/phase-19-pos-and-payment.md`, `docs/planning/phase-20-general-dashboard.md`,
+`docs/planning/implementation-roadmap.md`, `docs/planning/task-tracker.md`,
+`docs/base/features/membership.md`
+
+**Context**: ADR-033 moved POS & payment from 19 to 20 to make room for the new dashboard
+phase. The shipped code never followed: every in-code reference written on 2026-11-06
+(`routes/web.php`, `pages/vouchers/index.blade.php`, `pages/members/show.blade.php`,
+`2026_11_05_000300_create_member_point_histories_table.php`, `VoucherUiRenderTest`,
+`MemberWebTest`, `MemberPointsTest`, `ChannelParityTest`) names the POS checkout **Phase 19**,
+and `docs/base/features/membership.md` — deliberately left out of ADR-033's scope — still says
+"the Phase 19 checkout" three times. ADR-033 recorded those as known-stale. They are the
+majority reading, and the order ADR-033 produced (dashboard 19, POS 20) puts a planned
+read-only screen ahead of the phase that creates the money the owner is waiting for.
+
+**Decision**: Exchange the two numbers. **Phase 19** = Basic POS Engine & Omnichannel Payment
+Gateway (`phase-19-pos-and-payment.md`, tasks `P19-A1..E2`). **Phase 20** = General App
+Dashboard & Platform Health Metrics (`phase-20-general-dashboard.md`, tasks `P20-A1..D2`).
+Branch names follow: `feature/phase-19-pos-and-payment`, `feature/phase-20-general-dashboard`.
+The renumbering was mechanical across `docs/planning/` (`P20-*` → `P19-*`, `Phase 20` →
+`Phase 19`, filenames, the roadmap and tracker section order), except: ADR-033's body is kept
+as written (a decision record, with its file paths corrected), and the statements that describe
+the *move itself* now name the exchange instead of a direction. The stale `docs/base/` and
+in-code mentions need no edit — under this numbering they are correct.
+
+**Alternatives considered**: leave the numbering and rewrite the ten code/doc references to
+say Phase 20 (rejected — it edits delivered evidence for a cosmetic reason, and ADR-033 already
+tried that direction once); keep both phases unnumbered and refer to them by title (rejected —
+every tracker row, gate and branch name is keyed on the number).
+
+**Consequences**: the second re-keying proves ADR-033's own warning — **a P-number is not a
+stable identifier**; the phase doc is the authority, not the ID. `membership.md`'s three
+"Phase 19" mentions and the code comments stop being stale. No status, no acceptance criterion,
+and no dependency changes: both phases are still PLANNED, POS still depends on Phase 18 and the
+dashboard still depends on Phase 17 alone, and the roadmap still allows either to run before
+the other.
+

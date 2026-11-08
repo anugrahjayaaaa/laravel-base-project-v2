@@ -2,7 +2,7 @@
 
 > Date: 2026-11-05 | Status: **Groups A and B DONE (2026-11-06), Group C in REVIEW
 > (2026-11-06)** — A shipped 2026-11-05 (views + `member_loyalty` flag; voucher rows moved
-> to Phase 20 — owner decision the same day); B closed on the re-run exit gate
+> to Phase 19 — owner decision the same day); B closed on the re-run exit gate
 > (`tests/Feature/Member` + `tests/Feature/Api/V1/Member` + `tests/Feature/CrossCutting`
 > 192 passed / 1168 assertions, Pint PASS 561 files, PHPStan `[OK] No errors`), with
 > `BroadcastMemberExpiryRequest` rolled into **P18-C2** — the owner moved it to the group
@@ -20,7 +20,7 @@
 > duration/expiry engine, member statistics, automated expiry sweeps with bulk
 > notification — built entirely on the primitives Phases
 > 1–17 already ship (RBAC, Pennant, `SystemSetting`, notifications + queues, audit, API v1).
-> **Vouchers moved out to Phase 20 (owner decision 2026-11-05): they are their own
+> **Vouchers moved out to Phase 19 (owner decision 2026-11-05): they are their own
 > domain — own flag, own menu, validated at payment time — not part of membership.**
 > Dependency chain: **A → B → C → D → E** (strictly sequential — see § 2.1).
 > Detail authority: this document. `task-tracker.md` holds the summary rows only.
@@ -32,20 +32,20 @@
 ## 1. Scope
 
 Eighteen tasks in five groups (the brief's nineteen: A4 split per D-4, and the voucher
-tasks moved to Phase 20 — B5 is the pointer row).
+tasks moved to Phase 19 — B5 is the pointer row).
 
 > **2026-11-06 owner adjustment** (roadmap resequencing): **Group F — Membership Analytics
 > Dashboard** is added (F1–F4, § 5), the delivered member-facing `/dashboard` moves from the
 > ID it held to **P18-E3** (D-8), and the general app dashboard leaves this phase to become
-> **Phase 19** — `docs/planning/phase-19-general-dashboard.md`. Phase 18 is now titled
-> *General Membership & Loyalty System*; POS and payment, previously numbered 19, are
-> **Phase 20**. Twenty-three tasks in six groups.
+> **Phase 20** — `docs/planning/phase-20-general-dashboard.md`. Phase 18 is now titled
+> *General Membership & Loyalty System*; POS and payment are **Phase 19** — numbered 20
+> between 2026-11-06 and 2026-11-08, exchanged back by ADR-035. Twenty-three tasks in six groups.
 
 > **2026-11-05 owner adjustment:** every voucher row in this document (`P18-A2`'s voucher
 > view, `P18-B1`'s two voucher tables, `P18-B5`, `P18-B6`'s `VoucherController`,
 > `P18-D1`'s `vouchers.manage`, `P18-D3`'s `voucher.claimed`, `P18-E1`'s race test) ships
-> in **Phase 20** as the `vouchers` domain. The shipped voucher view already lives at
-> `resources/views/pages/vouchers/index.blade.php` under its own flag — see P20-A6.
+> in **Phase 19** as the `vouchers` domain. The shipped voucher view already lives at
+> `resources/views/pages/vouchers/index.blade.php` under its own flag — see P19-A6.
 
 > **Second 2026-11-05 owner adjustment** (six asks, all shipped on this branch):
 > `member_points_expiry_date` + the earn pair + the alert window moved out of code into
@@ -56,7 +56,7 @@ tasks moved to Phase 20 — B5 is the pointer row).
 > member** form posts to `members.store` and creates a `User` + `Member` with the fixed
 > `member` role (`App\Support\SystemRole::MEMBER`, no permissions — see O-1); a manual
 > **Adjust Points** card posts to `members.points` (see B4; **the card and its web route were
-> removed 2026-11-06 by owner decision — a balance move belongs to the Phase 20 checkout, and
+> removed 2026-11-06 by owner decision — a balance move belongs to the Phase 19 checkout, and
 > `POST /api/v1/members/{member}/points` stays for programmatic corrections**); and
 > `MemberDemoSeeder`
 > (10 members, tiers, subscriptions, ledger) is runnable but deliberately **not** wired
@@ -81,11 +81,11 @@ tasks moved to Phase 20 — B5 is the pointer row).
 **Not in scope:**
 
 - **Spending anything, and vouchers entirely.** No checkout, no order line, no tax, no
-  receipt, no printing — that is Phase 20. And since 2026-11-05 the voucher is *its own*
-  domain in Phase 20 (validated at payment time), not a membership deliverable: this
+  receipt, no printing — that is Phase 19. And since 2026-11-05 the voucher is *its own*
+  domain in Phase 19 (validated at payment time), not a membership deliverable: this
   phase models the tier, the subscription and the points balance only.
 - A payment gateway, an idempotent webhook, or the race-condition shield around money
-  movement (Phase 20).
+  movement (Phase 19).
 - A WhatsApp / third-party notification channel — see **D-3**.
 - i18n of any new string (`AGENTS.md` § *Traps already paid for*: no `lang/` source
   exists; every string in this phase is literal English by design).
@@ -127,7 +127,7 @@ writer is wrong regardless of working, per `docs/base/architecture/application-c
    `DB::transaction`, with the audit write **inside** that transaction
    (`AGENTS.md`: audits are written by the Action layer, never by an observer). Jobs and
    events dispatch **after** commit.
-5. ~~**Voucher claim is atomic.**~~ **Moved to Phase 20 (P20-B6)** — the voucher is its
+5. ~~**Voucher claim is atomic.**~~ **Moved to Phase 19 (P19-B6)** — the voucher is its
    own domain; the atomicity rules (one transaction, `lockForUpdate()` before the quota
    read, unique `(voucher_id, member_id)` backstop) ship there unchanged.
 6. **Bulk notification is queued and chunked**, never a `foreach` inside the request.
@@ -157,11 +157,11 @@ here. Each is recorded rather than silently resolved, and each changes a task be
 | **D-2** | P18-B1: a `members` table | Spatie's `HasRoles` is wired on `App\Models\User`; `Gate`, `can:`, `syncRoles`, the session guard and `PermissionCatalog` all resolve against `User`. A parallel `members` identity would either be unable to hold a role at all, or become a second login-capable account system | `members` is a **loyalty profile keyed to the existing user**: `user_id` FK, unique. Tier roles sync onto the **`User`**, so `can:` keeps working unchanged. No new authn path |
 | **D-3** | P18-C2: chunked **WhatsApp**/Email alerts | Two channels exist: `mail` and `database` (`NotificationChannel::for()`, switches `notification_channel_mail` / `_database`). No WhatsApp driver, no broadcast channel, no credentials | C2 ships **mail + in-app**, reading the same global switches. A WhatsApp driver is an open owner decision (§ 8): new package → `changelog.md` + ADR + `SystemSetting` credentials, exactly the SMTP shape |
 | **D-4** | P18-A4: sidebar entries wired in Group A | `AppMenuComposer` deliberately rejects `#` placeholders — "the menu cannot advertise a screen that was never shipped" — and a Blade reference to `route('members.index')` throws while that route name does not exist. Group A may not create controllers | A4 splits: **A4a** (flag declaration in `config/pennant.php`, `FeatureFlagSeeder` row, `@feature`/`@can` guards inside the views) stays in A; **A4b** (the route group + the two sidebar entries) ships with **B6**, the first commit where the link target exists. The sequential rule is not bent; the task is re-cut. **Amended 2026-11-05**: the owner asked for the member screens in the sidebar, and `AppMenuComposer` drops an entry whose route does not resolve — so A4b's read half could not ship without B1 and the four GET routes. `P18-B1` and the read half of `P18-B6` (four read Actions, three thin web controllers, `members.view` on every route, three sidebar entries — the brief's two plus Tiers, which the A2 screen needs a door of its own) shipped together as a read-only slice. D-4's contract still holds: no member Blade file calls `route()` — the Actions hand every URL over as a variable, and a **null write URL removes the affordance instead of rendering a button that 404s** (`MemberUiRenderTest::test_null_write_urls_take_away_every_write_affordance`) |
-| **D-5** | P18-E1: `VoucherRaceConditionTest` proves the lock | `phpunit.xml` runs `DB_CONNECTION=sqlite`, `DB_DATABASE=:memory:`. SQLite takes no `SELECT … FOR UPDATE`: the statement parses and does nothing | Applies to every `lockForUpdate()` here, including the points ledger lock in B4: the test proves what SQLite *can* prove — balance arithmetic, a second redemption refused — and the row lock itself is recorded as **deferred runtime evidence** needing a two-session MySQL probe, the same way Phase 14 left the restore round trip open. The voucher race test moved with the voucher domain to **P20-E1** |
-| **D-6** | P18-D1: `members.view`, `members.manage`, `vouchers.manage` | A bulk POST must map to its own permission (`AuthorizesBulkAction`, P6-C17); Phase 12 Group D found exactly this gap on `features/bulk-action` — a route comment claiming a permission the route never checked. A3's "notify all expiring members" **is** a bulk action | Three permissions: `members.view`, `members.manage`, `members.notify`. `members.notify` is the broadcast's own gate; `vouchers.manage` moved to Phase 20 (P20-D1) with its domain. Coarse `manage` over create/update/delete stays, matching `settings.manage`/`storage.manage` rather than the 11-verb `users.*` set. **Amended 2026-11-05 by the owner for removal only**: `members.delete`, `members.restore` and `members.force_delete` join the catalogue, because coarse `manage` meant an operator who could edit a tier's price could also destroy a member's points history. Create/update/points stay coarse; `members.notify` is unchanged. Tiers share the same six (one module, one permission set), so `BulkMemberTierRequest::bulkEntityPrefix()` answers `members`, not `tiers`. **Amended 2026-11-06 by P18-E2**: coarse `members.manage` is gone entirely (the granular `users.*`-shaped suffix set replaced it slice by slice), and tiers are their own **resource** — `member_tiers.{view,create,update,delete,restore,force_delete,activate,deactivate}` — because `PermissionCatalogTest` gates every name on one dot and `members.tiers.view` has two. `bulkEntityPrefix()` therefore answers `member_tiers`, and `FEATURE_BY_RESOURCE` maps both prefixes to `member_loyalty` |
+| **D-5** | P18-E1: `VoucherRaceConditionTest` proves the lock | `phpunit.xml` runs `DB_CONNECTION=sqlite`, `DB_DATABASE=:memory:`. SQLite takes no `SELECT … FOR UPDATE`: the statement parses and does nothing | Applies to every `lockForUpdate()` here, including the points ledger lock in B4: the test proves what SQLite *can* prove — balance arithmetic, a second redemption refused — and the row lock itself is recorded as **deferred runtime evidence** needing a two-session MySQL probe, the same way Phase 14 left the restore round trip open. The voucher race test moved with the voucher domain to **P19-E1** |
+| **D-6** | P18-D1: `members.view`, `members.manage`, `vouchers.manage` | A bulk POST must map to its own permission (`AuthorizesBulkAction`, P6-C17); Phase 12 Group D found exactly this gap on `features/bulk-action` — a route comment claiming a permission the route never checked. A3's "notify all expiring members" **is** a bulk action | Three permissions: `members.view`, `members.manage`, `members.notify`. `members.notify` is the broadcast's own gate; `vouchers.manage` moved to Phase 19 (P19-D1) with its domain. Coarse `manage` over create/update/delete stays, matching `settings.manage`/`storage.manage` rather than the 11-verb `users.*` set. **Amended 2026-11-05 by the owner for removal only**: `members.delete`, `members.restore` and `members.force_delete` join the catalogue, because coarse `manage` meant an operator who could edit a tier's price could also destroy a member's points history. Create/update/points stay coarse; `members.notify` is unchanged. Tiers share the same six (one module, one permission set), so `BulkMemberTierRequest::bulkEntityPrefix()` answers `members`, not `tiers`. **Amended 2026-11-06 by P18-E2**: coarse `members.manage` is gone entirely (the granular `users.*`-shaped suffix set replaced it slice by slice), and tiers are their own **resource** — `member_tiers.{view,create,update,delete,restore,force_delete,activate,deactivate}` — because `PermissionCatalogTest` gates every name on one dot and `members.tiers.view` has two. `bulkEntityPrefix()` therefore answers `member_tiers`, and `FEATURE_BY_RESOURCE` maps both prefixes to `member_loyalty` |
 | **D-7** | (unstated) a `Member` domain | `docs/base/architecture/naming-conventions.md` holds a domains table (9 rows as of P16-B2) and `ActionNamingConventionTest` is its owner | B3 adds `Member` to that table in the same commit as the first Action, not at closure |
 | **D-8** | Group F opens at **P18-F1** | `P18-F1` was already taken on 2026-11-06 by the delivered member-facing `/dashboard` (`MemberSelfDashboardAction` + `pages/members/my-dashboard.blade.php`, owner request outside this breakdown, 5 tests green) | The delivered row is renumbered **P18-E3** — it shipped with Group E's tests and closes Group E's verification scope. Group F keeps the brief's F1–F4 numbering. Two rows cannot share an ID: the tracker is the ledger and a flipped row must name exactly one piece of work |
-| **D-9** | P18-F1: "Age Group / Demographic Breakdown (derived from Date of Birth and Address)" | `users` has **20 columns and none of them is a date of birth, an address, or an avatar** (measured with `php artisan db:table users`); `members` adds `member_number`, `points_balance`, `is_active`, `joined_at`, `notes`. Nothing in the schema carries a birthday | The demographic widget is **not buildable from data that exists**. Member **tenure** is (from `members.joined_at`), so F1 ships tenure distribution; age group is cut to open decision **O-5** — it needs a profile migration (`date_of_birth`, `address`), which is a data-collection and privacy question, not a chart. The same gap blocks Phase 19's "Profile Completeness Score" |
+| **D-9** | P18-F1: "Age Group / Demographic Breakdown (derived from Date of Birth and Address)" | `users` has **20 columns and none of them is a date of birth, an address, or an avatar** (measured with `php artisan db:table users`); `members` adds `member_number`, `points_balance`, `is_active`, `joined_at`, `notes`. Nothing in the schema carries a birthday | The demographic widget is **not buildable from data that exists**. Member **tenure** is (from `members.joined_at`), so F1 ships tenure distribution; age group is cut to open decision **O-5** — it needs a profile migration (`date_of_birth`, `address`), which is a data-collection and privacy question, not a chart. The same gap blocks Phase 20's "Profile Completeness Score" |
 | **D-10** | P18-F2: `GetMembershipDashboardStatsAction` | `docs/base/architecture/naming-conventions.md` § Action Naming: `{Domain}{Operation}Action`, domain prefix first — "`UserCreateAction` right, `CreateUserAction` wrong", enforced by `ActionNamingConventionTest` | The class ships as **`MemberAnalyticsStatsAction`** in `app/Actions/V1/Member/`. A verb-first name is red on that gate the day it is committed |
 | **D-11** | P18-F2: "event-driven cache invalidation to load dashboard stats under 100ms" | § 2 rule 10 already owns this: member dashboard counters go through `Cache::remember` **as primitives** — and `AGENTS.md` § Traps records that a non-primitive (Collection / model / Carbon) cached through the Redis store comes back `__PHP_Incomplete_Class` on a hit | Reuse what is there: `Cache::remember` of a primitive array, tagged-by-key invalidation on the member/tier events that already fire (`member.subscribed`, `member.points_adjusted`, `member.expired`). A new cache layer or a new invalidation bus is not needed. The 100 ms figure becomes a **measured** number in F4's own assertion, not a promise written before the query exists. **Corrected on delivery (P18-F2, 2026-11-06):** `member.subscribed` / `member.points_adjusted` / `member.expired` are the **audit-log action names**, not `Illuminate` events — `grep -rn "Event::dispatch" app/Actions/V1/Member` returns nothing, so there is no event to subscribe to. Invalidation is one `MemberAnalyticsObserver` bound to `Member` + `MemberSubscription` in `AppServiceProvider` (the house `UserObserver` shape: `cacheKeys()` + static `bustCache()` inside `DB::afterCommit`) — one registration instead of eighteen Action call sites, and it cannot miss a write an Action forgot to announce. `users.last_activity_at` is written with `updateQuietly()` at login, which bypasses observers, so DAU/MAU freshness is bounded by the 300 s TTL |
 | **D-12** | P18-F1 as a new screen and P18-F3 as a new controller endpoint | Both already ship: `pages/members/dashboard.blade.php` (A3), `MemberDashboardController::{index,broadcastExpiry}`, `membership.dashboard` + `membership.broadcast-expiry` routes, and the Expiring-Soon table **with** its `members.notify` bulk-broadcast confirm modal (C2) | F1 and F3 are **extensions of the shipped screen**, not new files. F1's "Expiring Soon Table with Bulk Notification trigger modal" and F4's broadcast path are delivered work — rebuilding them would duplicate `MemberDashboardAction::run()`'s `$expiring` and `MemberExpiryBroadcastAction`. What is genuinely new in F is: growth-vs-expiration series, renewal rate, DAU/MAU ratio, tenure histogram, at-risk list, and the timeframe filter |
@@ -182,8 +182,8 @@ Four tables, all with `softDeletes()` where a row is operator-deletable
 | `member_subscriptions` | `id`, `member_id` FK, `member_tier_id` FK, `status` enum(`active`,`expired`,`cancelled`), `starts_at`, `expires_at`, `role_name` (the role actually applied — kept per-row so a later tier edit cannot revoke the wrong role) | `role_name` copied at activation is the fix for "tier renamed after the fact leaves a role orphaned". Index `(status, expires_at)` — the sweep's only query shape |
 | `member_point_histories` | `id`, `member_id` FK, `delta` `bigInteger` (signed), `balance_after` `unsignedBigInteger`, `reason` `string`, `actor_id` nullable FK → `users`, `reference_type`/`reference_id` nullable morph | Ledger, never edited: a correction is a new row. `balance_after` makes the ledger auditable without recomputation |
 
-The `vouchers` and `voucher_usages` tables moved to Phase 20 (§ 4 of
-`phase-20-pos-and-payment.md`) with the rest of the voucher domain.
+The `vouchers` and `voucher_usages` tables moved to Phase 19 (§ 4 of
+`phase-19-pos-and-payment.md`) with the rest of the voucher domain.
 
 Migrations are named `2026_11_XX_000000_create_member_*` in dependency order, each with a
 working `down()` (`mysql` sessions and the Phase 14 migration-`down()` lesson).
@@ -219,10 +219,10 @@ no route touched.
   price, duration in days, point multiplier, assigned role (select built from the
   existing roles, not free text) and active state.
 - **Moved**: the voucher view (`pages/members/vouchers.blade.php`) became `resources/views/pages/vouchers/index.blade.php`
-  under the `vouchers` flag on 2026-11-05 — its own domain, its own menu. See **P20-A6**.
+  under the `vouchers` flag on 2026-11-05 — its own domain, its own menu. See **P19-A6**.
 - **Acceptance**: the role select offers exactly the roles the viewer may assign; an
   inactive tier renders its state distinctly; the table is `.table-responsive`.
-- **Tests**: `MemberUiRenderTest` (the voucher render gate is `VoucherUiRenderTest`, P20-A6).
+- **Tests**: `MemberUiRenderTest` (the voucher render gate is `VoucherUiRenderTest`, P19-A6).
 
 #### P18-A3 — Member dashboard & expiry alert widget
 - **Task**: `resources/views/pages/members/dashboard.blade.php`: counters (members by
@@ -271,7 +271,7 @@ Exit gate: migrations migrate up and down on SQLite; every Action covered by a u
 - **Task**: the four tables of § 4; `App\Models\{Member,MemberTier,MemberSubscription,MemberPointHistory}`
   each `use Auditable` + `SoftDeletes` where the table says so; factories for every model;
   `User` gains the `member()` has-one (no role logic on the model). `Voucher`/`VoucherUsage`
-  ship with the voucher domain in **P20-B6**.
+  ship with the voucher domain in **P19-B6**.
 - **Acceptance**: `migrate` then `migrate:rollback` exits 0; a `member` cannot exist
   without a `user`; `member_subscriptions` refuses two `active` rows for one member
   (unique partial shape enforced in the Action, the DB constraint recorded as the
@@ -280,7 +280,7 @@ Exit gate: migrations migrate up and down on SQLite; every Action covered by a u
 
 #### P18-B2 — Form Requests
 - **Task**: `app/Http/Requests/V1/Member/{StoreMemberRequest,UpdateMemberRequest,StoreMemberTierRequest,UpdateMemberTierRequest,BroadcastMemberExpiryRequest}`
-  extending `BaseFormRequest` — the voucher requests ship in **P20-B6** with their domain — each with a real `authorize()` returning the permission
+  extending `BaseFormRequest` — the voucher requests ship in **P19-B6** with their domain — each with a real `authorize()` returning the permission
   that performs the change (`members.create` is not in the catalogue — `members.manage`
   is, and `authorize()` names it), and `rules()` that call `$request->validated()` at the
   controller. **Amended 2026-11-06 (owner): `BroadcastMemberExpiryRequest` moved to
@@ -320,26 +320,26 @@ Exit gate: migrations migrate up and down on SQLite; every Action covered by a u
   Same shape the brief asked for: one transaction, `Member::whereKey()->lockForUpdate()`
   re-read before the arithmetic, a stored `balance_after`, a redemption below zero refused
   with no ledger row, a correction posted as another row. `EarnMemberPointsAction` /
-  `RedeemMemberPointsAction` as POS-driven classes stay in **Phase 20** with the checkout
+  `RedeemMemberPointsAction` as POS-driven classes stay in **Phase 19** with the checkout
   that would call them (points spent as a discount, the cashier note, the printable
   receipt, and the tier `point_multiplier` interaction — the manual action deliberately
   applies the one global rule, not the per-tier factor).
 - **Owner revision 2026-11-06**: the Adjust Points card and the web `members.points` route
-  were removed — manual balance moves belong to the Phase 20 checkout, not to the profile
+  were removed — manual balance moves belong to the Phase 19 checkout, not to the profile
   page. The Action, `MemberAdjustPointsRequest` and the API endpoint are unchanged;
   `MemberPointsTest` now drives the API route.
 
-#### P18-B5 — Atomic voucher claim — **MOVED to Phase 20 (P20-B6)**
+#### P18-B5 — Atomic voucher claim — **MOVED to Phase 19 (P19-B6)**
 Owner decision 2026-11-05: the voucher is its own domain — its own flag (`vouchers`), its
 own menu, and it is validated at payment time by POS, so the table pair, the Actions, the
 requests, the controller, the permissions, the `voucher.claimed` audit event and the race
-test all ship in Phase 20. The atomicity rules travel unchanged (one transaction,
+test all ship in Phase 19. The atomicity rules travel unchanged (one transaction,
 `lockForUpdate()` before the quota read, the unique `(voucher_id, member_id)` usage row as
 the idempotency backstop the lock cannot be alone against — D-5).
 
 #### P18-B6 — Controllers, routes, sidebar, API twins
 - **Task**: `app/Http/Controllers/Web/V1/{MemberController,MemberTierController,MemberDashboardController}`
-  (thin: resolve, delegate, `respond()`) — `VoucherController` ships in **P20-B7** — and the `app/Http/Controllers/Api/V1/Member/*`
+  (thin: resolve, delegate, `respond()`) — `VoucherController` ships in **P19-B7** — and the `app/Http/Controllers/Api/V1/Member/*`
   twins + `app/Http/Resources/Api/V1` resources; the route groups in `routes/web.php` and
   `routes/api.php` carrying `feature:member_loyalty` + `can:` at the route; **A4b**: the
   `AppMenuComposer` entries with `'permission' => 'members.view'` and
@@ -470,8 +470,8 @@ Exit gate: every refusal is a measured status code, not a comment claiming one.
 
 #### P18-D1 — Route authorization
 - **Task**: add `MEMBERS` to `app/Support/PermissionCatalog.php`
-  (`members.view`, `members.manage`, `members.notify` — `vouchers.*` ship in Phase 20,
-  P20-D1), let
+  (`members.view`, `members.manage`, `members.notify` — `vouchers.*` ship in Phase 19,
+  P19-D1), let
   `PermissionSeeder` prune-orphan → create → assign, put `can:` on every route, map the
   bulk POST through `AuthorizesBulkAction` (D-6), and add the permissions to the role
   matrix.
@@ -504,7 +504,7 @@ Exit gate: every refusal is a measured status code, not a comment claiming one.
 - **Task**: the four events (`member.subscribed`, `member.role_synced`,
   `member.expired`, plus the one the brief omits because it cannot see the call site:
   `member.points_adjusted`, or the ledger has mutations no trail explains) written by the
-  Actions. `voucher.claimed` ships with the voucher domain in Phase 20 (P20-D3).
+  Actions. `voucher.claimed` ships with the voucher domain in Phase 19 (P19-D3).
 - **Acceptance**: each event is one `->audit()` call site enumerated from code, not from
   strings (the P16-D1 method), and appears in the Event Map; the audit row and the
   mutation commit or roll back together.
@@ -523,7 +523,7 @@ Exit gate: every refusal is a measured status code, not a comment claiming one.
   plus the files named in B/C/D. Lifecycle: activate → role present → cancel → role
   absent; sweep → status, role, audit, SYSTEM causer; points → ledger sum equals balance,
   over-redemption refused. (`VoucherRaceConditionTest` travels with the voucher domain to
-  **P20-E1**.)
+  **P19-E1**.)
 - **Acceptance**: the points-ledger test is **sabotage-verified** (remove the balance
   guard → red) and names in its own docblock what SQLite cannot prove (D-5).
 - **Tests**: are the tests. Coverage must not lower a bar: global ≥ 85 %, Actions ≥ 95 %,
@@ -552,7 +552,7 @@ Exit gate: every refusal is a measured status code, not a comment claiming one.
 ### Group F — Membership Analytics Dashboard (non-financial member metrics)
 
 Goal: the owner/management view of the programme — growth, retention, lifecycle risk — on the
-screen A3 already ships. No money, no revenue, no gateway: those are Phase 20's financial
+screen A3 already ships. No money, no revenue, no gateway: those are Phase 19's financial
 dashboard. Charts read `members` / `member_subscriptions` / `member_point_histories` /
 `users.last_activity_at`, and nothing in this group writes a row.
 
@@ -646,19 +646,19 @@ is the live ledger for which rows closed.)
 Carried into `progress.md` so it does not vanish at closure:
 
 - ~~the MySQL two-session voucher probe (D-5)~~ — travels with the voucher domain to
-  Phase 20 § 7; this phase carries the same deferred proof for the points lock only;
+  Phase 19 § 7; this phase carries the same deferred proof for the points lock only;
 - the WhatsApp channel decision (§ 8) — unshipped by design, not by omission;
-- points **earn from a sale** has no caller until the Phase 20 POS engine exists. B4's
+- points **earn from a sale** has no caller until the Phase 19 POS engine exists. B4's
   manual admin earn/redeem is the shipped half, and is a real use case (an operator
   adjusting a balance), so the class is not dead code — but its `reference_type` morph
-  stays unpopulated until Phase 20.
+  stays unpopulated until Phase 19.
 
 ## 8. Open owner decisions
 
 | # | Question | Options | Blocking? |
 |---|---|---|---|
 | O-1 | **D-2** — is `Member` a profile on `users` (recommended) or a second identity with its own login? | profile / second identity | **CLOSED 2026-11-05** — profile, and the owner asked for the flow to match "new user": `MemberCreateAction` delegates the account half to `UserCreateAction` (generated temp password, `must_change_password`, verification mail), and the new `member` system role is fixed, not chosen | Not blocking — resolved |
-| O-2 | **D-3** — WhatsApp driver | defer to Phase 20 / add package + ADR + `SystemSetting` credentials now | Not blocking: C2 ships mail + in-app either way |
+| O-2 | **D-3** — WhatsApp driver | defer to Phase 19 / add package + ADR + `SystemSetting` credentials now | Not blocking: C2 ships mail + in-app either way |
 | O-3 | Points expiry | never expires / expires with the subscription | **CLOSED 2026-11-05** — neither, on the owner's wording ("yang di-0-kan point member, bukan saldo"): a global, **optional** `member_points_expiry_date` in System Setting (empty = never expire). `MemberExpirePointsAction` zeroes every positive `points_balance`, writes one `Annual points expiry` ledger row per member, then advances the date a whole year so the stored value is always the *next* reset. `MemberPointsExpirySweepJob` runs it daily on `sweeps`. The subscription-linked variant is not built | Not blocking — resolved |
-| O-4 | Voucher `max_discount` and `min_purchase` semantics with no order total in Phase 18 | **CLOSED 2026-11-05** — mooted by the move: the whole voucher domain (both columns included) ships in Phase 20 where an order total exists | Not blocking — resolved |
-| O-5 | **D-9** — F1's age-group / demographic widget reads columns that do not exist | (a) cut the widget, keep tenure only (recommended: no data collection, no migration); (b) add `date_of_birth` + `address` to a profile migration, which brings PII, a retention question, and Phase 19's Profile Completeness score with it | **Blocking for F1's demographic card only** — F1 shipped 2026-11-06 on **(a)** (the card is absent, tenure covers the row); reopening as (b) is an addition, not a rewrite |
+| O-4 | Voucher `max_discount` and `min_purchase` semantics with no order total in Phase 18 | **CLOSED 2026-11-05** — mooted by the move: the whole voucher domain (both columns included) ships in Phase 19 where an order total exists | Not blocking — resolved |
+| O-5 | **D-9** — F1's age-group / demographic widget reads columns that do not exist | (a) cut the widget, keep tenure only (recommended: no data collection, no migration); (b) add `date_of_birth` + `address` to a profile migration, which brings PII, a retention question, and Phase 20's Profile Completeness score with it | **Blocking for F1's demographic card only** — F1 shipped 2026-11-06 on **(a)** (the card is absent, tenure covers the row); reopening as (b) is an addition, not a rewrite |

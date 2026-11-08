@@ -1,8 +1,8 @@
-# Phase 20 — Basic POS Engine & Omnichannel Payment Gateway
+# Phase 19 — Basic POS Engine & Omnichannel Payment Gateway
 
 > Date: 2026-11-05 | Status: **PLANNED** (breakdown written 2026-11-05) except the
-> voucher Group A slice, which shipped 2026-11-05 and sits in REVIEW (P20-A6) |
-> Branch when scheduled: `feature/phase-20-pos-and-payment`
+> voucher Group A slice, which shipped 2026-11-05 and sits in REVIEW (P19-A6) |
+> Branch when scheduled: `feature/phase-19-pos-and-payment`
 > Purpose: spend what Phase 18 models — a cashier POS engine that writes real money rows,
 > deducts stock and earns points; an omnichannel gateway integration behind encrypted
 > credentials; an idempotent webhook that settles a payment exactly once; a financial
@@ -15,8 +15,11 @@
 > `RedeemMemberPointsAction` and `ActivateMemberSubscriptionAction`,
 > and populates the `reference_type`/`reference_id` morphs Phase 18 left unpopulated on
 > purpose (its § 7). `ClaimVoucherAction`/`ValidateVoucherAction` are **this phase's
-> own** (B6) since the voucher move. Phase 18 in REVIEW does not block starting Phase
-> 19's Group A; it blocks B2.
+> own** (B6) since the voucher move. Phase 18 in REVIEW does not block starting this phase's
+> Group A; it blocks B2.
+> Renumbering: this was Phase 18's sibling "Phase 19" until 2026-11-05, then **Phase 20**
+> (ADR-033), and is **Phase 19** again since 2026-11-08 (ADR-035) — every `P20-*` ID in the
+> planning tree became `P19-*`.
 > Detail authority: this document. `task-tracker.md` holds the summary rows only.
 > Design authority: `docs/base/`. A change to a design decision goes through an ADR in
 > `docs/planning/decisions.md` — and this phase needs one before `composer require` (D-9).
@@ -55,7 +58,7 @@ A6/B6/B7 — moved in from Phase 18 on 2026-11-05).
 
 ### Why this phase reuses almost everything it needs
 
-| Need | Existing owner | What Phase 20 adds |
+| Need | Existing owner | What Phase 19 adds |
 |---|---|---|
 | Encrypted credentials in `SystemSetting` | `encrypt()` on write, `AppServiceProvider::storedSecret()` compare, `SystemSetting::SECRET_KEYS` redaction, blank-means-unchanged | three gateway keys following the `mail_password`/`storage_s3_secret` shape exactly |
 | Runtime rebinding of config after commit | `AppServiceProvider::bindMailConfig()`, `bindStorageConfig()` | one `bindPaymentConfig()` |
@@ -111,19 +114,19 @@ A6/B6/B7 — moved in from Phase 18 on 2026-11-05).
 
 | # | The brief said | The repository does | Consequence |
 |---|---|---|---|
-| **D-1** | P20-D2: flag disabled → **HTTP 404** | **403** — settled in `EnsureFeatureIsEnabled` ("Why 403, not 404", 2026-10-01), recorded by Phase 12 as "not to be *fixed* into a bug", pinned by 62 tests, and re-asserted as P18 D-1 | D2 asserts 403 on both channels |
-| **D-2** | P20-A1: "Fast-responsive screen (**Livewire/Alpine**)" | Neither is installed: `package.json` devDependencies are vite, laravel-vite-plugin, bootstrap, tailwindcss (D-8 of Phase 17), concurrently; `AGENTS.md` says no Vue/React; house JS is vanilla modules under `resources/js/` (`bulk-actions.js`, `password-strength.js`) rendered through `@vite` and `@nonce`d because CSP omits `'unsafe-inline'` (`ContentSecurityPolicyTest` pins it). Livewire's inline `wire:` behaviour and its payload round trips both fight that gate | The cashier screen is **one Blade page + a vanilla JS cart** posting to the JSON endpoints B5/C4 ship. No new frontend dependency, no CSP exception. Cart state lives in the browser; **the server recomputes every total** (D-7) |
+| **D-1** | P19-D2: flag disabled → **HTTP 404** | **403** — settled in `EnsureFeatureIsEnabled` ("Why 403, not 404", 2026-10-01), recorded by Phase 12 as "not to be *fixed* into a bug", pinned by 62 tests, and re-asserted as P18 D-1 | D2 asserts 403 on both channels |
+| **D-2** | P19-A1: "Fast-responsive screen (**Livewire/Alpine**)" | Neither is installed: `package.json` devDependencies are vite, laravel-vite-plugin, bootstrap, tailwindcss (D-8 of Phase 17), concurrently; `AGENTS.md` says no Vue/React; house JS is vanilla modules under `resources/js/` (`bulk-actions.js`, `password-strength.js`) rendered through `@vite` and `@nonce`d because CSP omits `'unsafe-inline'` (`ContentSecurityPolicyTest` pins it). Livewire's inline `wire:` behaviour and its payload round trips both fight that gate | The cashier screen is **one Blade page + a vanilla JS cart** posting to the JSON endpoints B5/C4 ship. No new frontend dependency, no CSP exception. Cart state lives in the browser; **the server recomputes every total** (D-7) |
 | **D-3** | P20: "HTTP Client retry (3 retries, timeout 5s) **and circuit breaker pattern**" | `Http::timeout()` and `Http::retry()` are native (`PendingRequest.php:644`, `:671`) — zero code needed. **`Illuminate\Support\CircuitBreaker` does not exist in this install** (verified: no class and no matching file under `vendor/laravel/framework`) | Retry/timeout: use the framework. Breaker: one small cache-backed class (`App\Support\GatewayCircuitBreaker`, ~40 lines, open after N consecutive failures, half-open probe after a backoff, state in `Cache`) — the only genuinely new infrastructure this phase gets. **And retry is unsafe on a non-idempotent call**: retried only on connection/timeout errors, always with our deterministic `order_id`, and an open breaker must answer a distinct error code so the cashier falls back to cash rather than hanging |
-| **D-4** | P20-B1: `stock_movements`, `transaction_items` … | **There is no product table.** `database/migrations` contains no product/inventory/stock/payment/transaction migration; `app/Models` has none. `transaction_items` has nothing to reference and stock has nothing to deduct **from** | B1 must add `products` (`sku` unique, `name`, `price decimal`, `cost decimal` nullable, `stock_qty`, `is_active`). **No product CRUD is implied** — see O-1: the owner decides how a product gets into the table (thin admin screen vs seeder vs import) before B1 is committed |
-| **D-5** | P20-C2: `lockForUpdate()` is the race shield | `phpunit.xml` runs `DB_CONNECTION=sqlite`, `DB_DATABASE=:memory:` — `FOR UPDATE` parses and does nothing, so a test that relies on it is a false green (the same trap Phase 18 recorded, and the voucher race test now travels here with the domain) | The real shield is portable and is what E1 proves: an **atomic conditional update** (`WHERE id = ? AND status = 'pending'`, then assert affected rows = 1) **plus a unique index on the gateway event id**. `lockForUpdate()` stays in the Action as the MySQL half; the MySQL two-session probe is deferred runtime evidence |
-| **D-6** | P20-A2 + C3: gateway keys in `SystemSetting` | `SystemSettingsUpdateAction` holds **one whitelist** of acceptable keys and `GET /api/v1/settings` answers from `SystemSetting::getAll()` minus `SECRET_KEYS`. Phase 9's first finding was that a credential reachable through the settings module (`settings.view`) is read by a wider audience than the one it was built for | The three keys are added to `SystemSetting::SECRET_KEYS` and **deliberately NOT** to the settings whitelist — so `PUT /settings` and `GET /api/v1/settings` can neither write nor read them. `UpdatePaymentSettingsAction` (C3) is the **only** writer, behind `payments.manage`. A `settings.manage` holder must not be able to repoint production money. Blank-means-unchanged and the plaintext compare come from `SystemSettingsUpdateAction:213-234` as shipped |
-| **D-7** | P20-A3: "Include/Exclude Tax filter toggles" (UI-side) and A1's cart | Nothing in this codebase trusts a client-side number, and it must not start here: a tampered cart total is a revenue leak, not a UI bug | Prices, tax, discount and change are computed **server-side from `products` and `SystemSetting` rates**; the browser's figure is a preview only. `ProcessPosTransactionAction` re-derives every line and refuses a mismatch |
-| **D-8** | P20-D1: `pos.void_transaction` | "Void" of a settled payment is a **money event**. The house deletion policy (`docs/base/data/soft-delete.md`) and the ledger convention Phase 18 used (`member_point_histories`) both say: never edit or delete the row that happened | A void inserts a reversing `pos_transactions` row (`kind = 'void'`, negative amounts, `void_of_id`), audited, and re-stock through `stock_movements`. Nothing is deleted, no status field flips a paid row to unpaid |
-| **D-9** | P20-B4: `mike42/escpos-php` | `AGENTS.md`: a new Composer package needs `docs/planning/changelog.md` + an ADR **first**. The package needs `ext-mbstring`/`iconv`; using it for *images* pulls GD/ImageMagick, and no thermal printer exists in CI or in the test suite | ADR-031 before any `composer require`. Receipts use the printer's **native** QR/barcode commands (no GD). The print path is verified by asserting the **byte stream** (escpos renders to a buffer — that is testable); "the paper came out right on a 58 mm head" is deferred runtime evidence. Cash-drawer kick is one `Escpos` call, never a retry loop |
-| **D-10** | P20-E: "**100 % test coverage**" | The enforced bars are global ≥ 85 %, Actions ≥ 95 %, Policies 100 %, Requests ≥ 95 % (`bin/coverage_gate.php`, bars assigned as P15 D-13). No 100 % bar exists and the phase must not lower or fake one | E1 states the bars and reports what the run measured. Coverage gaps are a named list, not an averaged claim |
-| **D-11** | P20-A3: "**Net Profit**" card | Profit needs a cost, and nothing in the schema has one (D-4 — a product has a price). Gross revenue, gateway fees and tax are computable from `payment_logs` + `pos_transactions`; profit is not | Either `products.cost` is filled and maintained (a decision with a data-entry consequence nobody named), or the Profit card ships in a later phase. Recorded as O-2; A3 is written to render it only when cost data exists |
+| **D-4** | P19-B1: `stock_movements`, `transaction_items` … | **There is no product table.** `database/migrations` contains no product/inventory/stock/payment/transaction migration; `app/Models` has none. `transaction_items` has nothing to reference and stock has nothing to deduct **from** | B1 must add `products` (`sku` unique, `name`, `price decimal`, `cost decimal` nullable, `stock_qty`, `is_active`). **No product CRUD is implied** — see O-1: the owner decides how a product gets into the table (thin admin screen vs seeder vs import) before B1 is committed |
+| **D-5** | P19-C2: `lockForUpdate()` is the race shield | `phpunit.xml` runs `DB_CONNECTION=sqlite`, `DB_DATABASE=:memory:` — `FOR UPDATE` parses and does nothing, so a test that relies on it is a false green (the same trap Phase 18 recorded, and the voucher race test now travels here with the domain) | The real shield is portable and is what E1 proves: an **atomic conditional update** (`WHERE id = ? AND status = 'pending'`, then assert affected rows = 1) **plus a unique index on the gateway event id**. `lockForUpdate()` stays in the Action as the MySQL half; the MySQL two-session probe is deferred runtime evidence |
+| **D-6** | P19-A2 + C3: gateway keys in `SystemSetting` | `SystemSettingsUpdateAction` holds **one whitelist** of acceptable keys and `GET /api/v1/settings` answers from `SystemSetting::getAll()` minus `SECRET_KEYS`. Phase 9's first finding was that a credential reachable through the settings module (`settings.view`) is read by a wider audience than the one it was built for | The three keys are added to `SystemSetting::SECRET_KEYS` and **deliberately NOT** to the settings whitelist — so `PUT /settings` and `GET /api/v1/settings` can neither write nor read them. `UpdatePaymentSettingsAction` (C3) is the **only** writer, behind `payments.manage`. A `settings.manage` holder must not be able to repoint production money. Blank-means-unchanged and the plaintext compare come from `SystemSettingsUpdateAction:213-234` as shipped |
+| **D-7** | P19-A3: "Include/Exclude Tax filter toggles" (UI-side) and A1's cart | Nothing in this codebase trusts a client-side number, and it must not start here: a tampered cart total is a revenue leak, not a UI bug | Prices, tax, discount and change are computed **server-side from `products` and `SystemSetting` rates**; the browser's figure is a preview only. `ProcessPosTransactionAction` re-derives every line and refuses a mismatch |
+| **D-8** | P19-D1: `pos.void_transaction` | "Void" of a settled payment is a **money event**. The house deletion policy (`docs/base/data/soft-delete.md`) and the ledger convention Phase 18 used (`member_point_histories`) both say: never edit or delete the row that happened | A void inserts a reversing `pos_transactions` row (`kind = 'void'`, negative amounts, `void_of_id`), audited, and re-stock through `stock_movements`. Nothing is deleted, no status field flips a paid row to unpaid |
+| **D-9** | P19-B4: `mike42/escpos-php` | `AGENTS.md`: a new Composer package needs `docs/planning/changelog.md` + an ADR **first**. The package needs `ext-mbstring`/`iconv`; using it for *images* pulls GD/ImageMagick, and no thermal printer exists in CI or in the test suite | ADR-031 before any `composer require`. Receipts use the printer's **native** QR/barcode commands (no GD). The print path is verified by asserting the **byte stream** (escpos renders to a buffer — that is testable); "the paper came out right on a 58 mm head" is deferred runtime evidence. Cash-drawer kick is one `Escpos` call, never a retry loop |
+| **D-10** | P19-E: "**100 % test coverage**" | The enforced bars are global ≥ 85 %, Actions ≥ 95 %, Policies 100 %, Requests ≥ 95 % (`bin/coverage_gate.php`, bars assigned as P15 D-13). No 100 % bar exists and the phase must not lower or fake one | E1 states the bars and reports what the run measured. Coverage gaps are a named list, not an averaged claim |
+| **D-11** | P19-A3: "**Net Profit**" card | Profit needs a cost, and nothing in the schema has one (D-4 — a product has a price). Gross revenue, gateway fees and tax are computable from `payment_logs` + `pos_transactions`; profit is not | Either `products.cost` is filled and maintained (a decision with a data-entry consequence nobody named), or the Profit card ships in a later phase. Recorded as O-2; A3 is written to render it only when cost data exists |
 | **D-12** | (unstated) webhook = a public POST | CSRF runs on the `web` group only (`ValidateCsrfToken` replaced `PreventRequestForgery` **in that group**, P13-B), and its `$except` list is empty **and pinned** by `CsrfProtectionTest`. The gateway never sends a session cookie | **No `except` entry is needed** — an `api/v1` route is not in the `web` group. Do not "fix" the empty except list. The webhook does need: no `auth:sanctum`, its own named `RateLimiter::for()` bucket (15 exist today; `rate-limiting.md` owns the table), HMAC verification before any DB read, and a bounded payload |
-| **D-13** | P20-B1: `transactions`, `transaction_items` | A table literally named `transactions` next to `payment_logs`, `member_subscriptions` and a future accounting import is the kind of generic name `naming-conventions.md` exists to prevent; the domain folder here is `Pos` | Tables are `pos_transactions` / `pos_transaction_items`; `stock_movements`, `pos_shifts`, `payment_logs` keep the brief's names. One `use` per domain in the `naming-conventions.md` domains table (the P18 D-7 rule) |
+| **D-13** | P19-B1: `transactions`, `transaction_items` | A table literally named `transactions` next to `payment_logs`, `member_subscriptions` and a future accounting import is the kind of generic name `naming-conventions.md` exists to prevent; the domain folder here is `Pos` | Tables are `pos_transactions` / `pos_transaction_items`; `stock_movements`, `pos_shifts`, `payment_logs` keep the brief's names. One `use` per domain in the `naming-conventions.md` domains table (the P18 D-7 rule) |
 
 ---
 
@@ -155,7 +158,7 @@ whitelist — they are configuration, not credentials (the distinction D-6 draws
 Exit gate: fixture render green, zero DB in Blade, all three flags (`pos`,
 `payment_gateway`, `vouchers`) declared **and** seeded, Pint clean.
 
-#### P20-A1 — Cashier POS interface
+#### P19-A1 — Cashier POS interface
 - **Task**: `resources/views/pages/pos/cashier.blade.php`. Product search box, cart
   table, member picker, payment-method selector (`cash` / `QRIS` / `EDC`), keyboard-shortcut
   legend, receipt preview modal. Vanilla JS cart module under `resources/js/pos/`
@@ -170,7 +173,7 @@ Exit gate: fixture render green, zero DB in Blade, all three flags (`pos`,
   the receipt preview modal shows the same fields the printer will emit.
 - **Tests**: `PosUiRenderTest` (A5).
 
-#### P20-A2 — Payment gateway configuration card
+#### P19-A2 — Payment gateway configuration card
 - **Task**: `resources/views/pages/payments/settings.blade.php`, `col-lg-8`: driver select,
   environment toggle (sandbox/production), the three credential inputs rendered **blank**
   with "leave blank to keep the stored value", and the webhook URL the operator must paste
@@ -182,7 +185,7 @@ Exit gate: fixture render green, zero DB in Blade, all three flags (`pos`,
   requires a confirmation step.
 - **Tests**: `PaymentSettingsUiRenderTest` (A5).
 
-#### P20-A3 — Financial analytics dashboard
+#### P19-A3 — Financial analytics dashboard
 - **Task**: `resources/views/pages/payments/dashboard.blade.php` — gross revenue, net
   revenue, gateway fees, PPN/PPH breakdown, and the tax include/exclude toggle as a
   query-string filter. Profit card **conditional** (D-11/O-2).
@@ -193,13 +196,13 @@ Exit gate: fixture render green, zero DB in Blade, all three flags (`pos`,
   `PerformanceGuardTest` shape — a list must not grow with row count).
 - **Tests**: `PosDashboardRenderTest` (A5) + `FinancialDashboardTest` (E1).
 
-#### P20-A4a — Feature-flag declaration & activation
+#### P19-A4a — Feature-flag declaration & activation
 - **Task**: `pos` and `payment_gateway` in `config/pennant.php` (label, group, description,
   and the setting keys each owns) — no `FeatureFlagSeeder` edit is needed: the seeder loops
   `FeatureCatalog::slugs()`, so a declared slug is seeded the day it appears (proved by
   P18-A4a).
   The third flag of this phase's trio, `vouchers` (group Sales), already shipped with the
-  voucher move in **P20-A6** — the seeder is catalogue-driven, so both new slugs are seeded
+  voucher move in **P19-A6** — the seeder is catalogue-driven, so both new slugs are seeded
   the day they are declared, no seeder edit.
 - **Why two flags, not one**: `AGENTS.md` records the Phase 11 lesson — a route group that
   ANDs unrelated flags switches off the wrong module. A cashier printing cash receipts must
@@ -209,7 +212,7 @@ Exit gate: fixture render green, zero DB in Blade, all three flags (`pos`,
   cover them by enumerating the catalogue (no new flag test file).
 - **Docs**: `docs/base/features/feature-flags.md` gains two rows.
 
-#### P20-A5 — UI render test suite
+#### P19-A5 — UI render test suite
 - **Task**: `tests/Feature/POS/PosUiRenderTest.php` (+ the two named in A2/A3) in the
   `FormViewRenderTest` shape: `view(...)->render()` on fixtures, a sweep asserting no POS
   view reaches for the database, and one assertion that no secret-shaped string appears in
@@ -217,7 +220,7 @@ Exit gate: fixture render green, zero DB in Blade, all three flags (`pos`,
 - **Acceptance**: passes with the app down for maintenance; each gate sabotage-verified
   individually before it is called a gate.
 
-#### P20-A6 — Voucher admin view, flag & render gate — **SHIPPED 2026-11-05, in REVIEW**
+#### P19-A6 — Voucher admin view, flag & render gate — **SHIPPED 2026-11-05, in REVIEW**
 Moved out of Phase 18 (its P18-A2/A4a/A5) by owner decision the same day: the voucher is
 its own domain — checked at payment time, not part of membership and not part of the
 gateway.
@@ -241,7 +244,7 @@ gateway.
 Exit gate: migrate/rollback exit 0 on SQLite; Actions ≥ 95 % covered; `ActionNamingConventionTest`,
 `NoInlineFqnTest`, `JobConventionTest` green.
 
-#### P20-B1 — Migrations, models, factories
+#### P19-B1 — Migrations, models, factories
 - **Task**: § 4 tables (including `products`, D-4) + `App\Models\{Product,PosShift,PosTransaction,PosTransactionItem,StockMovement,PaymentLog}`
   with `Auditable`, casts to `decimal:2` for money, factories for each. `PosTransaction`
   gets the `reference` unique. The two `voucher*` tables of § 4 and their models ship in
@@ -252,7 +255,7 @@ Exit gate: migrate/rollback exit 0 on SQLite; Actions ≥ 95 % covered; `ActionN
 - **Docs**: `docs/base/data/` gains the POS schema page; `naming-conventions.md` gains the
   `Pos` domain (D-13).
 
-#### P20-B2 — `ProcessPosTransactionAction`
+#### P19-B2 — `ProcessPosTransactionAction`
 - **Task**: `app/Actions/V1/Pos/ProcessPosTransactionAction` — one `DB::transaction`:
   require an open shift → **recompute every line from `products`** (D-7) → if the cashier
   entered a code, validate it with `ValidateVoucherAction` (B6) and apply the capped
@@ -268,7 +271,7 @@ Exit gate: migrate/rollback exit 0 on SQLite; Actions ≥ 95 % covered; `ActionN
   ledger's `balance_after` still equals the member's balance.
 - **Tests**: `PosTransactionTest` (E1).
 
-#### P20-B3 — Shift open/close Actions
+#### P19-B3 — Shift open/close Actions
 - **Task**: `OpenPosShiftAction` (one open shift per cashier, opening float validated) and
   `ClosePosShiftAction` (expected cash = opening float + cash sales − cash voids − change;
   `counted_cash` in, `variance` computed and audited).
@@ -277,7 +280,7 @@ Exit gate: migrate/rollback exit 0 on SQLite; Actions ≥ 95 % covered; `ActionN
   voided-by-hand, not silently swept) — decided and tested, not left implicit.
 - **Tests**: `PosShiftTest`.
 
-#### P20-B4 — ESC/POS receipt printing
+#### P19-B4 — ESC/POS receipt printing
 - **Task**: **ADR-031 + a `changelog.md` line first** (D-9), then `mike42/escpos-php`
   behind `App\Support\Receipt\ReceiptPrinter`: receipt header from `config('app.name')`,
   itemised lines, tax lines, member + points footer, the QRIS payload as the **native** QR
@@ -292,7 +295,7 @@ Exit gate: migrate/rollback exit 0 on SQLite; Actions ≥ 95 % covered; `ActionN
 - **Tests**: `ReceiptPrintTest` (byte-level) + `JobConventionTest`.
 - **Deferred**: "the paper came out right" on real hardware — § 7.
 
-#### P20-B5 — POS controllers, routes, sidebar
+#### P19-B5 — POS controllers, routes, sidebar
 - **Task**: thin `app/Http/Controllers/Web/V1/{PosCashierController,PosTransactionController,PosShiftController}`
   + the `Api/V1/Pos/*` twins + `app/Http/Resources/Api/V1` resources; route groups with
   `feature:pos` + `can:` at the route; the `AppMenuComposer` entries (A4b, per D-2 of
@@ -301,7 +304,7 @@ Exit gate: migrate/rollback exit 0 on SQLite; Actions ≥ 95 % covered; `ActionN
   `DB::transaction` or inline `validate()`; `route:list` shows a gate on every write.
 - **Tests**: `PosWebTest`, `PosApiTest`, `ApiDocumentationTest` as the drift gate.
 
-#### P20-B6 — Voucher domain data & validation (moved from Phase 18 P18-B1/B2/B5)
+#### P19-B6 — Voucher domain data & validation (moved from Phase 18 P18-B1/B2/B5)
 - **Task**: `vouchers` + `voucher_usages` migrations per § 4; `App\Models\{Voucher,VoucherUsage}`
   with `Auditable` + `SoftDeletes` and factories; `app/Http/Requests/V1/Voucher/{StoreVoucherRequest,UpdateVoucherRequest,ClaimVoucherRequest}`
   (code normalised to uppercase and unique among non-deleted rows; quota ≥ 0 or null;
@@ -324,7 +327,7 @@ Exit gate: migrate/rollback exit 0 on SQLite; Actions ≥ 95 % covered; `ActionN
   writes nothing and can be called by the cart preview without side effects.
 - **Tests**: `VoucherRaceConditionTest` (E1), `VoucherValidationTest`, `VoucherRequestTest`.
 
-#### P20-B7 — Voucher controllers, routes & its own menu (moved from Phase 18 P18-B6)
+#### P19-B7 — Voucher controllers, routes & its own menu (moved from Phase 18 P18-B6)
 - **Task**: thin `app/Http/Controllers/Web/V1/VoucherController` (the A6 view finally gets
   its route) + `app/Http/Controllers/Api/V1/Voucher/*` twins + `app/Http/Resources/Api/V1`
   resources; route groups carrying `feature:vouchers` + `can:` at the route; **one
@@ -343,7 +346,7 @@ Exit gate: migrate/rollback exit 0 on SQLite; Actions ≥ 95 % covered; `ActionN
 Exit gate: every gateway call is fake-able (`Http::fake`) and the webhook is provably
 single-settle.
 
-#### P20-C1 — `CreatePaymentOrderAction`
+#### P19-C1 — `CreatePaymentOrderAction`
 - **Task**: `app/Actions/V1/Payment/CreatePaymentOrderAction` — generate the deterministic
   `reference` **before** the call (it is the idempotency key, D-3), compute PPN/PPH from
   `SystemSetting` rates, apply the voucher discount through `ValidateVoucherAction` (B6), persist the transaction as `pending`,
@@ -356,7 +359,7 @@ single-settle.
   pending row survives a failed call and is auditable.
 - **Tests**: `PaymentOrderTest` (with `Http::fake`, asserting attempt counts).
 
-#### P20-C2 — `ProcessPaymentWebhookAction`
+#### P19-C2 — `ProcessPaymentWebhookAction`
 - **Task**: verify the HMAC over the raw body with `hash_equals()` and the stored
   `payment_webhook_secret` **before** parsing anything → resolve by `reference` →
   `DB::transaction` with `lockForUpdate()` **and** the atomic
@@ -372,7 +375,7 @@ single-settle.
 - **Tests**: `PaymentWebhookTest`, `PaymentWebhookRaceConditionTest` (E1).
 - **Docs**: `docs/base/security/rate-limiting.md` gains the new limiter row.
 
-#### P20-C3 — `UpdatePaymentSettingsAction`
+#### P19-C3 — `UpdatePaymentSettingsAction`
 - **Task**: the **only** writer of the three credential keys (D-6): validate, compare the
   submitted plaintext against `AppServiceProvider::storedSecret()` and re-`encrypt()` only
   on a real change, strip the secrets from the audit payload, then rebind
@@ -385,7 +388,7 @@ single-settle.
 - **Tests**: `PaymentSettingsPersistenceTest` + the standing `SettingsPentestTest` shape
   (the credential-disclosure probe is the one that found Phase 9's finding #1).
 
-#### P20-C4 — Payment controllers and the webhook route
+#### P19-C4 — Payment controllers and the webhook route
 - **Task**: `app/Http/Controllers/Web/V1/{PaymentGatewayController}` + `Api/V1/Payment/*`,
   the sidebar entries (A4b), and the public route `POST /api/v1/payment/webhook/{driver}`:
   **no** `auth:sanctum`, no `web` group (D-12 — so no CSRF `except` entry), its own named
@@ -399,7 +402,7 @@ single-settle.
 
 ### Group D — Enforcement
 
-#### P20-D1 — RBAC
+#### P19-D1 — RBAC
 - **Task**: `POS`/`PAYMENTS`/`VOUCHERS` in `app/Support/PermissionCatalog.php` — `pos.access`,
   `pos.manage`, `pos.void_transaction`, `payments.view`, `payments.manage`, plus the
   voucher domain's own pair moved from Phase 18: `vouchers.view`, `vouchers.manage` —
@@ -414,7 +417,7 @@ single-settle.
   channels; `payments.manage` alone cannot ring a sale.
 - **Tests**: `PosAuthorizationTest`, `PaymentAuthorizationTest`; catalogue-drift guards updated.
 
-#### P20-D2 — Feature-flag enforcement
+#### P19-D2 — Feature-flag enforcement
 - **Acceptance**: `pos` off → **403** (not 404, D-1) on both channels + the sidebar entry
   drops for superadmin too; `payment_gateway` off → the QRIS/gateway path 403s while the
   **cash** path still completes (this is the assertion that proves the two-flag decision in
@@ -423,7 +426,7 @@ single-settle.
   three-flag independence, spec 11); an undeclared slug fails closed.
 - **Tests**: the per-slug flag middleware shape, plus the cash-survives-gateway-kill case.
 
-#### P20-D3 — Audit events
+#### P19-D3 — Audit events
 - **Task**: `pos_shift.opened`, `pos_shift.closed`, `pos_transaction.created`,
   `pos_transaction.voided`, `payment.order_created`, `payment.webhook_settled`,
   `payment.failed`, `payment.settings_updated`, `voucher.claimed` (travelling with the
@@ -440,7 +443,7 @@ single-settle.
 
 ### Group E — Verification and closure
 
-#### P20-E1 — Feature test suite
+#### P19-E1 — Feature test suite
 - **Task**: `tests/Feature/POS/{PosTransactionTest,PosShiftTest,ReceiptPrintTest,PaymentOrderTest,PaymentWebhookTest,PaymentWebhookRaceConditionTest,FinancialDashboardTest}.php`
   + `tests/Feature/Voucher/VoucherRaceConditionTest.php` (moved from P18-E1: quota
   arithmetic, the unique usage-row backstop, a double claim refused)
@@ -453,7 +456,7 @@ single-settle.
   Policies 100 %; wall clock stays recorded, not asserted (D-8 of Phase 15).
 - **Tests**: are the tests.
 
-#### P20-E2 — Full-suite run and tracker reconciliation
+#### P19-E2 — Full-suite run and tracker reconciliation
 - **Task**: `vendor/bin/pint --test`, `vendor/bin/phpstan analyse --memory-limit=1G`,
   `php artisan test`, `route:list`, `schedule:list`, `composer audit --locked`,
   `npm ci && npm run build`; flip rows on evidence; update `progress.md`,
