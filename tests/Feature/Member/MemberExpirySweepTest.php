@@ -12,6 +12,7 @@ use Database\Seeders\FeatureFlagSeeder;
 use Database\Seeders\PermissionSeeder;
 use Database\Seeders\RoleSeeder;
 use Database\Seeders\SystemSettingSeeder;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Pennant\Feature;
 use Spatie\Activitylog\Models\Activity;
@@ -156,5 +157,33 @@ class MemberExpirySweepTest extends TestCase
 
         $this->assertSame(MemberSubscription::STATUS_ACTIVE, $period->fresh()->status);
         $this->assertSame(0, Activity::where('event', 'member.expired')->count());
+    }
+
+    /**
+     * The chunk carries the relations its per-row Action reads.
+     *
+     * A dropped `with()` in `MemberSubscriptionExpirySweepJob` is invisible to
+     * every assertion above — the run still expires the right rows and revokes
+     * the right role, it just pays four selects per period to do it. So the
+     * guard is not an assertion about the result, it is the framework's own
+     * lazy-load violation: with the guard on, the run either completes silently
+     * (loaded) or throws (not loaded).
+     */
+    public function test_the_sweep_carries_every_relation_its_per_row_work_reads(): void
+    {
+        $tier = $this->tier('gold_member');
+        $this->period($this->memberIn($tier), $tier, now()->subDay());
+        $this->period($this->memberIn($tier), $tier, now()->subDays(2));
+        $this->period($this->memberIn($tier), $tier, now()->subDays(3));
+
+        Model::preventLazyLoading(true);
+
+        try {
+            MemberSubscriptionExpirySweepJob::dispatchSync();
+        } finally {
+            Model::preventLazyLoading(false);
+        }
+
+        $this->assertSame(3, MemberSubscription::query()->where('status', MemberSubscription::STATUS_EXPIRED)->count());
     }
 }

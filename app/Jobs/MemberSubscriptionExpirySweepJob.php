@@ -83,6 +83,11 @@ class MemberSubscriptionExpirySweepJob implements ShouldQueue
         // deactivated member froze their period, and freezing a clock the
         // operator stopped would expire the wrong row.
         MemberSubscription::query()
+            // The per-row Action reads the profile, its account, the roles
+            // still on it and the tier name for the audit row. Without this the
+            // chunk costs four selects per period; a run over 10k periods pays
+            // 40k round trips for data the chunk could have carried.
+            ->with(['member.user.roles', 'tier'])
             ->where('status', MemberSubscription::STATUS_ACTIVE)
             ->whereNull('paused_at')
             ->where('expires_at', '<=', now())
