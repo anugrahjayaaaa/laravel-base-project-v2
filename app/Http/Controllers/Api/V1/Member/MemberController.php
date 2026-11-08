@@ -84,7 +84,7 @@ class MemberController extends Controller
      */
     public function show(Member $member): JsonResponse
     {
-        $member->load(['user', 'subscriptions.tier', 'pointHistories']);
+        $member->load(Member::DETAIL_WITH);
 
         return $this->respond('', 200, [
             'member' => new MemberResource($member),
@@ -115,9 +115,15 @@ class MemberController extends Controller
      * 422 when both or neither of the two arrive, and when the deduction would
      * take the balance below zero — `MemberAdjustPointsAction` refuses the
      * write before it opens the ledger row.
+     *
+     * 404 for a profile in the trash: `MemberExpirePointsAction` scans the
+     * default scope, so points credited to a trashed row would never expire.
      */
+    #[Response(status: 404, type: ApiError::DOC_TYPE)]
     public function points(MemberAdjustPointsRequest $request, Member $member): JsonResponse
     {
+        abort_if($member->trashed(), 404);
+
         $this->pointsAction->run($member, $request->validated(), $request->user());
 
         return $this->respond('Points adjusted successfully.', 200, [
@@ -157,9 +163,9 @@ class MemberController extends Controller
      * button, same Action, so neither channel decides the window alone.
      * No request data to read: the route's `can:members.notify` is the gate.
      */
-    public function broadcastExpiry(): JsonResponse
+    public function broadcastExpiry(Request $request): JsonResponse
     {
-        $this->broadcastAction->run();
+        $this->broadcastAction->run($request->user() ?? abort(403));
 
         return $this->respond('Expiry notifications queued successfully.');
     }

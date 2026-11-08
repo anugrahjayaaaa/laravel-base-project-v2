@@ -9,6 +9,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\V1\Member\MemberAnalyticsQueryRequest;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 
 /**
  * Membership dashboard and its bulk expiry warning trigger (Phase 18).
@@ -37,12 +38,13 @@ class MemberDashboardController extends Controller
 
     /**
      * Queue the expiring-members warning run. The scan and every mail happen
-     * on a worker; this request only resolves the window and dispatches (C2).
-     * No request data to read: the route's `can:members.notify` is the gate.
+     * on a worker; this request only resolves the window, records who fired it
+     * and dispatches (C2). No request body to read: the route's
+     * `can:members.notify` is the gate.
      */
-    public function broadcastExpiry(): RedirectResponse
+    public function broadcastExpiry(Request $request): RedirectResponse
     {
-        $this->broadcastAction->run();
+        $this->broadcastAction->run($request->user() ?? abort(403));
 
         return back()->with('status', 'Expiry notifications queued.');
     }
