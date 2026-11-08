@@ -268,6 +268,23 @@ class MemberApiTest extends TestCase
             ->assertJsonPath('data.member.user_name', 'Nina');
     }
 
+    /**
+     * `is_active` defaults in the migration, which an instance never sees. The
+     * 201 payload is built from the instance the Action created, so without a
+     * model-level default a freshly enrolled profile announces itself as not
+     * active — and the subscribe guard reads the same attribute.
+     */
+    public function test_a_newly_created_member_is_active_in_its_own_payload(): void
+    {
+        Sanctum::actingAs($this->userWith('members.create', 'users.assign_roles'));
+
+        $this->postJson(route('api.v1.members.store'), [
+            'name' => 'Omar',
+            'username' => 'omar',
+            'email' => 'omar@example.com',
+        ])->assertCreated()->assertJsonPath('data.member.is_active', true);
+    }
+
     public function test_the_bulk_permission_depends_on_the_action_requested(): void
     {
         $member = Member::factory()->create();

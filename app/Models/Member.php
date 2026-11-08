@@ -48,6 +48,16 @@ class Member extends Model
      */
     public const DETAIL_WITH = ['user', 'subscriptions.tier', 'pointHistories'];
 
+    /**
+     * The `is_active` default lives in the migration, so a created instance
+     * would otherwise carry null while its row carries true — and the first
+     * read of that instance (the API payload, an `is_active` guard) reports a
+     * profile that was never deactivated as deactivated.
+     */
+    protected $attributes = [
+        'is_active' => true,
+    ];
+
     protected function casts(): array
     {
         return [
