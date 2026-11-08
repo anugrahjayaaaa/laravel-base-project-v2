@@ -97,7 +97,7 @@ class MemberWebTest extends TestCase
 
         $this->get('/members')->assertOk()->assertSee('MBR-000100');
         $this->get('/members/tiers')->assertOk()->assertSee('Gold');
-        $this->get('/members/dashboard')->assertOk()->assertSee('Points issued');
+        $this->get('/members/dashboard')->assertOk()->assertSee('Points Issued');
         $this->get('/members/'.$member->id)->assertOk()->assertSee('Welcome bonus');
     }
 

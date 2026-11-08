@@ -168,6 +168,51 @@ class MemberUiRenderTest extends TestCase
         ], $overrides);
     }
 
+    /**
+     * The dashboard view model: the A3 read slice (`MemberDashboardAction`) merged
+     * with the Group F analytics slice (`MemberAnalyticsStatsAction`), exactly as
+     * the controller hands them over. The analytics half is nested arrays because
+     * the Action caches it, and only primitives survive a Redis round trip.
+     *
+     * @param  array<string, mixed>  $overrides
+     * @return array<string, mixed>
+     */
+    private function dashboardData(array $overrides = []): array
+    {
+        return array_merge([
+            'indexUrl' => '/members',
+            'broadcastUrl' => '/members/notify-expiring',
+            'alertWindowDays' => 14,
+            'stats' => [
+                $this->obj(['label' => 'Active Members', 'value' => 30, 'hint' => 'Live subscriptions right now.']),
+                $this->obj(['label' => 'Points Issued', 'value' => 5400, 'hint' => 'Points ever credited.']),
+            ],
+            'expiring' => [],
+            'membersByTier' => [$this->obj(['label' => 'Gold', 'count' => 12])],
+            'filterUrl' => '/members/dashboard',
+            'timeframes' => [
+                ['label' => '7D', 'url' => '/members/dashboard?range=7d', 'active' => false],
+                ['label' => '30D', 'url' => '/members/dashboard?range=30d', 'active' => true],
+            ],
+            'range' => '30d',
+            'window' => ['from' => '2026-10-06', 'to' => '2026-11-05'],
+            'metrics' => [
+                ['label' => 'Renewal Rate', 'value' => '42%', 'hint' => 'Ended periods followed by a new one.'],
+                ['label' => 'Daily Engagement', 'value' => '18%', 'hint' => 'Signed in today over signed in this month.'],
+                ['label' => 'Inactive Members', 'value' => '4', 'hint' => 'Active subscription, no sign-in for 30 days.'],
+            ],
+            'series' => [
+                ['label' => 'w/c 06 Oct', 'new' => 3, 'expired' => 1, 'new_pct' => 100, 'expired_pct' => 33],
+            ],
+            'tenure' => [
+                ['label' => 'Under 1 month', 'count' => 3, 'pct' => 25],
+            ],
+            'at_risk' => [],
+            'at_risk_count' => 0,
+            'at_risk_days' => 30,
+        ], $overrides);
+    }
+
     public function test_the_member_index_renders_every_state(): void
     {
         $this->signIn('superadmin');
@@ -486,30 +531,57 @@ class MemberUiRenderTest extends TestCase
     {
         $this->signIn('superadmin');
 
-        $html = $this->render('pages.members.dashboard', [
-            'indexUrl' => '/members',
-            'broadcastUrl' => '/members/notify-expiring',
-            'alertWindowDays' => 14,
-            'stats' => [
-                $this->obj(['label' => 'Active members', 'value' => 30]),
-                $this->obj(['label' => 'Expiring soon', 'value' => 0]),
-                $this->obj(['label' => 'Points issued', 'value' => 5400]),
-            ],
-            'expiring' => [],
-            'membersByTier' => [
-                $this->obj(['label' => 'Gold', 'count' => 12]),
-            ],
-        ]);
+        $html = $this->render('pages.members.dashboard', $this->dashboardData());
 
         $this->assertStringContainsString('No subscriptions are expiring inside the alert window.', $html);
-        $this->assertStringContainsString('Expiring within 14 days', $html);
-        $this->assertStringContainsString('Points issued', $html);
+        $this->assertStringContainsString('Expiring Soon — within 14 days', $html);
+        $this->assertStringContainsString('Points Issued', $html);
 
         // The broadcast trigger posts to the route URL it was handed, with
         // its own copy in data-* — the shared modal driver's contract.
         $this->assertStringContainsString('data-action="/members/notify-expiring"', $html);
         $this->assertStringContainsString('data-method="POST"', $html);
         $this->assertStringContainsString('data-title="Send Expiry Alerts"', $html);
+    }
+
+    public function test_the_analytics_sections_render_from_the_view_model_and_take_empty_states(): void
+    {
+        $this->signIn('superadmin');
+
+        $empty = $this->render('pages.members.dashboard', $this->dashboardData());
+        $this->assertStringContainsString('Membership Analytics', $empty);
+        $this->assertStringContainsString('New Members vs Expiring Subscriptions', $empty);
+        $this->assertStringContainsString('Length of Membership', $empty);
+        $this->assertStringContainsString('Members per Tier', $empty);
+        $this->assertStringContainsString('Inactive Members', $empty);
+        $this->assertStringContainsString('Renewal Rate', $empty);
+        $this->assertStringContainsString('No active member has been inactive for 30 days.', $empty);
+        // Every widget carries its own explanation, and the two list widgets share
+        // one capped scroll height — the layout the owner asked for, pinned here
+        // rather than left to a screenshot.
+        $this->assertGreaterThanOrEqual(8, substr_count($empty, 'data-bs-toggle="tooltip"'));
+        $this->assertSame(2, substr_count($empty, 'style="max-height: 340px;"'));
+        // The dropdown always carries pre-filled dates; a preset simply shows
+        // them as the current window, not as an empty form waiting to be typed.
+        $this->assertStringContainsString('dateRangeForm', $empty);
+
+        $filled = $this->render('pages.members.dashboard', $this->dashboardData([
+            'range' => 'custom',
+            'window' => ['from' => '2026-01-01', 'to' => '2026-03-31'],
+            'at_risk' => [[
+                'member_number' => 'MBR-000009',
+                'user_name' => 'Rina',
+                'expires_at' => '2026-11-20',
+                'last_activity' => '2026-09-01',
+            ]],
+            'at_risk_count' => 1,
+        ]));
+        $this->assertStringContainsString('w/c 06 Oct', $filled);
+        $this->assertStringContainsString('style="width: 100%"', $filled);
+        $this->assertStringContainsString('MBR-000009', $filled);
+        $this->assertStringContainsString('2026-09-01', $filled);
+        $this->assertStringContainsString('value="2026-01-01"', $filled);
+        $this->assertStringNotContainsString('No active member has been inactive', $filled);
     }
 
     public function test_mutating_affordances_disappear_without_the_permission(): void
@@ -539,14 +611,7 @@ class MemberUiRenderTest extends TestCase
         $this->assertStringNotContainsString('Create Tier', $tiers, 'the create button ignored member_tiers.create');
         $this->assertStringNotContainsString('data-action="/members/tiers/1"', $tiers, 'the row delete ignored members.delete');
 
-        $dashboard = $this->render('pages.members.dashboard', [
-            'indexUrl' => '/members',
-            'broadcastUrl' => '/members/notify-expiring',
-            'alertWindowDays' => 14,
-            'stats' => [],
-            'expiring' => [],
-            'membersByTier' => [],
-        ]);
+        $dashboard = $this->render('pages.members.dashboard', $this->dashboardData(['stats' => [], 'membersByTier' => []]));
         $this->assertStringNotContainsString('data-action="/members/notify-expiring"', $dashboard, 'the broadcast trigger ignored members.notify');
     }
 
@@ -565,14 +630,11 @@ class MemberUiRenderTest extends TestCase
         $this->assertStringNotContainsString('bulkSelectAll', $index, 'select-all survived a null bulkUrl');
         $this->assertStringNotContainsString('data-bulk-route', $index, 'the bulk bar survived a null bulkUrl');
 
-        $dashboard = $this->render('pages.members.dashboard', [
-            'indexUrl' => '/members',
-            'broadcastUrl' => null,
-            'alertWindowDays' => 14,
+        $dashboard = $this->render('pages.members.dashboard', $this->dashboardData([
             'stats' => [],
-            'expiring' => [],
             'membersByTier' => [],
-        ]);
+            'broadcastUrl' => null,
+        ]));
         $this->assertStringNotContainsString('data-action=', $dashboard, 'the broadcast trigger survived a null broadcastUrl');
     }
 
@@ -584,15 +646,9 @@ class MemberUiRenderTest extends TestCase
         $index = $this->render('pages.members.index', $this->indexData());
         $this->assertStringNotContainsString('bulkSelectAll', $index, 'the index ignores the feature flag');
 
-        $dashboard = $this->render('pages.members.dashboard', [
-            'indexUrl' => '/members',
-            'broadcastUrl' => '/members/notify-expiring',
-            'alertWindowDays' => 14,
-            'stats' => [],
-            'expiring' => [],
-            'membersByTier' => [],
-        ]);
-        $this->assertStringNotContainsString('Expiring within 14 days', $dashboard, 'the dashboard ignores the feature flag');
+        $dashboard = $this->render('pages.members.dashboard', $this->dashboardData(['stats' => [], 'membersByTier' => []]));
+        $this->assertStringNotContainsString('Expiring Soon — within 14 days', $dashboard, 'the dashboard ignores the feature flag');
+        $this->assertStringNotContainsString('New Members vs Expiring Subscriptions', $dashboard, 'the analytics cards ignore the feature flag');
     }
 
     public function test_no_member_view_reaches_for_the_database_routes_or_inline_script(): void
