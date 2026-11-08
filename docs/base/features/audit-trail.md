@@ -180,7 +180,8 @@ Action-First Audit Logging Standard.
 ## Event Map
 
 Every audit write in `app/`, enumerated from the `->audit()`/`auditBulk()`
-call sites (Phase 16 D1, measured 2026-11-04 — 48 distinct events). This is
+call sites (Phase 16 D1 method — re-measured 2026-11-08 by counting the rows
+below: 57 distinct events). This is
 the single map; per-module docs link here instead of restating. Zero writes
 come from model observers — `ActionFirstAuditTest` pins that property.
 
@@ -237,11 +238,12 @@ come from model observers — `ActionFirstAuditTest` pins that property.
 | `member.points_adjusted` | `MemberAdjustPointsAction` | the admin; properties carry `delta`, `balance_before`, `balance_after`, `reason` |
 | `member.points_expired` | `MemberExpirePointsAction` (the daily `member-points-expiry` schedule) | `SYSTEM` marker in properties — no logged-in actor exists |
 | `member.deactivated` | `MemberDeactivateAction` | the admin; properties carry `member_number`, and the state an activation has to be rebuilt from: `last_tier`, `points_balance`, `remaining_days` (rounded **up** — a member who loses part of a day lost a day), `violation`, `reason`. The reason exists nowhere else, so this row is the only record of why the switch was thrown |
-| `member.activated` | `MemberActivateAction` | the admin; properties carry `target_id`, `member_number`, `resumed_tier`, `resumed_expires_at` — the new expiry is the old one plus the time spent paused, and no subscription is created |
-| `member.subscribed` | `MemberSubscriptionActivateAction` | the admin; properties carry `member_number`, `subscription_id`, `tier_name`, `expires_at`. Refused (no row) when the tier is inactive or the member already holds a live period |
+| `member.activated` | `MemberActivateAction` | the admin; properties carry `target_id`, `member_number`, `resumed_tier`, `resumed_expires_at` — the new expiry is the old one plus the time spent paused, and no subscription is created. Only a period still `status = active` is resumed: `paused_at` outlives a cancellation, and days are not handed to a row that will never serve them again (`resumed_*` stay null when nothing was resumable) |
+| `member.subscribed` | `MemberSubscriptionActivateAction` | the admin; properties carry `member_number`, `subscription_id`, `tier_name`, `expires_at`. Refused (no row) when the tier is inactive, the profile is deactivated, or the member already holds a live period — the live-period check runs inside the transaction on the profile's locked row, so two concurrent triggers cannot both pass it |
 | `member.role_synced` | `MemberSubscriptionActivateAction` / `MemberSubscriptionCancelAction` | the admin; properties carry `member_number`, `role_name`, `change` (`applied` / `revoked`). Written only when the tier carries a role; the revoke is skipped when another live period still needs the same role |
 | `member.subscription_cancelled` | `MemberSubscriptionCancelAction` | the admin; properties carry `member_number`, `subscription_id`, `tier_name`. A row already cancelled writes nothing, so double-cancelling does not fill the trail with no-ops |
 | `member.expired` | `MemberSubscriptionExpireAction` (the daily `member-subscription-expiry` sweep) | `SYSTEM` marker in properties — no logged-in actor exists; carries `member_number`, `subscription_id`, `tier_name`, `role_name`, `role_revoked`. Written inside the sweep's transaction; a paused period never reaches this Action |
+| `member.expiry_broadcasted` | `MemberExpiryBroadcastAction` | the admin who fired the mass mail; properties carry `alert_window_days`. Subject is the **operator**, not a `Member`: one trigger addresses every member in the window and the recipient scan happens later on the worker, so there is no single profile to name. Written before the job is queued |
 
 Ledger semantics (stored `balance_after`, a correction is another row, what the annual
 reset does and does not touch) are in [membership.md](membership.md) § Points.

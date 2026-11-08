@@ -126,11 +126,17 @@ shape. Both lists render them the way the users row does: icon only, the action 
     sanction nobody wrote down is not a record.
   - not a violation → `member_subscriptions.paused_at` freezes the clock. `status` and
     `expires_at` stay put, so `MemberActivateAction` adds the paused span back and hands over
-    the days that were bought and never used.
+    the days that were bought and never used — **for a period still `active` only**. A row
+    cancelled after the pause keeps its `paused_at` (the cancel ends the period, it does not
+    clean the freeze stamp), and the resume filters on `status`, so a dead period is never
+    credited days and never reported as resumed.
   Either way `member.deactivated` carries `last_tier`, `points_balance`, `remaining_days`
   (rounded up: part of a day lost is a day lost), `violation` and `reason` — the state to
   rebuild from, because coming back in is a fresh decision, not an undo. Activate issues no
-  subscription: the member buys the next period themselves or at the cashier.
+  subscription: the member buys the next period themselves or at the cashier — **after** the
+  profile is switched back on. `MemberSubscriptionActivateAction` refuses a period for a
+  deactivated profile, because its paused one is still owed and a second live row would leave
+  two `paused_at` rows that a single resume cannot both hand back.
 
 Neither route touches the login account — that is `users.deactivate`, a different permission on a
 different table. The violation switch and reason field are **pushed into** the shared
@@ -160,8 +166,9 @@ membership page.
 **Views render no URLs of their own** (D-4): every `route()` is resolved by the Action and
 arrives as a variable, and a **null write URL removes the affordance** rather than render a
 button that 404s. Trashing, restore, force-delete, the bulk bar, subscribe and cancel are live;
-`subscribeUrl` is null exactly when no new period may be issued — the profile is trashed or a
-live period already runs — and a subscription's `cancel_url` is null once it is cancelled. The
+`subscribeUrl` is null exactly when no new period may be issued — the profile is trashed, is
+deactivated, or a live period already runs — and a subscription's `cancel_url` is null once it
+is cancelled. The
 detail page links the profile to the account behind it (`user_url`, shown only to a viewer who
 holds `users.view`).
 
@@ -335,8 +342,11 @@ rows it ever sees. Flag off → log and return, same as the points sweep.
 
 `POST /members/dashboard/broadcast-expiry` (`membership.broadcast-expiry`, `members.notify`)
 does one thing: `MemberExpiryBroadcastAction` reads `member_expiry_alert_window_days` (14
-fallback) and pushes `SendMemberExpiryNotificationJob` — the request returns before any
+fallback), writes `member.expiry_broadcasted` with that window and the operator as causer, and
+then pushes `SendMemberExpiryNotificationJob` — the request returns before any
 message is sent, and the API twin (`api.v1.members.broadcast-expiry`) queues the same run.
+The audit row is written **before** the dispatch, so a mail that went out always has the name
+of whoever ordered it; a refused caller (no `members.notify`) leaves neither behind.
 The job scans live periods inside the window grouped per member (the **earliest** expiry wins
 when one member holds several), then `Notification::send`s one
 `MemberExpiryWarningNotification` per member on the switches' channels — mail + in-app only
