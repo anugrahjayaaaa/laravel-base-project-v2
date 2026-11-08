@@ -46,20 +46,31 @@ class MemberExpirePointsAction
             // stable. Soft-deleted profiles are outside the default scope.
             Member::where('points_balance', '>', 0)->chunkById(500, function ($members) use (&$count): void {
                 foreach ($members as $member) {
-                    $balance = $member->points_balance;
+                    // The balance is re-read under the row lock, the same way
+                    // `MemberAdjustPointsAction` reads it: the value the chunk
+                    // selected can be a page old by the time this loop reaches
+                    // it, and zeroing a stale copy both throws away points that
+                    // were just earned and stores a `balance_after` the ledger
+                    // cannot support.
+                    $locked = Member::whereKey($member->getKey())->lockForUpdate()->firstOrFail();
+                    $balance = $locked->points_balance;
 
-                    $member->update(['points_balance' => 0]);
+                    if ($balance <= 0) {
+                        continue;
+                    }
+
+                    $locked->update(['points_balance' => 0]);
 
                     MemberPointHistory::create([
-                        'member_id' => $member->id,
+                        'member_id' => $locked->getKey(),
                         'delta' => -$balance,
                         'balance_after' => 0,
                         'reason' => self::REASON,
                     ]);
 
-                    $member->audit('member.points_expired', null, [
+                    $locked->audit('member.points_expired', null, [
                         'causer' => 'SYSTEM',
-                        'member_number' => $member->member_number,
+                        'member_number' => $locked->member_number,
                         'points_removed' => $balance,
                     ]);
 
