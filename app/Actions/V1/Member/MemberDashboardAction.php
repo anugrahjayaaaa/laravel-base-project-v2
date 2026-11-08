@@ -58,13 +58,31 @@ class MemberDashboardAction
                 ],
             ],
             'expiring' => $expiring,
-            'membersByTier' => MemberTier::orderBy('sort_order')
-                ->get()
-                ->map(fn (MemberTier $tier) => (object) [
-                    'label' => $tier->name,
-                    'count' => $tier->subscriptions()->currentlyActive()->count(),
-                ])
-                ->all(),
+            // One grouped read for every tier, then the list is walked in memory.
+            // Counting per tier was one query per row of the price list.
+            'membersByTier' => $this->membersByTier(),
         ];
+    }
+
+    /**
+     * Live periods per tier, keyed by the tier name the operator sees. A tier
+     * with nothing live appears with a zero, so the chart never loses a bar.
+     *
+     * @return array<int, object>
+     */
+    private function membersByTier(): array
+    {
+        $counts = MemberSubscription::currentlyActive()
+            ->selectRaw('member_tier_id, COUNT(*) as aggregate')
+            ->groupBy('member_tier_id')
+            ->pluck('aggregate', 'member_tier_id');
+
+        return MemberTier::orderBy('sort_order')
+            ->get()
+            ->map(fn (MemberTier $tier) => (object) [
+                'label' => $tier->name,
+                'count' => (int) $counts->get($tier->id, 0),
+            ])
+            ->all();
     }
 }
