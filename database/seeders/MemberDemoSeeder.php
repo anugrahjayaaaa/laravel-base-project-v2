@@ -8,6 +8,7 @@ use App\Models\MemberTier;
 use App\Models\User;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
+use RuntimeException;
 use Illuminate\Support\Facades\Hash;
 
 /**
@@ -29,6 +30,13 @@ class MemberDemoSeeder extends Seeder
 
     public function run(): void
     {
+        // "demo rows must never land in a production seed" is what the docblock
+        // above already says; this is that rule enforced, because the ten
+        // accounts it writes share the password published in this repository.
+        if (! app()->environment('local', 'testing')) {
+            throw new RuntimeException('MemberDemoSeeder creates accounts with the published password #Password123 and refuses to run outside local/testing.');
+        }
+
         (new MemberTierSeeder())->run();
 
         $tierIds = MemberTier::query()->pluck('id')->all();

@@ -34,7 +34,11 @@ class DatabaseSeeder extends Seeder
             // Starter configuration, not demo rows: an install with no tiers has
             // nothing to subscribe a member to.
             MemberTierSeeder::class,
-            UserSeeder::class,
+            // Demo accounts (user1…user10, published password) are dev/testing
+            // only, and `db:seed --force` is the documented production path —
+            // so they are skipped here rather than throwing mid-seed. Run
+            // `--class=UserSeeder` directly in local/testing to get them.
+            ...(app()->environment('local', 'testing') ? [UserSeeder::class] : []),
         ]);
     }
 }
