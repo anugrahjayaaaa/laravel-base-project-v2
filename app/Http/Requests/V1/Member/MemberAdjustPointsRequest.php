@@ -23,6 +23,18 @@ class MemberAdjustPointsRequest extends BaseFormRequest
     }
 
     /**
+     * Same reason as `MemberDeactivateRequest`: this text is written to the
+     * ledger row and the audit row, and neither should carry a line break an
+     * operator did not intend.
+     */
+    protected function prepareForValidation(): void
+    {
+        if (is_string($this->input('reason'))) {
+            $this->merge(['reason' => str($this->input('reason'))->squish()->toString()]);
+        }
+    }
+
+    /**
      * @return array<string, array<int, mixed>>
      */
     public function rules(): array

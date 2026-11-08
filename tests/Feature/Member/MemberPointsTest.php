@@ -191,4 +191,62 @@ class MemberPointsTest extends TestCase
         $this->assertSame(0, (new MemberExpirePointsAction())->run());
         $this->assertSame(4000, $member->fresh()->points_balance);
     }
+
+    /**
+     * The request bounds what is typed; this bounds what can be credited. The
+     * earning rule is operator-configured, so Rp 1.000.000.000 against a step of
+     * Rp 1 would otherwise mint a trillion points in one request — and a typed
+     * delta could out-mint the biggest allowed receipt.
+     */
+    public function test_one_adjustment_cannot_credit_more_than_the_ceiling(): void
+    {
+        $this->manager();
+        $member = $this->member(0);
+
+        $this->postJson(route('api.v1.members.points', $member), ['delta' => 20000001, 'reason' => 'Typo'])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('delta');
+
+        SystemSetting::set('member_points_earn_amount', '1');
+        SystemSetting::set('member_points_earn_value', '1000');
+
+        $this->postJson(route('api.v1.members.points', $member), ['purchase_amount' => 1000000000, 'reason' => 'Big receipt'])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('purchase_amount');
+
+        $this->assertSame(0, Member::find($member->id)->points_balance);
+        $this->assertSame(0, MemberPointHistory::where('member_id', $member->id)->count(), 'a refused credit writes no ledger row');
+    }
+
+    public function test_the_ceiling_leaves_a_deduction_of_an_existing_balance_alone(): void
+    {
+        $this->manager();
+        $member = $this->member(60000000);
+
+        $this->postJson(route('api.v1.members.points', $member), ['delta' => -50000000, 'reason' => 'Reward redeemed'])
+            ->assertSuccessful();
+
+        $this->assertSame(10000000, Member::find($member->id)->points_balance);
+    }
+
+    /**
+     * A reason is free text that lands in the ledger row and the audit row, and
+     * the audit trail exports as plain text. One CRLF was enough to forge a line.
+     */
+    public function test_a_reason_with_line_breaks_is_written_as_one_line(): void
+    {
+        $this->manager();
+        $member = $this->member(1000);
+
+        $this->postJson(route('api.v1.members.points', $member), [
+            'delta' => -10,
+            'reason' => "Refund\r\nmember.created forged audit row",
+        ])->assertSuccessful();
+
+        $audit = Activity::where('event', 'member.points_adjusted')->latest('id')->firstOrFail();
+        $this->assertSame('Refund member.created forged audit row', $audit->properties['reason']);
+
+        $ledger = MemberPointHistory::where('member_id', $member->id)->latest('id')->firstOrFail();
+        $this->assertSame('Refund member.created forged audit row', $ledger->reason);
+    }
 }

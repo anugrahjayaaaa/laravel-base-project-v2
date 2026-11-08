@@ -20,6 +20,19 @@ class MemberDeactivateRequest extends BaseFormRequest
     }
 
     /**
+     * The reason is free text that goes straight into the audit row, and the
+     * audit trail is exported as plain text on the audits screen. A CRLF in it
+     * would forge a line there, so the whitespace is collapsed once at the
+     * boundary instead of at each writer.
+     */
+    protected function prepareForValidation(): void
+    {
+        if (is_string($this->input('reason'))) {
+            $this->merge(['reason' => str($this->input('reason'))->squish()->toString()]);
+        }
+    }
+
+    /**
      * @return array<string, array<int, mixed>>
      */
     public function rules(): array

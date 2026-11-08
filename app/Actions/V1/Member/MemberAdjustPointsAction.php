@@ -21,13 +21,34 @@ use Illuminate\Validation\ValidationException;
 class MemberAdjustPointsAction
 {
     /**
+     * The most points one adjustment may credit.
+     *
+     * The earning rule is operator-configured (`member_points_earn_amount` /
+     * `_value`), and the request only bounds the money typed, so a small step
+     * turns one receipt into an arbitrary balance. This is the ceiling on the
+     * movement itself, checked after the arithmetic — the same value either
+     * input mode produces. Deductions are not capped: the balance cannot go
+     * below zero, and a redemption of what a member genuinely earned is not an
+     * abuse of this code path.
+     */
+    private const MAX_CREDIT = 20_000_000;
+
+    /**
      * @param  array<string, mixed>  $data  `delta` or `purchase_amount`, plus `reason`
      */
     public function run(Member $member, array $data, ?User $causer = null): void
     {
-        $delta = isset($data['purchase_amount'])
+        $fromPurchase = isset($data['purchase_amount']);
+        $delta = $fromPurchase
             ? $this->fromPurchase((int) $data['purchase_amount'])
             : (int) $data['delta'];
+
+        if ($delta > self::MAX_CREDIT) {
+            throw ValidationException::withMessages([
+                ($fromPurchase ? 'purchase_amount' : 'delta') =>
+                    'One adjustment can credit at most '.self::MAX_CREDIT.' points.',
+            ]);
+        }
 
         DB::transaction(function () use ($member, $delta, $data, $causer): void {
             $locked = Member::whereKey($member->getKey())->lockForUpdate()->firstOrFail();

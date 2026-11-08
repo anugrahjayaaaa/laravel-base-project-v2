@@ -173,6 +173,27 @@ class MemberStateTest extends TestCase
         $this->assertSame(30, $properties['remaining_days']);
     }
 
+    /**
+     * The reason reaches the audit row verbatim, so a CRLF in it wrote a forged
+     * line into the plain-text export of the trail. Collapsed at the request,
+     * which is the boundary both channels post through.
+     */
+    public function test_a_deactivation_reason_with_line_breaks_is_recorded_as_one_line(): void
+    {
+        $this->actingAsHolderOf(['members.deactivate']);
+
+        $member = $this->memberWithDaysLeft('MBR-000509');
+
+        $this->post(route('members.deactivate', $member), [
+            'violation' => 1,
+            'reason' => "Chargebacks\r\nmember.created forged audit row",
+        ])->assertSessionHasNoErrors();
+
+        $properties = Activity::where('event', 'member.deactivated')->firstOrFail()->properties->toArray();
+
+        $this->assertSame('Chargebacks member.created forged audit row', $properties['reason']);
+    }
+
     public function test_a_violation_without_a_reason_is_refused_and_changes_nothing(): void
     {
         $this->actingAsHolderOf(['members.deactivate']);
