@@ -5,6 +5,7 @@ namespace Tests\Feature\Settings;
 use App\Http\Requests\V1\System\SystemSettingRequest;
 use App\Models\SystemSetting;
 use App\Support\PasswordPolicy;
+use Database\Seeders\CurrencySeeder;
 use Database\Seeders\RoleSeeder;
 use Database\Seeders\SystemSettingSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -48,6 +49,10 @@ class PolicyKeyTest extends TestCase
         $this->seed(RoleSeeder::class);
         $this->seed(PermissionSeeder::class);
         $this->seed(SystemSettingSeeder::class);
+        // And CurrencySeeder: currency_code is validated with exists() on the
+        // currencies table, so the code SystemSettingSeeder wrote has to name a
+        // row for a full-form payload to pass.
+        $this->seed(CurrencySeeder::class);
     }
 
     /**

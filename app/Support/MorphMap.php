@@ -3,6 +3,10 @@
 namespace App\Support;
 
 use App\Models\FeatureFlag;
+use App\Models\Member;
+use App\Models\MemberPointHistory;
+use App\Models\MemberSubscription;
+use App\Models\MemberTier;
 use App\Models\Role;
 use App\Models\SystemSetting;
 use App\Models\User;
@@ -67,6 +71,10 @@ final class MorphMap
         'role' => Role::class,
         'feature_flag' => FeatureFlag::class,
         'system_setting' => SystemSetting::class,
+        'member' => Member::class,
+        'member_tier' => MemberTier::class,
+        'member_subscription' => MemberSubscription::class,
+        'member_point_history' => MemberPointHistory::class,
     ];
 
     /**

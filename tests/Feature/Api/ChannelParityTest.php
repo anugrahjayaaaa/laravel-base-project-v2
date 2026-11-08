@@ -144,6 +144,44 @@ class ChannelParityTest extends TestCase
             'why' => 'The inbox expands a notification in place and previews a channel. Neither is a fact an API client needs; both are presentation of a row the list already returned.',
         ],
 
+        // ---- Membership & loyalty (Phase 18, P18-B6) ----
+        //
+        // The `membership screens` entry this replaces declared the whole module
+        // web-only while the API twins were still open. They are not; each
+        // capability is now decided on its own, and the one that stays
+        // browser-only is the dashboard, stated below.
+        'member list' => ['web' => ['members.index'], 'api' => ['members.index']],
+        'member read' => ['web' => ['members.show'], 'api' => ['members.show']],
+        'member create' => ['web' => ['members.create', 'members.store'], 'api' => ['members.store']],
+        'member points adjust' => [
+            'only' => 'api',
+            'api' => ['members.points'],
+            'why' => 'Owner decision 2026-11-06: the manual form left the member page — a balance move belongs to the checkout that earned it (Phase 19) — while the API endpoint stays for programmatic corrections, so the capability has one address by design, not by omission.',
+        ],
+        'member subscribe' => ['web' => ['members.subscribe'], 'api' => ['members.subscribe']],
+        'subscription cancel' => ['web' => ['members.subscriptions.cancel'], 'api' => ['members.subscriptions.cancel']],
+        'expiry broadcast' => ['web' => ['membership.broadcast-expiry'], 'api' => ['members.broadcast-expiry']],
+        'member delete' => ['web' => ['members.destroy'], 'api' => ['members.destroy']],
+        'member restore' => ['web' => ['members.restore'], 'api' => ['members.restore']],
+        'member force delete' => ['web' => ['members.force-delete'], 'api' => ['members.force-delete']],
+        'member activate' => ['web' => ['members.activate'], 'api' => ['members.activate']],
+        'member deactivate' => ['web' => ['members.deactivate'], 'api' => ['members.deactivate']],
+        'member bulk action' => ['web' => ['members.bulk-action'], 'api' => ['members.bulk-action']],
+        'tier list' => ['web' => ['members.tiers'], 'api' => ['members.tiers.index']],
+        'tier create' => ['web' => ['members.tiers.create', 'members.tiers.store'], 'api' => ['members.tiers.store']],
+        'tier update' => ['web' => ['members.tiers.edit', 'members.tiers.update'], 'api' => ['members.tiers.update']],
+        'tier delete' => ['web' => ['members.tiers.destroy'], 'api' => ['members.tiers.destroy']],
+        'tier restore' => ['web' => ['members.tiers.restore'], 'api' => ['members.tiers.restore']],
+        'tier force delete' => ['web' => ['members.tiers.force-delete'], 'api' => ['members.tiers.force-delete']],
+        'tier activate' => ['web' => ['members.tiers.activate'], 'api' => ['members.tiers.activate']],
+        'tier deactivate' => ['web' => ['members.tiers.deactivate'], 'api' => ['members.tiers.deactivate']],
+        'tier bulk action' => ['web' => ['members.tiers.bulk-action'], 'api' => ['members.tiers.bulk-action']],
+        'membership dashboard' => [
+            'only' => 'web',
+            'web' => ['membership.dashboard'],
+            'why' => 'The counters and the expiring-soon widget are an operator screen, not a fact set: every number on it is reachable through `member list` and `tier list` with the same filters, and the warning list is `member_subscriptions` ordered by `expires_at`. A twin would be a second place that decides what "active" means, which is the definition `MemberSubscription::scopeCurrentlyActive()` already owns.',
+        ],
+
         // ---- Auth (form pages are web; the actions are on both) ----
         'auth login' => ['web' => ['login', 'login.submit'], 'api' => ['auth.login']],
         'auth logout' => ['web' => ['logout'], 'api' => ['auth.logout']],

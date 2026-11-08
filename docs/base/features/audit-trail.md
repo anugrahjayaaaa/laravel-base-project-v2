@@ -180,7 +180,8 @@ Action-First Audit Logging Standard.
 ## Event Map
 
 Every audit write in `app/`, enumerated from the `->audit()`/`auditBulk()`
-call sites (Phase 16 D1, measured 2026-11-04 — 48 distinct events). This is
+call sites (Phase 16 D1 method — re-measured 2026-11-08 by counting the rows
+below: 57 distinct events). This is
 the single map; per-module docs link here instead of restating. Zero writes
 come from model observers — `ActionFirstAuditTest` pins that property.
 
@@ -225,6 +226,39 @@ come from model observers — `ActionFirstAuditTest` pins that property.
 |-------|-----------|
 | `role.created` / `role.updated` | `PersistsRole` via `RoleCreateAction` / `RoleUpdateAction` |
 | `role.deleted` / `role.restored` / `role.force_deleted` | `RoleDeleteAction` / `RoleRestoreAction` / `RoleForceDeleteAction` |
+
+### Member & loyalty (subject: `Member`)
+
+| Event | Written by | Causer |
+|-------|-----------|--------|
+| `member.created` | `MemberCreateAction` | the admin (also writes `user.created` through `UserCreateAction`) |
+| `member.deleted` | `MemberDeleteAction` | the admin; properties carry `member_number`, captured before the trash |
+| `member.restored` | `MemberRestoreAction` | the admin; properties carry `target_id`, `member_number` |
+| `member.force_deleted` | `MemberForceDeleteAction` | the admin; properties carry `member_number` plus the `subscriptions` and `point_history_rows` counts captured **before** the cascade — the cascade deletes those rows, so the counts are the only surviving record of what one click destroyed. No `target_id`: the row it named no longer exists |
+| `member.points_adjusted` | `MemberAdjustPointsAction` | the admin; properties carry `delta`, `balance_before`, `balance_after`, `reason` |
+| `member.points_expired` | `MemberExpirePointsAction` (the daily `member-points-expiry` schedule) | `SYSTEM` marker in properties — no logged-in actor exists |
+| `member.deactivated` | `MemberDeactivateAction` | the admin; properties carry `member_number`, and the state an activation has to be rebuilt from: `last_tier`, `points_balance`, `remaining_days` (rounded **up** — a member who loses part of a day lost a day), `violation`, `reason`. The reason exists nowhere else, so this row is the only record of why the switch was thrown |
+| `member.activated` | `MemberActivateAction` | the admin; properties carry `target_id`, `member_number`, `resumed_tier`, `resumed_expires_at` — the new expiry is the old one plus the time spent paused, and no subscription is created. Only a period still `status = active` is resumed: `paused_at` outlives a cancellation, and days are not handed to a row that will never serve them again (`resumed_*` stay null when nothing was resumable) |
+| `member.subscribed` | `MemberSubscriptionActivateAction` | the admin; properties carry `member_number`, `subscription_id`, `tier_name`, `expires_at`. Refused (no row) when the tier is inactive, the profile is deactivated, or the member already holds a live period — the live-period check runs inside the transaction on the profile's locked row, so two concurrent triggers cannot both pass it |
+| `member.role_synced` | `MemberSubscriptionActivateAction` / `MemberSubscriptionCancelAction` | the admin; properties carry `member_number`, `role_name`, `change` (`applied` / `revoked`). Written only when the tier carries a role; the revoke is skipped when another live period still needs the same role |
+| `member.subscription_cancelled` | `MemberSubscriptionCancelAction` | the admin; properties carry `member_number`, `subscription_id`, `tier_name`. A row already cancelled writes nothing, so double-cancelling does not fill the trail with no-ops |
+| `member.expired` | `MemberSubscriptionExpireAction` (the daily `member-subscription-expiry` sweep) | `SYSTEM` marker in properties — no logged-in actor exists; carries `member_number`, `subscription_id`, `tier_name`, `role_name`, `role_revoked`. Written inside the sweep's transaction; a paused period never reaches this Action |
+| `member.expiry_broadcasted` | `MemberExpiryBroadcastAction` | the admin who fired the mass mail; properties carry `alert_window_days`. Subject is the **operator**, not a `Member`: one trigger addresses every member in the window and the recipient scan happens later on the worker, so there is no single profile to name. Written before the job is queued |
+
+Ledger semantics (stored `balance_after`, a correction is another row, what the annual
+reset does and does not touch) are in [membership.md](membership.md) § Points.
+
+### Member tiers (subject: `MemberTier`)
+
+| Event | Written by | Causer |
+|-------|-----------|--------|
+| `member_tier.created` | `MemberTierCreateAction` | the admin; properties carry `tier_name`, `slug` |
+| `member_tier.updated` | `MemberTierUpdateAction` | the admin; properties carry **only the fields that changed**, each as `from`/`to` (`UserUpdateAction`'s shape) |
+| `member_tier.deleted` | `MemberTierDeleteAction` | the admin; properties carry `tier_name`, `slug` captured before the trash. A tier still carrying subscriptions is refused, so no row is written |
+| `member_tier.restored` | `MemberTierRestoreAction` | the admin; properties carry `target_id`, `tier_name`, `slug` |
+| `member_tier.force_deleted` | `MemberTierForceDeleteAction` | the admin; properties carry `tier_name`, `slug` (no `target_id`, same reason as `member.force_deleted`). A tier still carrying subscriptions is refused before anything is written, so a bulk call containing one in-use tier rolls the whole batch back — no partial audit trail |
+| `member_tier.activated` | `MemberTierActivateAction` | the admin; properties carry `target_id`, `tier_name`. A tier already switched on writes nothing, so double-clicking the button does not fill the trail with no-ops |
+| `member_tier.deactivated` | `MemberTierDeactivateAction` | the admin; properties carry `target_id`, `tier_name`. Existing subscriptions keep their tier and their dates: switching a tier off only removes it from what can be bought next |
 
 ### Feature flags (subject: the flag row)
 

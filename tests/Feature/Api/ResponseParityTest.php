@@ -2,6 +2,8 @@
 
 namespace Tests\Feature\Api;
 
+use App\Models\Member;
+use App\Models\MemberTier;
 use App\Models\User;
 use App\Support\SystemRole;
 use Database\Seeders\PermissionSeeder;
@@ -40,6 +42,8 @@ class ResponseParityTest extends TestCase
     private const WEB_FACTS = [
         'users' => ['id', 'name', 'email', 'is_active', 'is_locked', 'created_at'],
         'roles' => ['id', 'name', 'is_system', 'users_count', 'permissions_count'],
+        'members' => ['id', 'member_number', 'user_name', 'points_balance'],
+        'member tiers' => ['id', 'name', 'slug', 'duration_days', 'point_multiplier', 'role_name', 'is_active'],
     ];
 
     /**
@@ -54,6 +58,13 @@ class ResponseParityTest extends TestCase
     private const API_ONLY = [
         'users' => ['username', 'email_verified_at', 'must_change_password'],
         'roles' => ['permissions', 'created_at', 'updated_at', 'deleted_at'],
+        // `is_active` is the flag the tabs partition on and the resource can
+        // branch on; the table shows only its rendered label.
+        'members' => ['user_id', 'is_active', 'joined_at', 'notes', 'created_at'],
+        // The tier table prints the amount through `App\Support\Money` under the
+        // key `price_display`, so the stored decimal leaves under `price`: one
+        // fact, two names, because a client must not have to parse a symbol.
+        'member tiers' => ['price', 'sort_order', 'created_at'],
     ];
 
     private User $admin;
@@ -182,6 +193,78 @@ class ResponseParityTest extends TestCase
             self::API_ONLY['roles'],
             array_values(array_diff(array_keys($apiRole), self::WEB_FACTS['roles'])),
             'the role resource grew or lost a field without a parity decision'
+        );
+    }
+
+    /**
+     * Members: the same rows and the same four facts the table prints, with the
+     * profile columns the table has no column for added.
+     */
+    public function test_members_index_returns_the_same_facts_on_both_channels(): void
+    {
+        $member = Member::factory()->create(['member_number' => 'MBR-000901', 'points_balance' => 400]);
+        $member->user->update(['name' => 'Parity Member']);
+
+        $this->actingAs($this->admin(), 'web');
+        $webMember = $this->get(route('members.index', ['search' => 'MBR-000901']))
+            ->assertOk()
+            ->original['members']
+            ->items()[0];
+
+        Sanctum::actingAs($this->admin());
+        $apiMember = $this->getJson(route('api.v1.members.index', ['search' => 'MBR-000901']))
+            ->assertOk()
+            ->json('data.members.0');
+
+        $this->assertSame((int) $webMember->id, $apiMember['id']);
+        $this->assertSame($webMember->member_number, $apiMember['member_number']);
+        $this->assertSame($webMember->user_name, $apiMember['user_name']);
+        $this->assertSame($webMember->points_balance, $apiMember['points_balance']);
+
+        $this->assertSame(
+            self::API_ONLY['members'],
+            array_values(array_diff(array_keys($apiMember), self::WEB_FACTS['members'])),
+            'the member resource grew or lost a field without a parity decision'
+        );
+    }
+
+    /**
+     * Tiers: same rows, same pricing facts; the amount leaves as the stored
+     * decimal because the table renders it through `Money` and a client does not.
+     */
+    public function test_member_tiers_return_the_same_facts_on_both_channels(): void
+    {
+        $tier = MemberTier::factory()->create([
+            'name' => 'Parity Tier',
+            'role_name' => null,
+            'price' => 70000,
+            'duration_days' => 60,
+            'point_multiplier' => 1.5,
+            'sort_order' => 2,
+        ]);
+
+        $this->actingAs($this->admin(), 'web');
+        $webTier = $this->get(route('members.tiers', ['search' => 'Parity Tier']))
+            ->assertOk()
+            ->original['tiers']
+            ->items()[0];
+
+        Sanctum::actingAs($this->admin());
+        $apiTier = $this->getJson(route('api.v1.members.tiers.index', ['search' => 'Parity Tier']))
+            ->assertOk()
+            ->json('data.tiers.0');
+
+        $this->assertSame((int) $webTier->id, $apiTier['id']);
+        $this->assertSame($webTier->name, $apiTier['name']);
+        $this->assertSame($webTier->slug, $apiTier['slug']);
+        $this->assertSame($webTier->duration_days, $apiTier['duration_days']);
+        $this->assertSame($webTier->point_multiplier, $apiTier['point_multiplier']);
+        $this->assertSame($webTier->is_active, $apiTier['is_active']);
+
+        $this->assertSame(
+            self::API_ONLY['member tiers'],
+            array_values(array_diff(array_keys($apiTier), self::WEB_FACTS['member tiers'])),
+            'the tier resource grew or lost a field without a parity decision'
         );
     }
 }

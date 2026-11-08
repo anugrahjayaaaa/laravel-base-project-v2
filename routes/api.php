@@ -21,6 +21,8 @@ use App\Http\Controllers\Api\V1\SystemSettingController;
 use App\Http\Controllers\Api\V1\User\UserController;
 use App\Http\Controllers\Api\V1\User\UserStateController;
 use App\Http\Controllers\Api\V1\HealthCheck\HealthCheckController;
+use App\Http\Controllers\Api\V1\Member\MemberController as ApiMemberController;
+use App\Http\Controllers\Api\V1\Member\MemberTierController as ApiMemberTierController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function () {
@@ -275,6 +277,43 @@ Route::prefix('v1')->group(function () {
             // and putting a literal segment after a parameter segment is exactly
             // the shape that stops matching the moment someone adds a POST to it.
             Route::post('/roles/bulk-action', [RoleController::class, 'bulkAction'])->name('api.v1.roles.bulk-action')->middleware('throttle:bulk-action');
+        });
+
+
+        // Membership & loyalty — Phase 18 (P18-B6). One group per module, the
+        // same `feature:member_loyalty` switch the web group carries, so a flag
+        // off answers 403 on both channels (D-1) rather than 404 on this one.
+        //
+        // Every route reuses the web Action, Form Request and permission: the
+        // API is a second transport, not a second implementation of "may this
+        // caller issue a period". `tier` is a price list and `member` is a
+        // person, so they authorize separately here too.
+        Route::middleware('feature:member_loyalty')->group(function () {
+            Route::get('/members', [ApiMemberController::class, 'index'])->name('api.v1.members.index')->can('members.view');
+            Route::post('/members', [ApiMemberController::class, 'store'])->name('api.v1.members.store')->can('members.create');
+            Route::get('/members/tiers', [ApiMemberTierController::class, 'index'])->name('api.v1.members.tiers.index')->can('member_tiers.view');
+            Route::post('/members/tiers', [ApiMemberTierController::class, 'store'])->name('api.v1.members.tiers.store')->can('member_tiers.create');
+            Route::put('/members/tiers/{tier}', [ApiMemberTierController::class, 'update'])->name('api.v1.members.tiers.update')->can('member_tiers.update')->whereNumber('tier');
+            Route::post('/members/tiers/{tier}/activate', [ApiMemberTierController::class, 'activate'])->name('api.v1.members.tiers.activate')->can('member_tiers.activate')->whereNumber('tier');
+            Route::post('/members/tiers/{tier}/deactivate', [ApiMemberTierController::class, 'deactivate'])->name('api.v1.members.tiers.deactivate')->can('member_tiers.deactivate')->whereNumber('tier');
+            Route::delete('/members/tiers/{tier}', [ApiMemberTierController::class, 'destroy'])->name('api.v1.members.tiers.destroy')->can('member_tiers.delete')->whereNumber('tier');
+            // Raw id for the two trash steps, matching the web twin: the `{tier}`
+            // binding resolves the live scope, so a trashed tier would 404 on the
+            // only two routes that exist for it.
+            Route::post('/members/tiers/{tier}/restore', [ApiMemberTierController::class, 'restore'])->name('api.v1.members.tiers.restore')->can('member_tiers.restore')->whereNumber('tier');
+            Route::delete('/members/tiers/{tier}/force', [ApiMemberTierController::class, 'forceDelete'])->name('api.v1.members.tiers.force-delete')->can('member_tiers.force_delete')->whereNumber('tier');
+            Route::post('/members/tiers/bulk-action', [ApiMemberTierController::class, 'bulkAction'])->name('api.v1.members.tiers.bulk-action')->middleware('throttle:bulk-action');
+            Route::get('/members/{member}', [ApiMemberController::class, 'show'])->name('api.v1.members.show')->can('members.view')->whereNumber('member');
+            Route::post('/members/{member}/points', [ApiMemberController::class, 'points'])->name('api.v1.members.points')->can('members.update')->whereNumber('member');
+            Route::post('/members/{member}/subscribe', [ApiMemberController::class, 'subscribe'])->name('api.v1.members.subscribe')->can('members.update')->whereNumber('member');
+            Route::post('/members/subscriptions/{subscription}/cancel', [ApiMemberController::class, 'cancelSubscription'])->name('api.v1.members.subscriptions.cancel')->can('members.update')->whereNumber('subscription');
+            Route::post('/members/broadcast-expiry', [ApiMemberController::class, 'broadcastExpiry'])->name('api.v1.members.broadcast-expiry')->can('members.notify');
+            Route::post('/members/{member}/activate', [ApiMemberController::class, 'activate'])->name('api.v1.members.activate')->can('members.activate')->whereNumber('member');
+            Route::post('/members/{member}/deactivate', [ApiMemberController::class, 'deactivate'])->name('api.v1.members.deactivate')->can('members.deactivate')->whereNumber('member');
+            Route::delete('/members/{member}', [ApiMemberController::class, 'destroy'])->name('api.v1.members.destroy')->can('members.delete')->whereNumber('member');
+            Route::post('/members/{member}/restore', [ApiMemberController::class, 'restore'])->name('api.v1.members.restore')->can('members.restore')->whereNumber('member');
+            Route::delete('/members/{member}/force', [ApiMemberController::class, 'forceDelete'])->name('api.v1.members.force-delete')->can('members.force_delete')->whereNumber('member');
+            Route::post('/members/bulk-action', [ApiMemberController::class, 'bulkAction'])->name('api.v1.members.bulk-action')->middleware('throttle:bulk-action');
         });
 
 

@@ -69,7 +69,7 @@ class RoleManagementTest extends TestCase
         $this->actingAs($nobody)->delete(route('roles.destroy', $role))->assertForbidden();
 
         $this->assertFalse(Role::where('name', 'sneaky')->exists(), 'a refused write must not persist');
-        $this->assertSame(3, Role::count(), 'the seeded roles must be untouched');
+        $this->assertSame(4, Role::count(), 'the seeded roles must be untouched');
     }
 
     public function test_it_creates_a_role_and_syncs_permission_ids_posted_as_strings(): void

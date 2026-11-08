@@ -12,6 +12,12 @@
                 </div>
                 <div class="modal-body">
                     <p id="confirmModalMessage">Are you sure?</p>
+                    {{-- Page-specific extra fields, pushed by the screen whose
+                         trigger needs them (member deactivation today). This
+                         partial is inside `layouts/app.blade.php`, so anything
+                         hardcoded here ships on every page in the app — which is
+                         exactly what the read-only UI render gates assert away. --}}
+                    @stack('confirmModalFields')
                     <div id="confirmModalError" class="alert alert-danger d-none mt-2 mb-0"></div>
                 </div>
                 <div class="modal-footer">

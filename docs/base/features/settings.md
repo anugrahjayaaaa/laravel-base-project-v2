@@ -9,7 +9,7 @@ covered by tests.
 
 ## Canonical keys
 
-66 keys, validated by `App\Http\Requests\V1\System\SystemSettingRequest` and
+70 keys, validated by `App\Http\Requests\V1\System\SystemSettingRequest` and
 seeded by `SystemSettingSeeder`. This list is regenerated from the request's
 `rules()` — a key that is validated but missing from
 `SystemSettingsUpdateAction::$updates` saves and changes nothing, so the request
@@ -38,6 +38,7 @@ backup_retention_monthly
 backup_retention_weekly
 backup_schedule
 bulk_action_rate_limit_per_minute
+currency_code
 email_change_cooldown_days
 email_verification_expire_minutes
 email_verification_mode
@@ -52,6 +53,11 @@ lockout_increment_minutes
 login_max_attempts
 login_rate_limit_per_minute
 login_ip_rate_limit_per_minute
+member_expiry_alert_window_days
+member_number_prefix
+member_points_earn_amount
+member_points_earn_value
+member_points_expiry_date
 password_change_rate_limit_per_minute
 password_expiry_days
 password_expiry_enabled
@@ -102,7 +108,7 @@ has no category column.
 | Login rate limiting & lockout | `login_max_attempts`, `lockout_base_minutes`, `lockout_increment_minutes`, `login_rate_limit_per_minute`, `login_ip_rate_limit_per_minute` |
 | Password reset / verification rate limits | `password_forgot_rate_limit`, `password_reset_rate_limit`, `password_change_rate_limit_per_minute`, `email_verification_rate_limit` |
 | Password policy & lifecycle | `password_min_length`, `password_require_*`, `password_reject_username`, `password_uncompromised`, `password_history_*`, `password_expiry_*`, `password_security_sweep_time`, `inactivity_lock_*` |
-| System timezone | `app_timezone` — applied to the process at boot (ADR-027) |
+| Localization | `app_timezone` — applied to the process at boot (ADR-027) · `currency_code` — the unit, symbol and separators `App\Support\Money` writes every money amount with. One card, two global display choices, neither owned by a feature flag |
 | Email verification | `email_verification_expire_minutes`, `email_verification_mode` |
 | Identity / account rules | `allow_username_change`, `username_change_cooldown_days`, `allow_email_change`, `email_change_cooldown_days` |
 | Self-registration | `registration_enabled`, `registration_default_role`, `registration_rate_limit_per_minute` |
@@ -111,6 +117,7 @@ has no category column.
 | Web session lifetime | `web_session_expire_value`, `web_session_expire_unit` |
 | Storage | `storage_default_disk`, `storage_local_root`, `storage_local_permission`, `storage_max_capacity_mb`, `storage_warning_threshold_percent`, `temp_file_retention_hours`, `storage_s3_*` |
 | Backup | `backup_enabled`, `backup_schedule`, `backup_retention_daily`, `backup_retention_weekly`, `backup_retention_monthly` |
+| Membership & loyalty | `member_expiry_alert_window_days`, `member_number_prefix`, `member_points_expiry_date`, `member_points_earn_amount`, `member_points_earn_value` — five keys gated on the `member_loyalty` flag, so saving with the flag off strips them; consumers and semantics in [membership.md](membership.md) § Settings. `currency_code` sits in the Localization card instead: how money is written is not a loyalty feature, so it survives the flag |
 
 ### Login security defaults
 
@@ -199,6 +206,20 @@ of truth. `P8-E1a` proves every numeric bound rejects a value outside it.
 | `backup_retention_daily` | `nullable`, integer, min:1, max:90 |
 | `backup_retention_weekly` | `nullable`, integer, min:1, max:52 |
 | `backup_retention_monthly` | `nullable`, integer, min:1, max:60 |
+| `member_expiry_alert_window_days` | integer, min:1, max:365 (default 14) |
+| `member_number_prefix` | string, alpha_num, max:10 (default `MBR`) — the prefix of a generated member number |
+| `member_points_expiry_date` | `nullable`, date_format:Y-m-d — empty means **never expire**, and the annual sweep only fires on or after the stored date |
+| `member_points_earn_amount` | integer, min:0, max:1000000000 (default 50000 rupiah per step) |
+| `member_points_earn_value` | integer, min:0, max:1000000 (default 1000 points per step) |
+| `currency_code` | `nullable`, string, size:3, `exists:currencies,code` (default `IDR`) — the currency every amount is written in; blank or absent lands on `IDR` in `SystemSettingsUpdateAction` rather than an empty symbol |
+
+`member_points_expiry_date` is opt-in on purpose: `SystemSettingSeeder` ships it
+empty, because a date nobody chose would zero every member's balance. When
+`MemberExpirePointsAction` runs it advances the key one year at a time to the
+next anniversary strictly after today, so the stored value is always the *next*
+reset, not the one that just happened. `member_points_earn_*` are read by
+`MemberAdjustPointsAction`: either at 0 switches earning off, and a purchase
+below one whole step earns nothing rather than rounding up.
 
 Both lifetime pairs are a number plus its unit, stored separately because the
 sane answers span minutes to days. `AppServiceProvider::bindExpirations()`

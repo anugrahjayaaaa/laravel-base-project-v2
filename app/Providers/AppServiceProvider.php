@@ -3,10 +3,13 @@
 namespace App\Providers;
 
 use App\Auth\LoginThrottle;
+use App\Models\Member;
+use App\Models\MemberSubscription;
 use App\Models\Role;
 use App\Models\SystemSetting;
 use App\Support\UnreadNotificationCount;
 use App\Models\User;
+use App\Observers\MemberAnalyticsObserver;
 use App\Observers\RoleObserver;
 use App\Observers\SystemSettingObserver;
 use App\Observers\UserObserver;
@@ -241,6 +244,12 @@ class AppServiceProvider extends ServiceProvider
         // event on either side.
         Role::observe(RoleObserver::class);
 
+        // Membership analytics caches growth, tenure and lifecycle risk off the
+        // `members` and `member_subscriptions` rows, so those two models are what
+        // the cached figures depend on — see the observer for why the bust is
+        // watched on the models instead of called from each member Action.
+        Member::observe(MemberAnalyticsObserver::class);
+        MemberSubscription::observe(MemberAnalyticsObserver::class);
 
         // Feature flags: one definition per catalogue entry.
         //

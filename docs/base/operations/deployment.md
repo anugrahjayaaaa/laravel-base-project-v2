@@ -43,7 +43,13 @@ DB_PASSWORD=secret
 4. Run migrations (php artisan migrate --force)
 5. Run seeders if needed (php artisan db:seed --force) — a newly declared
    Pennant flag 403s its whole module until `FeatureFlagSeeder` writes the
-   row; the store is fail-closed, seeding is not optional
+   row; the store is fail-closed, seeding is not optional.
+   `SEED_PASSWORD` must be set in the environment first: outside local/testing
+   `SuperAdminSeeder` refuses to write an account whose password is the one
+   published in this repository (`#Password123`). The demo seeders
+   (`UserSeeder`, `MemberDemoSeeder`) also refuse to run there, and
+   `DatabaseSeeder` skips `UserSeeder` for them, so a production seed writes
+   starter data only.
 6. Config cache (php artisan config:cache)
 7. Route cache (php artisan route:cache)
 8. View cache (php artisan view:cache)

@@ -139,6 +139,7 @@ App\Actions\V1\[Domain]\[Domain][Operation]Action
 | `Actions/V1/Auth/` | `Auth` | `AuthChangePasswordAction`, `AuthVerifyEmailAction` |
 | `Actions/V1/Audit/` | `Audit` | `AuditIndexAction`, `AuditExportRequestAction` |
 | `Actions/V1/Feature/` | `Feature` | `FeatureToggleAction`, `FeatureIndexAction` |
+| `Actions/V1/Member/` | `Member` | `MemberIndexAction`, `MemberTierIndexAction`, `MemberDashboardAction` |
 | `Actions/V1/Notification/` | `Notification` | `NotificationInboxAction`, `NotificationTestMailSendAction` |
 | `Actions/V1/Role/` | `Role` | `RoleAssignAction`, `RoleForceDeleteAction` |
 | `Actions/V1/User/` | `User` | `UserCreateAction`, `UserLockAction` |

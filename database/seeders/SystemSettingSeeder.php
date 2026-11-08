@@ -193,6 +193,29 @@ class SystemSettingSeeder extends Seeder
         SystemSetting::set('backup_retention_weekly', '4');
         SystemSetting::set('backup_retention_monthly', '12');
 
+        // Membership & loyalty — Phase 18.
+        //
+        // The points expiry date is seeded EMPTY. Owner decision 2026-11-05: the
+        // annual reset is opt-in, and a shipped install that zeroes every
+        // member's balance on a date nobody chose is data loss. Putting a date
+        // here is the operator saying "reset the points, once a year, on this
+        // day"; `ExpireMemberPointsJob` advances it a year each time it runs.
+        SystemSetting::set('member_expiry_alert_window_days', '14');
+        SystemSetting::set('member_points_expiry_date', '');
+        // The member number is `{prefix}-NNNNNN`, issued by
+        // `Member::nextMemberNumber()`. Changing the prefix starts a fresh
+        // series; numbers already on the records stay as they are.
+        SystemSetting::set('member_number_prefix', 'MBR');
+        // Rp 50.000 of purchase earns 1.000 points, 1 point = Rp 1. The rule
+        // lives here rather than in the POS because the operator sets the
+        // currency step and the ledger is in points either way.
+        SystemSetting::set('member_points_earn_amount', '50000');
+        SystemSetting::set('member_points_earn_value', '1000');
+        // The currency every money amount is displayed in — tier prices, the
+        // earning-rule step. A code `CurrencySeeder` writes; `App\Support\Money`
+        // reads its symbol and separator convention from that row.
+        SystemSetting::set('currency_code', 'IDR');
+
         // Mail transport — Phase 9 Group B.
         //
         // Seeded from the .env values this app already boots with, so an install

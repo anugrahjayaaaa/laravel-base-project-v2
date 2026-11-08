@@ -114,6 +114,55 @@ class PermissionCatalog
     ];
 
     /**
+     * Membership & loyalty — Phase 18.
+     *
+     * The suffix list is `users.*` one-for-one: `view` / `create` / `update` /
+     * the three trash actions / the on-off pair. There is no `.manage` — the
+     * users list is the reference and it never had one; a single "manage" would
+     * make the Add-member button and a points adjustment one decision.
+     *
+     * `.notify` is the one addition: a bulk mail to every member in an alert
+     * window is an outbound side effect, not an edit, so it is separate for the
+     * same reason `notifications.send_test` is separate from its manage.
+     *
+     * @var array<int, string>
+     */
+    private const MEMBERS = [
+        'members.view',
+        'members.create',
+        'members.update',
+        'members.notify',
+        'members.delete',
+        'members.restore',
+        'members.force_delete',
+        'members.activate',
+        'members.deactivate',
+    ];
+
+    /**
+     * Member tier configuration — its own permission set, not folded into
+     * `members.*`.
+     *
+     * A tier is a price list; a member is a person in the programme. Whoever
+     * maintains pricing should not thereby be able to trash member profiles
+     * (or the reverse), so the two lists authorize separately even though the
+     * tier pages live under `/members/tiers`. Same suffix shape as MEMBERS
+     * minus `.notify`, which only makes sense against the member population.
+     *
+     * @var array<int, string>
+     */
+    private const MEMBER_TIERS = [
+        'member_tiers.view',
+        'member_tiers.create',
+        'member_tiers.update',
+        'member_tiers.delete',
+        'member_tiers.restore',
+        'member_tiers.force_delete',
+        'member_tiers.activate',
+        'member_tiers.deactivate',
+    ];
+
+    /**
      * Audit trail — the read-only viewer over the audit log.
      *
      * ponytail: `.export` is separate from `.view` for the reason
@@ -223,6 +272,11 @@ class PermissionCatalog
         'permissions' => 'permissions',
         'settings' => 'settings',
         'notifications' => 'notifications',
+        'members' => 'member_loyalty',
+        // Tier pricing is its own resource prefix so a permission name stays
+        // `{resource}.{action}` (the gate `PermissionCatalogTest` enforces), but
+        // it is the same module: one flag governs both lists.
+        'member_tiers' => 'member_loyalty',
         // The resource is `audit`, the flag is `activity_logs`: the viewer was
         // named after the module before the flag existed. Spelled out here
         // rather than pluralised from the prefix, which is exactly how the two
@@ -271,6 +325,8 @@ class PermissionCatalog
             ...self::BACKUP,
             ...self::NOTIFICATIONS,
             ...self::FEATURES,
+            ...self::MEMBERS,
+            ...self::MEMBER_TIERS,
             ...self::AUDIT,
             ...self::PULSE,
             ...self::HEALTH,

@@ -6,12 +6,14 @@ use App\Actions\V1\System\SystemSettingsUpdateAction;
 use App\Concerns\FormatsByteSize;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\V1\System\SystemSettingRequest;
+use App\Models\Currency;
 use App\Models\RoleLookup;
 use App\Models\SystemSetting;
 use App\Models\Timezone;
 use App\Providers\AppServiceProvider;
 use App\Services\Storage\StorageCapacityGuard;
 use App\Support\FeatureCatalog;
+use App\Support\Money;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 
@@ -80,6 +82,10 @@ class SystemSettingController extends Controller
         return view('pages.settings.index', [
             'settings' => $settings,
             'timezones' => $timezones,
+            // The money unit plus the codes it may be: the view prints a label
+            // and a dropdown, it does not read either table.
+            'currencies' => Currency::options(),
+            'currencySymbol' => Money::symbol(),
             // The shipped default, not `config('app.timezone')` — the provider
             // has already replaced that with the applied zone by now.
             'baseTimezone' => AppServiceProvider::baseTimezone(),

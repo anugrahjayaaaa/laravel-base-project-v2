@@ -35,6 +35,7 @@ Two disjoint audiences, and no third category.
 | New registration (administrative copy) | mail, database | Every holder of `users.create` | `UserRegisteredNotification` |
 | Roles granted / revoked | mail, database | The affected user, **and** `roles.assign` holders when an administrator did it | `RolesChangedNotification` (never on account creation — see below) |
 | Configuration changed — role, feature flag, system setting, mail transport, channels, user profile | mail, database | The holders of the permission that performs the change | `ConfigurationChangedNotification` |
+| Membership expiring inside the alert window | mail, database (both switches honoured; no WhatsApp driver exists — Phase 18 D-3) | Each member with a live period inside `member_expiry_alert_window_days` — one message per member, however many periods they hold | `MemberExpiryWarningNotification` (queued in bulk by `SendMemberExpiryNotificationJob`; `NotificationChannel::for()` non-essential — the warning is quieter when a switch is off, not uncompletable) |
 
 `UserCreatedNotification` carries a temporary password, which is why it is
 personal only: it is handed to the account holder, never to administrators. The

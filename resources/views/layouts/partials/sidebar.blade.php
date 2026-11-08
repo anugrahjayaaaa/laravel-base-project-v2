@@ -16,9 +16,13 @@
             @foreach ($group['items'] as $item)
               @php($route = $item['route'] ?? null)
               @php($href = $route ? (Route::has($route) ? route($route) : '#') : '#')
-              @php($active = isset($item['active']) && $item['active']
-                  ? (request()->route() && $route && fnmatch($item['active'], request()->route()->getName()))
-                  : false)
+              @php($routeName = request()->route()?->getName())
+              @php($active = $route && $routeName && isset($item['active'])
+                  && fnmatch($item['active'], $routeName)
+                  // A prefix pattern covers a sibling screen's routes too: `members.*`
+                  // is true for `members.tiers`, which would light two entries at once.
+                  // The item that owns the sub-tree names it here.
+                  && ! (isset($item['except']) && fnmatch($item['except'], $routeName)))
               <li class="nav-item">
                 <a href="{{ $href }}"
                    @if (! empty($item['target'])) target="{{ $item['target'] }}" rel="noopener" @endif

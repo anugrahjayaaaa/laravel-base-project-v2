@@ -420,6 +420,12 @@ staged control underneath it.
 </div>
 ```
 
+> The `page-description` line is a back link **only on a sub-page** — detail, edit, create,
+> i.e. somewhere the operator came from and can return to. An index or a dashboard has
+> nothing to go back to, so it carries a one-line description of what the screen holds, as
+> `Members`, `Permissions`, `Vouchers` and `Notifications & Mail` do. "Back to Members" on
+> the Tiers list and the Membership Dashboard was this drift; both now read as descriptions.
+
 ### 2. Index Page
 
 ```html

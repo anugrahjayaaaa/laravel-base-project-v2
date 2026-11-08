@@ -116,6 +116,11 @@ class SettingsUiRenderTest extends TestCase
             'roles' => collect(['admin', 'editor', 'user'])->mapWithKeys(
                 fn (string $name): array => [$name => $name]
             ),
+            // Phase 18. `Currency::options()`'s code => name map and the symbol
+            // `Money::symbol()` resolved for the configured code — the shape
+            // SystemSettingController hands the view.
+            'currencies' => ['IDR' => 'Indonesian Rupiah', 'USD' => 'US Dollar'],
+            'currencySymbol' => 'Rp',
             // Phase 14 Group A. The same shape `StorageCapacityGuard::metrics()`
             // returns plus the controller's formatted labels.
             'storage' => [

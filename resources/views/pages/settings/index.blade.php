@@ -46,10 +46,12 @@
             {{-- Main Content Area --}}
             <div class="col-lg-8 col-12">
 
-                {{-- Card 0: System Timezone --}}
+                {{-- Card 0: Localization — the two global display choices, neither
+                     owned by a feature flag: which zone the clock runs on, and how
+                     every money amount is written. --}}
                 <div class="card border-0 shadow-sm mb-4" id="section-system">
                     <div class="card-header bg-transparent border-bottom py-3">
-                        <h5 class="card-title mb-0 fw-semibold">System Timezone</h5>
+                        <h5 class="card-title mb-0 fw-semibold">Localization</h5>
                     </div>
                     <div class="card-body p-4">
                         <div class="row g-3">
@@ -72,6 +74,25 @@
                                 <div class="form-text">Currently applied: {{ config('app.timezone') }}.</div>
                                 @error('app_timezone')
                                     <div class="invalid-feedback d-block" id="app_timezone_error">{{ $message }}</div>
+                                @enderror
+                            </div>
+                            <div class="col-md-6">
+                                <label for="currency_code" class="form-label">
+                                    Display Currency
+                                    <i class="bi bi-info-circle text-muted fs-7 ms-1" data-bs-toggle="tooltip" data-bs-placement="top"
+                                       data-bs-title="The unit and symbol every money amount is shown in — tier prices and the points earning rule. Amounts are never converted; this only changes how they are written."></i>
+                                </label>
+                                <select name="currency_code" id="currency_code"
+                                        class="form-select form-select-sm @error('currency_code') is-invalid @enderror" @error('currency_code') aria-invalid="true" aria-describedby="currency_code_error" @enderror>
+                                    @foreach ($currencies as $code => $name)
+                                        <option value="{{ $code }}" @selected(old('currency_code', $settings['currency_code'] ?? 'IDR') === $code)>
+                                            {{ $code }} — {{ $name }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                                <div class="form-text">Currently applied: {{ $currencySymbol }}.</div>
+                                @error('currency_code')
+                                    <div class="invalid-feedback d-block" id="currency_code_error">{{ $message }}</div>
                                 @enderror
                             </div>
                         </div>
@@ -701,6 +722,91 @@
                     </div>
                 </div>
 
+                {{-- Card 6b: Membership & Loyalty (Phase 18) --}}
+                @if ($settingGroups['member_loyalty']['active'])
+                    <div class="card border-0 shadow-sm mb-4" id="section-membership">
+                        <div class="card-header bg-transparent border-bottom py-3">
+                            <h5 class="card-title mb-0 fw-semibold">Membership &amp; Loyalty</h5>
+                        </div>
+                        <div class="card-body p-4">
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <label for="member_expiry_alert_window_days" class="form-label">
+                                        Expiry Warning Window (days)
+                                        <i class="bi bi-info-circle text-muted fs-7 ms-1" data-bs-toggle="tooltip" data-bs-placement="top"
+                                           data-bs-title="Subscriptions ending within this many days are listed on the membership dashboard."></i>
+                                    </label>
+                                    <input type="number" name="member_expiry_alert_window_days" id="member_expiry_alert_window_days"
+                                           class="form-control form-control-sm @error('member_expiry_alert_window_days') is-invalid @enderror"
+                                           value="{{ old('member_expiry_alert_window_days', $settings['member_expiry_alert_window_days'] ?? 14) }}"
+                                           min="1" max="365">
+                                    @error('member_expiry_alert_window_days')
+                                        <div class="invalid-feedback d-block">{{ $message }}</div>
+                                    @enderror
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="member_number_prefix" class="form-label">
+                                        Member Number Prefix
+                                        <i class="bi bi-info-circle text-muted fs-7 ms-1" data-bs-toggle="tooltip" data-bs-placement="top"
+                                           data-bs-title="New members are numbered {prefix}-000001 upward. Changing it starts a fresh series; existing numbers stay as they are."></i>
+                                    </label>
+                                    <input type="text" name="member_number_prefix" id="member_number_prefix"
+                                           class="form-control form-control-sm @error('member_number_prefix') is-invalid @enderror"
+                                           value="{{ old('member_number_prefix', $settings['member_number_prefix'] ?? 'MBR') }}"
+                                           maxlength="10" pattern="[A-Za-z0-9]+">
+                                    @error('member_number_prefix')
+                                        <div class="invalid-feedback d-block">{{ $message }}</div>
+                                    @enderror
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="member_points_expiry_date" class="form-label">
+                                        Annual Points Expiry Date
+                                        <i class="bi bi-info-circle text-muted fs-7 ms-1" data-bs-toggle="tooltip" data-bs-placement="top"
+                                           data-bs-title="Points are reset to zero on this date, then once a year after it. Leave empty for points that never expire."></i>
+                                    </label>
+                                    <input type="date" name="member_points_expiry_date" id="member_points_expiry_date"
+                                           class="form-control form-control-sm @error('member_points_expiry_date') is-invalid @enderror"
+                                           value="{{ old('member_points_expiry_date', $settings['member_points_expiry_date'] ?? '') }}">
+                                    @error('member_points_expiry_date')
+                                        <div class="invalid-feedback d-block">{{ $message }}</div>
+                                    @enderror
+                                </div>
+                            </div>
+
+                            <h6 class="text-uppercase text-muted small fw-semibold mb-3 mt-4">Earning Rule</h6>
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <label for="member_points_earn_amount" class="form-label">
+                                        Points Earned Per ({{ $currencySymbol }})</label>
+                                    <input type="number" name="member_points_earn_amount" id="member_points_earn_amount"
+                                           class="form-control form-control-sm @error('member_points_earn_amount') is-invalid @enderror"
+                                           value="{{ old('member_points_earn_amount', $settings['member_points_earn_amount'] ?? 50000) }}"
+                                           min="0" step="100">
+                                    @error('member_points_earn_amount')
+                                        <div class="invalid-feedback d-block">{{ $message }}</div>
+                                    @enderror
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="member_points_earn_value" class="form-label">Points Per Step</label>
+                                    <input type="number" name="member_points_earn_value" id="member_points_earn_value"
+                                           class="form-control form-control-sm @error('member_points_earn_value') is-invalid @enderror"
+                                           value="{{ old('member_points_earn_value', $settings['member_points_earn_value'] ?? 1000) }}"
+                                           min="0">
+                                    @error('member_points_earn_value')
+                                        <div class="invalid-feedback d-block">{{ $message }}</div>
+                                    @enderror
+                                </div>
+                            </div>
+
+                            <p class="text-muted small mb-0 mt-3">
+                                Every whole multiple of the step amount earns that many points — by default
+                                {{ $currencySymbol }} 50.000 of purchase earns 1.000 points, and one point is worth
+                                {{ $currencySymbol }} 1. Set either number to 0 to stop earning.
+                            </p>
+                        </div>
+                    </div>
+                @endif
+
                 {{-- Card 7: Storage Management (Phase 14 Group A) --}}
                 @if ($storageEnabled)
                     <div class="card border-0 shadow-sm mb-4" id="section-storage">
@@ -1190,6 +1296,7 @@
                 <?php
                 $readOnlyLabels = [
                         'app_timezone' => 'System Timezone',
+                        'currency_code' => 'Display Currency',
                         'login_max_attempts' => 'Failed Logins Before Lockout',
                         'lockout_base_minutes' => 'Initial Lockout Duration',
                         'lockout_increment_minutes' => 'Lockout Escalation Step',
@@ -1255,6 +1362,10 @@
                         'backup_retention_daily' => 'Keep Daily Backups (days)',
                         'backup_retention_weekly' => 'Keep Weekly Backups (weeks)',
                         'backup_retention_monthly' => 'Keep Monthly Backups (months)',
+                        'member_expiry_alert_window_days' => 'Expiry Warning Window (days)',
+                        'member_points_expiry_date' => 'Annual Points Expiry Date',
+                        'member_points_earn_amount' => 'Points Earned Per (Rp)',
+                        'member_points_earn_value' => 'Points Per Step',
                     ];
                 ?>
                 <div class="table-responsive">

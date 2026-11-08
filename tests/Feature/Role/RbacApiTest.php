@@ -306,7 +306,7 @@ class RbacApiTest extends TestCase
 
     public function test_it_lists_the_catalogue_with_the_roles_holding_each_permission(): void
     {
-        $response = $this->getJson(route('api.v1.permissions.index', ['per_page' => 50]))->assertOk();
+        $response = $this->getJson(route('api.v1.permissions.index', ['per_page' => 100]))->assertOk();
 
         $names = collect($response->json('data.permissions'))->pluck('name');
         $this->assertContains('users.view', $names);

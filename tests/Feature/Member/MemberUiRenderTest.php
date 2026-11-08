@@ -1,0 +1,709 @@
+<?php
+
+namespace Tests\Feature\Member;
+
+use App\Models\RoleLookup;
+use App\Models\User;
+use Database\Seeders\RoleSeeder;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\MessageBag;
+use Illuminate\Support\ViewErrorBag;
+use Laravel\Pennant\Feature;
+use Tests\TestCase;
+
+/**
+ * Phase 18 P18-A5: the member screens render from fixtures alone.
+ *
+ * Rendered by `view()->render()` rather than by HTTP because Group A ships
+ * no routes (D-4): a Blade reference to `route('members.index')` would throw
+ * until B6 exists, so every URL the screens need arrives as a variable and
+ * this test hands over plain strings. The HTTP round trip is proven in E1.
+ *
+ * The viewer signs in as superadmin: `members.*` permissions are added to
+ * the catalogue in D1, and Gate::before is the only way a Group-A fixture
+ * render passes a `@can('members.create')` guard today. The staff case is
+ * asserted separately — a guard nobody tested is a guard that may be gone.
+ */
+class MemberUiRenderTest extends TestCase
+{
+    use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->seed(RoleSeeder::class);
+        Feature::activate('member_loyalty');
+    }
+
+    private function signIn(string $role): void
+    {
+        $user = User::factory()->create(['email_verified_at' => now()]);
+        $user->assignRole(RoleLookup::find($role));
+        $this->actingAs($user);
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    private function render(string $view, array $data, ?ViewErrorBag $errors = null): string
+    {
+        return view($view, array_merge(
+            ['errors' => $errors ?? new ViewErrorBag()],
+            $data,
+        ))->render();
+    }
+
+    /**
+     * @param  array<string, mixed>  $overrides
+     */
+    private function obj(array $overrides = []): object
+    {
+        return (object) $overrides;
+    }
+
+    /**
+     * @param  array<string, mixed>  $overrides
+     */
+    private function memberRow(array $overrides = []): object
+    {
+        return $this->obj(array_merge([
+            'id' => 1,
+            'member_number' => 'MBR-000001',
+            'user_name' => 'Jaya',
+            'tier_name' => 'Gold',
+            'tier_variant' => 'warning',
+            'status_label' => 'ACTIVE',
+            'status_variant' => 'success',
+            'bulk_state' => 'active',
+            'points_balance' => 1200,
+            'expires_at' => '2026-12-01',
+            'show_url' => '/members/1',
+            'delete_url' => '/members/1',
+            'activate_url' => null,
+            'deactivate_url' => null,
+            'restore_url' => null,
+            'force_delete_url' => null,
+            'user_url' => '/users/3',
+            'is_trashed' => false,
+            'user_email' => 'jaya@example.test',
+            'joined_at' => '2026-01-10',
+            'notes' => null,
+        ], $overrides));
+    }
+
+    /**
+     * @return array<string, array{0: string, 1: string}>
+     */
+    private function indexData(array $members = [], array $overrides = []): array
+    {
+        return array_merge([
+            'indexUrl' => '/members',
+            'createUrl' => '/members/create',
+            'bulkUrl' => '/members/bulk-action',
+            'bulkStates' => [
+                'active' => ['delete'],
+                'expired' => ['delete'],
+                'cancelled' => ['delete'],
+                'trashed' => ['restore', 'force_delete'],
+            ],
+            'bulkKeys' => ['delete' => 'delete', 'restore' => 'restore', 'force_delete' => 'force_delete'],
+            'tabs' => [
+                $this->obj(['label' => 'Active', 'url' => '/members?status=active', 'count' => 4, 'active' => true]),
+                $this->obj(['label' => 'Inactive', 'url' => '/members?status=inactive', 'count' => 2, 'active' => false]),
+                $this->obj(['label' => 'Trash', 'url' => '/members?status=trashed', 'count' => 1, 'active' => false]),
+            ],
+            'filters' => ['search' => '', 'sort' => 'member_number', 'direction' => 'asc', 'status' => 'active'],
+            'members' => new LengthAwarePaginator(
+                $members,
+                count($members),
+                10,
+                1,
+                ['path' => '/members']
+            ),
+            'summary' => [
+                $this->obj(['label' => 'Total members', 'value' => 42]),
+                $this->obj(['label' => 'Active subscriptions', 'value' => 30]),
+            ],
+            'tierBadges' => [
+                $this->obj(['name' => 'Gold', 'badge_variant' => 'warning', 'count' => 12]),
+            ],
+        ], $overrides);
+    }
+
+    /**
+     * The tiers list view model, as `MemberTierIndexAction` shapes it.
+     *
+     * @param  array<int, object>  $tiers
+     * @return array<string, mixed>
+     */
+    private function tierListData(array $tiers = [], array $overrides = []): array
+    {
+        return array_merge([
+            'indexUrl' => '/members',
+            'tiersUrl' => '/members/tiers',
+            'createUrl' => '/members/tiers/create',
+            'bulkUrl' => '/members/tiers/bulk-action',
+            'bulkStates' => [
+                'active' => ['delete'],
+                'inactive' => ['delete'],
+                'trashed' => ['restore', 'force_delete'],
+            ],
+            'bulkKeys' => ['delete' => 'delete', 'restore' => 'restore', 'force_delete' => 'force_delete'],
+            'tabs' => [
+                $this->obj(['label' => 'Active', 'url' => '/members/tiers?status=active', 'count' => 1, 'active' => true]),
+                $this->obj(['label' => 'Inactive', 'url' => '/members/tiers?status=inactive', 'count' => 1, 'active' => false]),
+                $this->obj(['label' => 'Trash', 'url' => '/members/tiers?status=trashed', 'count' => 1, 'active' => false]),
+            ],
+            'status' => 'active',
+            'filters' => ['search' => '', 'status' => 'active'],
+            'counts' => ['active' => 1, 'inactive' => 1, 'trashed' => 1],
+            'tiers' => new LengthAwarePaginator(
+                $tiers,
+                count($tiers),
+                10,
+                1,
+                ['path' => '/members/tiers']
+            ),
+        ], $overrides);
+    }
+
+    /**
+     * The dashboard view model: the A3 read slice (`MemberDashboardAction`) merged
+     * with the Group F analytics slice (`MemberAnalyticsStatsAction`), exactly as
+     * the controller hands them over. The analytics half is nested arrays because
+     * the Action caches it, and only primitives survive a Redis round trip.
+     *
+     * @param  array<string, mixed>  $overrides
+     * @return array<string, mixed>
+     */
+    private function dashboardData(array $overrides = []): array
+    {
+        return array_merge([
+            'indexUrl' => '/members',
+            'broadcastUrl' => '/members/notify-expiring',
+            'alertWindowDays' => 14,
+            'stats' => [
+                $this->obj(['label' => 'Active Members', 'value' => 30, 'hint' => 'Live subscriptions right now.']),
+                $this->obj(['label' => 'Points Issued', 'value' => 5400, 'hint' => 'Points ever credited.']),
+            ],
+            'expiring' => [],
+            'membersByTier' => [$this->obj(['label' => 'Gold', 'count' => 12])],
+            'filterUrl' => '/members/dashboard',
+            'timeframes' => [
+                ['label' => '7D', 'url' => '/members/dashboard?range=7d', 'active' => false],
+                ['label' => '30D', 'url' => '/members/dashboard?range=30d', 'active' => true],
+            ],
+            'range' => '30d',
+            'window' => ['from' => '2026-10-06', 'to' => '2026-11-05'],
+            'metrics' => [
+                ['label' => 'Renewal Rate', 'value' => '42%', 'hint' => 'Ended periods followed by a new one.'],
+                ['label' => 'Daily Engagement', 'value' => '18%', 'hint' => 'Signed in today over signed in this month.'],
+                ['label' => 'Inactive Members', 'value' => '4', 'hint' => 'Active subscription, no sign-in for 30 days.'],
+            ],
+            'series' => [
+                ['label' => 'w/c 06 Oct', 'new' => 3, 'expired' => 1, 'new_pct' => 100, 'expired_pct' => 33],
+            ],
+            'tenure' => [
+                ['label' => 'Under 1 month', 'count' => 3, 'pct' => 25],
+            ],
+            'at_risk' => [],
+            'at_risk_count' => 0,
+            'at_risk_days' => 30,
+        ], $overrides);
+    }
+
+    public function test_the_member_index_renders_every_state(): void
+    {
+        $this->signIn('superadmin');
+
+        $html = $this->render('pages.members.index', $this->indexData([
+            $this->memberRow(),
+            $this->memberRow([
+                'id' => 2,
+                'member_number' => 'MBR-000002',
+                'tier_name' => null,
+                'status_label' => 'EXPIRED',
+                'status_variant' => 'danger',
+                'bulk_state' => 'expired',
+                'show_url' => '/members/2',
+                'delete_url' => '/members/2',
+            ]),
+            $this->memberRow([
+                'id' => 3,
+                'member_number' => 'MBR-000003',
+                'status_label' => 'CANCELLED',
+                'status_variant' => 'neutral',
+                'bulk_state' => 'cancelled',
+                'show_url' => '/members/3',
+                'delete_url' => '/members/3',
+            ]),
+            $this->memberRow([
+                'id' => 4,
+                'member_number' => 'MBR-000004',
+                'is_trashed' => true,
+                'bulk_state' => 'trashed',
+                'delete_url' => null,
+                'restore_url' => '/members/4/restore',
+                'force_delete_url' => '/members/4/force',
+                'show_url' => '/members/4',
+            ]),
+        ]));
+
+        foreach (['MBR-000001', 'MBR-000002', 'MBR-000003', 'MBR-000004'] as $number) {
+            $this->assertStringContainsString($number, $html, "member {$number} is missing from the index");
+        }
+
+        foreach (['ACTIVE', 'EXPIRED', 'CANCELLED'] as $status) {
+            $this->assertStringContainsString($status, $html, "the {$status} badge is missing");
+        }
+
+        // No tier renders as text, never as an empty badge.
+        $this->assertStringContainsString('No tier', $html);
+
+        // A trashed row is marked distinctly and lost its delete trigger.
+        $this->assertStringContainsString('>DELETED<', $html);
+        $this->assertSame(3, substr_count($html, 'data-action-type="delete"'), 'every live row offers exactly one delete trigger');
+
+        // Only the trashed row carries the two trash-tab triggers.
+        $this->assertStringContainsString('data-action="/members/4/restore"', $html);
+        $this->assertStringContainsString('data-action="/members/4/force"', $html);
+        $this->assertSame(1, substr_count($html, 'data-action-type="restore"'));
+        $this->assertSame(1, substr_count($html, 'data-action-type="force_delete"'));
+
+        // The tabs arrive as a view model, so no Blade builds a query string.
+        $this->assertStringContainsString('href="/members?status=trashed"', $html);
+
+        // Bulk bar carries the shared driver's contract, not a hand-built URL.
+        $this->assertStringContainsString('data-bulk-route="/members/bulk-action"', $html);
+        $this->assertStringContainsString('data-bulk-field="member_ids[]"', $html);
+        $this->assertStringContainsString('data-status="trashed"', $html);
+
+        // House pagination block.
+        $this->assertMatchesRegularExpression('/Showing\s+1\s+to\s+4\s+of\s+4\s+entries/', $html);
+    }
+
+    public function test_the_member_index_renders_its_empty_state(): void
+    {
+        $this->signIn('superadmin');
+
+        $html = $this->render('pages.members.index', $this->indexData());
+
+        $this->assertStringContainsString('No members found.', $html);
+    }
+
+    /**
+     * A header may only be clickable when `MemberIndexAction::SORTABLE` can
+     * order by that column. Four of these built a `?sort=` link for a column the
+     * query silently dropped, so the table looked sortable and was not.
+     */
+    public function test_the_member_index_offers_sort_only_on_columns_the_query_can_order_by(): void
+    {
+        $this->signIn('superadmin');
+
+        $html = $this->render('pages.members.index', $this->indexData([$this->memberRow()]));
+
+        foreach (['user_name', 'tier_name', 'status', 'expires_at'] as $column) {
+            $this->assertStringNotContainsString(
+                'sort='.$column,
+                $html,
+                "the {$column} header links to a sort the Action drops"
+            );
+        }
+
+        $this->assertStringContainsString('sort=points_balance', $html);
+    }
+
+    public function test_the_create_member_form_renders_its_contract(): void
+    {
+        $this->signIn('superadmin');
+
+        $html = $this->render('pages.members.create', [
+            'indexUrl' => '/members',
+            'createUrl' => '/members',
+            'memberNumber' => 'MBR-000101',
+        ]);
+
+        $this->assertStringContainsString('action="/members"', $html);
+        $this->assertStringContainsString('method="POST"', $html);
+        $this->assertStringContainsString('name="_token"', $html);
+
+        foreach (['name', 'email', 'username', 'notes'] as $field) {
+            $this->assertStringContainsString('name="'.$field.'"', $html, "the create form lost its {$field} field");
+        }
+
+        // The member number is generated, not typed: the field is shown so the
+        // operator sees what the member will get, but a disabled input carries
+        // no `name` and is never submitted.
+        preg_match('/<input[^>]*id="member_number"[^>]*>/', $html, $numberInput);
+        $this->assertStringContainsString('disabled', $numberInput[0] ?? '', 'the member number field is editable');
+        $this->assertStringNotContainsString('name="member_number"', $html);
+        $this->assertStringContainsString('MBR-000101', $html);
+    }
+
+    public function test_a_validation_error_lands_on_the_field_that_caused_it(): void
+    {
+        $this->signIn('superadmin');
+
+        $errors = new ViewErrorBag();
+        $errors->put('default', new MessageBag(['email' => ['The email has already been taken.']]));
+
+        $html = $this->render('pages.members.create', [
+            'indexUrl' => '/members',
+            'createUrl' => '/members',
+            'memberNumber' => 'MBR-000101',
+            'userOptions' => [7 => 'Jaya (jaya@example.test)'],
+        ], $errors);
+
+        preg_match('/<input[^>]*name="email"[^>]*>/', $html, $input);
+
+        $this->assertStringContainsString('is-invalid', $input[0] ?? '', 'an errored field is not marked invalid');
+        $this->assertStringContainsString('The email has already been taken.', $html);
+
+        // The message must FOLLOW its input: Bootstrap's `.is-invalid ~
+        // .invalid-feedback` selector, and no input-group in between.
+        $this->assertLessThan(
+            strpos($html, 'The email has already been taken.'),
+            strpos($html, 'name="email"'),
+            'the error message renders before its field'
+        );
+    }
+
+    public function test_the_member_detail_renders_the_ledger_and_history_from_passed_collections(): void
+    {
+        $this->signIn('superadmin');
+
+        $html = $this->render('pages.members.show', [
+            'indexUrl' => '/members',
+            'subscribeUrl' => '/members/1/subscriptions',
+            'tierOptions' => [3 => 'Gold — 365 days'],
+            'member' => $this->memberRow([
+                'user_email' => 'jaya@example.test',
+                'points_balance' => 1200,
+                'joined_at' => '2026-01-10',
+                'notes' => 'Preferred contact by email.',
+                'delete_url' => '/members/1',
+            ]),
+            'subscriptions' => [
+                $this->obj([
+                    'tier_name' => 'Gold',
+                    'status_label' => 'ACTIVE',
+                    'status_variant' => 'success',
+                    'role_name' => 'gold-member',
+                    'starts_at' => '2026-01-10',
+                    'expires_at' => '2027-01-10',
+                    'cancel_url' => '/subscriptions/5/cancel',
+                ]),
+                $this->obj([
+                    'tier_name' => 'Silver',
+                    'status_label' => 'EXPIRED',
+                    'status_variant' => 'danger',
+                    'role_name' => 'silver-member',
+                    'starts_at' => '2025-01-10',
+                    'expires_at' => '2026-01-10',
+                    'cancel_url' => null,
+                ]),
+            ],
+            'points' => [
+                $this->obj(['created_at' => '2026-02-01', 'reason' => 'Manual adjustment', 'delta_display' => '+150', 'delta_variant' => 'success', 'balance_after' => 1200]),
+                $this->obj(['created_at' => '2026-03-01', 'reason' => 'Redemption', 'delta_display' => '-30', 'delta_variant' => 'danger', 'balance_after' => 1170]),
+            ],
+        ]);
+
+        foreach (['+150', '-30', '1200', '1170', 'Manual adjustment', 'gold-member', 'silver-member', '2027-01-10'] as $needle) {
+            $this->assertStringContainsString($needle, $html, "the detail page lost {$needle}");
+        }
+
+        // Only a cancellable row carries a cancel trigger.
+        $this->assertStringContainsString('data-action="/subscriptions/5/cancel"', $html);
+        $this->assertStringNotContainsString('data-action="/subscriptions/6/cancel"', $html);
+
+        // Identity block, top to bottom: name, address, then the link to the
+        // account the profile hangs off — three lines, each in its own block.
+        $this->assertLessThan(strpos($html, 'jaya@example.test'), strpos($html, '>Jaya<'), 'the address renders before the name');
+        $this->assertMatchesRegularExpression(
+            '/jaya@example\.test\s*<\/div>.*?<a href="\/users\/3"/s',
+            $html,
+            'the account link is not on the line below the address'
+        );
+
+        // The Danger Zone carries its button once the delete URL is live.
+        $this->assertStringContainsString('data-action-type="delete"', $html);
+        $this->assertStringContainsString('data-action="/members/1"', $html);
+
+        // The empty ledger/history states render as text, not as blanks.
+        $empty = $this->render('pages.members.show', [
+            'indexUrl' => '/members',
+            'subscribeUrl' => null,
+            'tierOptions' => [],
+            'member' => $this->memberRow(['delete_url' => null, 'tier_name' => null, 'notes' => null]),
+            'subscriptions' => [],
+            'points' => [],
+        ]);
+        $this->assertStringContainsString('This member has never subscribed.', $empty);
+        $this->assertStringContainsString('No points issued or redeemed yet.', $empty);
+        // A profile with no delete URL (already trashed) loses the card, not just
+        // the button — an empty Danger Zone box is not an affordance.
+        $this->assertStringNotContainsString('Danger Zone', $empty);
+    }
+
+    public function test_the_tier_list_prints_formatted_prices_and_links_each_row_to_its_pages(): void
+    {
+        $this->signIn('superadmin');
+
+        $html = $this->render('pages.members.tiers', $this->tierListData([
+            $this->obj([
+                'id' => 1, 'name' => 'Gold', 'slug' => 'gold',
+                'price_display' => 'Rp 100.000,00',
+                'duration_days' => 100, 'point_multiplier' => '2.00', 'role_name' => 'gold-member',
+                'is_active' => true, 'is_trashed' => false,
+                'edit_url' => '/members/tiers/1/edit', 'delete_url' => '/members/tiers/1',
+                'activate_url' => null, 'deactivate_url' => '/members/tiers/1/deactivate',
+                'restore_url' => null, 'force_delete_url' => null,
+            ]),
+            $this->obj([
+                'id' => 2, 'name' => 'Silver', 'slug' => 'silver',
+                'price_display' => 'Rp 70.000,00',
+                'duration_days' => 60, 'point_multiplier' => '1.50', 'role_name' => null,
+                'is_active' => false, 'is_trashed' => false,
+                'edit_url' => '/members/tiers/2/edit', 'delete_url' => '/members/tiers/2',
+                'activate_url' => '/members/tiers/2/activate', 'deactivate_url' => null,
+                'restore_url' => null, 'force_delete_url' => null,
+            ]),
+            // The tab that used not to exist: a trashed tier is a row with
+            // Restore and Permanent Delete on it, not a row that vanished.
+            $this->obj([
+                'id' => 3, 'name' => 'Bronze', 'slug' => 'bronze',
+                'price_display' => 'Rp 40.000,00',
+                'duration_days' => 30, 'point_multiplier' => '1.00', 'role_name' => null,
+                'is_active' => true, 'is_trashed' => true,
+                'edit_url' => null, 'delete_url' => null,
+                'activate_url' => null, 'deactivate_url' => null,
+                'restore_url' => '/members/tiers/3/restore', 'force_delete_url' => '/members/tiers/3/force',
+            ]),
+        ]));
+
+        $this->assertStringContainsString('Rp 100.000,00', $html, 'the price did not arrive pre-formatted');
+        $this->assertStringContainsString('>INACTIVE<', $html, 'the inactive tier does not render distinctly');
+        $this->assertStringContainsString('<td>—</td>', $html, 'a tier with no role renders a dash, not a blank cell');
+        $this->assertStringContainsString('href="/members/tiers/1/edit"', $html);
+        $this->assertStringContainsString('data-action="/members/tiers/2"', $html);
+        $this->assertStringContainsString('data-method="DELETE"', $html);
+        // A trashed row keeps its name visible, loses Edit, and carries the two
+        // trash actions the list was built to offer.
+        $this->assertStringContainsString('>Bronze<', $html, 'the trashed tier is missing from the list');
+        $this->assertStringContainsString('data-action="/members/tiers/3/restore"', $html);
+        $this->assertStringContainsString('data-action="/members/tiers/3/force"', $html);
+        $this->assertStringNotContainsString('href="/members/tiers/3/edit"', $html, 'a trashed tier offers Edit');
+        // Bulk bar carries the shared driver's contract, not a hand-built URL.
+        $this->assertStringContainsString('data-bulk-route="/members/tiers/bulk-action"', $html);
+        $this->assertStringContainsString('data-bulk-field="tier_ids[]"', $html);
+        $this->assertStringContainsString('data-status="trashed"', $html);
+        // The inline per-row editor is gone: a read-only list has no field in it.
+        $this->assertStringNotContainsString('name="point_multiplier"', $html, 'the tier list still carries an inline editor');
+    }
+
+    public function test_the_tier_form_offers_no_superadmin_and_pairs_its_boolean(): void
+    {
+        $this->signIn('superadmin');
+
+        $html = $this->render('pages.members.tier-form', [
+            'indexUrl' => '/members',
+            'tiersUrl' => '/members/tiers',
+            'formUrl' => '/members/tiers',
+            'formMethod' => 'POST',
+            'currencySymbol' => 'Rp',
+            'roleOptions' => ['member' => 'member', 'staff' => 'staff'],
+            'tier' => null,
+            'deleteUrl' => null,
+        ]);
+
+        $this->assertStringContainsString('action="/members/tiers"', $html);
+        $this->assertStringContainsString('value="member"', $html);
+        $this->assertStringNotContainsString('value="superadmin"', $html, 'the picker offered superadmin');
+        $this->assertStringContainsString('Price (Rp)', $html, 'the price field does not name its currency');
+        $this->assertStringContainsString('name="is_active" value="0"', $html, 'the boolean checkbox lost its hidden-input pair');
+        // A tier that does not exist yet has nothing to trash: no card, not an
+        // empty box pointing at a route with no row behind it.
+        $this->assertStringNotContainsString('Danger Zone', $html, 'the create form offers a delete for a tier that has no row');
+
+        // An existing tier pre-fills, so an operator editing one is not typing
+        // the row back in from the list.
+        $edit = $this->render('pages.members.tier-form', [
+            'indexUrl' => '/members',
+            'tiersUrl' => '/members/tiers',
+            'formUrl' => '/members/tiers/1',
+            'formMethod' => 'PUT',
+            'currencySymbol' => 'Rp',
+            'roleOptions' => ['member' => 'member'],
+            'tier' => $this->obj(['name' => 'Gold', 'slug' => 'gold', 'price' => '100000.00', 'duration_days' => 100, 'point_multiplier' => '2.00', 'role_name' => 'member', 'is_active' => true, 'sort_order' => 3]),
+            'deleteUrl' => '/members/tiers/1',
+        ]);
+        $this->assertStringContainsString('value="PUT"', $edit);
+        $this->assertStringContainsString('value="Gold"', $edit);
+        $this->assertStringContainsString('_method', $edit);
+        // The Danger Zone carries its button once the row exists — same shape the
+        // member profile uses.
+        $this->assertStringContainsString('Danger Zone', $edit);
+        $this->assertStringContainsString('data-action="/members/tiers/1"', $edit);
+        $this->assertStringContainsString('data-method="DELETE"', $edit);
+    }
+
+    public function test_the_dashboard_renders_with_zero_subscriptions_and_a_gated_broadcast(): void
+    {
+        $this->signIn('superadmin');
+
+        $html = $this->render('pages.members.dashboard', $this->dashboardData());
+
+        $this->assertStringContainsString('No subscriptions are expiring inside the alert window.', $html);
+        $this->assertStringContainsString('Expiring Soon — within 14 days', $html);
+        $this->assertStringContainsString('Points Issued', $html);
+
+        // The broadcast trigger posts to the route URL it was handed, with
+        // its own copy in data-* — the shared modal driver's contract.
+        $this->assertStringContainsString('data-action="/members/notify-expiring"', $html);
+        $this->assertStringContainsString('data-method="POST"', $html);
+        $this->assertStringContainsString('data-title="Send Expiry Alerts"', $html);
+    }
+
+    public function test_the_analytics_sections_render_from_the_view_model_and_take_empty_states(): void
+    {
+        $this->signIn('superadmin');
+
+        $empty = $this->render('pages.members.dashboard', $this->dashboardData());
+        $this->assertStringContainsString('Membership Analytics', $empty);
+        $this->assertStringContainsString('New Members vs Expiring Subscriptions', $empty);
+        $this->assertStringContainsString('Length of Membership', $empty);
+        $this->assertStringContainsString('Members per Tier', $empty);
+        $this->assertStringContainsString('Inactive Members', $empty);
+        $this->assertStringContainsString('Renewal Rate', $empty);
+        $this->assertStringContainsString('No active member has been inactive for 30 days.', $empty);
+        // Every widget carries its own explanation, and the two list widgets share
+        // one capped scroll height — the layout the owner asked for, pinned here
+        // rather than left to a screenshot.
+        $this->assertGreaterThanOrEqual(8, substr_count($empty, 'data-bs-toggle="tooltip"'));
+        $this->assertSame(2, substr_count($empty, 'style="max-height: 340px;"'));
+        // The dropdown always carries pre-filled dates; a preset simply shows
+        // them as the current window, not as an empty form waiting to be typed.
+        $this->assertStringContainsString('dateRangeForm', $empty);
+
+        $filled = $this->render('pages.members.dashboard', $this->dashboardData([
+            'range' => 'custom',
+            'window' => ['from' => '2026-01-01', 'to' => '2026-03-31'],
+            'at_risk' => [[
+                'member_number' => 'MBR-000009',
+                'user_name' => 'Rina',
+                'expires_at' => '2026-11-20',
+                'last_activity' => '2026-09-01',
+            ]],
+            'at_risk_count' => 1,
+        ]));
+        $this->assertStringContainsString('w/c 06 Oct', $filled);
+        $this->assertStringContainsString('style="width: 100%"', $filled);
+        $this->assertStringContainsString('MBR-000009', $filled);
+        $this->assertStringContainsString('2026-09-01', $filled);
+        $this->assertStringContainsString('value="2026-01-01"', $filled);
+        $this->assertStringNotContainsString('No active member has been inactive', $filled);
+    }
+
+    public function test_mutating_affordances_disappear_without_the_permission(): void
+    {
+        // Staff holds no member permissions; superadmin passes Gate::before.
+        // The `@else` branch on tiers proves the guards are real
+        // reads, not decoration the flag test never exercises.
+        $this->signIn('staff');
+
+        // The stub carries a deactivate URL so the guard below has something to
+        // take away: with null URLs there is no button to miss.
+        $index = $this->render('pages.members.index', $this->indexData([
+            $this->memberRow(['deactivate_url' => '/members/1/deactivate']),
+        ]));
+        $this->assertStringNotContainsString('Create Member', $index, 'the create button ignored members.create');
+        $this->assertStringNotContainsString('data-action-type="delete"', $index, 'the row delete ignored members.delete');
+        $this->assertStringNotContainsString('data-action="/members/1/deactivate"', $index, 'the row deactivate ignored members.deactivate');
+
+        $tiers = $this->render('pages.members.tiers', $this->tierListData([$this->obj([
+            'id' => 1, 'name' => 'Gold', 'slug' => 'gold', 'price_display' => 'Rp 100.000,00',
+            'duration_days' => 100, 'point_multiplier' => '2.00', 'role_name' => null,
+            'is_active' => true, 'is_trashed' => false,
+            'edit_url' => '/members/tiers/1/edit', 'delete_url' => '/members/tiers/1',
+            'activate_url' => null, 'deactivate_url' => '/members/tiers/1/deactivate',
+            'restore_url' => null, 'force_delete_url' => null,
+        ])]));
+        $this->assertStringNotContainsString('Create Tier', $tiers, 'the create button ignored member_tiers.create');
+        $this->assertStringNotContainsString('data-action="/members/tiers/1"', $tiers, 'the row delete ignored members.delete');
+
+        $dashboard = $this->render('pages.members.dashboard', $this->dashboardData(['stats' => [], 'membersByTier' => []]));
+        $this->assertStringNotContainsString('data-action="/members/notify-expiring"', $dashboard, 'the broadcast trigger ignored members.notify');
+    }
+
+    public function test_null_write_urls_take_away_every_write_affordance(): void
+    {
+        // The read-only slice hands null for every URL whose route ships in
+        // B6. A null in `action=` or `href=` is a button that goes nowhere —
+        // the guards must remove the affordance, not render it broken.
+        $this->signIn('superadmin');
+
+        $index = $this->render('pages.members.index', $this->indexData([$this->memberRow()], [
+            'createUrl' => null,
+            'bulkUrl' => null,
+        ]));
+        $this->assertStringNotContainsString('Create Member', $index, 'the create button survived a null createUrl');
+        $this->assertStringNotContainsString('bulkSelectAll', $index, 'select-all survived a null bulkUrl');
+        $this->assertStringNotContainsString('data-bulk-route', $index, 'the bulk bar survived a null bulkUrl');
+
+        $dashboard = $this->render('pages.members.dashboard', $this->dashboardData([
+            'stats' => [],
+            'membersByTier' => [],
+            'broadcastUrl' => null,
+        ]));
+        $this->assertStringNotContainsString('data-action=', $dashboard, 'the broadcast trigger survived a null broadcastUrl');
+    }
+
+    public function test_the_flag_hides_every_member_screen(): void
+    {
+        $this->signIn('superadmin');
+        Feature::deactivate('member_loyalty');
+
+        $index = $this->render('pages.members.index', $this->indexData());
+        $this->assertStringNotContainsString('bulkSelectAll', $index, 'the index ignores the feature flag');
+
+        $dashboard = $this->render('pages.members.dashboard', $this->dashboardData(['stats' => [], 'membersByTier' => []]));
+        $this->assertStringNotContainsString('Expiring Soon — within 14 days', $dashboard, 'the dashboard ignores the feature flag');
+        $this->assertStringNotContainsString('New Members vs Expiring Subscriptions', $dashboard, 'the analytics cards ignore the feature flag');
+    }
+
+    public function test_no_member_view_reaches_for_the_database_routes_or_inline_script(): void
+    {
+        $pages = [
+            'index', 'create', 'show', 'tiers', 'tier-form', 'dashboard',
+        ];
+
+        $forbidden = [
+            '/\bDB::/' => 'queries the database',
+            '/::query\s*\(/' => 'starts a model query',
+            '/::where\s*\(/' => 'runs a model query',
+            '/SystemSetting::/' => 'reads settings itself',
+            '/route\(/' => 'references a route name (the member routes ship in B6, D-4)',
+            '/@php/' => 'embeds a PHP block',
+            '/<script>/' => 'carries an un-nonceable inline script',
+            '/\son(click|submit|load|error|change|keyup|keydown)=/' => 'carries an inline event handler',
+            '/bg-(white|light)\b/' => 'uses a class the design system forbids',
+            '/input-group/' => 'wraps a validated input in the sibling-selector trap',
+        ];
+
+        foreach ($pages as $page) {
+            $source = preg_replace('/\{\{--.*?--\}\}/s', '', (string) file_get_contents(
+                resource_path('views/pages/members/'.$page.'.blade.php')
+            ));
+
+            foreach ($forbidden as $pattern => $why) {
+                $this->assertDoesNotMatchRegularExpression(
+                    $pattern,
+                    $source,
+                    "pages/members/{$page}.blade.php {$why}"
+                );
+            }
+        }
+    }
+}

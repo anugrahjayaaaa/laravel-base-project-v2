@@ -208,6 +208,20 @@ class SystemSettingsUpdateAction
             'backup_retention_daily' => (string) ($data['backup_retention_daily'] ?? 7),
             'backup_retention_weekly' => (string) ($data['backup_retention_weekly'] ?? 4),
             'backup_retention_monthly' => (string) ($data['backup_retention_monthly'] ?? 12),
+
+            // Phase 18 — membership & loyalty. Defaults match the seeder and the
+            // readers (`MemberDashboardAction`, `MemberExpirePointsAction`,
+            // `MemberAdjustPointsAction`), so a payload that omits a key leaves
+            // the documented policy in place.
+            'member_expiry_alert_window_days' => (string) ($data['member_expiry_alert_window_days'] ?? 14),
+            'member_number_prefix' => (string) ($data['member_number_prefix'] ?? 'MBR'),
+            'member_points_expiry_date' => (string) ($data['member_points_expiry_date'] ?? ''),
+            'member_points_earn_amount' => (string) ($data['member_points_earn_amount'] ?? 50000),
+            'member_points_earn_value' => (string) ($data['member_points_earn_value'] ?? 1000),
+            // The rule is nullable so a partial payload (a form that shows only
+            // some groups) validates; a blank still has to print a symbol, so an
+            // absent or empty choice lands on IDR rather than an empty string.
+            'currency_code' => (string) (($data['currency_code'] ?? null) ?: 'IDR'),
         ];
 
         // `encrypt()` draws a fresh IV on every call, so a resubmitted
