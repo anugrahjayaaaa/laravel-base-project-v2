@@ -30,6 +30,18 @@ class BulkMemberTierRequest extends BaseFormRequest
     }
 
     /**
+     * Exactly what `MemberTierBulkActionHandler` implements — the same three
+     * verbs the tiers dropdown offers. Anything wider would be an action the
+     * handler silently drops.
+     *
+     * @return array<int, string>
+     */
+    protected static function bulkActionAllowlist(): array
+    {
+        return ['delete', 'restore', 'force_delete'];
+    }
+
+    /**
      * @return array<string, array<int, string|callable>>
      */
     public function rules(): array

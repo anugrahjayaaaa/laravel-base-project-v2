@@ -6,6 +6,7 @@ use App\Actions\V1\BulkAction\BulkActionHandler;
 use App\Models\MemberTier;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
+use InvalidArgumentException;
 
 /**
  * Bulk action handler for membership tiers (Phase 18).
@@ -47,11 +48,13 @@ class MemberTierBulkActionHandler implements BulkActionHandler
         $causer = auth()->user();
         $tiers = MemberTier::withTrashed()->whereIn('id', $ids)->get();
 
+        // An action outside the three below is a bug, not a no-op — see
+        // `MemberBulkActionHandler::executeBulk()`.
         $tiers->each(match ($action) {
             'delete' => fn (MemberTier $tier) => app(MemberTierDeleteAction::class)->run($tier, $causer),
             'restore' => fn (MemberTier $tier) => app(MemberTierRestoreAction::class)->run($tier, $causer),
             'force_delete' => fn (MemberTier $tier) => app(MemberTierForceDeleteAction::class)->run($tier, $causer),
-            default => fn (MemberTier $tier) => null,
+            default => throw new InvalidArgumentException("Tier bulk action [{$action}] is not implemented."),
         });
     }
 

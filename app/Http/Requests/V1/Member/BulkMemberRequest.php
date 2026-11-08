@@ -26,6 +26,19 @@ class BulkMemberRequest extends BaseFormRequest
     }
 
     /**
+     * Exactly what `MemberBulkActionHandler` implements. `activate`,
+     * `deactivate`, `lock` and `unlock` are the users module's verbs — a member
+     * profile has no lock column, and its live/inactive switch is the single-row
+     * route, which needs the reason a sanction carries.
+     *
+     * @return array<int, string>
+     */
+    protected static function bulkActionAllowlist(): array
+    {
+        return ['delete', 'restore', 'force_delete'];
+    }
+
+    /**
      * @return array<string, array<int, string|callable>>
      */
     public function rules(): array

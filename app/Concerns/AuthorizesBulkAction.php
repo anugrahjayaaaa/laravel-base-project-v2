@@ -29,6 +29,22 @@ trait AuthorizesBulkAction
     ];
 
     /**
+     * The actions this entity's bulk bar offers, before the permission check.
+     *
+     * Defaults to the whole map. An entity whose handler implements a subset
+     * overrides it, because the map is shared and `members.lock` is not a
+     * permission anybody can hold: the check below would 403 every normal
+     * caller, while the superadmin's `Gate::before` sails past it and the
+     * handler answers 200 with zero rows acted on.
+     *
+     * @return array<int, string>
+     */
+    protected static function bulkActionAllowlist(): array
+    {
+        return array_keys(self::BULK_ACTIONS);
+    }
+
+    /**
      * The entity prefix the caller uses, e.g. `users` or `roles`.
      */
     abstract protected function bulkEntityPrefix(): string;
@@ -42,13 +58,13 @@ trait AuthorizesBulkAction
      */
     public function authorize(): bool
     {
-        $suffix = self::BULK_ACTIONS[(string) $this->input('action')] ?? null;
+        $action = (string) $this->input('action');
 
-        if ($suffix === null) {
+        if (! in_array($action, static::bulkActionAllowlist(), true)) {
             return false;
         }
 
-        return $this->user()?->can($this->bulkEntityPrefix() . '.' . $suffix) ?? false;
+        return $this->user()?->can($this->bulkEntityPrefix() . '.' . self::BULK_ACTIONS[$action]) ?? false;
     }
 
     /**
@@ -58,6 +74,6 @@ trait AuthorizesBulkAction
      */
     public static function bulkActions(): array
     {
-        return array_keys(self::BULK_ACTIONS);
+        return static::bulkActionAllowlist();
     }
 }

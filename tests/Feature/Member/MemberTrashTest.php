@@ -10,6 +10,7 @@ use App\Models\MemberTier;
 use App\Models\Role;
 use App\Models\RoleLookup;
 use App\Models\User;
+use App\Support\SystemRole;
 use Database\Seeders\FeatureFlagSeeder;
 use Database\Seeders\PermissionSeeder;
 use Database\Seeders\RoleSeeder;
@@ -308,6 +309,29 @@ class MemberTrashTest extends TestCase
         $this->assertFalse(MemberTier::withTrashed()->findOrFail($inUse->id)->trashed());
     }
 
+    /**
+     * The list paints a trashed row red and stamps it DELETED; opening one by
+     * URL used to look exactly like opening a live profile, which is how an
+     * operator ends up typing into a row everybody has stopped reading.
+     */
+    public function test_the_detail_page_of_a_profile_in_the_trash_says_so(): void
+    {
+        $this->actingAsHolderOf(['members.view']);
+
+        $member = $this->liveMember('MBR-000415');
+        $member->delete();
+
+        $live = $this->liveMember('MBR-000416');
+
+        $this->get(route('members.show', $member->id))
+            ->assertOk()
+            ->assertSee('DELETED');
+
+        $this->get(route('members.show', $live->id))
+            ->assertOk()
+            ->assertDontSee('DELETED');
+    }
+
     public function test_the_bulk_endpoint_refuses_an_action_this_entity_has_no_permission_for(): void
     {
         $this->actingAsHolderOf(['members.view', 'members.delete']);
@@ -323,5 +347,55 @@ class MemberTrashTest extends TestCase
         ])->assertForbidden();
 
         $this->assertNotNull(Member::find($member->id));
+    }
+
+    /**
+     * The hole the test above does not cover: `Gate::before` hands the
+     * superadmin every permission, including the `members.lock` that does not
+     * exist in the catalogue, so the permission check alone let it through — and
+     * `MemberBulkActionHandler` had no arm for it, answering HTTP 200 with
+     * "0 members" while touching nothing. The allowlist is what refuses here,
+     * and it refuses before the handler is reached.
+     */
+    public function test_the_bulk_endpoint_refuses_an_action_this_entity_does_not_implement_even_for_a_superadmin(): void
+    {
+        $role = Role::findByName(SystemRole::SUPERADMIN, RoleLookup::guard());
+        $user = User::factory()->create(['email_verified_at' => now()]);
+        $user->syncRoles([$role->name]);
+        $this->actingAs($user);
+
+        $member = $this->liveMember('MBR-000414');
+
+        foreach (['lock', 'unlock', 'activate', 'deactivate', 'not-a-real-action'] as $action) {
+            $this->post(route('members.bulk-action'), [
+                'action' => $action,
+                'member_ids' => [$member->id],
+            ])->assertForbidden();
+        }
+
+        $this->assertTrue(Member::find($member->id)->is_active);
+        $this->assertFalse(Member::find($member->id)->trashed());
+    }
+
+    /**
+     * The positive control for the test above, in its own method: the five denied
+     * arms above already spend the `bulk-action` ceiling of five requests a minute,
+     * so a sixth call in the same test is throttled, not executed.
+     */
+    public function test_the_same_superadmin_can_still_bulk_delete_a_live_profile(): void
+    {
+        $role = Role::findByName(SystemRole::SUPERADMIN, RoleLookup::guard());
+        $user = User::factory()->create(['email_verified_at' => now()]);
+        $user->syncRoles([$role->name]);
+        $this->actingAs($user);
+
+        $member = $this->liveMember('MBR-000415');
+
+        $this->post(route('members.bulk-action'), [
+            'action' => 'delete',
+            'member_ids' => [$member->id],
+        ])->assertRedirect();
+
+        $this->assertTrue(Member::withTrashed()->find($member->id)->trashed());
     }
 }

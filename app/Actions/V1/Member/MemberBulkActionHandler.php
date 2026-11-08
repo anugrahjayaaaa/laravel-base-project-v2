@@ -6,6 +6,7 @@ use App\Actions\V1\BulkAction\BulkActionHandler;
 use App\Models\Member;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
+use InvalidArgumentException;
 
 /**
  * Bulk action handler for member profiles (Phase 18).
@@ -48,14 +49,15 @@ class MemberBulkActionHandler implements BulkActionHandler
 
         // Each row goes through its own Action, so each writes its own audit row
         // inside its own transaction and nothing is updated around the guards.
-        // The trailing arm is unreachable over HTTP: `AuthorizesBulkAction` denies
-        // any action outside its map and the FormRequest's `Rule::in` refuses it
-        // again, so this is the match arm the type checker wants, not a third gate.
+        // An action outside the three below is a bug, not a no-op: returning a
+        // closure that does nothing is how a caller used to get HTTP 200 with
+        // zero rows acted on, so the arm throws instead (`UserBulkActionHandler`
+        // gets the same guarantee by having no default arm at all).
         $members->each(match ($action) {
             'delete' => fn (Member $member) => app(MemberDeleteAction::class)->run($member, $causer),
             'restore' => fn (Member $member) => app(MemberRestoreAction::class)->run($member, $causer),
             'force_delete' => fn (Member $member) => app(MemberForceDeleteAction::class)->run($member, $causer),
-            default => fn (Member $member) => null,
+            default => throw new InvalidArgumentException("Member bulk action [{$action}] is not implemented."),
         });
     }
 
