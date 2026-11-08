@@ -320,8 +320,10 @@ empty or still in the future. When it is due it chunks members with a positive b
 (500 at a time), zeroes the balance, appends one `Annual points expiry` ledger row per
 member, audits `member.points_expired` with `properties.causer = SYSTEM`, then advances the
 setting to the next anniversary strictly after today — so the stored value is always the
-*next* reset. **Only `points_balance` is touched; no member's subscription, tier or
-account is ended by this job.**
+*next* reset. Each chunk is its own transaction, not the whole run: at 100k members one
+transaction would hold every row lock for minutes, and a chunk that dies is picked up by the
+next tick because a profile already at zero is skipped. **Only `points_balance` is touched; no
+member's subscription, tier or account is ended by this job.**
 
 The job refuses to run when the flag is off (it logs `reason=feature_off`) — the flag is the
 kill switch for the sweep as well as the screens.
@@ -331,7 +333,10 @@ kill switch for the sweep as well as the screens.
 `MemberSubscriptionExpireAction` (driven by `MemberSubscriptionExpirySweepJob`, queue
 `sweeps`, daily at **00:30** — staggered half an hour off the points sweep's midnight, so the
 two sweeps never race for the same chunk of workers) scans live, unpaused periods with
-`expires_at <= now()` in `chunkById(500)`, sets each to `expired`, and revokes only the role
+`expires_at <= now()` in `chunkById(500)` — carrying `member.user.roles` and `tier` on the
+chunk, because the per-row work reads all four and an un-eager-loaded sweep costs four selects
+per period —
+sets each to `expired`, and revokes only the role
 that row applied — through `RevokesSubscriptionRole`, the same trait the cancel Action uses,
 so a role another live period still needs survives, and the base role always does. Audits
 `member.expired` with `properties.causer = SYSTEM` inside the transaction. Idempotent: a
