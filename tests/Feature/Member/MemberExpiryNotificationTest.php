@@ -22,6 +22,7 @@ use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Queue;
 use Laravel\Pennant\Feature;
 use Laravel\Sanctum\Sanctum;
+use Spatie\Activitylog\Models\Activity;
 use Spatie\Permission\PermissionRegistrar;
 use Tests\TestCase;
 
@@ -116,6 +117,37 @@ class MemberExpiryNotificationTest extends TestCase
         $this->post(route('membership.broadcast-expiry'))->assertForbidden();
 
         Queue::assertNothingPushed();
+    }
+
+    /**
+     * A thousand members got mail because one operator asked for it, and until
+     * this row existed the trail could not say who. The refusal half is the
+     * point: a caller the gate stops must leave no broadcast row behind.
+     */
+    public function test_the_trigger_records_who_fired_the_mass_mail(): void
+    {
+        Queue::fake();
+        SystemSetting::set('member_expiry_alert_window_days', '30');
+
+        $operator = $this->userWith('members.notify');
+        $this->actingAs($operator);
+
+        $this->post(route('membership.broadcast-expiry'))->assertRedirect();
+
+        $row = Activity::where('event', 'member.expiry_broadcasted')->firstOrFail();
+
+        $this->assertSame($operator->id, $row->causer_id);
+        $this->assertSame(30, $row->properties['alert_window_days']);
+    }
+
+    public function test_a_refused_trigger_leaves_no_broadcast_row_behind(): void
+    {
+        Queue::fake();
+        $this->actingAs($this->userWith('members.update'));
+
+        $this->post(route('membership.broadcast-expiry'))->assertForbidden();
+
+        $this->assertSame(0, Activity::where('event', 'member.expiry_broadcasted')->count());
     }
 
     public function test_the_api_twin_queues_the_same_run_under_the_same_permission(): void

@@ -292,6 +292,28 @@ class MemberUiRenderTest extends TestCase
         $this->assertStringContainsString('No members found.', $html);
     }
 
+    /**
+     * A header may only be clickable when `MemberIndexAction::SORTABLE` can
+     * order by that column. Four of these built a `?sort=` link for a column the
+     * query silently dropped, so the table looked sortable and was not.
+     */
+    public function test_the_member_index_offers_sort_only_on_columns_the_query_can_order_by(): void
+    {
+        $this->signIn('superadmin');
+
+        $html = $this->render('pages.members.index', $this->indexData([$this->memberRow()]));
+
+        foreach (['user_name', 'tier_name', 'status', 'expires_at'] as $column) {
+            $this->assertStringNotContainsString(
+                'sort='.$column,
+                $html,
+                "the {$column} header links to a sort the Action drops"
+            );
+        }
+
+        $this->assertStringContainsString('sort=points_balance', $html);
+    }
+
     public function test_the_create_member_form_renders_its_contract(): void
     {
         $this->signIn('superadmin');

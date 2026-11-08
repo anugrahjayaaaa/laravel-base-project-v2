@@ -207,6 +207,39 @@ class MemberStateTest extends TestCase
         $this->assertTrue($subscription->expires_at->equalTo($expiresAt->copy()->addDays(10)));
     }
 
+    /**
+     * A cancelled period is over, and `MemberSubscriptionCancelAction` leaves
+     * the freeze stamp on it — so the resume has to filter on status. Without
+     * that filter the days of a dead row are handed to `expires_at` and the
+     * audit row announces a resume no subscription will ever serve.
+     */
+    public function test_activating_a_member_does_not_resume_a_period_that_was_cancelled(): void
+    {
+        $this->actingAsHolderOf(['members.deactivate', 'members.activate', 'members.update']);
+
+        $member = $this->memberWithDaysLeft('MBR-000506');
+        $subscription = $member->subscriptions()->firstOrFail();
+        $expiresAt = $subscription->expires_at;
+
+        $this->post(route('members.deactivate', $member), ['violation' => 0]);
+        $this->post(route('members.subscriptions.cancel', $subscription))->assertSessionHasNoErrors();
+
+        $this->travel(10)->days();
+
+        $this->post(route('members.activate', $member))->assertSessionHasNoErrors();
+
+        $subscription = $member->subscriptions()->firstOrFail();
+
+        $this->assertTrue($member->fresh()->is_active);
+        $this->assertSame(MemberSubscription::STATUS_CANCELLED, $subscription->status);
+        $this->assertTrue($subscription->expires_at->equalTo($expiresAt), 'a cancelled period was credited days');
+        $this->assertNotNull($subscription->paused_at, 'the resume touched a row it should not have seen');
+
+        $properties = Activity::where('event', 'member.activated')->firstOrFail()->properties->toArray();
+        $this->assertNull($properties['resumed_tier']);
+        $this->assertNull($properties['resumed_expires_at']);
+    }
+
     public function test_a_deactivated_member_leaves_the_active_tab_and_shows_inactive_on_the_other(): void
     {
         $this->actingAsHolderOf(['members.view', 'members.deactivate', 'members.activate']);

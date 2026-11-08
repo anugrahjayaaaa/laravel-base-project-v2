@@ -165,6 +165,43 @@ class MemberSubscriptionTest extends TestCase
         app(MemberSubscriptionActivateAction::class)->run($member, $this->tier('Silver', 'silver_member'));
     }
 
+    /**
+     * A deactivated profile holds a period that is paused, not ended
+     * (`MemberDeactivateAction` freezes it for the return). Selling it another
+     * live one would leave two `paused_at` rows, and the resume can only hand
+     * one of them back — so the second set of paid days would simply vanish.
+     */
+    public function test_activate_refuses_a_deactivated_member_and_writes_no_period(): void
+    {
+        $member = $this->memberHoldingRole('member');
+        $member->update(['is_active' => false]);
+        $tier = $this->tier('Gold', 'gold_member');
+
+        $this->expectException(ValidationException::class);
+
+        try {
+            app(MemberSubscriptionActivateAction::class)->run($member->fresh(), $tier);
+        } finally {
+            $this->assertSame(0, $member->subscriptions()->count());
+            $this->assertNotContains('gold_member', $member->user->fresh()->roles->pluck('name')->all());
+        }
+    }
+
+    /**
+     * The refusal is also the reason the form disappears: a null `subscribeUrl`
+     * takes the affordance away instead of posting a guaranteed 422.
+     */
+    public function test_the_detail_view_model_stops_offering_subscribe_to_a_deactivated_profile(): void
+    {
+        $member = $this->memberHoldingRole('member');
+
+        $this->assertNotNull(app(MemberShowAction::class)->run($member)['subscribeUrl'], 'pre-condition');
+
+        $member->update(['is_active' => false]);
+
+        $this->assertNull(app(MemberShowAction::class)->run($member->fresh())['subscribeUrl']);
+    }
+
     public function test_a_later_tier_rename_does_not_change_the_role_applied_at_activation(): void
     {
         $member = $this->memberHoldingRole('member');

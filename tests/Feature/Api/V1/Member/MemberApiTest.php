@@ -204,6 +204,70 @@ class MemberApiTest extends TestCase
             ->assertJsonPath('data.member.id', $member->id);
     }
 
+    /**
+     * A profile in the trash is outside the sweep that zeroes points
+     * (`MemberExpirePointsAction` scans the default scope), so crediting it
+     * would park balance nothing ever expires. The same guard the other
+     * state-carrying routes already had.
+     */
+    public function test_points_cannot_be_credited_to_a_profile_in_the_trash(): void
+    {
+        $member = Member::factory()->create(['points_balance' => 100]);
+
+        Sanctum::actingAs($this->userWith('members.update', 'members.delete'));
+
+        $this->deleteJson(route('api.v1.members.destroy', $member))->assertOk();
+
+        $this->postJson(route('api.v1.members.points', $member), ['delta' => 50, 'reason' => 'Too late'])
+            ->assertNotFound();
+
+        $this->assertDatabaseMissing('member_point_histories', ['member_id' => $member->id]);
+        $this->assertSame(100, Member::withTrashed()->find($member->id)->points_balance);
+    }
+
+    /**
+     * The `sort` rule and `MemberIndexAction::SORTABLE` are one list, not two:
+     * a column the query cannot order by is refused here rather than answered
+     * with a 200 and an unchanged order.
+     */
+    public function test_the_sort_rule_offers_only_the_columns_the_query_can_order_by(): void
+    {
+        Member::factory()->count(2)->create();
+
+        Sanctum::actingAs($this->userWith('members.view'));
+
+        $this->getJson(route('api.v1.members.index', ['sort' => 'member_number']))->assertOk();
+        $this->getJson(route('api.v1.members.index', ['sort' => 'points_balance']))->assertOk();
+
+        foreach (['user_name', 'tier_name', 'status', 'expires_at'] as $column) {
+            $this->getJson(route('api.v1.members.index', ['sort' => $column]))->assertUnprocessable();
+        }
+    }
+
+    /**
+     * `MemberResource` declares `user_name`, so every payload that returns a
+     * profile carries the key — including the two that hand back the model the
+     * Action created rather than one read through a listing.
+     */
+    public function test_the_account_behind_the_profile_is_named_in_every_member_payload(): void
+    {
+        Sanctum::actingAs($this->userWith('members.create', 'members.delete', 'members.restore', 'users.assign_roles'));
+
+        $created = $this->postJson(route('api.v1.members.store'), [
+            'name' => 'Nina',
+            'username' => 'nina',
+            'email' => 'nina@example.com',
+        ])->assertCreated()->assertJsonPath('data.member.user_name', 'Nina');
+
+        $member = Member::findOrFail($created->json('data.member.id'));
+
+        $this->deleteJson(route('api.v1.members.destroy', $member))->assertOk();
+
+        $this->postJson(route('api.v1.members.restore', $member))
+            ->assertOk()
+            ->assertJsonPath('data.member.user_name', 'Nina');
+    }
+
     public function test_the_bulk_permission_depends_on_the_action_requested(): void
     {
         $member = Member::factory()->create();
