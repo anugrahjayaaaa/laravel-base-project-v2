@@ -105,6 +105,11 @@ users list never had it.
 the body's `action` to `<prefix>.<suffix>` — so `delete` needs `members.delete` while a tier bulk
 call is authorised by `member_tiers.delete` (its `bulkEntityPrefix()` is `member_tiers`). An action
 with no matching permission (e.g. `lock`, which only users have) is a 403, not a fallthrough.
+The permission is not the whole gate: `bulkActionAllowlist()` is the entity's own list of verbs
+(`delete` / `restore` / `force_delete` for both member tables), so an unimplemented arm is refused
+**before** `Gate::before` hands a superadmin the non-existent `members.lock`. A superadmin used to
+get HTTP 200 and "0 members acted on" from those; `executeBulk` now throws on an arm it does not
+implement instead of returning a closure that does nothing.
 Each handler's `getValidItems()` narrows first: `delete` acts only on live rows, `restore` and
 `force_delete` only on trashed ones, so a mixed selection touches what it may and ignores the
 rest.
@@ -114,6 +119,10 @@ rest.
 shape. Both lists render them the way the users row does: icon only, the action name on hover.
 
 - **Tier** — `member_tiers.is_active`, the same column the tier form's `Active` switch writes.
+  Flipping it from the form needs `member_tiers.deactivate`, not `member_tiers.update`:
+  `MemberTierRequest` refuses a changed `is_active` without it, so the edit form cannot switch a
+  tier off on the update permission alone (the same split the Activate / Deactivate buttons
+  enforce).
   New subscriptions stop; rows already subscribed to the tier keep running, which is exactly the
   case `MemberTierDeleteAction` refuses to trash. **Renewal rule:** a member on a deactivated tier
   keeps their current tier valid until `member_subscriptions.expires_at`, but cannot renew or
@@ -177,7 +186,8 @@ holds `users.view`).
 `Active` / `Inactive` / `Trash` — because a Blade file may not call `route()` or build a query
 string. Both lists also share the same header layout: a `search` filter (name/slug for tiers,
 member number/user name for members), the bulk bar at the right end of the filter row, and
-pagination at 10 per page. For members, *active* and *inactive* follow the profile's own `is_active` flag — the same
+pagination at 10 per page. Search is text, not a pattern: `%` and `_` in the box are escaped
+(`LIKE … ESCAPE '!'`) so `%` finds a literal percent instead of every row. For members, *active* and *inactive* follow the profile's own `is_active` flag — the same
 switch the Activate / Deactivate button pair offers, so a row's tab and its state button can never
 disagree (ADR-031). Subscription state stays visible as the row badge (`ACTIVE` / `EXPIRED` /
 `CANCELLED` / `NONE`): a lapsed-but-undeactivated profile sits in Active carrying an EXPIRED badge.
@@ -226,7 +236,9 @@ deleting that account is refused by the FK until the profile is gone).
 
 Trash → restore or trash → permanent delete is the only order the UI offers: a live profile 404s
 on both write routes, and `getValidItems()` on the bulk path drops live rows for `restore` /
-`force_delete`. Proven by `MemberDeleteTest` and `MemberTrashTest`.
+`force_delete`. A period on a trashed profile is the same case: `MemberSubscriptionCancelAction`
+refuses before touching anything (404 on the API, and the detail page marks the profile DELETED
+so the button is not a mystery). Proven by `MemberDeleteTest` and `MemberTrashTest`.
 
 ## Tiers
 
@@ -307,7 +319,11 @@ The balance is re-read under `Member::whereKey()->lockForUpdate()` before the ar
 then balance + ledger row + `member.points_adjusted` audit are written in the same
 transaction. `balance_after` is **stored, not derived**. A movement that would take the
 balance below zero is refused before any write, and a correction is always another row —
-nothing edits a ledger entry.
+nothing edits a ledger entry. One adjustment may credit at most 20,000,000 points, checked
+after the earn rule converts `purchase_amount`, since that rule is operator-configurable; the
+ceiling is on credit only, so debiting an existing balance is never refused for size.
+Both write routes squeeze a `reason` to one line (`prepareForValidation`) before it reaches the
+audit properties — a CRLF there used to forge a readable extra row in the audit log's own text.
 
 `shortcut: the tier `point_multiplier` is not applied — the owner asked for one global earn
 rule; a per-tier factor is a second one.`
@@ -481,6 +497,14 @@ repairs a partial run without duplicating rows. It is **not** wired into `Databa
 demo rows must never land in a production seed. It creates users directly instead of through
 `MemberCreateAction`, which would mail ten inboxes and fill the audit trail with noise.
 
+**The published dev password is now fenced in.** `UserSeeder` and `MemberDemoSeeder` throw a
+`RuntimeException` when the app environment is not `local` or `testing`, so `#Password123`
+accounts cannot be created on a real deployment by someone running the seeder by hand;
+`DatabaseSeeder` skips `UserSeeder` outside those environments rather than failing the seed.
+`SuperAdminSeeder` keeps working everywhere but reads `SEED_PASSWORD` when it is not
+local/testing, and throws when that is unset — see
+`docs/base/operations/deployment.md` § 5.
+
 ## Not in this slice (Phase 19 / later P18 rows)
 
 Points spent or applied as a discount at a transaction, the cashier UI, a printable points
@@ -531,3 +555,14 @@ channel: `ChannelParityTest` declares each capability on both sides, and
 `ResponseParityTest::test_members_index_returns_the_same_facts_on_both_channels()` /
 `test_member_tiers_return_the_same_facts_on_both_channels()` pin the shared rows and the field
 sets each channel is allowed to add.
+
+The Phase 18 pentest (2026-11-08) regressions, each pinned where the fix lives:
+`MemberTrashTest` (an unimplemented bulk arm is 403 even for a superadmin, while the same caller
+can still bulk delete; the trashed profile's detail page says DELETED), `MemberTierTest` (the edit
+form cannot flip `is_active` without `member_tiers.deactivate`), `MemberSubscriptionTest` (cancel
+refused on a trashed profile, leaving status, role and audit untouched), `MemberPointsTest` (the
+credit ceiling on both `delta` and a converted `purchase_amount`; a deduction of an existing
+balance is untouched; a multi-line `reason` recorded as one line), `MemberStateTest` (the same for
+a deactivation reason), `MemberWebTest` (`%` and `_` in the search box are text), and
+`tests/Feature/Security/SeedCredentialTest` (the seeders that use the published password refuse to
+run outside local/testing, and `SuperAdminSeeder` demands `SEED_PASSWORD` when they do).
