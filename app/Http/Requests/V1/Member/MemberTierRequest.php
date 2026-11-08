@@ -81,7 +81,20 @@ class MemberTierRequest extends BaseFormRequest
             'price' => ['required', 'numeric', 'min:0', 'max:9999999999.99'],
             'duration_days' => ['required', 'integer', 'min:1', 'max:65535'],
             'point_multiplier' => ['required', 'numeric', 'min:0', 'max:99.99'],
-            'is_active' => ['boolean'],
+            // The create form may start a tier inactive, but on an existing tier
+            // flipping this box retires or revives it — which is
+            // `member_tiers.deactivate` / `.activate`'s decision, not a side
+            // effect of saving a price. Saving the same value stays allowed so a
+            // caller with only `.update` is not refused for posting the form.
+            'is_active' => ['boolean', function (string $attribute, mixed $value, \Closure $fail): void {
+                $tier = $this->route('tier');
+
+                if ($tier instanceof MemberTier && (bool) $value !== $tier->is_active) {
+                    if (! ($this->user()?->can('member_tiers.deactivate') ?? false)) {
+                        $fail('Changing a tier\'s active state needs the tier deactivate permission — use Activate / Deactivate.');
+                    }
+                }
+            }],
             'sort_order' => ['required', 'integer', 'min:0', 'max:65535'],
         ];
     }

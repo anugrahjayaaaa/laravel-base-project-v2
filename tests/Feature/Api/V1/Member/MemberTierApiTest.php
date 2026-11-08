@@ -122,6 +122,35 @@ class MemberTierApiTest extends TestCase
             ->assertJsonPath('data.tier.name', 'Platinum Plus');
     }
 
+    /**
+     * The API is the channel the bypass was found on: PUT carries the whole tier,
+     * `is_active` included, and `member_tiers.update` alone used to switch a tier
+     * off — the permission the Activate / Deactivate routes exist to guard.
+     */
+    public function test_saving_a_tier_over_the_api_cannot_flip_its_active_state_without_the_deactivate_permission(): void
+    {
+        $tier = MemberTier::factory()->create(['is_active' => true]);
+
+        Sanctum::actingAs($this->userWith('member_tiers.update'));
+
+        $this->putJson(route('api.v1.members.tiers.update', $tier), array_merge($this->tierPayload(), ['is_active' => 0]))
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('is_active');
+
+        $this->assertDatabaseHas('member_tiers', ['id' => $tier->id, 'is_active' => true]);
+
+        // Editing the rest of the same row still works for the same caller.
+        $this->putJson(route('api.v1.members.tiers.update', $tier), $this->tierPayload('Gold Two'))
+            ->assertOk();
+
+        Sanctum::actingAs($this->userWith('member_tiers.update', 'member_tiers.deactivate'));
+
+        $this->putJson(route('api.v1.members.tiers.update', $tier), array_merge($this->tierPayload('Gold Two'), ['is_active' => 0]))
+            ->assertOk();
+
+        $this->assertDatabaseHas('member_tiers', ['id' => $tier->id, 'is_active' => false]);
+    }
+
     public function test_superadmin_cannot_be_posted_as_the_tier_role(): void
     {
         Sanctum::actingAs($this->userWith('member_tiers.create'));

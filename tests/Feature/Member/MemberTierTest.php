@@ -326,4 +326,39 @@ class MemberTierTest extends TestCase
         $this->get(route('members.tiers.create'))->assertForbidden();
         $this->post(route('members.tiers.store'), $this->tierPayload())->assertForbidden();
     }
+
+    /**
+     * The Active box also sits on the edit form, so without this guard saving a
+     * price retired the tier — `member_tiers.deactivate` existed as a permission
+     * nothing ever checked.
+     */
+    public function test_saving_a_tier_cannot_change_its_active_state_without_the_deactivate_permission(): void
+    {
+        $this->actingAsHolderOf(['member_tiers.update']);
+
+        $tier = MemberTier::factory()->create(['name' => 'Gold', 'slug' => 'gold', 'is_active' => true]);
+
+        $this->put(route('members.tiers.update', $tier), $this->tierPayload([
+            'name' => 'Gold',
+            'slug' => 'gold',
+            'is_active' => 0,
+        ]))->assertSessionHasErrors('is_active');
+
+        $this->assertTrue(MemberTier::find($tier->id)->is_active);
+    }
+
+    public function test_saving_a_tier_may_change_its_active_state_with_the_deactivate_permission(): void
+    {
+        $this->actingAsHolderOf(['member_tiers.update', 'member_tiers.deactivate']);
+
+        $tier = MemberTier::factory()->create(['name' => 'Gold', 'slug' => 'gold', 'is_active' => true]);
+
+        $this->put(route('members.tiers.update', $tier), $this->tierPayload([
+            'name' => 'Gold',
+            'slug' => 'gold',
+            'is_active' => 0,
+        ]))->assertRedirect(route('members.tiers'));
+
+        $this->assertFalse(MemberTier::find($tier->id)->is_active);
+    }
 }
