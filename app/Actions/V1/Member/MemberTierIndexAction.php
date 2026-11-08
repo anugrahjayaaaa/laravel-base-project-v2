@@ -64,10 +64,16 @@ class MemberTierIndexAction
      */
     public function query(?string $search, string $status): LengthAwarePaginator
     {
+        // `%` and `_` are LIKE operators, not text: unescaped, a search for `%`
+        // matched every tier and `_` every name of that length. `!` is the escape
+        // character because both engines treat it as an ordinary character in the
+        // pattern itself (MySQL's default `\` is a literal in SQLite).
+        $like = '%'.str_replace(['!', '%', '_'], ['!!', '!%', '!_'], (string) $search).'%';
+
         return MemberTier::query()
             ->when($search, fn ($q) => $q->where(
-                fn ($s) => $s->where('name', 'like', "%{$search}%")
-                    ->orWhere('slug', 'like', "%{$search}%")
+                fn ($s) => $s->whereRaw("name LIKE ? ESCAPE '!'", [$like])
+                    ->orWhereRaw("slug LIKE ? ESCAPE '!'", [$like])
             ))
             ->when($status === 'active', fn ($q) => $q->where('is_active', true))
             ->when($status === 'inactive', fn ($q) => $q->where('is_active', false))

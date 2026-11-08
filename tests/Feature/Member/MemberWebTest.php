@@ -248,6 +248,31 @@ class MemberWebTest extends TestCase
     }
 
     /**
+     * `%` and `_` are LIKE operators, not text. Unescaped, one keystroke of `%`
+     * listed every profile and `MBR-0001_` matched by length instead of by what
+     * the operator typed — so the box said "search" and did something else.
+     */
+    public function test_the_search_box_treats_like_wildcards_as_text(): void
+    {
+        $this->signIn('superadmin');
+
+        $this->memberWithHistory();
+
+        $this->get(route('members.index', ['search' => '%']))
+            ->assertOk()
+            ->assertSee('No members found.');
+
+        $this->get(route('members.index', ['search' => 'MBR-0001_']))
+            ->assertOk()
+            ->assertSee('No members found.');
+
+        // The literal still works, so the escape did not break normal typing.
+        $this->get(route('members.index', ['search' => 'MBR-000100']))
+            ->assertOk()
+            ->assertSee('MBR-000100');
+    }
+
+    /**
      * Real rows for the parameterised routes: a missing id answers 404 from
      * the binding before the gate is consulted, which would prove nothing.
      *

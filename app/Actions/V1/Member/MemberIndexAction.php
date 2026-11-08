@@ -87,10 +87,16 @@ class MemberIndexAction
      */
     public function query(?string $search, string $sort, string $direction, string $status): LengthAwarePaginator
     {
+        // `%` and `_` are LIKE operators, not text: unescaped, a search for `%`
+        // matched every profile and `_` every member number of that length. `!`
+        // is the escape character because both engines treat it as an ordinary
+        // character in the pattern (MySQL's default `\` is a literal in SQLite).
+        $like = '%'.str_replace(['!', '%', '_'], ['!!', '!%', '!_'], (string) $search).'%';
+
         return Member::with(['user', 'subscriptions.tier'])
             ->when($search, fn ($q) => $q->where(
-                fn ($s) => $s->where('member_number', 'like', "%{$search}%")
-                    ->orWhereHas('user', fn ($u) => $u->where('name', 'like', "%{$search}%"))
+                fn ($s) => $s->whereRaw("member_number LIKE ? ESCAPE '!'", [$like])
+                    ->orWhereHas('user', fn ($u) => $u->whereRaw("name LIKE ? ESCAPE '!'", [$like]))
             ))
             ->when(
                 $status === 'trashed',
