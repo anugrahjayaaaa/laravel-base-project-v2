@@ -62,9 +62,9 @@ class MemberPointsExpirySweepJob implements ShouldQueue
     }
 
     /**
-     * A retry is safe: the whole reset is one transaction, so a second run
-     * either re-does nothing (the balances are already zero and the date moved)
-     * or repeats nothing.
+     * A retry is safe: each chunk commits on its own, so a second run either
+     * re-does nothing (the balances are already zero and get skipped) or
+     * finishes the chunks the first run never reached.
      */
     public function handle(MemberExpirePointsAction $action): void
     {

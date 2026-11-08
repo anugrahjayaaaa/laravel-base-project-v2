@@ -37,14 +37,21 @@ class MemberExpirePointsAction
             return 0;
         }
 
-        return DB::transaction(function () use ($expiry): int {
-            $count = 0;
+        $count = 0;
 
-            // chunkById, not chunk: the loop writes `points_balance`, the column
-            // this query filters on, and an offset page would skip the members
-            // that shifted out of the window. Ids do not move, so this one is
-            // stable. Soft-deleted profiles are outside the default scope.
-            Member::where('points_balance', '>', 0)->chunkById(500, function ($members) use (&$count): void {
+        // chunkById, not chunk: the loop writes `points_balance`, the column
+        // this query filters on, and an offset page would skip the members
+        // that shifted out of the window. Ids do not move, so this one is
+        // stable. Soft-deleted profiles are outside the default scope.
+        Member::where('points_balance', '>', 0)->chunkById(500, function ($members) use (&$count): void {
+            // One transaction per chunk, not one per run: a single 100k-member
+            // reset would hold every row lock for minutes and grow the
+            // rollback segment with it. A chunk that dies is picked up by the
+            // next tick, and a profile already at zero is skipped, so nothing
+            // is applied twice. What it does widen: points credited while the
+            // run is still walking land inside the reset — the balance is
+            // re-read under the lock, so the ledger row is still exact.
+            DB::transaction(function () use ($members, &$count): void {
                 foreach ($members as $member) {
                     // The balance is re-read under the row lock, the same way
                     // `MemberAdjustPointsAction` reads it: the value the chunk
@@ -77,14 +84,15 @@ class MemberExpirePointsAction
                     $count++;
                 }
             });
-
-            // Same transaction as the writes: a reset that landed without the
-            // next date stored would run again on the next tick, and a date
-            // advanced without the reset would skip a year.
-            SystemSetting::set('member_points_expiry_date', $this->nextYearAfter($expiry)->toDateString());
-
-            return $count;
         });
+
+        // Written after the chunks commit, not around them. A run that reset
+        // rows and died before this line re-runs on the next tick against
+        // balances that are already zero, which lands nowhere; the date can
+        // only move forward while nothing is left to reset.
+        SystemSetting::set('member_points_expiry_date', $this->nextYearAfter($expiry)->toDateString());
+
+        return $count;
     }
 
     /**
