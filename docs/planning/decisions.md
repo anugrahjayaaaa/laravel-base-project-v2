@@ -1215,3 +1215,217 @@ and no dependency changes: both phases are still PLANNED, POS still depends on P
 dashboard still depends on Phase 17 alone, and the roadmap still allows either to run before
 the other.
 
+
+## ADR-036: Midtrans Core API v2 is the payment gateway, and no gateway package is installed
+
+**Date**: 2026-11-08 · **Status**: Accepted · **Relates to**:
+`docs/planning/phase-19-pos-and-payment.md` — deviations D-14..D-23, tasks C1..C5, and § 8's
+O-4, which this ADR closes
+
+**Context**: Phase 19 was written against an unnamed gateway, with three credentials in
+`SystemSetting`, an HMAC-over-raw-body webhook verifier, a unique `(gateway, event_id)` dedupe
+index, a "gateway fees" card, an on-screen QR, and settlement assumed to happen when the sale
+is rung up. O-4 asked which vendor. Reading the official `Midtrans/midtrans-php` SDK (2.6.2,
+MIT, released 2025-03-18) and `docs.midtrans.com` measures every one of those assumptions:
+
+- **The SDK cannot serve this project's gates.** `ApiRequestor::remoteCall` is raw cURL with
+  **no `CURLOPT_TIMEOUT` / `CURLOPT_CONNECTTIMEOUT`** (0 = block forever), so a hung gateway
+  socket holds a cashier's HTTP request open — the exact failure mode the receipt path (D-9)
+  refuses. It bypasses Guzzle, so `Http::fake()` cannot intercept it and C's exit gate ("every
+  gateway call is fake-able") is unreachable; the tests would need live network.
+  `Midtrans\MT_Tests`, the stub people copy for tests, lives under `tests/` = `autoload-dev`,
+  so it is **not installed in a real app**. `Midtrans\Notification` reads `php://input` **and
+  fires an outbound `Transaction::status()` call per webhook**, trusting an
+  attacker-supplied transaction id and verifying no signature. `Config::$serverKey` /
+  `$isProduction` are **process-global statics**, so a long-lived worker or a cached config
+  can charge against the wrong environment — the `AGENTS.md` provider-boot-order trap, in the
+  one place where a mistake moves money.
+- **Midtrans Core API v2 has no webhook secret and no event id.** The notification carries
+  `signature_key` = SHA-512 over `order_id + status_code + gross_amount + ServerKey`,
+  concatenated, with `gross_amount` as the payload's own string; one transaction emits
+  several notifications, they can arrive **out of order**, and a non-2xx answer is retried on a
+  documented ladder (2/10/30/90/210 min). Idempotency is `order_id` uniqueness
+  (`status_code 406` on a duplicate); the real `Idempotency-Key` header is remembered five
+  minutes and caches successful responses only.
+- **Settlement is asynchronous and the webhook is not sufficient**: a payment that fails inside
+  the customer's app stays `pending` and is **never notified** (expiry *is* notified), and
+  Midtrans' own POS guidance says do not deliver goods unless status is `settlement`.
+- **There is no fee field in any payload and no fee API** (MDR is visible only in the payout /
+  daily report export), and no product-CRUD or refund-capability assumption survives: the
+  refund API is **disabled by default on POS transactions** until the account is commercially
+  activated, and card-present (Offline EDC) never appears in `/v2/charge`.
+
+**Decision**: The gateway is **Midtrans**, the product is **Core API v2 (`POST /v2/charge`)**
+with `payment_type` `qris` / `bank_transfer`. Cashier rails: **QRIS + one VA bank + cash**,
+with `edc` as an out-of-band recorded imprint. **No gateway Composer package** — the endpoints
+are called from `App\Support\Gateway\MidtransGateway` through `Illuminate\Support\Http`
+(`asJson`, Basic auth from `config('payment.*')` read at **call** time, `timeout(5)`,
+`connect_timeout(2)`, `retry(3, …, $when: connection-error-or-5xx only)`), the SDK's own
+request/response shapes and `docs.midtrans.com/reference/*` being the spec. One credential is
+stored (`payment_server_key`); it signs both the charge and the notification, so
+`payment_webhook_secret` and `payment_client_key` never exist. `pos_transactions.reference` is
+the `order_id`. `CompletePosTransactionAction` is the one completion path, called by the
+cashier (cash/EDC), the webhook (C2) and the new reconciliation sweep (C5,
+`payment:reconcile-stale`). `escpos-php` stays the phase's only package candidate, and the QR
+the customer scans is the **printed** one. **A driver interface is deliberately not built**:
+one vendor, one implementation, no second caller (the global rule against an interface with a
+single implementation) — the class is a seam, not an abstraction, and a second gateway is a
+phase with its own ADR.
+
+**Alternatives considered**: install `midtrans/midtrans-php` (rejected for the six blocking
+facts above; if the owner overrules, `Config::$curlOptions` must set both timeouts before the
+first call, `Midtrans\Notification` must never be used, and the gateway tests stop being
+fake-able); **Snap** or **Snap-BI / BI-SNAP** (rejected — a browser popup is not a counter
+flow, and BI-SNAP is a different auth + signature scheme with its own credential set, so
+enabling it is a phase, not a flag); Xendit or a driver interface with one implementation
+(rejected — same call shape, no second vendor asked for, and an unused seam costs more than it
+saves); keeping a fee estimate on the dashboard (rejected — it prints a figure nobody can
+reconcile on the screen whose purpose is being the money source of truth).
+
+**Consequences**: Phase 19 gains one task (C5) and twenty deviations' worth of research
+(D-14..D-23); the settings card drops from three credential fields to one; the webhook dedupe
+key becomes ours (`notification_hash`) instead of the vendor's; the gateway-fee card is cut and
+profit waits for cost data; refund/chargeback **notifications** come in scope as reversing
+ledger rows while refund **initiation** stays out, with commercial activation recorded as an
+operational prerequisite. Four of the researched constants (the signature algorithm and the
+exact amount string, `status_code` shapes, `expire_time`, non-2xx retry behaviour) can only be
+**proven** against a live sandbox notification, so that round trip is deferred runtime evidence
+and the phase cannot claim a working integration on `Http::fake` alone.
+
+## ADR-037: `mike42/escpos-php` v5 is the receipt printer, calibrated to the Eppos EP58M / RPP02
+
+**Date**: 2026-11-08 · **Status**: Accepted · **Relates to**:
+`docs/planning/phase-19-pos-and-payment.md` — deviations D-9 (which promised this ADR) and
+D-27/D-28, tasks P19-A7 and P19-B4, and § 4's Receipt-printer settings family
+
+**Context**: Phase 19 prints receipts, and `AGENTS.md` requires an ADR plus a
+`docs/planning/changelog.md` line **before** `composer require`. D-9 recorded the package as
+needing "an ADR" and claimed two things that measured wrong today:
+
+- **The version moved the ground.** v5.0 (released 2026-07-01) raises the floor to **PHP ≥ 8.2**
+  (this box runs 8.3.36 ✓) and adds **`ext-intl`** and **`ext-zlib`** as requirements — both
+  loaded here (`php -m`), but that makes them *deployment* requirements, discovered on someone
+  else's server if `composer.json` never says so. Images now go through **`mike42/gfx-php`**, a
+  pure-PHP library, so D-9's "images pull GD/ImageMagick" was a **v4** fact: the receipt logo
+  costs no extension at all.
+- **The connectors the breakdown assumed are not all there.** v5's connector list is Cups,
+  Dummy, File, Memory, Multiple, Network, Rawbt, Uri, Windows. **`UsbPrintConnector` is gone**
+  and `UriPrintConnector` understands only `file://`, `tcp://`, `smb://` — there is no `usb://`
+  scheme and nothing in this stack talks to libusb. `DummyPrintConnector` is **deprecated in
+  favour of `MemoryPrintConnector`**, which is exactly the byte-capture seam the test needs.
+  `CupsPrintConnector` validates the queue name at construction and shells out to `lpr`.
+- **The hardware is a budget, not a preference.** The owner's unit is an **Eppos EP58M /
+  RPP02**, a 58 mm ESC/POS thermal printer on USB. Its class is documented by the manual:
+  57.5 mm printable at 203 DPI = **384 dots**, **32 characters per line** in Font A (~42 in
+  Font B), **no auto-cutter**, ~90 mm/s, a drawer kick output at DC 12 V / 1 A. Every layout
+  decision — column widths, truncation, the logo's maximum width, whether `cut()` is called —
+  follows from those numbers, and none of them is verifiable in CI.
+
+**Decision**: Install **`mike42/escpos-php:^5.0`** (its `mike42/gfx-php` arrives transitively;
+no extension is added by the image path) behind **one** class,
+`App\Support\Receipt\ReceiptPrinter`, which composes the receipt from the stored transaction,
+B8's totals and the A7 settings, and is the only place `Mike42\Escpos\*` is named.
+`docs/base/dependencies/dependency-matrix.md` records the package with **`ext-intl` and
+`ext-zlib` named as install requirements**, so a fresh box fails at `composer install` with a
+message instead of at the counter. The layout is written to the **32-column / 384-dot** budget:
+name ≤ 20 columns, amount right-aligned in 11, logo validated at **≤ 384 px wide** in the
+FormRequest (never truncated at print time), and **`cut()` is never called** — 58 mm units have
+no cutter, so the receipt ends in a 3-line feed and a tear edge. For a USB unit the connector
+comes from `receipt_printer_uri` and is honestly either `file:///dev/usb/lp0` (the `usblp` node,
+Linux) or a **CUPS raw queue** via `CupsPrintConnector`; empty or `memory` selects the sandbox
+driver. **Printing is synchronous, in the register's own request, and is not a queued job**: the
+printer is a USB device attached to the machine behind the counter while a queue worker is
+another process that may run on another box — a job would write bytes into a device node that is
+not there. The drawer kick is one `ESC p` on a cash tender, never retried (D-9's rule stands).
+Tests assert the **byte stream** through `MemoryPrintConnector`, including that a reprint of the
+same transaction emits the same bytes.
+
+**Alternatives considered**: staying on v4 (rejected — it keeps the GD claim and a deprecated
+connector, and its PHP floor is a downgrade with no benefit here); `Anastasser/EPPOS-Printer`
+or a hand-rolled ESC/POS byte writer (rejected — reinventing a command set that has a
+maintained implementation, and a hand-written emitter is the one thing a printer manual cannot
+unit-test); a network/CUPS-only assumption (rejected — the unit is USB, and promising
+`tcp://` would be documenting hardware nobody owns); queuing the print (rejected for the
+same-box reason above, and it would also make a receipt wait behind a monthly CSV on the
+`exports` queue).
+
+**Consequences**: Phase 19 gains one Composer dependency and one settings family; ADR-031's
+number — which D-9 assumed before that slot was spent on membership — is corrected to 037
+across the phase doc, tracker, roadmap, progress and changelog. Five facts stay **deferred
+runtime evidence** (§ 7) because CI cannot hold a printer: the exact USB vendor/product id and
+whether the host presents `usblp` or needs a raw queue, whether a 384-dot logo is dark enough to
+read on 58 mm, whether the printed QRIS code **decodes** from a phone across a counter, whether
+this specific unit carries a drawer port, and the worst-case print time inside a cashier
+request. A printer failure is logged and surfaced as "receipt not printed — reprint available";
+it never fails a sale (spec 3), which is why the reprint path is part of the design and not an
+afterthought.
+
+## ADR-038: PPN is per-transaction data with two price modes; PPh never appears on a receipt
+
+**Date**: 2026-11-08 · **Status**: Accepted · **Relates to**:
+`docs/planning/phase-19-pos-and-payment.md` — deviations D-24/D-25/D-26/D-31, specs 13 and 16,
+tasks P19-A3, P19-A7, P19-A8, P19-B1, P19-B8, P19-B9
+
+**Context**: The owner asked whether PPN is applied, for both price cases (harga **sudah**
+termasuk PPN / harga **belum** termasuk PPN), for the payable total on the dashboard, and for a
+report of what must be paid. Measured against Indonesian rules and this schema:
+
+- The tariff has moved three times in four years (11 % → 12 % on 1 Jan 2025 → **DPP nilai
+  lain = 11/12 × harga jual** under PMK-11/2025, which makes the *effective* rate 11 % for
+  general goods and 12 % for luxury), and no 2026 change has been decided. **A rate hardcoded
+  in PHP would be wrong on the day the rule changes, and a rate read live at report time
+  rewrites history.**
+- The two modes are not a display preference. In exclusive mode the tax is **added**; in
+  inclusive mode the shelf price **already contains** it, so the tax is extracted
+  (`PPN = r/(1+r) × inclusive`). Applying the first arithmetic to the second store collects a
+  tax the customer already paid — an over-collection that no refund screen fixes quietly.
+- A receipt in this country reconciles to a whole rupiah the drawer can hold: `decimal(12,2)`
+  in the schema and `(int) round()` at the gateway boundary (D-19) otherwise disagree with the
+  cash the customer hands over. That is the owner's **pembulatan** line.
+- PPN and PPh are different things: PPN is collected *from the customer* and becomes a
+  liability the moment it is charged, and only a **PKP** may charge it; PPh (final 0.5 % for
+  the SME regime, PPh 22 on specific goods) is the merchant's **own** income tax, assessed on
+  the business, never a customer line.
+
+**Decision**: Tax is **data, configured per installation and snapshotted per transaction**.
+`SystemSetting` holds `tax_ppn_applied`, `tax_ppn_rate` (the **effective** rate as a number,
+not a constant), `tax_mode` (`exclude` | `include`) and the service-charge pair.
+`CalculateSaleTotalsAction` (P19-B8) is **the only place money is computed**, called by both
+the sale and the cart preview, and the row stores the `tax_rate`, `tax_mode`,
+`service_charge_rate` and `dpp` it was computed with — so a reprint, a void, a refund
+notification and the masa report all read the stored figures, and a settings change or a new
+government rate cannot rewrite a receipt a customer already holds. Rounding happens **once, at
+the document**, as a signed `rounding_adjust` with `abs(x) < 1` whose only job is that the
+printed lines sum to the printed grand total; line-level tax is an allocation, never a sum of
+independently rounded figures, and the tax is computed on the **un-rounded DPP**. The
+dashboard (A3) shows **"total PPN yang harus dibayar"** for the period, split by `tax_mode`,
+because inclusive and exclusive collectables are not addable; the report screen (A8) and its
+CSV (B9) emit taxable DPP, PPN collected, non-taxable sales and voids/refunds/chargebacks
+**reducing** the total. PPN and PPh are kept apart in the UI: **PPh is an estimate, labelled as
+one, on the report screen only, never on a receipt and never inside any `total`.**
+`tax_ppn_applied = false` is a legal configuration — a non-PKP merchant's report leaves the PPN
+column **empty** rather than showing a zero with a tick, and the NPWP header line disappears
+with it. Whether this installation is a PKP stays an owner decision (O-12), not a default.
+Nothing in this phase claims a **filing**: the output is a rekap for whoever does the tax.
+
+**Alternatives considered**: a `TAX_RATE` constant or a `.env` value (rejected — the rate is
+policy that changes by regulation and must be reportable per period, and an env value is not
+editable by the owner without a deploy); deriving the tax at read time from today's settings
+(rejected — that is how a reprint contradicts the paper a customer holds, and how a rate change
+silently restates last year's liability); one "PPN/PPH breakdown" card with both numbers side
+by side (rejected — it invites reading PPh as money collected from customers, which it is not);
+rounding per line (rejected — a 20-line basket accumulates 20 half-rupiah decisions and the
+printed total stops matching the sum of the printed lines); a `taxes` table with historical
+rates (rejected for now — the snapshot columns answer the same need with no second table, and a
+rate history becomes worth a table the day someone must *prove* what the rate was, not merely
+report it).
+
+**Consequences**: five of the phase's money columns exist because of this decision
+(`dpp`, `tax_rate`, `tax_mode`, `service_charge_rate`, `rounding_adjust`) plus the
+`(settled_at, tax_mode)` index the report filters on; A3, A7, A8, B8 and B9 are the tasks that
+turn it into screens; the report is explicitly a **rekap**, so "the PPN has been paid" is never
+a claim the software makes; and the two modes are a **test surface** — inclusive pricing at
+Rp 111,000 must yield tax 11,000 and DPP 100,000 with no code path able to add 11 % on top.
+The service charge follows the same rule (its own column, taxable by setting, excluded from the
+points base until O-13 says otherwise) so it is never confused with a gateway fee, which this
+store cannot see at all (D-20).
