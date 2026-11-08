@@ -44,9 +44,18 @@ class MemberDashboardAction
             'broadcastUrl' => route('membership.broadcast-expiry'),
             'alertWindowDays' => $alertWindowDays,
             'stats' => [
-                (object) ['label' => 'Active members', 'value' => MemberSubscription::currentlyActive()->distinct()->count('member_id')],
-                (object) ['label' => 'Expiring soon', 'value' => count($expiring)],
-                (object) ['label' => 'Points issued', 'value' => (int) MemberPointHistory::where('delta', '>', 0)->sum('delta')],
+                (object) [
+                    'label' => 'Active Members',
+                    'value' => MemberSubscription::currentlyActive()->distinct()->count('member_id'),
+                    'hint' => 'Members with a live subscription right now. Paused and expired periods are not counted.',
+                ],
+                // The expiring count is not a card: it is the row count of the
+                // table under it, and Group F prints one number per question.
+                (object) [
+                    'label' => 'Points Issued',
+                    'value' => (int) MemberPointHistory::where('delta', '>', 0)->sum('delta'),
+                    'hint' => 'Every point ever credited to a member. Redeeming points does not lower this number.',
+                ],
             ],
             'expiring' => $expiring,
             'membersByTier' => MemberTier::orderBy('sort_order')

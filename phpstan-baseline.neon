@@ -2169,3 +2169,10 @@ parameters:
 			identifier: missingType.iterableValue
 			count: 1
 			path: app/View/Composers/AppMenuComposer.php
+
+		# argument.type: framework-typed noise — Expression demands literal-string, but the bucket list is assembled at runtime from constants and `?` placeholders (no user input). Pay off if Laravel widens the template.
+		-
+			message: '#^Parameter \#1 \$value of class Illuminate\\Database\\Query\\Expression constructor expects TValue of float\|int\|literal\-string, string given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Actions/V1/Member/MemberAnalyticsStatsAction.php
