@@ -29,13 +29,28 @@ class MemberSubscriptionActivateAction
             $this->refuse('member_tier_id', "Tier {$tier->name} is not active, so it cannot be subscribed to.");
         }
 
-        // One live period per member — the shape the MySQL-only unique partial
-        // index cannot express on SQLite, so it is enforced here (P18-B1, D-5).
-        if ($member->subscriptions()->currentlyActive()->exists()) {
-            $this->refuse('member_id', 'This member already holds an active subscription.');
+        // Out of the programme means no period sold: `MemberDeactivateAction`
+        // freezes the paid one rather than ending it, so issuing a second live
+        // row on a deactivated profile leaves two `paused_at` rows and
+        // `MemberActivateAction` can only hand one of them back. Activate first.
+        if (! $member->is_active) {
+            $this->refuse('member_id', 'This member is deactivated; activate the profile before issuing a period.');
         }
 
+        // One live period per member, re-read under the profile's row lock. The
+        // check cannot sit before the transaction: two callers can both pass a
+        // read that has nothing holding them out of it, and the second write
+        // would land a `members` row with two live periods, which is the shape
+        // `currentlyActive()` and the renewal metric cannot represent.
+        // shortcut: SQLite takes no row lock, so this proves the arithmetic only;
+        // the lock itself is the deferred MySQL two-session probe (P18-B1, D-5).
         return DB::transaction(function () use ($member, $tier, $causer): MemberSubscription {
+            Member::whereKey($member->getKey())->lockForUpdate()->firstOrFail();
+
+            if ($member->subscriptions()->currentlyActive()->exists()) {
+                $this->refuse('member_id', 'This member already holds an active subscription.');
+            }
+
             $startsAt = now();
 
             $subscription = $member->subscriptions()->create([
