@@ -3,6 +3,7 @@
 namespace App\Actions\V1\Member;
 
 use App\Models\Member;
+use App\Models\MemberSubscription;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 
@@ -29,7 +30,18 @@ class MemberActivateAction
         DB::transaction(function () use ($member, $causer): void {
             $member->update(['is_active' => true]);
 
-            $paused = $member->subscriptions()->whereNotNull('paused_at')->first();
+            // Only a period still in force comes back. `paused_at` outlives a
+            // cancellation — `MemberSubscriptionCancelAction` ends the period and
+            // leaves the freeze stamp — so without this filter the days of a
+            // cancelled row would be handed to an audit row claiming a resume
+            // that no subscription will ever serve. Newest first, because two
+            // paused rows would otherwise resume whichever MySQL happens to
+            // return.
+            $paused = $member->subscriptions()
+                ->where('status', MemberSubscription::STATUS_ACTIVE)
+                ->whereNotNull('paused_at')
+                ->latest('starts_at')
+                ->first();
             $resumedAt = null;
 
             if ($paused !== null) {
