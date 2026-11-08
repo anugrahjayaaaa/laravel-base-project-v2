@@ -18,6 +18,7 @@ use Database\Seeders\PermissionSeeder;
 use Database\Seeders\RoleSeeder;
 use Database\Seeders\SystemSettingSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Validation\ValidationException;
 use Spatie\Activitylog\Models\Activity;
 use Tests\TestCase;
@@ -372,5 +373,36 @@ class MemberSubscriptionTest extends TestCase
         $this->tier('Bronze', 'bronze_member', active: false);
 
         $this->assertSame([], app(MemberShowAction::class)->run($member)['tierOptions']);
+    }
+
+    /**
+     * Every other write on a profile in the trash answers 404 — points,
+     * subscribe, activate, deactivate. Cancel reads the subscription, not the
+     * profile, so it was the one that went through: `belongsTo` hid the trashed
+     * member, the null guard returned quietly, and the caller got a success for
+     * work that had not happened.
+     */
+    public function test_cancelling_a_period_on_a_trashed_profile_is_refused(): void
+    {
+        $member = $this->memberHoldingRole('member');
+        $tier = $this->tier('Gold', 'gold_member');
+        $subscription = app(MemberSubscriptionActivateAction::class)->run($member, $tier);
+
+        $member->delete();
+
+        try {
+            app(MemberSubscriptionCancelAction::class)->run($subscription);
+            $this->fail('a profile in the trash accepted a cancellation');
+        } catch (ModelNotFoundException $e) {
+            $this->assertSame('This member is in the trash.', $e->getMessage());
+        }
+
+        $this->assertSame(
+            MemberSubscription::STATUS_ACTIVE,
+            $subscription->fresh()->status,
+            'the period the trash step left alone is still alone'
+        );
+        $this->assertContains('gold_member', $member->user->fresh()->roles->pluck('name')->all());
+        $this->assertSame(0, Activity::where('event', 'member.subscription_cancelled')->count());
     }
 }

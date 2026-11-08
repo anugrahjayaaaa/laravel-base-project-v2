@@ -54,6 +54,12 @@
                                 @endcan
                             </div>
                             <div class="d-flex align-items-center gap-2 flex-shrink-0">
+                                {{-- The list paints trashed rows red and stamps them DELETED;
+                                     arriving here from a link or a URL must say the same thing,
+                                     or an operator writes on a profile that is in the trash. --}}
+                                @if ($member->is_trashed)
+                                    <span class="badge bg-danger text-white">DELETED</span>
+                                @endif
                                 @if ($member->tier_name)
                                     <x-ui.badge :variant="$member->tier_variant" :text="$member->tier_name" />
                                 @endif

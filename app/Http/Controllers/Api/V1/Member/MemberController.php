@@ -150,7 +150,11 @@ class MemberController extends Controller
 
     /**
      * End one period early, revoking only the role that period applied.
+     *
+     * 404 when the period's profile is in the trash, the same refusal points
+     * and subscribe already make.
      */
+    #[Response(status: 404, type: ApiError::DOC_TYPE)]
     public function cancelSubscription(Request $request, MemberSubscription $subscription): JsonResponse
     {
         $this->subscriptionCancelAction->run($subscription, $request->user());

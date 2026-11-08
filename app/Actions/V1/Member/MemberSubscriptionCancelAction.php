@@ -3,8 +3,10 @@
 namespace App\Actions\V1\Member;
 
 use App\Actions\V1\Member\Concerns\RevokesSubscriptionRole;
+use App\Models\Member;
 use App\Models\MemberSubscription;
 use App\Models\User;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -26,12 +28,23 @@ class MemberSubscriptionCancelAction
         }
 
         DB::transaction(function () use ($subscription, $causer): void {
-            // The FK cascades on member delete, so a live row always has its
-            // profile; the guard is the integrity precondition, not a branch.
-            $member = $subscription->member;
+            // `belongsTo` reads the default scope, which hides a trashed profile,
+            // so the fallback is what makes the trash visible here at all. The FK
+            // cascades on member force-delete, so a null after both reads means
+            // there is nothing left to cancel.
+            $member = $subscription->member
+                ?? Member::withTrashed()->find($subscription->member_id);
 
             if ($member === null) {
-                return;
+                throw new ModelNotFoundException('This subscription has no member profile.');
+            }
+
+            // A trashed profile is read-only on every other write this module
+            // has — points, subscribe, activate and deactivate all answer 404
+            // for it — so cancelling one of its periods here would be the one
+            // write that slipped past. Same refusal, both channels.
+            if ($member->trashed()) {
+                throw new ModelNotFoundException('This member is in the trash.');
             }
 
             $roleName = $subscription->role_name;
