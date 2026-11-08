@@ -21,16 +21,19 @@ class MemberShowAction
     /** @return array<string, mixed> */
     public function run(Member $member): array
     {
-        $member->load(['user', 'subscriptions.tier', 'pointHistories']);
+        $member->load(Member::DETAIL_WITH);
 
         // One live period is the whole condition for offering another: the
         // Action refuses a second one, so the form stays hidden rather than
-        // posting a guaranteed 422.
+        // posting a guaranteed 422. A deactivated profile is refused for the
+        // same reason — it has to be activated before it can be sold a period.
         $hasLivePeriod = $member->subscriptions->contains(fn (MemberSubscription $s) => $s->isLive());
 
         return [
             'indexUrl' => route('members.index'),
-            'subscribeUrl' => ($member->trashed() || $hasLivePeriod) ? null : route('members.subscribe', $member),
+            'subscribeUrl' => ($member->trashed() || ! $member->is_active || $hasLivePeriod)
+                ? null
+                : route('members.subscribe', $member),
             'tierOptions' => $this->tierOptions(),
             'member' => $this->row($member),
             'subscriptions' => $member->subscriptions

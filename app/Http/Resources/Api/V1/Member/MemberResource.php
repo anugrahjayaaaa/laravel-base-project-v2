@@ -26,7 +26,12 @@ class MemberResource extends JsonResource
             'id' => $this->resource->id,
             'member_number' => $this->resource->member_number,
             'user_id' => $this->resource->user_id,
-            'user_name' => $this->whenLoaded('user', fn () => $this->resource->user?->name),
+            // Read directly, not through `whenLoaded`: the list and the detail
+            // both eager-load `user` (`Member::DETAIL_WITH`), so on every path
+            // this is zero extra queries — and `whenLoaded` silently drops the
+            // key on the two responses that return an unpinned model, which is a
+            // shape this class does not declare.
+            'user_name' => $this->resource->user?->name,
             'is_active' => $this->resource->is_active,
             'points_balance' => $this->resource->points_balance,
             'joined_at' => $this->resource->joined_at,

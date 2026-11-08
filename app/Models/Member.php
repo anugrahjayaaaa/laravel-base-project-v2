@@ -41,6 +41,13 @@ class Member extends Model
     use HasFactory;
     use SoftDeletes;
 
+    /**
+     * The relations one profile's detail read needs. One list rather than two,
+     * because a load set written per channel is a second owner of the same
+     * decision — and the channel that forgets to update it grows an N+1 silently.
+     */
+    public const DETAIL_WITH = ['user', 'subscriptions.tier', 'pointHistories'];
+
     protected function casts(): array
     {
         return [
