@@ -345,6 +345,62 @@ rolled-back read. The dashboard's *Notify Expiring Members* button is a confirm-
 inside `@can('members.notify')` — a viewer with `members.view` sees the expiring table but no
 button, and the route itself 403s the same caller, so screen and gate cannot disagree.
 
+## Membership analytics
+
+`GET /members/dashboard` (`membership.dashboard`, `members.view` + `feature:member_loyalty`)
+is one screen, not two: the Group C *Expiring soon* table and its broadcast modal stayed
+where they are, and Group F's read was merged into the same view model. `MemberDashboardController::index()`
+takes `MemberAnalyticsQueryRequest` (the timeframe lives in the query string) and passes
+`array_merge($dashboardAction->run(), $analyticsAction->run($request->window()))`
+to the view. No new route name, no new permission, no API twin — the numbers an API client
+wants are the same Action, and a read-only screen gets no twin by the rule in § Routes.
+
+**Filter UI (dropdown revision 2026-11-08):** a single Stockbit-style dropdown trigger
+displays the current window dates. Opening it reveals two `input[type=date]` fields (both
+constrained `max=today`), seven quick-preset buttons (Today/7D/1M/3M/6M/9M/1Y) that fill
+the inputs client-side, and an Apply button. All submissions carry `range=custom` with
+explicit dates. The server-side `PRESETS` map (`7d/30d/90d/1y`) and the `timeframes()`
+builder in `MemberAnalyticsStatsAction` remain for API and programmatic access but are
+not exercised by the dropdown UI — cleanup deferred.
+
+`MemberAnalyticsStatsAction` answers every number on the page. The bold names are the widget
+titles on screen; each one carries a `bi-info-circle` tooltip that states what is counted and
+what is not.
+
+- **New Members vs Expiring Subscriptions** — `members.joined_at` and
+  `member_subscriptions.expires_at` bucketed by day (≤ 14 days), week (≤ 92) or month, one
+  statement per series: N `SUM(CASE WHEN col >= ? AND col < ? THEN 1 ELSE 0 END)` columns.
+  Half-open buckets, so a row on a boundary is counted once. Dialect-portable (MySQL + sqlite),
+  so no `DATE_FORMAT`.
+- **Renewal Rate** — periods started inside the window that follow an *expired* period of the
+  same member whose `expires_at` came at or before the new `starts_at`. The temporal join is
+  what makes it a renewal; a period that overlaps the one it replaces is an upgrade, not a
+  renewal (`test_a_period_that_overlaps_the_one_it_replaces_is_not_a_renewal`).
+- **Daily Engagement** and **Inactive Members** — `users.last_activity_at`, written at
+  login. Inactive is a live (`currentlyActive()`, so paused rows drop out) period whose member
+  has not signed in for 30 days or never has — `Never` on the list, not omitted.
+- **Length of Membership** — `members.joined_at` in five bands. The demographic/age widget the
+  brief listed is **cut**: no date-of-birth column exists and collecting one for a chart is PII
+  the phase does not otherwise hold (D-9, O-5a).
+
+Layout (owner revision 2026-11-07): one row of counter cards, then **one** row holding the
+series `col-lg-8` with *Members per Tier* stacked above *Length of Membership* in `col-lg-4`,
+then *Expiring Soon* and *Inactive Members* side by side in `col-lg-6` each. The two list cards
+are `h-100 d-flex flex-column` with a body capped at `max-height: 340px` and `overflow-auto`,
+so they are always the same height and a long table scrolls inside its own card instead of
+pushing the row apart. The tooltip text is static prose in Blade — the same shape the settings
+page uses, initialised by `adminlte.min.js`, `tabindex="0"` so it is keyboard-reachable.
+
+Bars are server-rendered Bootstrap `role="progressbar"` with the width computed in the Action
+(relative to the busiest bucket), so no chart library is installed and Blade computes nothing
+(D-4). Cached with `Cache::remember` on primitives only, key `member_analytics.<range>` for
+preset ranges or `member_analytics.custom.<from>.<to>` for the dropdown; `MemberAnalyticsObserver`
+on `Member` + `MemberSubscription` busts the four preset keys
+`afterCommit`. Login writes `last_activity_at` with `updateQuietly()`, which bypasses
+observers, so DAU/MAU freshness is bounded by the 300 s TTL rather than an event. Measured on
+60 members (sqlite, `MembershipDashboardTest`): cold p95 **11.5 ms**, cached **0.052 ms**
+against the brief's 100 ms target.
+
 ## The member's own dashboard
 
 `GET /dashboard` (`dashboard`) is the one screen a `member` account can reach: the route
@@ -424,7 +480,11 @@ button, its API twin and both sweeps ship with Group C.
 `tests/Feature/Member/` — `MemberWebTest` (routes, gates, flag, sidebar labels, exactly one
 active sidebar item per page),
 `MemberUiRenderTest` (fixture render, null-URL affordance removal, no DB/route/inline script
-in Blade), `MemberSelfDashboardTest` (the member's own `/dashboard`: tier + expiry + ledger of
+in Blade), `MembershipDashboardTest` (the analytics read: gate + flag, real rows over HTTP,
+each range reading its own window, a member counted once, paused periods excluded, the
+renewal and at-risk figures sabotage-verified, cache hit answering with zero queries and
+primitive-only leaves, the reader's keys matching `bustCache()`'s, a bad range refused before
+the query, and the read time measured rather than promised), `MemberSelfDashboardTest` (the member's own `/dashboard`: tier + expiry + ledger of
 the signed-in profile only, empty states with no period and no ledger rows, flag off → the
 application dashboard, a staff user unaffected), `MemberCreateTest` (account + role + mail + refusal paths), `MemberPointsTest`
 (ledger, earn rule, negative-balance refusal, annual reset), `MemberTierTest` (tier create /
