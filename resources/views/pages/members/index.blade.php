@@ -148,21 +148,13 @@
                                 <x-ui.sortable-th field="member_number" label="Member No."
                                     :current-sort="$filters['sort'] ?? null"
                                     :current-direction="$filters['direction'] ?? null" />
-                                <x-ui.sortable-th field="user_name" label="User"
-                                    :current-sort="$filters['sort'] ?? null"
-                                    :current-direction="$filters['direction'] ?? null" />
-                                <x-ui.sortable-th field="tier_name" label="Tier"
-                                    :current-sort="$filters['sort'] ?? null"
-                                    :current-direction="$filters['direction'] ?? null" />
-                                <x-ui.sortable-th field="status" label="Status"
-                                    :current-sort="$filters['sort'] ?? null"
-                                    :current-direction="$filters['direction'] ?? null" />
+                                <x-ui.sortable-th field="user_name" label="User" :sortable="false" />
+                                <x-ui.sortable-th field="tier_name" label="Tier" :sortable="false" />
+                                <x-ui.sortable-th field="status" label="Status" :sortable="false" />
                                 <x-ui.sortable-th field="points_balance" label="Points"
                                     :current-sort="$filters['sort'] ?? null"
                                     :current-direction="$filters['direction'] ?? null" />
-                                <x-ui.sortable-th field="expires_at" label="Expires"
-                                    :current-sort="$filters['sort'] ?? null"
-                                    :current-direction="$filters['direction'] ?? null" />
+                                <x-ui.sortable-th field="expires_at" label="Expires" :sortable="false" />
                                 <th scope="col" class="align-middle text-end">Actions</th>
                             </tr>
                         </thead>
