@@ -251,11 +251,10 @@ class MemberBenchmarkTest extends TestCase
         $cancel = app(MemberSubscriptionCancelAction::class);
         $points = app(MemberAdjustPointsAction::class);
 
-        // `is_active` on the instance, not only the column default: the
-        // subscribe Action reads the flag off the model it is handed.
         // Each pass builds its own rows because measure() runs the closure
-        // twice, and a write is not idempotent.
-        $fresh = fn (): array => Member::factory()->count(20)->create(['is_active' => true])->all();
+        // twice, and a write is not idempotent. The rows need no `is_active`:
+        // the model default is what makes them subscribable.
+        $fresh = fn (): array => Member::factory()->count(20)->create()->all();
 
         $this->record('20x issue a period (Action)', $this->measure(function () use ($activate, $tier, $actor, $fresh): void {
             foreach ($fresh() as $member) {
@@ -329,6 +328,19 @@ class MemberBenchmarkTest extends TestCase
         ]);
 
         $this->record('subscription sweep — 250 past-due periods', $this->measure(
+            fn () => MemberSubscriptionExpirySweepJob::dispatchSync(),
+            warm: false
+        ));
+
+        // A period that carries a tier role takes the revocation path as well:
+        // the role read and the sync are the reason this row is not free.
+        MemberSubscription::factory()->count(250)->create([
+            'member_tier_id' => $tier->id,
+            'expires_at' => now()->subDay(),
+            'role_name' => 'bench_revoked_role',
+        ]);
+
+        $this->record('subscription sweep — 250 rows with a tier role', $this->measure(
             fn () => MemberSubscriptionExpirySweepJob::dispatchSync(),
             warm: false
         ));
